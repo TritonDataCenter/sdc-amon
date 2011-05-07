@@ -29,10 +29,7 @@ NODE_WAF := $(NODEDIR)/bin/node-waf
 NPM := npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH npm
 REDIS_SERVER := deps/redis/src/redis-server
 DOC_CMD = restdown
-GLINT = gjslint
-GLINT_ARGS = --nojsdoc -e deps,node_modules,node-install -x common/sprintf.js -r .
-LINT = ./node_modules/jshint/bin/jshint
-LINT_ARGS =
+HAVE_GJSLINT := $(shell which gjslint >/dev/null && echo yes || echo no)
 TEST_CMD = ./node_modules/whiskey/bin/whiskey
 
 
@@ -45,6 +42,10 @@ all:: agent relay bin/amon-zwatch master common plugins
 
 .PHONY: deps agent relay master common plugins
 
+
+#
+# deps 
+#
 
 deps: $(NODEDIR)/bin/node $(NODEDIR)/bin/npm $(REDIS_SERVER) $(NODEDIR)/lib/node_modules/whiskey $(NODEDIR)/lib/node_modules/jshint
 
@@ -71,6 +72,10 @@ $(NODEDIR)/lib/node_modules/jshint: $(NODEDIR)/bin/npm
 	$(NPM) install -g jshint@0.1.9
 
 
+#
+# The main amon components
+#
+
 agent: deps
 	(cd agent && $(NPM) install)
 
@@ -96,9 +101,31 @@ master_devrun:
 	bin/amon-master -d -f support/dev/amon-master.json
 
 
+#
+# Lint, test and miscellaneous targets
+#
+
+jshint: deps
+	bin/node $(NODEDIR)/lib/node_modules/jshint/bin/jshint common/lib plugins/lib master/main.js master/lib relay/main.js relay/lib agent/main.js agent/lib
+
+gjslint:
+	gjslint --nojsdoc -e deps,node_modules -x common/lib/sprintf.js -r .
+
+ifeq ($(HAVE_GJSLINT), yes)
+lint: jshint gjslint
+else
+lint: jshint
+	@echo "* * *"
+	@echo "* Warning: Cannot lint with gjslint. Install it from:"
+	@echo "*    http://code.google.com/closure/utilities/docs/linter_howto.html"
+	@echo "* * *"
+endif
+
+
 #TODO: test targets
 test:
 	(PATH=$(NODEDIR)/bin:$$PATH $(TEST_CMD) --tests tst/checks.test.js)
+
 
 
 clean:
