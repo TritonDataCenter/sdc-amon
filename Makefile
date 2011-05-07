@@ -30,7 +30,6 @@ NPM := npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH npm
 REDIS_SERVER := deps/redis/src/redis-server
 DOC_CMD = restdown
 HAVE_GJSLINT := $(shell which gjslint >/dev/null && echo yes || echo no)
-WHISKEY = bin/whiskey
 
 
 
@@ -121,10 +120,11 @@ lint: jshint
 	@echo "* * *"
 endif
 
-
-test:
-	PATH=$(NODEDIR)/bin:$$PATH $(WHISKEY) --timeout 1000 --tests "$(shell find . -name "*.test.js" | grep -v 'node_modules/' | xargs)"
-
+tmp:
+	mkdir -p tmp
+test: tmp
+	deps/redis/src/redis-server support/test-redis.conf > tmp/test-redis.log &
+	(REDIS_PORT=`grep '^port' support/test-redis.conf | awk '{print $$2}'` bin/whiskey --timeout 1000 --tests "$(shell find . -name "*.test.js" | grep -v 'node_modules/' | xargs)"; kill `cat tmp/test-redis.pid`)
 
 
 clean:

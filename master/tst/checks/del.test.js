@@ -61,7 +61,7 @@ exports.setUp = function(test, assert) {
   cfg.plugins = require('amon-plugins');
   cfg.redis = {
     host: 'localhost',
-    port: 6379
+    port: process.env.REDIS_PORT || 6379
   };
 
   app = new App({
