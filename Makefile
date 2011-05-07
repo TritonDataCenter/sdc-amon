@@ -38,9 +38,9 @@ WHISKEY = bin/whiskey
 # Targets
 #
 
-all:: agent relay bin/amon-zwatch master common plugins
+all:: common plugins agent relay bin/amon-zwatch master
 
-.PHONY: deps agent relay master common plugins test
+.PHONY: deps agent relay master common plugins test lint gjslint jshint
 
 
 #
@@ -77,8 +77,14 @@ $(NODEDIR)/lib/node_modules/jshint: $(NODEDIR)/bin/npm
 # The main amon components
 #
 
+common: deps
+	(cd common && $(NPM) install && $(NPM) link)
+
+plugins: deps
+	(cd plugins && $(NPM) install && $(NPM) link)
+
 agent: deps
-	(cd agent && $(NPM) install)
+	(cd agent && $(NPM) install && $(NPM) link amon-common amon-plugins)
 
 relay: deps
 	(cd relay && $(NPM) install)
@@ -89,14 +95,7 @@ ifeq ($(UNAME), SunOS)
 endif
 
 master: deps
-	(cd master && $(NPM) install)
-
-common: deps
-	(cd common && $(NPM) install)
-
-plugins: deps
-	(cd plugins && $(NPM) install)
-
+	(cd master && $(NPM) install && $(NPM) link amon-common amon-plugins)
 
 master_devrun:
 	bin/amon-master -d -f support/dev/amon-master.json
