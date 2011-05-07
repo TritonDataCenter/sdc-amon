@@ -21,6 +21,14 @@ XMPP discussion at <monitoring@groupchat.joyent.com>. Tickets/bugs to
 
 TODO: code tree overview
 
+    agent/          Amon agent. One in each zone. Runs checks and alarms on failures.
+    relay/          Amon relay. Run in GZ to relay data btwn agent and master.
+    zwatch/         Zoneconfig watcher daemon used by relay.
+    master/         Amon master. Central server for config and notifications.
+    common/
+
+    support/        General support stuff for development of amon.
+
 
 # Running master on the Mac.
 
