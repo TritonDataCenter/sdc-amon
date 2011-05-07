@@ -23,9 +23,11 @@ ifeq ($(UNAME), SunOS)
 	LDFLAGS	= -static-libgcc
 	LIBS = -lpthread -lzonecfg -L/lib -lnsl -lsocket
 endif
+
 NODE := $(NODEDIR)/bin/node
 NODE_WAF := $(NODEDIR)/bin/node-waf
 NPM := npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH npm
+REDIS_SERVER := deps/redis/src/redis-server
 DOC_CMD = restdown
 GLINT = gjslint
 GLINT_ARGS = --nojsdoc -e deps,node_modules,node-install -x common/sprintf.js -r .
@@ -44,14 +46,22 @@ all:: agent relay bin/amon-zwatch master
 .PHONY: deps agent relay master
 
 
-deps: $(NODEDIR)/bin/node $(NODEDIR)/bin/npm
+deps: $(NODEDIR)/bin/node $(NODEDIR)/bin/npm $(REDIS_SERVER)
 
-$(NODEDIR)/bin/node:
+# Use 'Makefile' landmarks instead of the dir itself, because dir mtime
+# is that of the most recent file: results in unnecessary rebuilds.
+deps/redis/Makefile deps/node/Makefile deps/npm/Makefile:
 	(GIT_SSL_NO_VERIFY=1 git submodule update --init)
+
+$(NODEDIR)/bin/node: deps/node/Makefile
 	(cd deps/node && ./configure --prefix=$(NODEDIR) && $(MAKE) -j 4 && $(MAKE) install)
 
-$(NODEDIR)/bin/npm: $(NODEDIR)/bin/node
+$(NODEDIR)/bin/npm: $(NODEDIR)/bin/node deps/npm/Makefile
 	(cd deps/npm && npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH $(MAKE) install)
+
+$(REDIS_SERVER): deps/redis/Makefile
+	(cd deps/redis && make)
+
 
 
 agent: deps
@@ -69,6 +79,10 @@ master: deps
 	(cd master && $(NPM) install)
 
 
+master_devrun:
+	bin/amon-master -d -f support/dev/amon-master.json
+
+
 #TODO: test targets
 test:
 	(PATH=$(NODEDIR)/bin:$$PATH $(TEST_CMD) --tests tst/checks.test.js)
@@ -77,6 +91,7 @@ test:
 clean:
 	(cd deps/npm && $(MAKE) clean)
 	(cd deps/node && $(MAKE) distclean)
+	(cd deps/redis && $(MAKE) clean)
 	rm -rf $(NODEDIR) agent/node_modules relay/node_modules \
 		master/node_modules bin/amon-zwatch
 
