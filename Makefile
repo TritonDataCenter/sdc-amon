@@ -46,7 +46,7 @@ all:: agent relay bin/amon-zwatch master common plugins
 .PHONY: deps agent relay master common plugins
 
 
-deps: $(NODEDIR)/bin/node $(NODEDIR)/bin/npm $(REDIS_SERVER)
+deps: $(NODEDIR)/bin/node $(NODEDIR)/bin/npm $(REDIS_SERVER) $(NODEDIR)/lib/node_modules/whiskey $(NODEDIR)/lib/node_modules/jshint
 
 # Use 'Makefile' landmarks instead of the dir itself, because dir mtime
 # is that of the most recent file: results in unnecessary rebuilds.
@@ -62,6 +62,13 @@ $(NODEDIR)/bin/npm: $(NODEDIR)/bin/node deps/npm/Makefile
 $(REDIS_SERVER): deps/redis/Makefile
 	(cd deps/redis && make)
 
+# Global npm module deps (currently just test/lint stuff used by every amon
+# package). We install globally instead of 'npm install --dev' in every package
+# and having duplicated.
+$(NODEDIR)/lib/node_modules/whiskey: $(NODEDIR)/bin/npm
+	$(NPM) install -g whiskey
+$(NODEDIR)/lib/node_modules/jshint: $(NODEDIR)/bin/npm
+	$(NPM) install -g jshint@0.1.9
 
 
 agent: deps
