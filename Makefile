@@ -30,7 +30,7 @@ NPM := npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH npm
 REDIS_SERVER := deps/redis/src/redis-server
 DOC_CMD = restdown
 HAVE_GJSLINT := $(shell which gjslint >/dev/null && echo yes || echo no)
-TEST_CMD = ./node_modules/whiskey/bin/whiskey
+WHISKEY = bin/whiskey
 
 
 
@@ -40,7 +40,7 @@ TEST_CMD = ./node_modules/whiskey/bin/whiskey
 
 all:: agent relay bin/amon-zwatch master common plugins
 
-.PHONY: deps agent relay master common plugins
+.PHONY: deps agent relay master common plugins test
 
 
 #
@@ -123,9 +123,8 @@ lint: jshint
 endif
 
 
-#TODO: test targets
 test:
-	(PATH=$(NODEDIR)/bin:$$PATH $(TEST_CMD) --tests tst/checks.test.js)
+	PATH=$(NODEDIR)/bin:$$PATH $(WHISKEY) --timeout 1000 --tests "$(shell find . -name "*.test.js" | grep -v 'node_modules/' | xargs)"
 
 
 
