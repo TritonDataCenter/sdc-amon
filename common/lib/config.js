@@ -11,7 +11,7 @@ var uuid = require('node-uuid');
 
 var __rm = '/usr/bin/rm';
 var __tar = '/usr/bin/gtar';
-if (os.type !== 'SunOS') {
+if (os.type() !== 'SunOS') {
   __rm = '/bin/rm';
   __tar = '/usr/bin/tar';
 }

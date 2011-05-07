@@ -17,7 +17,7 @@ var RestCodes = restify.RestCodes;
 var _message = Messages.message;
 
 var __tar = '/usr/bin/gtar';
-if (os.type !== 'SunOS') {
+if (os.type() !== 'SunOS') {
   __tar = '/usr/bin/tar';
 }
 

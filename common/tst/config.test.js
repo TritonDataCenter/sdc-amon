@@ -25,7 +25,7 @@ var tmp = fixtures + '/tmp';
 var scratch = fixtures + '/scratch';
 var rm = '/usr/bin/rm';
 var _tar = '/usr/bin/gtar';
-if (os.type !== 'SunOS') {
+if (os.type() !== 'SunOS') {
   rm = '/bin/rm';
   _tar = '/usr/bin/tar';
 }
