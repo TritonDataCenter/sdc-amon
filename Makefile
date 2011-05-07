@@ -41,9 +41,9 @@ TEST_CMD = ./node_modules/whiskey/bin/whiskey
 # Targets
 #
 
-all:: agent relay bin/amon-zwatch master
+all:: agent relay bin/amon-zwatch master common plugins
 
-.PHONY: deps agent relay master
+.PHONY: deps agent relay master common plugins
 
 
 deps: $(NODEDIR)/bin/node $(NODEDIR)/bin/npm $(REDIS_SERVER)
@@ -77,6 +77,12 @@ endif
 
 master: deps
 	(cd master && $(NPM) install)
+
+common: deps
+	(cd common && $(NPM) install)
+
+plugins: deps
+	(cd plugins && $(NPM) install)
 
 
 master_devrun:
