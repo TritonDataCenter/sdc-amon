@@ -2,27 +2,18 @@ ifeq ($(VERSION), "")
 	@echo "Use gmake"
 endif
 
+
 #
 # Config
 #
 
+# Directories
 SRC := $(shell pwd)
 NODEDIR = $(SRC)/deps/node-install
 
+# Tools
 MAKE = make
 TAR = tar
-NODE := $(NODEDIR)/bin/node
-NODE_WAF := $(NODEDIR)/bin/node-waf
-NPM := npm_config_tar=$(TAR) PATH=$(NODEDIR):$$PATH npm
-DOC_CMD = restdown
-GLINT = gjslint
-GLINT_ARGS = --nojsdoc -e deps,node_modules,node-install -x common/sprintf.js -r .
-LINT = ./node_modules/jshint/bin/jshint
-LINT_ARGS =
-TEST_CMD = ./node_modules/whiskey/bin/whiskey
-
-
-# Fix Solaris
 UNAME := $(shell uname)
 ifeq ($(UNAME), SunOS)
 	MAKE = gmake
@@ -31,17 +22,17 @@ ifeq ($(UNAME), SunOS)
 	CCFLAGS	= -fPIC -g -Wall
 	LDFLAGS	= -static-libgcc
 	LIBS = -lpthread -lzonecfg -L/lib -lnsl -lsocket
-
-	NPM_FILES =		\
-		bin		\
-		lib		\
-		node-install	\
-		node_modules	\
-		smf		\
-		scripts		\
-		main.js		\
-		pkg/package.json
 endif
+NODE := $(NODEDIR)/bin/node
+NODE_WAF := $(NODEDIR)/bin/node-waf
+NPM := npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH npm
+DOC_CMD = restdown
+GLINT = gjslint
+GLINT_ARGS = --nojsdoc -e deps,node_modules,node-install -x common/sprintf.js -r .
+LINT = ./node_modules/jshint/bin/jshint
+LINT_ARGS =
+TEST_CMD = ./node_modules/whiskey/bin/whiskey
+
 
 
 #
@@ -50,7 +41,7 @@ endif
 
 all:: node
 
-.PHONY: deps 
+.PHONY: deps agent
 
 
 deps: $(NODEDIR)/bin/node $(NODEDIR)/bin/npm
