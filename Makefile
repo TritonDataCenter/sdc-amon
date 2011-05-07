@@ -50,7 +50,7 @@ endif
 
 all:: node
 
-.PHONY: 
+.PHONY: deps 
 
 
 $(NODEDIR)/bin/node:
@@ -59,6 +59,8 @@ $(NODEDIR)/bin/node:
 
 $(NODEDIR)/bin/npm: $(NODEDIR)/bin/node
 	(cd deps/npm && npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH $(MAKE) install)
+
+deps: $(NODEDIR)/bin/node $(NODEDIR)/bin/npm
 
 
 #TODO: test targets
