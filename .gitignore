@@ -5,3 +5,4 @@ node-install
 *.tar.bz2
 *.log
 common/node_modules
+bin/amon-zwatch

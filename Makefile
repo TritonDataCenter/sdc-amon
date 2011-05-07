@@ -39,7 +39,7 @@ TEST_CMD = ./node_modules/whiskey/bin/whiskey
 # Targets
 #
 
-all:: node
+all:: agent relay bin/amon-zwatch master
 
 .PHONY: deps agent relay master
 
@@ -56,13 +56,28 @@ $(NODEDIR)/bin/npm: $(NODEDIR)/bin/node
 
 agent: deps
 	(cd agent && $(NPM) install)
+
 relay: deps
 	(cd relay && $(NPM) install)
+
+bin/amon-zwatch:
+ifeq ($(UNAME), SunOS)
+	${CC} ${CCFLAGS} ${LDFLAGS} -o bin/amon-zwatch $^ zwatch/zwatch.c ${LIBS}
+endif
+
 master: deps
 	(cd master && $(NPM) install)
-
 
 
 #TODO: test targets
 test:
 	(PATH=$(NODEDIR)/bin:$$PATH $(TEST_CMD) --tests tst/checks.test.js)
+
+
+clean:
+	(cd deps/npm && $(MAKE) clean)
+	(cd deps/node && $(MAKE) distclean)
+	rm -rf $(NODEDIR) agent/node_modules relay/node_modules \
+		master/node_modules bin/amon-zwatch
+
+
