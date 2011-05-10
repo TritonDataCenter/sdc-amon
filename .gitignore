@@ -1,0 +1,6 @@
+tmp
+node_modules
+node-install
+*.tar.gz
+*.tar.bz2
+*.log
