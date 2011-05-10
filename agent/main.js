@@ -11,9 +11,9 @@ var http = require('http');
 var nopt = require('nopt');
 var path = require('path');
 
-var Config = require('../lib/config');
-var Notification = require('../lib/notify');
-var log = require('../lib/log');
+var Config = require(__dirname + '/lib/config');
+var Notification = require(__dirname + '/lib/notify');
+var log = require(__dirname + '/lib/log');
 
 
 
@@ -45,7 +45,7 @@ var shortOpts = {
 var usage = function(code, msg) {
   if (msg) console.error('ERROR: ' + msg);
   console.log('usage: ' + path.basename(process.argv[1]) +
-	      '[-hdi] [-p polling-period] [-s socket-path-or-port] ' +
+	      ' [-hdi] [-p polling-period] [-s socket-path-or-port] ' +
               '[-c config-root] [-t tmp-dir]');
   process.exit(code);
 };

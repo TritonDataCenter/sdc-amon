@@ -21,7 +21,7 @@
   "bin": {
     "amon-agent": "./bin/amon-agent"
   },
-  "scripts": {
+  "DISABLED-scripts": {
     "postinstall": "scripts/postinstall.sh",
     "preuninstall": "scripts/preuninstall.sh"
   },

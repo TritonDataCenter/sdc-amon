@@ -1,1 +1,6 @@
-../agent/main.js
+#!/bin/bash
+
+TOP=$(cd $(dirname $0)/../; pwd)
+NODEDIR=${TOP}/deps/node-install
+
+PATH=${NODEDIR}/bin:${PATH} node agent/main.js "$@"
