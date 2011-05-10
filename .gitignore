@@ -4,3 +4,4 @@ node-install
 *.tar.gz
 *.tar.bz2
 *.log
+common/node_modules

@@ -1,0 +1,18 @@
+{
+  "name": "amon-common",
+  "version": "6.1.0",
+  "repository": {
+    "type": "git",
+    "url": "git@git.joyent.com:amon.git"
+  },
+  "private": true,
+  "dependencies": {
+    "dirsum": ">=0.1.1",
+    "httpu": ">=0.0.1",
+    "node-uuid": ">=1.1.0",
+    "jshint": "=0.1.9",
+    "nopt": ">=1.0.5",
+    "restify": ">=0.1.5",
+    "whiskey": ">=0.3.2"
+  }
+}
