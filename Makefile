@@ -41,7 +41,7 @@ TEST_CMD = ./node_modules/whiskey/bin/whiskey
 
 all:: node
 
-.PHONY: deps agent
+.PHONY: deps agent relay master
 
 
 deps: $(NODEDIR)/bin/node $(NODEDIR)/bin/npm
@@ -56,6 +56,10 @@ $(NODEDIR)/bin/npm: $(NODEDIR)/bin/node
 
 agent: deps
 	(cd agent && $(NPM) install)
+relay: deps
+	(cd relay && $(NPM) install)
+master: deps
+	(cd master && $(NPM) install)
 
 
 
