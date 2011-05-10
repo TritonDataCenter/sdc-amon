@@ -1,0 +1,38 @@
+{
+  "name": "amon-relay",
+  "description": "The Joyent Monitoring Relay component",
+  "homepage": "https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming",
+  "version": "6.1.0",
+  "repository": {
+    "type": "git",
+    "url": "git@git.joyent.com:amon-relay.git"
+  },
+  "private": true,
+  "contributors": [
+    "Mark Cavage <mark.cavage@joyent.com> (http://www.joyent.com)",
+    "Trent Mick <trent.mick@joyent.com> (http://www.joyent.com)"
+  ],
+  "dependencies": {
+    "dirsum": ">=0.1.0",
+    "httpu": ">=0.0.1",
+    "node-uuid": ">=1.1.0",
+    "nopt": ">=1.0",
+    "restify": ">=0.1.2",
+    "zsock": ">=1.0.2",
+    "zutil": ">=0.1"
+  },
+  "bin": {
+    "amon-zwatch": "./bin/zwatch"
+  },
+  "scripts": {
+    "start": "node ./main.js",
+    "pretest": "jshint lib tst main.js",
+    "test": "nodeunit tst",
+    "postactivate": "scripts/postactivate.sh",
+    "postdeactivate": "scripts/postdeactivate.sh"
+  },
+  "devDependencies": {
+    "jshint": "=0.1.9",
+    "nodeunit": ">=0.5.1"
+  }
+}
