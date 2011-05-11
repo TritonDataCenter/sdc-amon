@@ -20,7 +20,7 @@ var log = restify.log;
  * Params you send into options are:
  *  - zone {String} the zone this should be bound to.
  *  - owner {String} the customer uuid for that owns said zone.
- *  - path  {String} the path to the socket to open/close (zsock).
+ *  - socket  {String} the socket to open/close (zsock).
  *  - localMode {Boolean} to zsock or not to zsock.
  *  - configRoot {String} root of agent configuration tree.
  *
@@ -31,12 +31,12 @@ var App = function App(options) {
   if (!options) throw TypeError('options is required');
   if (!options.zone) throw TypeError('options.zone is required');
   if (!options.owner) throw TypeError('options.owner is required');
-  if (!options.path) throw TypeError('options.path is required');
+  if (!options.socket) throw TypeError('options.socket is required');
   if (!options.configRoot) throw TypeError('options.configRoot is required');
 
   this.zone = options.zone;
   this.owner = options.owner;
-  this.path = options.path;
+  this.socket = options.socket;
   this.configRoot = options.configRoot;
   this.localMode = options.localMode || false;
   this._developerMode = options.developer || false;
@@ -53,7 +53,7 @@ var App = function App(options) {
     }
     req._zone = self.zone;
     req._owner = self.owner;
-    req._zsock = self.path;
+    req._zsock = self.socket;
     req._configRoot = self.configRoot;
 
     return next();
@@ -83,10 +83,10 @@ var App = function App(options) {
  */
 App.prototype.listen = function(callback) {
   if (this._developerMode) {
-    return this.server.listen(parseInt(this.path, 10), '127.0.0.1', callback);
+    return this.server.listen(parseInt(this.socket, 10), '127.0.0.1', callback);
   }
   if (this.localMode) {
-    return this.server.listen(this.path, callback);
+    return this.server.listen(this.socket, callback);
   }
 
   var self = this;

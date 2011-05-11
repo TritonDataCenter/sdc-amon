@@ -10,16 +10,16 @@ var zutil = require('zutil');
 var App = require('./lib/app');
 var Constants = require('./lib/constants');
 
-
 var log = restify.log;
 var logLevel = restify.LogLevel.Info;
+
 // Global variable that holds a mapping of zone name to Apps.
 var AppIndex = {};
 var debug = false;
 var developer = false;
-var agentConfigRoot = './cfg/agents';
-var socketPath = '/var/run/.joyent_amon.sock';
-var zwatchSocketPath = '/var/run/.joyent_amon_zwatch.sock';
+var configRoot = '/var/run/joyent/amon/config';
+var socket = '/var/run/.joyent_amon.sock';
+var ZWATCH_SOCKET = '/var/run/.joyent_amon_zwatch.sock';
 
 
 function listenInZone(zone, callback) {
@@ -31,17 +31,17 @@ function listenInZone(zone, callback) {
     }
     AppIndex[zone] = new App({
       zone: zone,
-      path: socketPath,
+      path: socket,
       owner: attr.value,
-      configRoot: agentConfigRoot
+      configRoot: configRoot
     });
     if (log.debug()) {
       log.debug('Starting new amon for %s at "%s". owner=%s',
-                zone, socketPath, attr.value);
+                zone, socket, attr.value);
     }
     AppIndex[zone].listen(function(error) {
       if (!error) {
-        log.info('amon-relay listening in zone %s at %s', zone, socketPath);
+        log.info('amon-relay listening in zone %s at %s', zone, socket);
       }
       if (callback) callback();
     });
@@ -93,13 +93,12 @@ function zwatchHandler(sock) {
 
 function usage(code) {
   console.log('usage: ' + path.basename(process.argv[1]) +
-              ' [-hd] [-c agent-config-root] [-f config_file] [-s socket]');
+              ' [-hd] [-c config-repository] [-s socket]');
   process.exit(0);
 }
 
 var opts = {
-  'agent-config-root': String,
-  'config-file': String,
+  'config-repository': String,
   'debug': Boolean,
   'developer': Boolean,
   'socket': String,
@@ -107,77 +106,49 @@ var opts = {
 };
 
 var shortOpts = {
-  'c': ['--agent-config-root'],
+  'c': ['--config-repository'],
   'd': ['--debug'],
-  'f': ['--config-file'],
   'h': ['--help'],
-  's': ['--socket'],
-  'm': ['--developer']
+  'm': ['--developer'],
+  's': ['--socket']
 };
 var parsed = nopt(opts, shortOpts, process.argv, 2);
 if (parsed.help) usage(0);
-if (parsed.debug) debug = true;
-if (parsed['agent-config-root']) agentConfigRoot = parsed['agent-config-root'];
+if (parsed['config-repository']) configRoot = parsed['config-repository'];
+if (parsed.debug) logLevel = restify.LogLevel.Debug;
+if (parsed.socket) socket = parsed.socket;
 if (parsed.developer) {
-  debug = true;
+  logLevel = restify.LogLevel.Trace;
   developer = true;
-}
-
-try {
-  var _cfgFile = './cfg/config.json';
-  if (parsed['config-file']) {
-    _cfgFile = parsed['config-file'];
-  }
-
-  var _config = JSON.parse(fs.readFileSync(_cfgFile, 'utf8'));
-
-  if (!debug) {
-    logLevel = _config.logLevel;
-  } else {
-    if (parsed.developer) {
-      logLevel = restify.LogLevel.Trace;
-    } else {
-      logLevel = restify.LogLevel.Debug;
-    }
-  }
-
-  if (_config.socketPath) {
-    socketPath = _config.socketPath;
-  }
-  if (parsed.socket) {
-    socketPath = parsed.socket;
-
-  }
-} catch (e) {
-  console.error('Unable to parse config file: ' + e.message);
-  process.exit(1);
 }
 
 log.level(logLevel);
 
 // Create the ZWatch Daemon
-net.createServer(zwatchHandler).listen(zwatchSocketPath, function() {
-  log.info('amon-relay listening for zwatch on %s', zwatchSocketPath);
-});
+if (!developer) {
+  net.createServer(zwatchHandler).listen(ZWATCH_SOCKET, function() {
+    log.info('amon-relay listening for zwatch on %s', ZWATCH_SOCKET);
+  });
+}
 
 // Now create an app per zone
 zutil.listZones().forEach(function(z) {
   if (z.name === 'global') {
     AppIndex[z.name] = new App({
       zone: z.name,
-      path: socketPath,
+      path: socket,
       owner: 'joyent',
-      configRoot: agentConfigRoot,
+      configRoot: configRoot,
       localMode: true,
       _developer: developer
     });
     if (log.debug()) {
       log.debug('Starting new amon for %s at "%s". owner=%s',
-                z.name, socketPath, 'joyent');
+                z.name, socket, 'joyent');
     }
     AppIndex[z.name].listen(function(error) {
       if (!error) {
-        log.info('amon-relay listening in global zone at %s', socketPath);
+        log.info('amon-relay listening in global zone at %s', socket);
       } else {
         log.error('unable to start amon-relay in global zone: %o', e);
       }
