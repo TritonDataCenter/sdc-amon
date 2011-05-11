@@ -47,9 +47,6 @@ module.exports = {
       res.sendError(_missingArgument('zone'));
       return next();
     }
-
-    res.send(204);
-    return next();
   }
 
 };

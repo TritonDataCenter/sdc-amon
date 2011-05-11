@@ -5,8 +5,9 @@ var http = require('httpu');
 var restify = require('restify');
 var uuid = require('node-uuid');
 
+var Config = require('amon-common').Config;
+
 var App = require('../../lib/app');
-var Config = require('../../lib/config');
 var common = require('../lib/common');
 
 // Our stuff for running
@@ -56,40 +57,40 @@ exports.setUp = function(test, assert) {
   zone = uuid();
   socketPath =  '/tmp/.' + uuid();
 
-  var cfg = new Config({
-    file: './config.coal.json'
+  var cfg = new Config({});
+  cfg.plugins = require('amon-plugins');
+  cfg.redis = {
+    host: "localhost",
+    port: 6379
+  };
+
+  app = new App({
+    port: socketPath,
+    config: cfg
   });
-  cfg.load(function(err) {
-    assert.ifError(err);
-
-    app = new App({
-      port: socketPath,
-      config: cfg
-    });
-    app.listen(function() {
-      var req = http.request(_newOptions(), function(res) {
-        common.checkResponse(assert, res);
-        assert.equal(res.statusCode, 201);
-        common.checkContent(assert, res, function() {
-          _validateCheck(assert, res.params);
-          id = res.params.id;
-          test.finish();
-        });
+  app.listen(function() {
+    var req = http.request(_newOptions(), function(res) {
+      common.checkResponse(assert, res);
+      assert.equal(res.statusCode, 201);
+      common.checkContent(assert, res, function() {
+        _validateCheck(assert, res.params);
+        id = res.params.id;
+        test.finish();
       });
-
-      req.write(JSON.stringify({
-        customer: customer,
-        zone: zone,
-        urn: urn,
-        config: {
-          path: path,
-          regex: regex,
-          period: period,
-          threshold: threshold
-        }
-      }));
-      req.end();
     });
+
+    req.write(JSON.stringify({
+      customer: customer,
+      zone: zone,
+      urn: urn,
+      config: {
+        path: path,
+        regex: regex,
+        period: period,
+        threshold: threshold
+      }
+    }));
+    req.end();
   });
 };
 
@@ -102,7 +103,8 @@ exports.test_get_success = function(test, assert) {
     assert.equal(res.statusCode, 200);
     common.checkContent(assert, res, function() {
       assert.ok(res.params);
-      _validateCheck(assert, res.params);
+      assert.equal(res.params.length, 1);
+      _validateCheck(assert, res.params[0]);
       test.finish();
     });
   }).end();
