@@ -1,5 +1,5 @@
 // Copyright 2011 Joyent, Inc.  All rights reserved.
-
+var path = require('path');
 var nopt = require('nopt');
 var log = require('restify').log;
 
