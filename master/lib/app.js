@@ -5,7 +5,10 @@ var redis = require('redis');
 var restify = require('restify');
 
 var checks = require('./checks');
+var config = require('./config');
 var Constants = require('./constants');
+
+var w3clog = require('../../common/lib/w3clog');
 
 var log = restify.log;
 
@@ -53,13 +56,15 @@ var App = function App(options) {
   this.before = [
     _setup
   ];
-  // TODO Logging
-  this.after = [];
+  this.after = [
+    w3clog
+  ];
 
   this.server.get('/checks', self.before, checks.list, self.after);
   this.server.post('/checks', self.before, checks.create, self.after);
   this.server.get('/checks/:id', self.before, checks.get, self.after);
   this.server.del('/checks/:id', self.before, checks.del, self.after);
+  this.server.get('/config', self.before, config.get, self.after);
 };
 
 

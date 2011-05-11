@@ -19,16 +19,14 @@
     "node-uuid": ">=1.1.0",
     "nopt": ">=1.0.5",
     "redis": "0.6.0",
-    "restify": ">=0.1.5"
+    "restify": ">=0.1.5",
+    "httpu": ">=0.0.1",
+    "jshint": "=0.1.9",
+    "whiskey": ">=0.3.2"
   },
   "scripts": {
     "start": "node ./main.js",
     "pretest": "./node_modules/jshint/bin/jshint lib tst main.js",
     "test": "./node_modules/whiskey/bin/whiskey --tests \"tst/checks/create.test.js tst/checks/get.test.js tst/checks/del.test.js tst/checks/list.test.js\""
-  },
-  "devDependencies": {
-    "httpu": ">=0.0.1",
-    "jshint": "=0.1.9",
-    "whiskey": ">=0.3.2"
   }
 }

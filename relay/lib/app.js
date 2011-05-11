@@ -8,6 +8,8 @@ var config = require('./config');
 var checks = require('./checks');
 var Constants = require('./constants');
 
+var w3clog = require('../../common/lib/w3clog');
+
 var log = restify.log;
 
 /**
@@ -63,7 +65,9 @@ var App = function App(options) {
     _setup
   ];
   // TODO Logging
-  this.after = [];
+  this.after = [
+    w3clog
+  ];
 
   this.server.head('/config', self.before, config.checksum, self.after);
   this.server.get('/config', self.before, config.getConfig, self.after);

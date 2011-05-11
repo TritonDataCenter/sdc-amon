@@ -1,47 +1,55 @@
 // Copyright 2011 Joyent, Inc.  All rights reserved.
-var fs = require('fs');
-var restify = require('restify');
-var log = restify.log;
 
-function Config(options) {
-  if (!options) throw new TypeError('options is required');
-  if (!options.file) {
-    throw new TypeError('options.file is required');
-  }
-  this.file = options.file;
-  this.config = {};
-  this.config.plugins = [];
+var restify = require('restify');
+
+var Constants = require('./constants');
+var Messages = require('./messages');
+var Check = require('./model/check');
+
+var log = restify.log;
+var HttpCodes = restify.HttpCodes;
+var RestCodes = restify.RestCodes;
+
+function _missingArgument(arg) {
+  return restify.newError({httpCode: HttpCodes.Conflict,
+                           restCode: RestCodes.MissingParameter,
+                           message: _message(Messages.MissingParameter,
+                                             arg)
+                          });
 }
 
-Config.prototype.load = function(callback) {
-  var self = this;
 
-  if (log.debug()) {
-    log.debug('reading %s', this.file);
-  }
-  fs.readFile(this.file, 'utf8', function(err, file) {
-    if (err) return callback(err);
-    try {
-      self.config = JSON.parse(file);
-    } catch (e) {
-      return callback(e);
-    }
+module.exports = {
+
+  get: function(req, res, next) {
     if (log.debug()) {
-      log.debug('config is now %o', self.config);
+      log.debug('config.getConfig: params=%o', req.params);
     }
 
-    for (var k in self.config.plugins) {
-      if (self.config.plugins.hasOwnProperty(k)) {
-        try {
-          self.config.plugins[k] = require(self.config.plugins[k]);
-        } catch (e2) {
-          return callback(e2);
+    var check = new Check({
+      redis: req._redis
+    });
+
+    if (req.params.zone) {
+      check.findChecksByZone(req.params.zone, function(err, checks) {
+        if (err) {
+          log.warn('Error finding checks in redis: ' + err);
+          res.send(500);
+        } else {
+          if (log.debug()) {
+            log.debug('checks.list returning %d, obj=%o', 200, checks);
+          }
+          res.send(200, checks);
         }
-      }
+        return next();
+      });
+    } else {
+      res.sendError(_missingArgument('zone'));
+      return next();
     }
 
-    return callback(null);
-  });
-};
+    res.send(204);
+    return next();
+  }
 
-module.exports = (function() { return Config; })();
+};

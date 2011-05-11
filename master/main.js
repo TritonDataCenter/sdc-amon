@@ -4,7 +4,7 @@ var nopt = require('nopt');
 var restify = require('restify');
 
 var App = require('./lib/app');
-var Config = require('./lib/config');
+var Config = require('../common/lib/config');
 var Constants = require('./lib/constants');
 var log = restify.log;
 // Global variable that holds a mapping of zone name to Apps

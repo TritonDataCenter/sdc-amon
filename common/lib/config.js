@@ -160,9 +160,13 @@ Config.prototype.loadChecks = function(callback) {
 Config.prototype.needsUpdate = function(callback) {
   if (!this.root) throw new TypeError('this.root must be set');
   if (!this.socket) throw new TypeError('this.socket must be set');
+
   var self = this;
 
   var checkAmon = function() {
+    if (log.debug()) {
+      log.debug('Current hash is: %s, checking parent.', self._hash);
+    }
     var request = self._httpRequest('HEAD', function(res) {
       if (log.debug()) {
         log.debug('HTTP Response: code=%s, headers=%o',
@@ -328,6 +332,7 @@ Config.prototype._pull = function(callback) {
  */
 Config.prototype._httpRequest = function(method, callback) {
   if (!this.socket) throw new TypeError('this.socket must have been set');
+  var self = this;
 
   var _method = method;
   if (typeof(method) === 'function') {
@@ -335,7 +340,6 @@ Config.prototype._httpRequest = function(method, callback) {
     _method = 'GET';
   }
 
-  var self = this;
   var options = {
     socketPath: self.socket,
     method: _method,
@@ -345,7 +349,11 @@ Config.prototype._httpRequest = function(method, callback) {
 
   options.headers.Accept = 'application/json';
   options.headers['X-Api-Version'] = '6.1.0';
-  return http.request(options, callback);
+  var req = http.request(options, callback);
+  req.on('error', function(err) {
+    log.warn('config: HTTP error: ' + err);
+  });
+  return req;
 };
 
 

@@ -133,6 +133,9 @@ function _loadChecksFromConfig() {
 }
 
 function _updateConfig(force) {
+  if (log.debug()) {
+    log.debug('_updateConfig(%s) entered', force || 'false');
+  }
   config.update(function(err, updated) {
     if (err) {
       log.warn('Update of configuration failed: ' + err);
@@ -191,6 +194,6 @@ config.load(function(err) {
 // to do about it.  For now I'm making sure it barfs so that we feel the
 // pain and we remember to fix this...
 //
-// process.on('uncaughtException', function(e) {
-//   log.warn('uncaughtException: ' + (e.stack ? e.stack : e));
-// });
+process.on('uncaughtException', function(e) {
+  log.warn('uncaughtException: ' + (e.stack ? e.stack : e));
+});
