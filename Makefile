@@ -44,10 +44,11 @@ all:: agent relay bin/amon-zwatch master common plugins
 
 
 #
-# deps 
+# deps
 #
 
-deps: $(NODEDIR)/bin/node $(NODEDIR)/bin/npm $(REDIS_SERVER) $(NODEDIR)/lib/node_modules/whiskey $(NODEDIR)/lib/node_modules/jshint
+deps:	$(NODEDIR)/bin/node $(NODEDIR)/bin/npm $(REDIS_SERVER) \
+	$(NODEDIR)/lib/node_modules/whiskey $(NODEDIR)/lib/node_modules/jshint
 
 # Use 'Makefile' landmarks instead of the dir itself, because dir mtime
 # is that of the most recent file: results in unnecessary rebuilds.
