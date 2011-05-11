@@ -21,18 +21,13 @@
     "zsock": ">=1.0.2",
     "zutil": ">=0.1"
   },
-  "bin": {
-    "amon-zwatch": "./bin/zwatch"
-  },
   "scripts": {
     "start": "node ./main.js",
-    "pretest": "jshint lib tst main.js",
-    "test": "nodeunit tst",
-    "postactivate": "scripts/postactivate.sh",
-    "postdeactivate": "scripts/postdeactivate.sh"
+    "pretest": "./node_modules/jshint/bin/jshint lib tst",
+    "test": "./node_modules/.bin/whiskey -t tst/checks.test.js"
   },
   "devDependencies": {
     "jshint": "=0.1.9",
-    "nodeunit": ">=0.5.1"
+    "whiskey": ">=0.3.2"
   }
 }
