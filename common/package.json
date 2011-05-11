@@ -6,13 +6,20 @@
     "url": "git@git.joyent.com:amon.git"
   },
   "private": true,
+  "main": "lib/index.js",
   "dependencies": {
     "dirsum": ">=0.1.1",
     "httpu": ">=0.0.1",
     "node-uuid": ">=1.1.0",
-    "jshint": "=0.1.9",
     "nopt": ">=1.0.5",
-    "restify": ">=0.1.5",
+    "restify": ">=0.1.5"
+  },
+  "devDependencies": {
+    "jshint": "=0.1.9",
     "whiskey": ">=0.3.2"
+  },
+  "scripts": {
+    "pretest": "./node_modules/jshint/bin/jshint lib tst",
+    "test": "./node_modules/.bin/whiskey -t tst/config.test.js"
   }
 }

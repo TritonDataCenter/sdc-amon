@@ -2,7 +2,7 @@
 var crypto = require('crypto');
 var http = require('httpu');
 
-var log = require('./log');
+var log = require('restify').log;
 
 function _parseResponse(res, callback) {
   if (res.headers['content-length'] &&

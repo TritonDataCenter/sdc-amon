@@ -16,7 +16,11 @@
     "dirsum": ">=0.1.0",
     "httpu": ">=0.0.1",
     "nopt": ">=1.0",
-    "node-uuid": ">=1.1.0"
+    "node-uuid": ">=1.1.0",
+    "restify": ">0.1.0"
+  },
+  "devDependencies": {
+    "jshint": "=0.1.9"
   },
   "bin": {
     "amon-agent": "./bin/amon-agent"
@@ -24,9 +28,5 @@
   "DISABLED-scripts": {
     "postinstall": "scripts/postinstall.sh",
     "preuninstall": "scripts/preuninstall.sh"
-  },
-  "devDependencies": {
-    "jshint": "=0.1.9",
-    "nodeunit": ">=0.5.1"
   }
 }

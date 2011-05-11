@@ -1,6 +1,4 @@
-#!/usr/bin/env node
-/* -*- mode: js -*-
- *
+/**
  * Main entry-point for the amon agent. This agent is meant to run in all
  * zones. It gets config info (checks to run) from its amon-relay in the
  * global zone and emits alarm (to the relay) when a check fails.
@@ -11,10 +9,10 @@ var http = require('http');
 var nopt = require('nopt');
 var path = require('path');
 
-var Config = require(__dirname + '/../common/lib/config');
-var Notification = require(__dirname + '/lib/notify');
-var log = require(__dirname + '/lib/log');
+var log = require('restify').log;
 
+var Config = require('amon-common').Config;
+var Notification = require('./lib/notify');
 
 var opts = {
   "debug": Boolean,
@@ -185,15 +183,6 @@ config.load(function(err) {
   return _updateConfig(true);
 });
 
-
-// markc 5-10
-// If node gets an uncaught exception (which is common if the relay
-// is down, e.g. ECONNREFUXED), the code setup with setInterval no
-// longer runs.  Attempting to reset it doesn't actually make it run
-// again.  So need to talk to ryan about whether this is a bug, and what
-// to do about it.  For now I'm making sure it barfs so that we feel the
-// pain and we remember to fix this...
-//
 process.on('uncaughtException', function(e) {
   log.warn('uncaughtException: ' + (e.stack ? e.stack : e));
 });
