@@ -31,7 +31,7 @@ function listenInZone(zone, callback) {
     }
     AppIndex[zone] = new App({
       zone: zone,
-      path: socket,
+      socket: socket,
       owner: attr.value,
       configRoot: configRoot
     });

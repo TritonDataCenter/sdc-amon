@@ -96,7 +96,7 @@ App.prototype.listen = function(callback) {
   var self = this;
   var _opts = {
     zone: self.zone,
-    path: self.path
+    path: self.socket
   };
   zsock.createZoneSocket(_opts, function(error, fd) {
     if (error) {
