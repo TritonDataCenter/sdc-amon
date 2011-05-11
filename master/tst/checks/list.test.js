@@ -6,7 +6,7 @@ var restify = require('restify');
 var uuid = require('node-uuid');
 
 var App = require('../../lib/app');
-var Config = require('../../lib/config');
+var Config = require('amon-common').Config;
 var common = require('../lib/common');
 
 // Our stuff for running
@@ -56,41 +56,42 @@ exports.setUp = function(test, assert) {
   zone = uuid();
   socketPath =  '/tmp/.' + uuid();
 
-  var cfg = new Config({
-    file: './cfg/amon-master.cfg'
-  });
-  cfg.load(function(err) {
-    assert.ifError(err);
+  var cfg = new Config({});
+  cfg.plugins = require('amon-plugins');
+  cfg.redis = {
+    host: "localhost",
+    port: 6379
+  };
 
-    app = new App({
-      port: socketPath,
-      config: cfg
-    });
-    app.listen(function() {
-      var req = http.request(_newOptions(), function(res) {
-        common.checkResponse(assert, res);
-        assert.equal(res.statusCode, 201);
-        common.checkContent(assert, res, function() {
-          _validateCheck(assert, res.params);
-          id = res.params.id;
-          test.finish();
-        });
+  app = new App({
+    port: socketPath,
+    config: cfg
+  });
+  app.listen(function() {
+    var req = http.request(_newOptions(), function(res) {
+      common.checkResponse(assert, res);
+      assert.equal(res.statusCode, 201);
+      common.checkContent(assert, res, function() {
+        _validateCheck(assert, res.params);
+        id = res.params.id;
+        test.finish();
       });
-
-      req.write(JSON.stringify({
-        customer: customer,
-        zone: zone,
-        urn: urn,
-        config: {
-          path: path,
-          regex: regex,
-          period: period,
-          threshold: threshold
-        }
-      }));
-      req.end();
     });
+
+    req.write(JSON.stringify({
+      customer: customer,
+      zone: zone,
+      urn: urn,
+      config: {
+        path: path,
+        regex: regex,
+        period: period,
+        threshold: threshold
+      }
+    }));
+    req.end();
   });
+
 };
 
 exports.test_logscan_list_one = function(test, assert) {

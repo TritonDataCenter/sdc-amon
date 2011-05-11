@@ -1,12 +1,13 @@
 // Copyright 2011 Joyent, Inc.  All rights reserved.
 
 var nopt = require('nopt');
-var restify = require('restify');
+var log = require('restify').log;
+
+var Config = require('amon-common').Config;
 
 var App = require('./lib/app');
-var Config = require('../common/lib/config');
 var Constants = require('./lib/constants');
-var log = restify.log;
+
 // Global variable that holds a mapping of zone name to Apps
 var file = './cfg/amon-master.json';
 var port = 8080;
@@ -32,7 +33,7 @@ var shortOpts = {
 };
 var parsed = nopt(opts, shortOpts, process.argv, 2);
 if (parsed.help) usage(0);
-if (parsed.debug) log.level(restify.LogLevel.Debug);
+if (parsed.debug) log.level(log.Level.Debug);
 if (parsed.port) port = parsed.port;
 if (parsed.file) file = parsed.file;
 
@@ -45,6 +46,7 @@ cfg.load(function(err) {
     log.fatal('Unable to read config: ' + err);
     process.exit(1);
   }
+  cfg.plugins = require('amon-plugins');
   var app = new App({
     port: port,
     config: cfg

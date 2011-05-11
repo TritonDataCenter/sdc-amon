@@ -1,16 +1,15 @@
 // Copyright 2011 Joyent, Inc.  All rights reserved.
 
 var http = require('httpu');
-
-var restify = require('restify');
 var uuid = require('node-uuid');
+var restify = require('restify');
 
+var Config = require('amon-common').Config;
 var App = require('../../lib/app');
-var Config = require('../../lib/config');
 var common = require('../lib/common');
 
 // Our stuff for running
-restify.log.level(restify.LogLevel.Debug);
+restify.log.level(restify.LogLevel.Trace);
 
 var path = '/var/log/foo.log';
 var regex = 'ERROR';
@@ -54,19 +53,19 @@ exports.setUp = function(test, assert) {
   zone = uuid();
   socketPath =  '/tmp/.' + uuid();
 
-  var cfg = new Config({
-    file: './cfg/amon-master.cfg'
-  });
-  cfg.load(function(err) {
-    assert.ifError(err);
+  var cfg = new Config({});
+  cfg.plugins = require('amon-plugins');
+  cfg.redis = {
+    host: "localhost",
+    port: 6379
+  };
 
-    app = new App({
-      port: socketPath,
-      config: cfg
-    });
-    app.listen(function() {
-      test.finish();
-    });
+  app = new App({
+    port: socketPath,
+    config: cfg
+  });
+  app.listen(function() {
+    test.finish();
   });
 };
 

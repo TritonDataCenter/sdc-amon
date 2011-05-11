@@ -1,7 +1,4 @@
 {
-  "plugins": {
-    "amon:logscan": "../plugins/logscan"
-  },
   "redis": {
     "host": "localhost",
     "port": 6379

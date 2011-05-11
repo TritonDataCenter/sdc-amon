@@ -13,19 +13,27 @@ var RestCodes = restify.RestCodes;
 
 var _message = Messages.message;
 
-function _missingArgument(arg) {
-  return restify.newError({httpCode: HttpCodes.Conflict,
-                           restCode: RestCodes.MissingParameter,
-                           message: _message(Messages.MissingParameter,
-                                             arg)
-                          });
+function _sendMissingArgument(res, arg) {
+  var e = restify.newError({httpCode: HttpCodes.Conflict,
+                            restCode: RestCodes.MissingParameter,
+                            message: _message(Messages.MissingParameter,
+                                              arg)
+                           });
+  if (log.debug()) {
+    log.debug('sending error: ' + e);
+  }
+  res.sendError(e);
 }
 
-function _invalidArgument(msg, param) {
-  return restify.newError({httpCode: HttpCodes.Conflict,
-                           restCode: RestCodes.MissingParameter,
-                           message: _message(msg, param)
+function _sendInvalidArgument(res, msg, param) {
+  var e = restify.newError({httpCode: HttpCodes.Conflict,
+                            restCode: RestCodes.MissingParameter,
+                            message: _message(msg, param)
                           });
+  if (log.debug()) {
+    log.debug('sending error: ' + e);
+  }
+  res.sendError(e);
 }
 
 module.exports = {
@@ -44,24 +52,24 @@ module.exports = {
     var config = req.params.config;
 
     if (!customer) {
-      res.sendError(_missingArgument('customer'));
+      _sendMissingArgument(res, 'customer');
       return next();
     }
     if (!zone) {
-      res.sendError(_missingArgument('zone'));
+      _sendMissingArgument(res, 'zone');
       return next();
     }
     if (!urn) {
-      res.sendError(_missingArgument('urn'));
+      _sendMissingArgument(res, 'urn');
       return next();
     }
     if (!config) {
-      res.sendError(_missingArgument('config'));
+      _sendMissingArgument(res, 'config');
       return next();
     }
     var plugin = req._config.plugins[urn];
     if (!plugin) {
-      res.sendError(_invalidArgument(Messages.InvalidUrn, urn));
+      _sendInvalidArgument(res, Messages.InvalidUrn, urn);
       return next();
     }
     if (log.debug()) {
@@ -70,7 +78,7 @@ module.exports = {
     try {
       plugin.validateConfig(config);
     } catch(e) {
-      res.sendError(_invalidArgument(Messages.InvalidConfig, e.message));
+      _sendInvalidArgument(res, Messages.InvalidConfig, e.message);
       return next();
     }
 

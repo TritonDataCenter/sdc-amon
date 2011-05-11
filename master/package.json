@@ -30,6 +30,6 @@
   "scripts": {
     "start": "node ./main.js",
     "pretest": "./node_modules/jshint/bin/jshint lib tst main.js",
-    "test": "./node_modules/whiskey/bin/whiskey --tests \"tst/checks/create.test.js tst/checks/get.test.js tst/checks/del.test.js tst/checks/list.test.js\""
+    "test": "./node_modules/whiskey/bin/whiskey --timeout 1000 -t \"tst/checks/create.test.js tst/checks/get.test.js tst/checks/del.test.js tst/checks/list.test.js\""
   }
 }
