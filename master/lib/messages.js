@@ -1,6 +1,6 @@
 // Copyright 2011 Joyent, Inc.  All rights reserved.
 
-var sprintf = require('./sprintf').sprintf;
+var sprintf = require('sprintf').sprintf;
 
 module.exports = {
 

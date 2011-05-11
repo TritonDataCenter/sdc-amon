@@ -20,7 +20,8 @@
     "nopt": ">=1.0.5",
     "redis": "0.6.0",
     "restify": ">=0.1.5",
-    "httpu": ">=0.0.1"
+    "httpu": ">=0.0.1",
+    "sprintf": ">=0.1.1"
   },
   "devDependencies": {
     "jshint": "=0.1.9",
