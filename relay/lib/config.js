@@ -50,7 +50,8 @@ module.exports = {
         }
       } else {
         if (log.debug()) {
-          log.debug('checksum processed as: %s', JSON.stringify(hashes, null, 2));
+          log.debug('checksum processed as: ' +
+                    JSON.stringify(hashes, null, 2));
         }
         headers[Constants.HashHeader] = hashes.hash;
       }

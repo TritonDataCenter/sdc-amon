@@ -77,7 +77,7 @@ module.exports = {
     }
     try {
       plugin.validateConfig(config);
-    } catch(e) {
+    } catch (e) {
       _sendInvalidArgument(res, Messages.InvalidConfig, e.message);
       return next();
     }

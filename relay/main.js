@@ -133,7 +133,7 @@ if (!developer) {
 
 // Now create an app per zone
 function _createGlobalApp() {
-  AppIndex['global'] = new App({
+  AppIndex.global = new App({
     zone: 'global',
     socket: socket,
     owner: 'joyent',
@@ -145,14 +145,14 @@ function _createGlobalApp() {
     log.debug('Starting new amon for %s at %s. owner=%s',
               'global', socket, 'joyent');
   }
-  AppIndex['global'].listen(function(err) {
+  AppIndex.global.listen(function(err) {
     if (!err) {
       log.info('amon-relay listening in global zone at %s', socket);
     } else {
       log.error('unable to start amon-relay in global zone: %o', err);
     }
   });
-  return AppIndex['global'];
+  return AppIndex.global;
 }
 
 if (developer) {

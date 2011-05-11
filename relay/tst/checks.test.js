@@ -53,7 +53,7 @@ exports.setUp = function(test, assert) {
   });
 };
 
-exports.test_missing_tatus = function(test, assert) {
+exports.test_missing_status = function(test, assert) {
   http.request(_options(), function(res) {
     common.checkResponse(assert, res);
     assert.equal(res.statusCode, 409);
@@ -144,7 +144,7 @@ exports.test_success_with_object = function(test, assert) {
   req.end();
 };
 
-exports.test_success_with_array =  function(test, assert) {
+exports.test_success_with_array = function(test, assert) {
   var req = http.request(_options('?status=ok'), function(res) {
     common.checkResponse(assert, res);
     assert.equal(res.statusCode, 202);

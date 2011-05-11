@@ -90,7 +90,7 @@ Check.prototype.findChecksByZone = function(zone, callback) {
     redis.lrange(zone, 0, len, function(err, keys) {
       if (log.debug()) {
         log.debug('Check.findChecksByZone (z=' + zone +
-                  ') lrange => err=' + err  + ', res=' + keys);
+                  ') lrange => err=' + err + ', res=' + keys);
       }
 
       if (!keys || keys.length === 0) return callback(null, []);

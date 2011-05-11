@@ -29,6 +29,21 @@ TODO: code tree overview
 
     support/        General support stuff for development of amon.
 
+# Development Setup
+
+## Mac
+
+## COAL
+### GZ
+
+    /usbkey/scripts/mount-usb.sh; \
+    /usbkey/devtools/devmode.sh; \
+    pkgin -y install gmake scmgit gcc-compiler-4.5.2 gcc-runtime-4.5.2 \
+          binutils python26 grep pkg_alternatives; \
+    ln -sf /opt/local/bin/python2.6 /opt/local/bin/python; \
+    export PATH=/opt/local/bin:$PATH && \
+    export CC=gcc
+
 
 # Running master on the Mac.
 
@@ -48,8 +63,6 @@ Great, now CRUD some checks:
 
 
 TODO: notes on setting up dev environment on Mac (as much as can) and on COAL.
-
-
 
 
 

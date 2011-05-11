@@ -69,7 +69,7 @@ server.get('/config', function(req, res, next) {
       hash.update(data);
       res.write(data);
     });
-    tar.on('exit', function (code) {
+    tar.on('exit', function(code) {
       res.addTrailers({'Content-MD5': hash.digest('base64')});
       res.end();
     });

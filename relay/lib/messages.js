@@ -1,11 +1,11 @@
 // Copyright 2011 Joyent, Inc.  All rights reserved.
 
-var sprintf = require('./sprintf').sprintf;
+var sprintf = require('sprintf').sprintf;
 
 module.exports = {
 
   MissingParameter: '%s is a required parameter',
-  InvalidStatus: 'status must be one of: %o',
+  InvalidStatus: 'status must be one of: %s',
   InvalidMetric: 'metric must contain an object with name, type and value',
 
   message: function() {

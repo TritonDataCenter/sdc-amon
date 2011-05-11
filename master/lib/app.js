@@ -38,7 +38,7 @@ var App = function App(options) {
 
   this.redis = redis.createClient(this.config.redis.port,
                                   this.config.redis.host);
-  this.redis.on('error', function (err) {
+  this.redis.on('error', function(err) {
     log.error('Redis connection error to ' +
               self.redis.host + ':' +
               self.redis.port + ' - ' +

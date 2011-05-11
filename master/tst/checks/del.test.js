@@ -54,13 +54,13 @@ function _validateCheck(assert, check) {
 exports.setUp = function(test, assert) {
   customer = uuid();
   zone = uuid();
-  socketPath =  '/tmp/.' + uuid();
+  socketPath = '/tmp/.' + uuid();
 
 
   var cfg = new Config({});
   cfg.plugins = require('amon-plugins');
   cfg.redis = {
-    host: "localhost",
+    host: 'localhost',
     port: 6379
   };
 

@@ -17,30 +17,30 @@ var plugins = require('amon-plugins');
 var Notification = require('./lib/notify');
 
 var opts = {
-  "debug": Boolean,
-  "config-repository": String,
-  "config-file": String,
-  "socket": String,
-  "poll": Number,
-  "tmp": String,
-  "help": Boolean
+  'debug': Boolean,
+  'config-repository': String,
+  'config-file': String,
+  'socket': String,
+  'poll': Number,
+  'tmp': String,
+  'help': Boolean
 };
 
 var shortOpts = {
-  "d": ["--debug"],
-  "c": ["--config-repository"],
-  "f": ["--config-file"],
-  "p": ["--poll"],
-  "s": ["--socket"],
-  "t": ["--tmp"],
-  "h": ["--help"]
+  'd': ['--debug'],
+  'c': ['--config-repository'],
+  'f': ['--config-file'],
+  'p': ['--poll'],
+  's': ['--socket'],
+  't': ['--tmp'],
+  'h': ['--help']
 };
 
 
 var usage = function(code, msg) {
   if (msg) console.error('ERROR: ' + msg);
   console.log('usage: ' + path.basename(process.argv[1]) +
-	      ' [-hd] [-p polling-period] [-s socket-path-or-port] ' +
+              ' [-hd] [-p polling-period] [-s socket-path-or-port] ' +
               '[-c config-repository] [-t tmp-dir]');
   process.exit(code);
 };
@@ -50,6 +50,10 @@ var parsed = nopt(opts, shortOpts, process.argv, 2);
 if (parsed.help) usage(0);
 if (parsed.debug) log.level(log.Level.Debug);
 if (!parsed['config-repository']) usage(1, 'config-repository is required');
+
+var socket = parsed.socket || '/var/run/.joyent_amon.sock';
+var poll = parsed.poll || 60; // default to 1m config update
+var tmpDir = parsed.tmp || '/tmp';
 
 var config;
 var Checks = {};
@@ -78,7 +82,7 @@ function _newCheck(plugin, check, callback) {
       log.info('Created plugin(%s) instance: check=%s', check.urn, check.id);
       return callback(undefined, instance);
     });
-  } catch(e) {
+  } catch (e) {
     log.error('plugin.newInstance failed: config=%o, error=%s', check, e.stack);
     process.exit(1);
     return callback(e);
@@ -99,34 +103,37 @@ function _loadChecksFromConfig() {
     var plugins = config.plugins;
     var checks = config.checks;
 
+    var _checkCallback = function(err, check) {
+      if (err) return;
+
+      check._notify = new Notification({
+        socket: socket,
+        id: check.id
+      });
+      check.on('alarm', function(status, metrics) {
+        check._notify.send(status, metrics, function(err) {
+          if (err) {
+            log.warn('Failed to send notification: ' + err);
+            return;
+          }
+          log.info('Alarm notification sent for: %s', check.id);
+        });
+      });
+
+      if (Checks[checks[i].id]) {
+        Checks[checks[i].id].stop();
+        delete Checks[checks[i].id];
+      }
+      Checks[checks[i].id] = check;
+      if (++loaded >= checks.length) {
+        log.info('All checks loaded');
+      }
+    };
+
+
     var loaded = 0;
     for (var i = 0; i < checks.length; i++) {
-      _newCheck(plugins[checks[i].urn], checks[i], function(err, check) {
-        if (err) return;
-
-        check._notify = new Notification({
-          socket: socket,
-          id: check.id
-        });
-        check.on('alarm', function(status, metrics) {
-          check._notify.send(status, metrics, function(err) {
-            if (err) {
-              log.warn('Failed to send notification: ' + err);
-              return;
-            }
-            log.info('Alarm notification sent for: %s', check.id);
-          });
-        });
-
-        if (Checks[checks[i].id]) {
-          Checks[checks[i].id].stop();
-          delete Checks[checks[i].id];
-        }
-        Checks[checks[i].id] = check;
-        if (++loaded >= checks.length) {
-          log.info('All checks loaded');
-        }
-      });
+      _newCheck(plugins[checks[i].urn], checks[i], _checkCallback);
     }
   });
 }
@@ -161,10 +168,6 @@ function _updateConfig(force) {
 }
 
 // Go ahead and pull new config at startup...
-var socket = parsed.socket || '/var/run/.joyent_amon.sock';
-var poll = parsed.poll || 60; // default to 1m config update
-var tmpDir = parsed.tmp || '/tmp';
-
 config = new Config({
   root: parsed['config-repository'],
   socket: socket,

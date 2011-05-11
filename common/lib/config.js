@@ -21,10 +21,10 @@ if (os.type() !== 'SunOS') {
  * Constructor (obviously).
  *
  * @param {Object} options - your usual JS pattern with:
- *                   - file: config file to process
- *                   - root: root directory for checks (agent/relay only)
- *                   - socket: place to get new config from
- *                   - tmp: tmp directory location (same fs as process)
+ *                   - file: config file to process.
+ *                   - root: root directory for checks (agent/relay only).
+ *                   - socket: place to get new config from.
+ *                   - tmp: tmp directory location (same fs as process).
  */
 function Config(options) {
   if (!options) throw new TypeError('options is required');
@@ -39,19 +39,19 @@ function Config(options) {
   this.config.checks = [];
 
   var self = this;
-  this.__defineGetter__('redis', function(){
+  this.__defineGetter__('redis', function() {
     return self.config.redis;
   });
-  this.__defineSetter__('redis', function(redis){
+  this.__defineSetter__('redis', function(redis) {
     self.config.redis = redis;
   });
-  this.__defineGetter__('plugins', function(){
+  this.__defineGetter__('plugins', function() {
     return self.config.plugins;
   });
-  this.__defineSetter__('plugins', function(plugins){
+  this.__defineSetter__('plugins', function(plugins) {
     self.config.plugins = plugins;
   });
-  this.__defineGetter__('checks', function(){
+  this.__defineGetter__('checks', function() {
     return self.config.checks;
   });
 }
@@ -65,7 +65,7 @@ function Config(options) {
  * `require` on it, since amon plugins are just a node.js
  * file.
  *
- * @param {Function} callback of the form Function(Error);
+ * @param {Function} callback of the form Function(Error).
  */
 Config.prototype.load = function(callback) {
   if (!this.file) throw new TypeError('this.file is required');
@@ -161,7 +161,7 @@ Config.prototype.loadChecks = function(callback) {
  *  - this.root
  *  - this.socket
  *
- * @param {Function} callback of the form Function(Error, Boolean)
+ * @param {Function} callback of the form Function(Error, Boolean).
  */
 Config.prototype.needsUpdate = function(callback) {
   if (!this.root) throw new TypeError('this.root must be set');
@@ -223,7 +223,7 @@ Config.prototype.needsUpdate = function(callback) {
  *  - this.socket
  *  - this.tmp
  *
- * @param {Function} callback of the form function(error)
+ * @param {Function} callback of the form function(error).
  */
 Config.prototype.update = function(callback) {
   var self = this;
@@ -256,7 +256,7 @@ Config.prototype.update = function(callback) {
  * The directory sum is calculated using the MD5 algorithm, and you
  * must have specified 'root' on 'this'.
  *
- * @param {Function} callback of the form function(error, hash)
+ * @param {Function} callback of the form function(error, hash).
  */
 Config.prototype.checksum = function(callback) {
   if (!this.root) throw new TypeError('this.root must be specified');
@@ -275,7 +275,7 @@ Config.prototype.checksum = function(callback) {
  * parent and pipes that data into the untar stream. It also validates
  * the content-md5, and will barf on you if that didn't match.
  *
- * @param {Function} callback of the form Function(Error)
+ * @param {Function} callback of the form Function(Error).
  */
 Config.prototype._pull = function(callback) {
   var self = this;
@@ -333,8 +333,8 @@ Config.prototype._pull = function(callback) {
  *
  * Simple wrapper to avoid the same set of code all over the place...
  *
- * @param {String} method HTTP method
- * @param {Function} callback the same thing you'd pass to http.request
+ * @param {String} method HTTP method.
+ * @param {Function} callback the same thing you'd pass to http.request.
  */
 Config.prototype._httpRequest = function(method, callback) {
   if (!this.socket) throw new TypeError('this.socket must have been set');
