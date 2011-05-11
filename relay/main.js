@@ -132,30 +132,37 @@ if (!developer) {
 }
 
 // Now create an app per zone
-zutil.listZones().forEach(function(z) {
-  if (z.name === 'global') {
-    AppIndex[z.name] = new App({
-      zone: z.name,
-      path: socket,
-      owner: 'joyent',
-      configRoot: configRoot,
-      localMode: true,
-      _developer: developer
-    });
-    if (log.debug()) {
-      log.debug('Starting new amon for %s at "%s". owner=%s',
-                z.name, socket, 'joyent');
+function _createGlobalApp() {
+  AppIndex['global'] = new App({
+    zone: 'global',
+    socket: socket,
+    owner: 'joyent',
+    configRoot: configRoot,
+    localMode: true,
+    _developer: developer
+  });
+  if (log.debug()) {
+    log.debug('Starting new amon for %s at %s. owner=%s',
+              'global', socket, 'joyent');
+  }
+  AppIndex['global'].listen(function(err) {
+    if (!err) {
+      log.info('amon-relay listening in global zone at %s', socket);
+    } else {
+      log.error('unable to start amon-relay in global zone: %o', err);
     }
-    AppIndex[z.name].listen(function(error) {
-      if (!error) {
-        log.info('amon-relay listening in global zone at %s', socket);
-      } else {
-        log.error('unable to start amon-relay in global zone: %o', e);
-      }
-    });
-  } else {
-    if (!developer) {
+  });
+  return AppIndex['global'];
+}
+
+if (developer) {
+  _createGlobalApp();
+} else {
+  zutil.listZones().forEach(function(z) {
+    if (z.name === 'global') {
+      _createGlobalApp();
+    } else {
       listenInZone(z.name);
     }
-  }
-});
+  });
+}

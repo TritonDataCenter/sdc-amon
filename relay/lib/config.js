@@ -1,5 +1,6 @@
 // Copyright 2011 Joyent, Inc.  All rights reserved.
 var crypto = require('crypto');
+var os = require('os');
 var spawn = require('child_process').spawn;
 
 var dirsum = require('dirsum');
@@ -15,6 +16,10 @@ var RestCodes = restify.RestCodes;
 
 var _message = Messages.message;
 
+var __tar = '/usr/bin/gtar';
+if (os.type !== 'SunOS') {
+  __tar = '/usr/bin/tar';
+}
 
 module.exports = {
 
@@ -33,19 +38,23 @@ module.exports = {
     var path = req._configRoot + '/' + req._zone;
 
     dirsum.digest(path, algorithm, function(err, hashes) {
-      if (err) {
-        log.warn('Error calculating directory hash: ' + err);
-        res.send(HttpCodes.InternalError);
-        return next();
-      }
-      if (log.debug()) {
-        log.debug('checksum processed as: %s', JSON.stringify(hashes, null, 2));
-      }
-
       var headers = {};
-      headers[Constants.HashHeader] = hashes.hash;
+      if (err) {
+        if (err.code === 'ENOENT') {
+          log.warn('getConfig:No configig directory: ' + path);
+          headers[Constants.HashHeader] = '0';
+        } else {
+          log.warn('Error calculating directory hash: ' + err);
+          res.send(HttpCodes.InternalError);
+          return next();
+        }
+      } else {
+        if (log.debug()) {
+          log.debug('checksum processed as: %s', JSON.stringify(hashes, null, 2));
+        }
+        headers[Constants.HashHeader] = hashes.hash;
+      }
       res.send(HttpCodes.NoContent, null, headers);
-
       return next();
 
     });
@@ -67,9 +76,15 @@ module.exports = {
 
     dirsum.digest(path, algorithm, function(err, hashes) {
       if (err) {
-        log.warn('Error calculating directory hash: ' + err);
-        res.send(HttpCodes.InternalError);
-        return next();
+        if (err.code === 'ENOENT') {
+          log.warn('getConfig:No configig directory: ' + path);
+          res.send(HttpCodes.NoContent);
+          return next();
+        } else {
+          log.warn('Error calculating directory hash: ' + err);
+          res.send(HttpCodes.InternalError);
+          return next();
+        }
       }
       if (log.debug()) {
         log.debug('checksum processed as: %s', JSON.stringify(hashes, null, 2));
@@ -88,7 +103,7 @@ module.exports = {
       });
 
       var hash = crypto.createHash('md5');
-      var tar = spawn('/usr/bin/gtar', ['-C', path, '-c', '.']);
+      var tar = spawn(__tar, ['-C', path, '-c', '.']);
       tar.stdout.on('data', function(data) {
         hash.update(data);
         res.write(data);

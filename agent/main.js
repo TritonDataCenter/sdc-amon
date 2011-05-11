@@ -11,20 +11,15 @@ var http = require('http');
 var nopt = require('nopt');
 var path = require('path');
 
-var Config = require(__dirname + '/lib/config');
+var Config = require(__dirname + '/../common/lib/config');
 var Notification = require(__dirname + '/lib/notify');
 var log = require(__dirname + '/lib/log');
 
 
-
-process.on('uncaughtException', function(e) {
-  log.warn('uncaughtException: ' + (e.stack ? e.stack : e));
-});
-
 var opts = {
   "debug": Boolean,
-  "config-root": String,
-  "ignore-errors": Boolean,
+  "config-repository": String,
+  "config-file": String,
   "socket": String,
   "poll": Number,
   "tmp": String,
@@ -33,8 +28,8 @@ var opts = {
 
 var shortOpts = {
   "d": ["--debug"],
-  "c": ["--config-root"],
-  "i": ["--ignore-errors"],
+  "c": ["--config-repository"],
+  "f": ["--config-file"],
   "p": ["--poll"],
   "s": ["--socket"],
   "t": ["--tmp"],
@@ -45,8 +40,8 @@ var shortOpts = {
 var usage = function(code, msg) {
   if (msg) console.error('ERROR: ' + msg);
   console.log('usage: ' + path.basename(process.argv[1]) +
-	      ' [-hdi] [-p polling-period] [-s socket-path-or-port] ' +
-              '[-c config-root] [-t tmp-dir]');
+	      ' [-hd] [-p polling-period] [-s socket-path-or-port] ' +
+              '[-c config-repository] [-t tmp-dir] [-f config-file]');
   process.exit(code);
 };
 
@@ -54,18 +49,10 @@ var parsed = nopt(opts, shortOpts, process.argv, 2);
 
 if (parsed.help) usage(0);
 if (parsed.debug) log.level(log.Level.Debug);
+if (!parsed['config-file']) usage(1, 'config-file is required');
+if (!parsed['config-repository']) usage(1, 'config-repository is required');
 
-var ignoreErrors = parsed['ignore-errors'] || false;
-var socket = parsed.socket || '/var/run/.joyent_amon.sock';
-var configRoot = parsed['config-root'] || '../cfg';
-var poll = parsed.poll || 60; // default to 1m config update
-var tmpDir = parsed.tmp || './tmp';
-
-var config = new Config({
-  configRoot: configRoot,
-  socket: socket,
-  tmpDir: tmpDir
-});
+var config;
 var Checks = {};
 
 function _newCheck(plugin, check, callback) {
@@ -75,10 +62,8 @@ function _newCheck(plugin, check, callback) {
 
   if (!plugin || !plugin.newInstance ||
       !(plugin.newInstance instanceof Function)) {
-    log.error('Plugin not found in config: %o', check);
-    if (!ignoreErrors) {
-      process.exit(1);
-    }
+    log.fatal('Plugin not found in config: %o', check);
+    process.exit(1);
     return callback(new Error('NoPluginFound'));
   }
 
@@ -87,9 +72,7 @@ function _newCheck(plugin, check, callback) {
     instance.start(function(err) {
       if (err) {
         log.error('Plugin.start (id=%s) failed: %s', check.id, err.stack);
-        if (!ignoreErrors) {
-          process.exit(1);
-        }
+        process.exit(1);
         return callback(err);
       }
 
@@ -98,25 +81,24 @@ function _newCheck(plugin, check, callback) {
     });
   } catch(e) {
     log.error('plugin.newInstance failed: config=%o, error=%s', check, e.stack);
-    if (!ignoreErrors) {
-      process.exit(1);
-    }
+    process.exit(1);
     return callback(e);
   }
 }
 
 
 function _loadChecksFromConfig() {
-  config.readConfig(function(err) {
+  config.loadChecks(function(err) {
     if (err) {
-      log.error('Unabled to read config: ' + err);
+      log.error('Unabled to read checks: ' + err);
     }
 
-    log.debug('Loaded plugins: %o', config.plugins());
-    log.debug('Loaded checks: %o', config.checks());
+    if (log.debug()) {
+      log.debug('Loaded checks: %o', config.checks);
+    }
 
-    var plugins = config.plugins();
-    var checks = config.checks();
+    var plugins = config.plugins;
+    var checks = config.checks;
 
     var loaded = 0;
     for (var i = 0; i < checks.length; i++) {
@@ -150,13 +132,13 @@ function _loadChecksFromConfig() {
   });
 }
 
-function _updateConfig() {
+function _updateConfig(force) {
   config.update(function(err, updated) {
     if (err) {
       log.warn('Update of configuration failed: ' + err);
       return;
     }
-    if (!updated) {
+    if (!updated && !force) {
       if (log.debug()) {
         log.debug('No config updates.');
       }
@@ -172,11 +154,43 @@ function _updateConfig() {
       }
     }
 
-    return  _loadChecksFromConfig();
+    return _loadChecksFromConfig();
   });
 }
 
-setInterval(_updateConfig, poll * 1000);
-
 // Go ahead and pull new config at startup...
-_updateConfig();
+var socket = parsed.socket || '/var/run/.joyent_amon.sock';
+var poll = parsed.poll || 60; // default to 1m config update
+var tmpDir = parsed.tmp || '/tmp';
+
+config = new Config({
+  file: parsed['config-file'],
+  root: parsed['config-repository'],
+  socket: socket,
+  tmp: tmpDir
+});
+config.load(function(err) {
+  if (err) {
+    log.fatal('Error loading config: ' + err);
+    process.exit(1);
+  }
+  if (log.debug()) {
+    log.debug('Loaded plugins: %o', config.plugins);
+  }
+
+  setInterval(_updateConfig, poll * 1000);
+  return _updateConfig(true);
+});
+
+
+// markc 5-10
+// If node gets an uncaught exception (which is common if the relay
+// is down, e.g. ECONNREFUXED), the code setup with setInterval no
+// longer runs.  Attempting to reset it doesn't actually make it run
+// again.  So need to talk to ryan about whether this is a bug, and what
+// to do about it.  For now I'm making sure it barfs so that we feel the
+// pain and we remember to fix this...
+//
+// process.on('uncaughtException', function(e) {
+//   log.warn('uncaughtException: ' + (e.stack ? e.stack : e));
+// });

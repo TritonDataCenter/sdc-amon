@@ -96,6 +96,52 @@ Config.prototype.load = function(callback) {
 
 
 /**
+ * Processes all checks in a given directory.
+ *
+ * Requires that `root` be set.  But if it is, this call just loads
+ * all files in that directory, and overwrites this.checks.
+ *
+ * @param {Function} callback of the form Function(Error).
+ */
+Config.prototype.loadChecks = function(callback) {
+  var self = this;
+  var path = this.root;
+  this.config.checks = [];
+
+  fs.readdir(path, function(err, files) {
+    if (err) return callback(err);
+
+    if (log.debug()) {
+      log.debug('found config %o', files);
+    }
+    if (files.length === 0) return callback();
+
+    var finished = 0;
+    var _readFileCallback = function(err, data) {
+      if (err) return callback(err);
+      try {
+        self.config.checks.push(JSON.parse(data));
+      } catch (e) {
+        return callback(e);
+      }
+
+      if (log.debug()) {
+        log.debug('loaded config for: %o', self.config.checks);
+      }
+      if (++finished >= files.length) {
+        return callback();
+      }
+    };
+
+    for (var i = 0; i < files.length; i++) {
+      var file;
+      fs.readFile(path + '/' + files[i], 'utf8', _readFileCallback);
+    }
+  });
+};
+
+
+/**
  * Checks the "parent" amon to see if there is a newer version of checks config
  * for "this".  Note that parent could be a relay or master.  This could be an
  * agent or a relay.
