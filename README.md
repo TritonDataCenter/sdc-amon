@@ -16,6 +16,14 @@ docs current live here:
 XMPP discussion at <monitoring@groupchat.joyent.com>. Tickets/bugs to
 <https://devhub.joyent.com/jira/browse/MON>.
 
+# Comparison services and notes
+
+Interesting services for hooking into. Messaging services that might be useful:
+
+- http://aws.amazon.com/cloudwatch/
+- https://www.cloudkick.com/
+- http://www.splunk.com/
+- http://www.pagerduty.com/
 
 # Layout
 
@@ -33,7 +41,13 @@ TODO: code tree overview
 
 ## Mac
 
+You need:
+
+* restdown
+* gjslint (http://code.google.com/closure/utilities/docs/linter_howto.html)
+
 ## COAL
+
 ### GZ
 
     /usbkey/scripts/mount-usb.sh; \
@@ -44,14 +58,39 @@ TODO: code tree overview
     export PATH=/opt/local/bin:$PATH && \
     export CC=gcc
 
+And really, you should do a `pkgin install emacs-nox11` to be awesome...
+Anyway, once you've done the above, you can do:
 
-# Running master on the Mac.
+    gmake
+    source env.sh
 
-Ok, so as of 5/9, you need to have redis on the box.
+And start running (see next section).
 
-    brew install redis
-    redis-server /usr/local/etc/redis.conf
-    node main.js -d -f $HOME/work/amon-master/cfg/amon-master.cfg
+# Running
+
+## COAL
+
+### Master
+
+    redis-server
+    node main.js -d -f ./config.coal.json
+
+### Relay
+
+    mkdir -p /var/run/joyent/amon/relay/config
+    node main.js -c /var/run/joyent/amon/relay/config -d
+
+### Agent
+
+    mkdir -p /var/run/joyent/amon/agent/config
+    mkdir -p /var/run/joyent/amon/agent/tmp
+    node main.js -d -p 10 -c /var/run/joyent/amon/agent/config -t /var/run/joyent/amon/agent/tmp
+
+## Mac
+
+TODO
+
+## Doing some things client-side
 
 Great, now CRUD some checks:
 
@@ -62,15 +101,4 @@ Great, now CRUD some checks:
     jcurl localhost:8080/checks/387D4037-4E1B-43C8-B81D-35F9157ABD77 -X DELETE
 
 
-TODO: notes on setting up dev environment on Mac (as much as can) and on COAL.
 
-
-
-# Comparison services and notes
-
-Interesting services for hooking into. Messaging services that might be useful:
-
-- http://aws.amazon.com/cloudwatch/
-- https://www.cloudkick.com/
-- http://www.splunk.com/
-- http://www.pagerduty.com/
