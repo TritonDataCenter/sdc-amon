@@ -4,7 +4,7 @@ var fs = require('fs');
 var spawn = require('child_process').spawn;
 var util = require('util');
 
-var log = require('./log');
+var log = require('restify').log;
 
 function _trim(s) {
   s = s.replace(/(^\s*)|(\s*$)/gi, '');

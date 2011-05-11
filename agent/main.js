@@ -12,6 +12,8 @@ var path = require('path');
 var log = require('restify').log;
 
 var Config = require('amon-common').Config;
+var plugins = require('amon-plugins');
+
 var Notification = require('./lib/notify');
 
 var opts = {
@@ -39,7 +41,7 @@ var usage = function(code, msg) {
   if (msg) console.error('ERROR: ' + msg);
   console.log('usage: ' + path.basename(process.argv[1]) +
 	      ' [-hd] [-p polling-period] [-s socket-path-or-port] ' +
-              '[-c config-repository] [-t tmp-dir] [-f config-file]');
+              '[-c config-repository] [-t tmp-dir]');
   process.exit(code);
 };
 
@@ -47,7 +49,6 @@ var parsed = nopt(opts, shortOpts, process.argv, 2);
 
 if (parsed.help) usage(0);
 if (parsed.debug) log.level(log.Level.Debug);
-if (!parsed['config-file']) usage(1, 'config-file is required');
 if (!parsed['config-repository']) usage(1, 'config-repository is required');
 
 var config;
@@ -165,23 +166,18 @@ var poll = parsed.poll || 60; // default to 1m config update
 var tmpDir = parsed.tmp || '/tmp';
 
 config = new Config({
-  file: parsed['config-file'],
   root: parsed['config-repository'],
   socket: socket,
   tmp: tmpDir
 });
-config.load(function(err) {
-  if (err) {
-    log.fatal('Error loading config: ' + err);
-    process.exit(1);
-  }
-  if (log.debug()) {
-    log.debug('Loaded plugins: %o', config.plugins);
-  }
 
-  setInterval(_updateConfig, poll * 1000);
-  return _updateConfig(true);
-});
+config.plugins = plugins;
+if (log.debug()) {
+  log.debug('Using plugins: %o', config.plugins);
+}
+
+setInterval(_updateConfig, poll * 1000);
+_updateConfig(true);
 
 process.on('uncaughtException', function(e) {
   log.warn('uncaughtException: ' + (e.stack ? e.stack : e));

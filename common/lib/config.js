@@ -28,7 +28,6 @@ if (os.type !== 'SunOS') {
  */
 function Config(options) {
   if (!options) throw new TypeError('options is required');
-  if (!options.file) throw new TypeError('options.file is required');
 
   this.file = options.file;
   this.root = options.root;
@@ -45,6 +44,9 @@ function Config(options) {
   });
   this.__defineGetter__('plugins', function(){
     return self.config.plugins;
+  });
+  this.__defineSetter__('plugins', function(plugins){
+    self.config.plugins = plugins;
   });
   this.__defineGetter__('checks', function(){
     return self.config.checks;
@@ -63,6 +65,7 @@ function Config(options) {
  * @param {Function} callback of the form Function(Error);
  */
 Config.prototype.load = function(callback) {
+  if (!this.file) throw new TypeError('this.file is required');
   var self = this;
 
   if (log.debug()) {
