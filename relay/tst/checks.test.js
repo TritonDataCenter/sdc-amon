@@ -1,6 +1,8 @@
 // Copyright 2011 Joyent, Inc.  All rights reserved.
-
+var fs = require('fs');
 var http = require('httpu');
+var os = require('os');
+var spawn = require('child_process').spawn;
 var restify = require('restify');
 var uuid = require('node-uuid');
 
@@ -8,6 +10,11 @@ var App = require('../lib/app');
 var common = require('./lib/common');
 
 restify.log.level(restify.LogLevel.Debug);
+
+var __rm = '/usr/bin/rm';
+if (os.type() !== 'SunOS') {
+  __rm = '/bin/rm';
+}
 
 // Globals for tests
 var app;
@@ -37,19 +44,22 @@ exports.setUp = function(test, assert) {
   socket = '/tmp/.' + uuid();
   owner = uuid();
   zone = uuid();
-  root = uuid();
-
+  root = '/tmp/.' + uuid();
   app = new App({
-    zone: uuid(),
-    socket: socket,
-    owner: uuid(),
+    configRoot: root,
     localMode: true,
-    configRoot: 'foo'
+    master: 'http://localhost:1234', // bogus
+    owner: uuid(),
+    socket: socket,
+    zone: uuid()
   });
   assert.ok(app);
 
-  app.listen(function() {
-    test.finish();
+  fs.mkdir(root, '0777', function(err) {
+    assert.ifError(err);
+    app.listen(function() {
+      test.finish();
+    });
   });
 };
 
@@ -163,6 +173,8 @@ exports.test_success_with_array = function(test, assert) {
 
 exports.tearDown = function(test, assert) {
   app.close(function() {
-    test.finish();
+    spawn(__rm, ['-rf', root]).on('exit', function(code) {
+      test.finish();
+    });
   });
 };

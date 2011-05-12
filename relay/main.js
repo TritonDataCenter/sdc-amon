@@ -13,14 +13,16 @@ var Constants = require('./lib/constants');
 var log = restify.log;
 var logLevel = restify.LogLevel.Info;
 
-// Global variable that holds a mapping of zone name to Apps.
+// Global variables
 var AppIndex = {};
 var debug = false;
 var developer = false;
+var poll = 30;
 var configRoot = '/var/run/joyent/amon/config';
 var socket = '/var/run/.joyent_amon.sock';
 var ZWATCH_SOCKET = '/var/run/.joyent_amon_zwatch.sock';
 
+var master = 'http://localhost:8080'; // TODO default to COAL ip...
 
 function listenInZone(zone, callback) {
   zutil.getZoneAttribute(zone, Constants.ownerUUID, function(error, attr) {
@@ -33,7 +35,9 @@ function listenInZone(zone, callback) {
       zone: zone,
       socket: socket,
       owner: attr.value,
-      configRoot: configRoot
+      configRoot: configRoot,
+      master: master,
+      poll: poll
     });
     if (log.debug()) {
       log.debug('Starting new amon for %s at "%s". owner=%s',
@@ -93,7 +97,8 @@ function zwatchHandler(sock) {
 
 function usage(code) {
   console.log('usage: ' + path.basename(process.argv[1]) +
-              ' [-hd] [-c config-repository] [-s socket]');
+              ' [-hd] [-c config-repository] [-m master uri] [-s socket]' +
+              ' [-p polling period]');
   process.exit(0);
 }
 
@@ -101,6 +106,8 @@ var opts = {
   'config-repository': String,
   'debug': Boolean,
   'developer': Boolean,
+  'master': String,
+  'poll': Number,
   'socket': String,
   'help': Boolean
 };
@@ -109,13 +116,17 @@ var shortOpts = {
   'c': ['--config-repository'],
   'd': ['--debug'],
   'h': ['--help'],
-  'm': ['--developer'],
+  'm': ['--master'],
+  'n': ['--developer'],
+  'p': ['--poll'],
   's': ['--socket']
 };
 var parsed = nopt(opts, shortOpts, process.argv, 2);
 if (parsed.help) usage(0);
 if (parsed['config-repository']) configRoot = parsed['config-repository'];
 if (parsed.debug) logLevel = restify.LogLevel.Debug;
+if (parsed.master) master = parsed.master;
+if (parsed.poll) poll = parsed.poll;
 if (parsed.socket) socket = parsed.socket;
 if (parsed.developer) {
   logLevel = restify.LogLevel.Trace;
@@ -139,7 +150,9 @@ function _createGlobalApp() {
     owner: 'joyent',
     configRoot: configRoot,
     localMode: true,
-    _developer: developer
+    _developer: developer,
+    master: master,
+    poll: poll
   });
   if (log.debug()) {
     log.debug('Starting new amon for %s at %s. owner=%s',

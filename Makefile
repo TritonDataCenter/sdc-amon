@@ -24,14 +24,13 @@ ifeq ($(UNAME), SunOS)
 	LIBS = -lpthread -lzonecfg -L/lib -lnsl -lsocket
 endif
 
+DOC_CMD = restdown
+HAVE_GJSLINT := $(shell which gjslint >/dev/null && echo yes || echo no)
 NODE := $(NODEDIR)/bin/node
 NODE_WAF := $(NODEDIR)/bin/node-waf
 NPM := npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH npm
 REDIS_SERVER := deps/redis/src/redis-server
-DOC_CMD = restdown
-HAVE_GJSLINT := $(shell which gjslint >/dev/null && echo yes || echo no)
-
-
+WHISKEY = bin/whiskey
 
 #
 # Targets
@@ -86,7 +85,7 @@ agent: deps
 	(cd agent && $(NPM) install && $(NPM) link amon-common amon-plugins)
 
 relay: deps
-	(cd relay && $(NPM) install)
+	(cd relay && $(NPM) install && $(NPM) link amon-common amon-plugins)
 
 bin/amon-zwatch:
 ifeq ($(UNAME), SunOS)

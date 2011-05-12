@@ -65,6 +65,7 @@ var App = function App(options) {
   this.server.post('/checks', self.before, checks.create, self.after);
   this.server.get('/checks/:id', self.before, checks.get, self.after);
   this.server.del('/checks/:id', self.before, checks.del, self.after);
+  this.server.head('/config', self.before, config.head, self.after);
   this.server.get('/config', self.before, config.get, self.after);
 };
 

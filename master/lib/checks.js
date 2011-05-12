@@ -132,7 +132,7 @@ module.exports = {
     } else if (req.params.customer) {
 
     } else {
-      res.sendError(_missingArgument('zone'));
+      _sendMissingArgument(res, 'zone');
       return next();
     }
 

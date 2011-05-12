@@ -88,17 +88,28 @@ And start running (see next section).
 
 ## Mac
 
-TODO
+### Master
 
-## Doing some things client-side
+    redis-server
+    node main.js -d -f ./config.coal.json -p 8080
+
+### Relay
+
+    mkdir -p /tmp/amon-relay
+    node main.js -d -n -c /tmp/amon-relay -p 10 -m http://127.0.0.1:8080 -s 8081
+
+### Agent
+
+    mkdir -p /tmp/amon-agent/config
+    mkdir -p /tmp/amon-agent/tmp
+    node main.js -d -p 10 -c /tmp/amon-agent/config -t /tmp/amon-agent/tmp -s 8081
+
+## Add some data in
 
 Great, now CRUD some checks:
 
-    alias jcurl='curl -is -H "x-api-version: 6.1.0"'
-    jcurl -H 'Content-Type: application/json' localhost:8080/checks?customer=markc\&zone=foo -X POST --data-binary @$HOME/work/amon-relay/cfg/agents/global/checks/smartlogin.logscan.json
+    alias jcurl='curl -is -H "x-api-version: 6.1.0" -H "Content-Type: application/json"'
+    jcurl localhost:8080/checks?customer=markc\&zone=global -X POST -d @examples/smartlogin.logscan.json
     jcurl localhost:8080/checks?zone=foo
     jcurl localhost:8080/checks/387D4037-4E1B-43C8-B81D-35F9157ABD77
     jcurl localhost:8080/checks/387D4037-4E1B-43C8-B81D-35F9157ABD77 -X DELETE
-
-
-

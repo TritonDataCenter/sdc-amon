@@ -27,15 +27,16 @@ var zone;
 var app;
 var socketPath;
 
-function _newOptions() {
+function _newOptions(path) {
   var options = {
-    method: 'POST',
+    method: 'GET',
     headers: {},
-    path: '/checks',
+    path: '/config',
     socketPath: socketPath
   };
   options.headers['Content-Type'] = 'application/json';
   options.headers['X-Api-Version'] = '6.1.0';
+  if (path) options.path += path;
   return options;
 }
 
@@ -69,7 +70,10 @@ exports.setUp = function(test, assert) {
     config: cfg
   });
   app.listen(function() {
-    var req = http.request(_newOptions(), function(res) {
+    var opts = _newOptions();
+    opts.method = 'POST';
+    opts.path = '/checks';
+    var req = http.request(opts, function(res) {
       common.checkResponse(assert, res);
       assert.equal(res.statusCode, 201);
       common.checkContent(assert, res, function() {
@@ -95,10 +99,7 @@ exports.setUp = function(test, assert) {
 };
 
 exports.test_get_success = function(test, assert) {
-  var options = _newOptions();
-  options.method = 'GET';
-  options.path = '/config?zone=' + zone;
-  http.request(options, function(res) {
+  http.request(_newOptions('?zone=' + zone), function(res) {
     common.checkResponse(assert, res);
     assert.equal(res.statusCode, 200);
     common.checkContent(assert, res, function() {
@@ -107,6 +108,16 @@ exports.test_get_success = function(test, assert) {
       _validateCheck(assert, res.params[0]);
       test.finish();
     });
+  }).end();
+};
+
+exports.test_head_success = function(test, assert) {
+  var opts = _newOptions('?zone=' + zone);
+  opts.method = 'HEAD';
+  http.request(opts, function(res) {
+    common.checkResponse(assert, res);
+    assert.equal(res.statusCode, 204);
+    test.finish();
   }).end();
 };
 
