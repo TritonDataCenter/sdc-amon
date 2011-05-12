@@ -96,9 +96,6 @@ endif
 master: deps
 	(cd master && $(NPM) install && $(NPM) link amon-common amon-plugins)
 
-master_devrun:
-	bin/amon-master -d -f support/dev/amon-master.json
-
 
 #
 # Lint, test and miscellaneous targets
@@ -157,6 +154,9 @@ devrun: tmp $(NODEDIR)/bin/node-dev
 	@echo "== shutdown everything"
 	kill `cat tmp/dev-redis.pid`
 	ps -ef | grep node-de[v] | awk '{print $$2}' | xargs kill
+	@echo "=="
+	@echo "You might want to manually make this change to your node-dev"
+	@echo "https://github.com/fgnass/node-dev/issues/14"
 
 
 clean:
