@@ -6,8 +6,9 @@ var spawn = require('child_process').spawn;
 
 var dirsum = require('dirsum');
 var http = require('httpu');
-var log = require('restify').log;
 var uuid = require('node-uuid');
+
+var log = require('restify').log;
 
 var __rm = '/usr/bin/rm';
 var __tar = '/usr/bin/gtar';
@@ -54,8 +55,10 @@ function Config(options) {
   this.__defineGetter__('checks', function() {
     return self.config.checks;
   });
+  this.__defineSetter__('log', function(l) {
+    log = l;
+  });
 }
-
 
 /**
  * Processes config specified at construct time.
@@ -173,7 +176,7 @@ Config.prototype.needsUpdate = function(callback) {
     if (log.debug()) {
       log.debug('Current hash is: %s, checking parent.', self._hash);
     }
-    var request = self._httpRequest('HEAD', function(res) {
+    self._httpRequest('HEAD', function(res) {
       if (log.debug()) {
         log.debug('HTTP Response: code=%s, headers=%o',
                   res.statusCode, res.headers);
@@ -194,8 +197,7 @@ Config.prototype.needsUpdate = function(callback) {
       }
       return callback(null, true);
 
-    });
-    request.end();
+    }).end();
   };
 
   if (!this._checksum) {
@@ -278,6 +280,8 @@ Config.prototype.checksum = function(callback) {
  * @param {Function} callback of the form Function(Error).
  */
 Config.prototype._pull = function(callback) {
+  if (!this.socket) throw new TypeError('this.socket is required');
+  if (!this.tmp) throw new TypeError('this.tmp is required');
   var self = this;
 
   self._untar(function(err, tar) {
@@ -359,6 +363,9 @@ Config.prototype._httpRequest = function(method, callback) {
   req.on('error', function(err) {
     log.warn('config: HTTP error: ' + err);
   });
+  if (log.trace()) {
+    log.trace('Config._httpRequest returning: %o', req);
+  }
   return req;
 };
 

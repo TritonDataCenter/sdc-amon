@@ -11,8 +11,9 @@ var path = require('path');
 
 var log = require('restify').log;
 
-var Config = require('amon-common').Config;
+var common = require('amon-common');
 var plugins = require('amon-plugins');
+var Config = common.Config;
 
 var Notification = require('./lib/notify');
 
@@ -140,9 +141,9 @@ function _loadChecksFromConfig() {
 
 function _updateConfig(force) {
   if (log.debug()) {
-    log.debug('_updateConfig(%s) entered', force || 'false');
+    log.debug('_updateConfig entered');
   }
-  config.update(function(err, updated) {
+  return config.update(function(err, updated) {
     if (err) {
       log.warn('Update of configuration failed: ' + err);
       return;
@@ -173,10 +174,10 @@ config = new Config({
   socket: socket,
   tmp: tmpDir
 });
-
+config.log = log;
 config.plugins = plugins;
 if (log.debug()) {
-  log.debug('Using plugins: %o', config.plugins);
+  log.debug('Using config: %o', config);
 }
 
 setInterval(_updateConfig, poll * 1000);

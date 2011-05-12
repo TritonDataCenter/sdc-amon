@@ -40,7 +40,7 @@ if (parsed.file) file = parsed.file;
 var cfg = new Config({
   file: file
 });
-
+cfg.log = log;
 cfg.load(function(err) {
   if (err) {
     log.fatal('Unable to read config: ' + err);

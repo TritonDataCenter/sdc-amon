@@ -8,3 +8,4 @@ common/node_modules
 bin/amon-zwatch
 agent/checks
 agent/*.json
+*.rdb

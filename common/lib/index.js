@@ -3,6 +3,8 @@
 var Config = require('./config');
 var w3clog = require('./w3clog');
 
+var log = require('restify').log;
+
 module.exports = {
   Config: Config,
   w3clog: w3clog

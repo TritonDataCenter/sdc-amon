@@ -45,7 +45,7 @@ function listenInZone(zone, callback) {
     }
     AppIndex[zone].listen(function(error) {
       if (!error) {
-        log.info('amon-relay listening in zone %s at %s', zone, socket);
+        log.info('amon-relay listening in zone %s at zsock: %s', zone, socket);
       }
       if (callback) callback();
     });

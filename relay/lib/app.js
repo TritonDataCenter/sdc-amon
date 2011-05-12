@@ -148,9 +148,13 @@ App.prototype.listen = function(callback) {
 
     if (self._developerMode) {
       var sock = parseInt(self.socket, 10);
+      log.debug('In developer mode; starting socket @%d', sock);
       return self.server.listen(sock, '127.0.0.1', callback);
     }
     if (self.localMode) {
+      if (log.debug()) {
+        log.debug('starting app in local mode at %s', self.socket);
+      }
       return self.server.listen(self.socket, callback);
     }
 
@@ -162,6 +166,9 @@ App.prototype.listen = function(callback) {
       if (error) {
         log.fatal('Unable to open zsock in %s: %s', self.zone, error.stack);
         return callback(error);
+      }
+      if (log.debug()) {
+        log.debug('Opening zsock server on FD :%d', fd);
       }
       self.server.listenFD(fd);
       return callback();
