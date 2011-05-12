@@ -97,8 +97,8 @@ Master.prototype._request = function(method, path, callback) {
     res.body = '';
     res.setEncoding('utf8');
     res.on('data', function(chunk) {
-      if (log.debug()) {
-        log.debug('master-client: http chunk=%s', chunk);
+      if (log.trace()) {
+        log.trace('master-client: http chunk=%s', chunk);
       }
       res.body += chunk;
     });
@@ -112,7 +112,7 @@ Master.prototype._request = function(method, path, callback) {
         }
       }
       if (log.debug()) {
-        log.debug('master: http response code=%d, headers=%o, params=%s,',
+        log.trace('master: http response code=%d, headers=%o, params=%s,',
                   res.statusCode, res.headers, res.params);
       }
       return callback(null, res);

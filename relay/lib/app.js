@@ -142,8 +142,8 @@ App.prototype.listen = function(callback) {
   var self = this;
 
   fs.mkdir(this._stage, '0750', function(err) {
-    if (err) {
-      log.warn('unable to create staging area: ' + self.stage);
+    if (err && err.code !== 'EEXIST') {
+      log.warn('unable to create staging area ' + self._stage + ': ' + err);
     }
 
     if (self._developerMode) {
@@ -203,11 +203,11 @@ App.prototype._md5 = function(callback) {
 App.prototype.writeConfig = function(config, md5, callback) {
   var self = this;
 
-  if (!config || !md5) {
+  if (!config || !md5 || config.length === 0) {
     if (log.debug()) {
-      log.debug('Empty config/md5. No-op');
-      return callback();
+      log.debug('Empty config/md5 (z-%s). No-op', self.zone);
     }
+    return callback();
   }
 
   var save = self.configRoot + '/.' + uuid();
