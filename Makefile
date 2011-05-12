@@ -29,6 +29,7 @@ HAVE_GJSLINT := $(shell which gjslint >/dev/null && echo yes || echo no)
 NODE := $(NODEDIR)/bin/node
 NODE_WAF := $(NODEDIR)/bin/node-waf
 NPM := npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH npm
+NODE_DEV := PATH=$(NODEDIR)/bin:$$PATH node-dev
 REDIS_SERVER := deps/redis/src/redis-server
 WHISKEY = bin/whiskey
 
@@ -139,16 +140,16 @@ devrun: tmp $(NODEDIR)/bin/node-dev
 	deps/redis/src/redis-server support/dev-redis.conf
 	@echo ""
 	@echo "== start master (tmp/dev-master.log)"
-	node-dev master/main.js -d -f support/dev-master-config.json -p 8080 > tmp/dev-master.log 2>&1 &
+	$(NODE_DEV) master/main.js -d -f support/dev-master-config.json -p 8080 > tmp/dev-master.log 2>&1 &
 	@echo ""
 	@echo "== start relay (tmp/dev-relay.log)"
 	mkdir -p tmp/dev-relay
-	node-dev relay/main.js -d -n -c tmp/dev-relay -p 10 -m http://127.0.0.1:8080 -s 8081 > tmp/dev-relay.log 2>&1 &
+	$(NODE_DEV) relay/main.js -d -n -c tmp/dev-relay -p 10 -m http://127.0.0.1:8080 -s 8081 > tmp/dev-relay.log 2>&1 &
 	@echo ""
 	@echo "== start agent (tmp/dev-agent.log)"
 	mkdir -p tmp/dev-agent/config
 	mkdir -p tmp/dev-agent/tmp
-	node-dev agent/main.js -d -p 10 -c tmp/dev-agent/config -t tmp/dev-agent/tmp -s 8081 > tmp/dev-agent.log 2>&1 &
+	$(NODE_DEV) agent/main.js -d -p 10 -c tmp/dev-agent/config -t tmp/dev-agent/tmp -s 8081 > tmp/dev-agent.log 2>&1 &
 	@echo ""
 	@echo "== tail the logs ..."
 	multitail -f tmp/dev-redis.log tmp/dev-master.log tmp/dev-relay.log tmp/dev-agent.log
