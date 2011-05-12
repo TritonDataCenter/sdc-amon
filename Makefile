@@ -126,6 +126,38 @@ test: tmp
 	(REDIS_PORT=`grep '^port' support/test-redis.conf | awk '{print $$2}'` bin/whiskey --timeout 1000 --tests "$(shell find . -name "*.test.js" | grep -v 'node_modules/' | xargs)"; kill `cat tmp/test-redis.pid`)
 
 
+# A supervisor for restarting node processes when relevant files change.
+$(NODEDIR)/bin/node-dev: $(NODEDIR)/bin/npm
+	$(NPM) install -g node-dev
+
+devrun: tmp $(NODEDIR)/bin/node-dev
+	@echo "== preclean"
+	[[ -e tmp/dev-redis.pid ]] && kill `cat tmp/dev-redis.pid` && sleep 1 || true
+	ps -ef | grep node-de[v] | awk '{print $$2}' | xargs kill
+	@echo ""
+	@echo "== start redis (tmp/dev-redis.log)"
+	deps/redis/src/redis-server support/dev-redis.conf
+	@echo ""
+	@echo "== start master (tmp/dev-master.log)"
+	node-dev master/main.js -d -f support/dev-master-config.json -p 8080 > tmp/dev-master.log 2>&1 &
+	@echo ""
+	@echo "== start relay (tmp/dev-relay.log)"
+	mkdir -p tmp/dev-relay
+	node-dev relay/main.js -d -n -c tmp/dev-relay -p 10 -m http://127.0.0.1:8080 -s 8081 > tmp/dev-relay.log 2>&1 &
+	@echo ""
+	@echo "== start agent (tmp/dev-agent.log)"
+	mkdir -p tmp/dev-agent/config
+	mkdir -p tmp/dev-agent/tmp
+	node-dev agent/main.js -d -p 10 -c tmp/dev-agent/config -t tmp/dev-agent/tmp -s 8081 > tmp/dev-agent.log 2>&1 &
+	@echo ""
+	@echo "== tail the logs ..."
+	multitail -f tmp/dev-redis.log tmp/dev-master.log tmp/dev-relay.log tmp/dev-agent.log
+	@echo ""
+	@echo "== shutdown everything"
+	kill `cat tmp/dev-redis.pid`
+	ps -ef | grep node-de[v] | awk '{print $$2}' | xargs kill
+
+
 clean:
 	(cd deps/npm && $(MAKE) clean)
 	(cd deps/node && $(MAKE) distclean)
