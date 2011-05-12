@@ -1,11 +1,11 @@
 {
   "name": "amon-master",
-  "description": "The Joyent Monitoring Master component",
+  "description": "Smart DataCenter Monitoring Master component",
   "homepage": "https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming",
   "version": "6.1.0",
   "repository": {
     "type": "git",
-    "url": "git@git.joyent.com:amon-master.git"
+    "url": "git@git.joyent.com:amon.git"
   },
   "private": true,
   "contributors": [

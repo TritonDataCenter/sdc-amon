@@ -1,11 +1,11 @@
 {
   "name": "amon-agent",
-  "description": "The Joyent Monitoring Agent component",
+  "description": "Smart DataCenter Monitoring Agent component",
   "homepage": "https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming",
   "version": "6.1.0",
   "repository": {
     "type": "git",
-    "url": "git@git.joyent.com:amon-agent.git"
+    "url": "git@git.joyent.com:amon.git"
   },
   "private": true,
   "contributors": [

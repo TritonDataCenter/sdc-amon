@@ -1,11 +1,11 @@
 {
   "name": "amon-relay",
-  "description": "The Joyent Monitoring Relay component",
+  "description": "Smart DataCenter Monitoring Relay component",
   "homepage": "https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming",
   "version": "6.1.0",
   "repository": {
     "type": "git",
-    "url": "git@git.joyent.com:amon-relay.git"
+    "url": "git@git.joyent.com:amon.git"
   },
   "private": true,
   "contributors": [
