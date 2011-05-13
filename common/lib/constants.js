@@ -30,11 +30,6 @@ module.exports = {
     _metricTypes.Boolean
   ],
 
-  /// ZWatch
-  start: 'start',
-  stop: 'stop',
-  ownerUUID: 'owner-uuid',
-
   /// Misc
   ApiVersion: '6.1.0',
   ContentType: 'Content-Type',

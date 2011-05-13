@@ -6,7 +6,6 @@ var log = require('restify').log;
 var Config = require('amon-common').Config;
 
 var App = require('./lib/app');
-var Constants = require('./lib/constants');
 
 // Global variable that holds a mapping of zone name to Apps
 var file = './cfg/amon-master.json';
