@@ -129,34 +129,7 @@ $(NODEDIR)/bin/node-dev: $(NODEDIR)/bin/npm
 	$(NPM) install -g node-dev
 
 devrun: tmp $(NODEDIR)/bin/node-dev
-	@echo "== preclean"
-	[[ -e tmp/dev-redis.pid ]] && kill `cat tmp/dev-redis.pid` && sleep 1 || true
-	ps -ef | grep node-de[v] | awk '{print $$2}' | xargs kill
-	@echo ""
-	@echo "== start redis (tmp/dev-redis.log)"
-	deps/redis/src/redis-server support/dev-redis.conf
-	@echo ""
-	@echo "== start master (tmp/dev-master.log)"
-	$(NODE_DEV) master/main.js -d -f support/dev-master-config.json -p 8080 > tmp/dev-master.log 2>&1 &
-	@echo ""
-	@echo "== start relay (tmp/dev-relay.log)"
-	mkdir -p tmp/dev-relay
-	$(NODE_DEV) relay/main.js -d -n -c tmp/dev-relay -p 10 -m http://127.0.0.1:8080 -s 8081 > tmp/dev-relay.log 2>&1 &
-	@echo ""
-	@echo "== start agent (tmp/dev-agent.log)"
-	mkdir -p tmp/dev-agent/config
-	mkdir -p tmp/dev-agent/tmp
-	$(NODE_DEV) agent/main.js -d -p 10 -c tmp/dev-agent/config -t tmp/dev-agent/tmp -s 8081 > tmp/dev-agent.log 2>&1 &
-	@echo ""
-	@echo "== tail the logs ..."
-	multitail -f tmp/dev-master.log tmp/dev-relay.log tmp/dev-agent.log
-	@echo ""
-	@echo "== shutdown everything"
-	kill `cat tmp/dev-redis.pid`
-	ps -ef | grep node-de[v] | awk '{print $$2}' | xargs kill
-	@echo "=="
-	@echo "You might want to manually make this change to your node-dev"
-	@echo "https://github.com/fgnass/node-dev/issues/14"
+	support/devrun.sh
 
 
 clean:
