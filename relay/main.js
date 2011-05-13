@@ -128,7 +128,6 @@ if (parsed.master) master = parsed.master;
 if (parsed.poll) poll = parsed.poll;
 if (parsed.socket) socket = parsed.socket;
 if (parsed.developer) {
-  logLevel = restify.LogLevel.Trace;
   developer = true;
 }
 
