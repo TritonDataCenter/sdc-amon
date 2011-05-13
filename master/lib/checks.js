@@ -2,11 +2,13 @@
 var assert = require('assert');
 var restify = require('restify');
 
-var Constants = require('./constants');
-var Messages = require('./messages');
+var amon_common = require('amon-common');
 
 var Check = require('./model/check');
 
+var Constants = amon_common.Constants;
+var Messages = amon_common.Messages;
+var w3clog = amon_common.w3clog;
 var log = restify.log;
 var HttpCodes = restify.HttpCodes;
 var RestCodes = restify.RestCodes;
@@ -27,7 +29,7 @@ function _sendMissingArgument(res, arg) {
 
 function _sendInvalidArgument(res, msg, param) {
   var e = restify.newError({httpCode: HttpCodes.Conflict,
-                            restCode: RestCodes.MissingParameter,
+                            restCode: RestCodes.InvalidArgument,
                             message: _message(msg, param)
                           });
   if (log.debug()) {

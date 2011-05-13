@@ -6,9 +6,10 @@ var restify = require('restify');
 
 var checks = require('./checks');
 var config = require('./config');
-var Constants = require('./constants');
+var amon_common = require('amon-common');
 
-var w3clog = require('../../common/lib/w3clog');
+var Constants = amon_common.Constants;
+var w3clog = amon_common.w3clog;
 
 var log = restify.log;
 

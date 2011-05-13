@@ -12,7 +12,8 @@ var zsock = require('zsock');
 var config = require('./config');
 var checks = require('./checks');
 var Master = require('./master-client');
-var Constants = require('./constants');
+
+var Constants = require('amon-common').Constants;
 
 var w3clog = require('amon-common').w3clog;
 

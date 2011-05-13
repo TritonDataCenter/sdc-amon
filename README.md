@@ -70,6 +70,11 @@ And start running (see next section).
 
 ## COAL
 
+Important (if you don't do this, and ask markc why mysterious problems occur,
+there is an excellent chance he will go postal on you):
+
+    export LD_PRELOAD_32=/usr/lib/extendedFILE.so.1
+
 ### Master
 
     redis-server
@@ -84,7 +89,8 @@ And start running (see next section).
 
     mkdir -p /var/run/joyent/amon/agent/config
     mkdir -p /var/run/joyent/amon/agent/tmp
-    node main.js -d -p 10 -c /var/run/joyent/amon/agent/config -t /var/run/joyent/amon/agent/tmp
+    node main.js -d -p 10 -c /var/run/joyent/amon/agent/config \
+      -t /var/run/joyent/amon/agent/tmp
 
 ## Mac
 

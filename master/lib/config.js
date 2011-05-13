@@ -2,20 +2,21 @@
 
 var restify = require('restify');
 
-var Constants = require('./constants');
-var Messages = require('./messages');
+var amon_common = require('amon-common');
+
 var Check = require('./model/check');
 
+var Constants = amon_common.Constants;
+var w3clog = amon_common.w3clog;
 var log = restify.log;
 var HttpCodes = restify.HttpCodes;
 var RestCodes = restify.RestCodes;
-var _message = Messages.message;
 
-function _missingArgument(arg) {
+function _missingArgument(argument) {
   return restify.newError({httpCode: HttpCodes.Conflict,
                            restCode: RestCodes.MissingParameter,
-                           message: _message(Messages.MissingParameter,
-                                             arg)
+                           message: Messages.message(Messages.MissingParameter,
+                                                     argument)
                           });
 }
 
@@ -30,7 +31,7 @@ function _sendConfig(req, res, next, sendData) {
         log.warn('Error finding checks in redis: ' + err);
         res.send(500);
       } else {
-        var code = sendData ? 200 : 204;
+        var code = sendData ? HttpCodes.Ok : HttpCodes.NoContent;
         if (log.debug()) {
           log.debug('config._sendConfig returning %d, obj=%o', code, checks);
         }

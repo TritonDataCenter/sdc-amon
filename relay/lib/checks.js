@@ -2,9 +2,10 @@
 
 var restify = require('restify');
 
-var Constants = require('./constants');
-var Messages = require('./messages');
+var amon_common = require('amon-common');
 
+var Constants = amon_common.Constants;
+var Messages = amon_common.Messages;
 var log = restify.log;
 var newError = restify.newError;
 var HttpCodes = restify.HttpCodes;

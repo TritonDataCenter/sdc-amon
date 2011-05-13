@@ -18,7 +18,9 @@ module.exports = {
   /// Parameter Values
   // Status
   status: 'status',
-  StatusValues: [_statusCodes.Ok, _statusCodes.Warn, _statusCodes.Error],
+  StatusValues: [_statusCodes.Ok,
+                 _statusCodes.Warn,
+                 _statusCodes.Error],
   // Metrics
   metrics: 'metrics',
   MetricTypes: [

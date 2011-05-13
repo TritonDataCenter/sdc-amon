@@ -11,14 +11,15 @@
   "contributors": [
     "Mark Cavage <mark.cavage@joyent.com> (http://www.joyent.com)",
     "Trent Mick <trent.mick@joyent.com> (http://www.joyent.com)"
-  ],  
+  ],
   "main": "lib/index.js",
   "dependencies": {
     "dirsum": ">=0.1.1",
     "httpu": ">=0.0.1",
     "node-uuid": ">=1.1.0",
     "nopt": ">=1.0.5",
-    "restify": ">=0.1.5"
+    "restify": ">=0.1.5",
+    "sprintf": ">=0.1.1"
   },
   "devDependencies": {
     "jshint": "=0.1.9",
