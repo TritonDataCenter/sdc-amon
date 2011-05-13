@@ -10,7 +10,6 @@ var nopt = require('nopt');
 var path = require('path');
 
 var log = require('restify').log;
-log.level(log.Level.Debug);
 
 var common = require('amon-common');
 var plugins = require('amon-plugins');
