@@ -1,4 +1,9 @@
-// Copyright 2011 Joyent, Inc.  All rights reserved.
+/* Copyright 2011 Joyent, Inc.  All rights reserved.
+ *
+ * Amon `Config` object, used for loading/updating/sending Amon "check"
+ * configuration data from master -> relays -> agents.
+ */
+
 var crypto = require('crypto');
 var fs = require('fs');
 var os = require('os');
@@ -534,4 +539,4 @@ Config.prototype._parseTarResponse = function(res) {
 };
 
 
-module.exports = (function() { return Config; })();
+module.exports = Config;
