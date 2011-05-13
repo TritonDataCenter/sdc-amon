@@ -89,7 +89,7 @@ function _validateInput(req, res) {
 
 module.exports = {
 
-  event: function update(req, res, next) {
+  event: function event(req, res, next) {
     if (req._log) log = req._log;
 
     log.debug('event: params=%o', req.params);

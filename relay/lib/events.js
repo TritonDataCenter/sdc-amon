@@ -8,7 +8,7 @@ var RestCodes = restify.RestCodes;
 
 module.exports = {
 
-  forward: function update(req, res, next) {
+  forward: function forward(req, res, next) {
     log.debug('events.forward: event=%o', req._amonEvent);
 
 
