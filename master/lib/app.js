@@ -18,11 +18,9 @@ var log = restify.log;
 /**
  * Constructor for the amon "application".
  *
- * Params you send into options are:
- *  - port  {Number} the port to listen on.
- *
- * @param {Object} options The usual.
- *
+ * @param {Object} options
+ *    - port  {Number} The port to listen on.
+ *    - config {amon-config.Config} The check config object.
  */
 var App = function App(options) {
   if (!options) throw TypeError('options is required');

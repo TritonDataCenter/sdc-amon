@@ -177,10 +177,9 @@ Config.prototype.needsUpdate = function(callback) {
 
   var self = this;
 
-  var checkAmon = function() {
-    if (log.debug()) {
-      log.debug('Current hash is: %s, checking parent.', self._hash);
-    }
+  function checkAmon() {
+    log.debug('Current checksum is: %s, checking parent.',
+              self._checksum || '(empty)');
     self._httpRequest('HEAD', function(res) {
       if (log.debug()) {
         log.debug('HTTP Response: code=%s, headers=%o',
@@ -194,7 +193,7 @@ Config.prototype.needsUpdate = function(callback) {
         log.warn('config update: no etag header?');
         return callback(new Error('No Etag Header found'));
       }
-      if (self._hash === res.headers.etag) {
+      if (self._checksum === res.headers.etag) {
         if (log.debug()) {
           log.debug('ETag matches on-disk tree, nothing to do');
         }
@@ -203,12 +202,12 @@ Config.prototype.needsUpdate = function(callback) {
       return callback(null, true);
 
     }).end();
-  };
+  }
 
   if (!this._checksum) {
     this.checksum(function(err, hash) {
       if (err) return callback(err);
-      self._hash = hash;
+      self._checksum = hash;
       return checkAmon();
     });
   } else {
@@ -233,12 +232,9 @@ Config.prototype.needsUpdate = function(callback) {
  * @param {Function} callback of the form function(error).
  */
 Config.prototype.update = function(callback) {
+  log.trace('Config.update entered');
+
   var self = this;
-
-  if (log.debug()) {
-    log.debug('Config.update entered');
-  }
-
   self.needsUpdate(function(err, pull) {
     if (err) return callback(err);
 
@@ -466,7 +462,7 @@ Config.prototype._untar = function(callback, userCallback) {
             if (code !== 0) {
               log.warn('Unable to clean up old config in ' + save);
             }
-            self._hash = tar._etag;
+            self._checksum = tar._etag;
             return userCallback();
           }); // rm.on('exit')
         }); // fs.rename(tmp, self.configRoot)

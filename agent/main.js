@@ -10,12 +10,21 @@ var nopt = require('nopt');
 var path = require('path');
 
 var log = require('restify').log;
+log.level(log.Level.Debug);
 
 var common = require('amon-common');
 var plugins = require('amon-plugins');
 var Config = common.Config;
 
 var Notification = require('./lib/notify');
+
+
+
+//---- globals
+
+var gChecks = {};
+var gConfig;  // Set to an `amon-common.Config` below.
+var relaySocket;  // Socket on which to talk to amon-relay.
 
 var opts = {
   'debug': Boolean,
@@ -38,26 +47,19 @@ var shortOpts = {
 };
 
 
-var usage = function(code, msg) {
-  if (msg) console.error('ERROR: ' + msg);
+
+//---- internal support functions
+
+function usage(code, msg) {
+  if (msg) {
+    console.error('ERROR: ' + msg);
+  }
   console.log('usage: ' + path.basename(process.argv[1]) +
               ' [-hd] [-p polling-period] [-s socket-path-or-port] ' +
               '[-c config-repository] [-t tmp-dir]');
   process.exit(code);
-};
+}
 
-var parsed = nopt(opts, shortOpts, process.argv, 2);
-
-if (parsed.help) usage(0);
-if (parsed.debug) log.level(log.Level.Debug);
-if (!parsed['config-repository']) usage(1, 'config-repository is required');
-
-var socket = parsed.socket || '/var/run/.joyent_amon.sock';
-var poll = parsed.poll || 60; // default to 1m config update
-var tmpDir = parsed.tmp || '/tmp';
-
-var config;
-var Checks = {};
 
 function _newCheck(plugin, check, callback) {
   if (!plugin) throw new TypeError('plugin is required');
@@ -92,23 +94,23 @@ function _newCheck(plugin, check, callback) {
 
 
 function _loadChecksFromConfig() {
-  config.loadChecks(function(err) {
+  gConfig.loadChecks(function(err) {
     if (err) {
       log.error('Unabled to read checks: ' + err);
     }
 
     if (log.debug()) {
-      log.debug('Loaded checks: %o', config.checks);
+      log.debug('Loaded checks: %o', gConfig.checks);
     }
 
-    var plugins = config.plugins;
-    var checks = config.checks;
+    var plugins = gConfig.plugins;
+    var checks = gConfig.checks;
 
     var _checkCallback = function(err, check) {
       if (err) return;
 
       check._notify = new Notification({
-        socket: socket,
+        socket: relaySocket,
         id: check.id
       });
       check.on('alarm', function(status, metrics) {
@@ -121,16 +123,15 @@ function _loadChecksFromConfig() {
         });
       });
 
-      if (Checks[checks[i].id]) {
-        Checks[checks[i].id].stop();
-        delete Checks[checks[i].id];
+      if (gChecks[checks[i].id]) {
+        gChecks[checks[i].id].stop();
+        delete gChecks[checks[i].id];
       }
-      Checks[checks[i].id] = check;
+      gChecks[checks[i].id] = check;
       if (++loaded >= checks.length) {
         log.info('All checks loaded');
       }
     };
-
 
     var loaded = 0;
     for (var i = 0; i < checks.length; i++) {
@@ -140,49 +141,59 @@ function _loadChecksFromConfig() {
 }
 
 function _updateConfig(force) {
-  if (log.debug()) {
-    log.debug('_updateConfig entered');
-  }
-  return config.update(function(err, updated) {
+  log.trace('_updateConfig entered');
+  gConfig.update(function(err, updated) {
     if (err) {
-      log.warn('Update of configuration failed: ' + err);
+      log.warn('update-config: Update of configuration failed: ' + err);
       return;
     }
     if (!updated && !force) {
-      if (log.debug()) {
-        log.debug('No config updates.');
-      }
+      log.debug('update-config: No config updates.');
       return;
     }
-
-    log.info('Updated config. Stopping all checks and recreating');
-
-    for (var k in Checks) {
+    log.info('update-config: Updated. Stopping all checks and recreating');
+    for (var k in gChecks) {
       if (checks.hasOwnProperty(k)) {
-        Checks[k].stop();
-        delete Checks[k];
+        gChecks[k].stop();
+        delete gChecks[k];
       }
     }
-
-    return _loadChecksFromConfig();
+    _loadChecksFromConfig();
   });
 }
 
-// Go ahead and pull new config at startup...
-config = new Config({
-  root: parsed['config-repository'],
-  socket: socket,
-  tmp: tmpDir
-});
-config.log = log;
-config.plugins = plugins;
-if (log.debug()) {
-  log.debug('Using config: %o', config);
-}
 
-setInterval(_updateConfig, poll * 1000);
-_updateConfig(true);
+
+//---- mainline
+
+function main() {
+  var parsed = nopt(opts, shortOpts, process.argv, 2);
+
+  if (parsed.help) usage(0);
+  if (parsed.debug) log.level(log.Level.Debug);
+  if (!parsed['config-repository']) usage(1, 'config-repository is required');
+
+  relaySocket = parsed.socket || '/var/run/.joyent_amon.sock';
+  var poll = parsed.poll || 60; // default to 1m config update
+  var tmpDir = parsed.tmp || '/tmp';
+
+  gConfig = new Config({
+    root: parsed['config-repository'],
+    socket: relaySocket,
+    tmp: tmpDir
+  });
+  gConfig.log = log;
+  gConfig.plugins = plugins;
+  log.debug('Using config: %o', gConfig);
+
+  // Update config (from relay/master) every `poll` seconds. Also immediately
+  // at startup.
+  setInterval(_updateConfig, poll * 1000);
+  _updateConfig(true);
+}
 
 process.on('uncaughtException', function(e) {
   log.warn('uncaughtException: ' + (e.stack ? e.stack : e));
 });
+
+main();

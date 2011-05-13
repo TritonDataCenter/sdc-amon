@@ -24,7 +24,7 @@ var ZWATCH_SOCKET = '/var/run/.joyent_amon_zwatch.sock';
 var master = 'http://localhost:8080'; // TODO default to COAL ip...
 
 function listenInZone(zone, callback) {
-  zutil.getZoneAttribute(zone, "owner-uuid", function(error, attr) {
+  zutil.getZoneAttribute(zone, 'owner-uuid', function(error, attr) {
     if (error || !attr) {
       log.info('No "owner-uuid" attribute found on zone %s. Skipping.', zone);
       if (callback) return callback();
@@ -72,14 +72,14 @@ function zwatchHandler(sock) {
 
     switch (pieces[1]) {
 
-    case "start":
+    case 'start':
       if (log.debug()) {
         log.debug('Starting zone: %s', pieces[0]);
       }
       listenInZone(pieces[0]);
       break;
 
-    case "stop":
+    case 'stop':
       log.info('amon-relay shut down in zone %s', pieces[0]);
       AppIndex[pieces[0]].close(function() {
         delete AppIndex[pieces[0]];
