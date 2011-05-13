@@ -105,7 +105,7 @@ jshint: deps
 	bin/node $(NODEDIR)/lib/node_modules/jshint/bin/jshint common/lib plugins/lib master/main.js master/lib relay/main.js relay/lib agent/main.js agent/lib
 
 gjslint:
-	gjslint --nojsdoc -e deps,node_modules -x common/lib/sprintf.js -r .
+	gjslint --nojsdoc -e deps,node_modules,tmp -x common/lib/sprintf.js -r .
 
 ifeq ($(HAVE_GJSLINT), yes)
 lint: jshint gjslint
@@ -149,7 +149,7 @@ devrun: tmp $(NODEDIR)/bin/node-dev
 	$(NODE_DEV) agent/main.js -d -p 10 -c tmp/dev-agent/config -t tmp/dev-agent/tmp -s 8081 > tmp/dev-agent.log 2>&1 &
 	@echo ""
 	@echo "== tail the logs ..."
-	multitail -f tmp/dev-redis.log tmp/dev-master.log tmp/dev-relay.log tmp/dev-agent.log
+	multitail -f tmp/dev-master.log tmp/dev-relay.log tmp/dev-agent.log
 	@echo ""
 	@echo "== shutdown everything"
 	kill `cat tmp/dev-redis.pid`
