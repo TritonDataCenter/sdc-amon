@@ -51,6 +51,7 @@ var App = function App(options) {
       log.debug('_setup entered, config=%o', self.config);
     }
     req._config = self.config.config;
+    req._log = log;
     req._redis = self.redis;
     return next();
   };

@@ -27,7 +27,7 @@ function _options(path) {
   var options = {
     socketPath: socket,
     method: 'POST',
-    path: '/checks/' + uuid(),
+    path: '/events/' + uuid(),
     headers: {}
   };
   if (path) options.path += path;

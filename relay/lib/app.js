@@ -9,14 +9,15 @@ var restify = require('restify');
 var uuid = require('node-uuid');
 var zsock = require('zsock');
 
+var amon_common = require('amon-common');
+
 var config = require('./config');
-var checks = require('./checks');
+var events = require('./events');
 var Master = require('./master-client');
 
-var Constants = require('amon-common').Constants;
-
-var w3clog = require('amon-common').w3clog;
-
+var Constants = amon_common.Constants;
+var preEvents = amon_common.events;
+var w3clog = amon_common.w3clog;
 var log = restify.log;
 
 var __rm = '/usr/bin/rm';
@@ -73,9 +74,8 @@ var App = function App(options) {
   });
 
   var _setup = function(req, res, next) {
-    if (log.debug()) {
-      log.debug('_setup entered');
-    }
+    log.debug('_setup entered');
+    req._log = log;
     req._zone = self.zone;
     req._owner = self.owner;
     req._zsock = self.socket;
@@ -93,7 +93,11 @@ var App = function App(options) {
 
   this.server.head('/config', self.before, config.checksum, self.after);
   this.server.get('/config', self.before, config.getConfig, self.after);
-  this.server.post('/checks/:check', self.before, checks.update, self.after);
+  this.server.post('/events/:check',
+                   self.before,
+                   preEvents.event,
+                   events.forward,
+                   self.after);
 
   this._poller = setInterval(function() {
     self._master.configMD5(self.zone, function(err, md5) {

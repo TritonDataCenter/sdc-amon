@@ -2,10 +2,9 @@
 
 var restify = require('restify');
 
-var amon_common = require('amon-common');
+var Constants = require('./constants');
+var Messages = require('./messages');
 
-var Constants = amon_common.Constants;
-var Messages = amon_common.Messages;
 var log = restify.log;
 var newError = restify.newError;
 var HttpCodes = restify.HttpCodes;
@@ -90,29 +89,29 @@ function _validateInput(req, res) {
 
 module.exports = {
 
-  update: function update(req, res, next) {
-    if (log.debug()) {
-      log.debug('checks.update: params=%o', req.params);
-    }
+  event: function update(req, res, next) {
+    if (req._log) log = req._log;
+
+    log.debug('event: params=%o', req.params);
 
     if (!_validateInput(req, res)) {
-      if (log.debug()) {
-        log.debug('checks.update: error sent: %d %s',
-                  res.sentError.httpCode,
-                  res.sentError.restCode);
-      }
-      return next();
+      log.debug('event: error sent: %d %s',
+                res.sentError.httpCode,
+                res.sentError.restCode);
+      res._eventResultSent = true;
+    } else {
+      // For now this is just copying out the req.params, but it seems possible
+      // we would extend this with more, so this interceptor sets up an
+      // _amonEvent object.
+      res._amonEvent = {
+        message: req.params.message || '',
+        metrics: req.params.metrics,
+        status: req.params.status
+      };
+
+      log.debug('event: processed %o', res._amonEven);
     }
 
-    var status = req.params.status;
-    var metrics = req.params.metrics;
-    var message = req.params.message || '';
-
-    // Where's that pesky amon-master at???
-
-    log.info('Check update processed: status=%s, metrics=%o, message=%s',
-             status, metrics, message);
-    res.send(HttpCodes.Accepted);
     return next();
   }
 
