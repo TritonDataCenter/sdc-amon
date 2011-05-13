@@ -141,12 +141,7 @@ var App = function App(options) {
   // in the next 10s
   if (options._noConfig) return;
 
-  this._configPollHandle = null;
-  this._initialConfigHandle = setTimeout(function() {
-    this._configPollHandle = setInterval(_getConfig, this.poll * 1000);
-    self._initialConfigHandle = null;
-  }, Math.floor(Math.random() * 10001));
-
+  self._configPollHandle = setInterval(_getConfig, this.poll * 1000);
   return _getConfig();
 };
 
@@ -208,7 +203,6 @@ App.prototype.listen = function(callback) {
  * @param {Function} callback called when closed. Takes no arguments.
  */
 App.prototype.close = function(callback) {
-  if (this._initialConfigHandle) clearTimeout(this._initialConfigHandle);
   if (this._configPollHandle) clearInterval(this._configPollHandle);
   this.server.on('close', callback);
   this.server.close();

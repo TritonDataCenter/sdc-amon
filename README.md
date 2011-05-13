@@ -115,6 +115,6 @@ Great, now CRUD some checks:
 
     alias jcurl='curl -is -H "x-api-version: 6.1.0" -H "Content-Type: application/json"'
     jcurl localhost:8080/checks?customer=joyent\&zone=global -X POST -d @examples/mac.logscan.json
-    jcurl localhost:8080/checks?zone=foo
+    jcurl localhost:8080/checks?zone=global
     jcurl localhost:8080/checks/387D4037-4E1B-43C8-B81D-35F9157ABD77
     jcurl localhost:8080/checks/387D4037-4E1B-43C8-B81D-35F9157ABD77 -X DELETE
