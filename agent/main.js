@@ -109,7 +109,7 @@ function _loadChecksFromConfig() {
     var plugins = gConfig.plugins;
     var checks = gConfig.checks;
 
-    var _checkCallback = function(err, check) {
+    function _checkCallback(err, check) {
       if (err) return;
 
       check._notify = new Notification({

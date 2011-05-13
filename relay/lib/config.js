@@ -79,7 +79,7 @@ module.exports = {
     dirsum.digest(path, algorithm, function(err, hashes) {
       if (err) {
         if (err.code === 'ENOENT') {
-          log.warn('getConfig:No configig directory: ' + path);
+          log.warn('getConfig:No config directory: ' + path);
           res.send(HttpCodes.NoContent);
           return next();
         } else {

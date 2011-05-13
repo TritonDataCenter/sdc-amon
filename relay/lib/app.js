@@ -101,7 +101,7 @@ var App = function App(options) {
                    self.after);
 
   // Register the config watcher
-  var _getConfig = function() {
+  function _getConfig() {
     log.debug('Checking master for new config...');
     self._master.configMD5(self.zone, function(err, md5) {
       if (err) {
