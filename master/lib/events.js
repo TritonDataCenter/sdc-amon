@@ -76,7 +76,7 @@ function _sendInvalidZone(res, zone, check) {
 
 module.exports = {
 
-  handle: function update(req, res, next) {
+  handle: function handle(req, res, next) {
     if (res._eventResultSent) return next();
     assert.ok(req._amonEvent);
     log.debug('events.handle: event=%o, params=%o',
