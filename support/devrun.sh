@@ -43,12 +43,6 @@ function cleanup {
 
 trap 'errexit $? $LINENO' EXIT
 
-echo "***"
-echo "* You might want to manually make this change to your node-dev:"
-echo "*   https://github.com/fgnass/node-dev/issues/14"
-echo "* It will mean that recovering from code errors will work."
-echo "***"
-
 echo "== preclean"
 [[ -e $ROOT/tmp/dev-redis.pid ]] && kill `cat $ROOT/tmp/dev-redis.pid` && sleep 1 || true
 ps -ef | grep node-de[v] | awk '{print $2}' | xargs kill
