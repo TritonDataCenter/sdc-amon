@@ -99,16 +99,20 @@ LogScan.prototype.validateConfig = function(config) {
 
 module.exports = {
 
-  newInstance: function(id, config) {
-    if (!id) throw new TypeError('id is required');
-    _validateConfig(config);
+  newInstance: function(options) {
+    if (!options.id) throw new TypeError('id is required');
+    if (!options.config) throw new TypeError('config is required');
+
+    if (options._log) log = options._log;
+
+    _validateConfig(options.config);
 
     return new LogScan({
-      id: id,
-      path: config.path,
-      period: config.period,
-      regex: new RegExp(config.regex),
-      threshold: config.threshold
+      id: options.id,
+      path: options.config.path,
+      period: options.config.period,
+      regex: new RegExp(options.config.regex),
+      threshold: options.config.threshold
     });
 
   },

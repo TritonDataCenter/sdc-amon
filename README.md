@@ -106,8 +106,7 @@ there is an excellent chance he will go postal on you):
 
 ### Agent
 
-    mkdir -p /tmp/amon-agent/config
-    mkdir -p /tmp/amon-agent/tmp
+    mkdir -p /tmp/amon-agent/config && mkdir -p /tmp/amon-agent/tmp
     node main.js -d -p 10 -c /tmp/amon-agent/config -t /tmp/amon-agent/tmp -s 8081
 
 ## Add some data in
@@ -115,7 +114,7 @@ there is an excellent chance he will go postal on you):
 Great, now CRUD some checks:
 
     alias jcurl='curl -is -H "x-api-version: 6.1.0" -H "Content-Type: application/json"'
-    jcurl localhost:8080/checks?customer=markc\&zone=global -X POST -d @examples/smartlogin.logscan.json
+    jcurl localhost:8080/checks?customer=joyent\&zone=global -X POST -d @examples/mac.logscan.json
     jcurl localhost:8080/checks?zone=foo
     jcurl localhost:8080/checks/387D4037-4E1B-43C8-B81D-35F9157ABD77
     jcurl localhost:8080/checks/387D4037-4E1B-43C8-B81D-35F9157ABD77 -X DELETE

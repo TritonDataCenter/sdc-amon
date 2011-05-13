@@ -10,7 +10,7 @@ function pad(val) {
 function logRequest(request, response, next) {
   // Logs in the W3C Common Log Format
   var d = new Date();
-  console.log(request.connection.remoteAddress || request._zone +
+  console.log((request.connection.remoteAddress || request._zone) +
               ' - - [' +
               pad(d.getUTCDate()) + '/' +
               pad(d.getUTCMonth()) + '/' +

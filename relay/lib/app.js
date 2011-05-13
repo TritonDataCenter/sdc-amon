@@ -79,6 +79,7 @@ var App = function App(options) {
     req._owner = self.owner;
     req._zsock = self.socket;
     req._configRoot = self.configRoot;
+    req._master = self._master;
 
     return next();
   };
@@ -100,35 +101,53 @@ var App = function App(options) {
                    self.after);
 
   // Register the config watcher
-  this._poller = setInterval(function() {
+  var _getConfig = function() {
+    log.debug('Checking master for new config...');
     self._master.configMD5(self.zone, function(err, md5) {
       if (err) {
         log.warn('Error getting master config MD5 (zone=%s): %s',
                  self.zone, err);
         return;
       }
+      log.debug('master config md5=%s, checking ours.', md5);
       self._md5(function(_md5) {
+        log.debug('our md5=%s', _md5);
+
         if (md5 === _md5) return;
-        if (log.debug()) {
-          log.debug('Master md5 for zone %s => %s, stage => %s',
-                    self.zone, md5, _md5);
-        }
+        log.debug('Master md5 for zone %s => %s, stage => %s',
+                  self.zone, md5, _md5);
         self._master.config(self.zone, function(err, config, md5) {
           if (err || !config || !md5) {
             log.warn('Error getting master config (zone=%s): %s',
                      self.zone, err);
             return;
           }
+          log.debug('retrieved master config: %s', config);
           self.writeConfig(config, md5, function(err) {
             if (err) {
               log.warn('Unable to save new config: ' + err);
             }
+            log.debug('successfully updated config from master');
             return;
           });
         });
       });
     });
-  }, this.poll * 1000);
+  };
+
+  // This is a little crazy, but...
+  // Basically we want the config poller to run on a set interval, but so as not
+  // to overload the master, make the _first_ instance start at some random time
+  // in the next 10s
+  if (options._noConfig) return;
+
+  this._configPollHandle = null;
+  this._initialConfigHandle = setTimeout(function() {
+    this._configPollHandle = setInterval(_getConfig, this.poll * 1000);
+    self._initialConfigHandle = null;
+  }, Math.floor(Math.random() * 10001));
+
+  return _getConfig();
 };
 
 
@@ -189,7 +208,8 @@ App.prototype.listen = function(callback) {
  * @param {Function} callback called when closed. Takes no arguments.
  */
 App.prototype.close = function(callback) {
-  clearInterval(this._poller);
+  if (this._initialConfigHandle) clearTimeout(this._initialConfigHandle);
+  if (this._configPollHandle) clearInterval(this._configPollHandle);
   this.server.on('close', callback);
   this.server.close();
 };

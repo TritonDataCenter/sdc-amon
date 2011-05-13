@@ -8,6 +8,7 @@ var restify = require('restify');
 var zutil = require('zutil');
 
 var App = require('./lib/app');
+var Constants = require('amon-common').Constants;
 
 var log = restify.log;
 var logLevel = restify.LogLevel.Info;

@@ -1,8 +1,13 @@
 // Copyright 2011 Joyent, Inc.  All rights reserved.
 var crypto = require('crypto');
 var http = require('httpu');
+var restify = require('restify');
 
-var log = require('restify').log;
+var amon_common = require('amon-common');
+
+var Constants = amon_common.Constants;
+var log = restify.log;
+var HttpCodes = restify.HttpCodes;
 
 function _parseResponse(res, callback) {
   if (res.headers['content-length'] &&
@@ -54,36 +59,37 @@ module.exports = (function() {
     if (!options.socket) throw new TypeError('options.socket is required');
     if (!options.id) throw new TypeError('options.id is required');
 
-    this.path = '/checks/' + options.id;
+    this.path = '/events?check=' + options.id + '&status=';
     this.options = {
       socketPath: options.socket,
       method: 'POST',
-      headers: {}
+      headers: {
+        'X-Api-Version': Constants.ApiVersion,
+        'Content-Type': Constants.JsonContentType
+      }
     };
-
-    this.options.headers['X-Api-Version'] = '6.1.0';
-    this.options.headers['Content-Type'] = 'application/json';
   }
 
   Notification.prototype.send = function(status, metrics, callback) {
-    this.options.path = this.path + '?status=' + status;
+    this.options.path = this.path + status;
+
     var req = http.request(this.options, function(res) {
-      if (log.debug()) {
-        log.debug('HTTP Response: code=%s, headers=%o',
-                  res.statusCode, res.headers);
-      }
-      if (res.statusCode !== 202) {
+      log.debug('HTTP Response: code=%s, headers=%o',
+                res.statusCode, res.headers);
+
+      if (res.statusCode !== HttpCodes.Created &&
+          res.statusCode !== HttpCodes.Accepted) {
         return callback(new Error('HTTP failure: ' + res.statusCode));
       }
+
       _parseResponse(res, function(err) {
         if (err) return callback(err);
 
-        if (log.debug()) {
-          log.debug('notification sent. response=%o', res.params);
-        }
+        log.debug('notification sent. response=%o', res.params);
         return callback();
       });
     });
+
     req.write(JSON.stringify({metrics: metrics}));
     req.end();
   };

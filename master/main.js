@@ -3,9 +3,13 @@ var path = require('path');
 var nopt = require('nopt');
 var log = require('restify').log;
 
-var Config = require('amon-common').Config;
+var amon_common = require('amon-common');
 
 var App = require('./lib/app');
+
+var Config = amon_common.Config;
+var Constants = amon_common.Constants;
+
 
 // Global variable that holds a mapping of zone name to Apps
 var file = './cfg/amon-master.json';

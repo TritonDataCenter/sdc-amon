@@ -3,22 +3,14 @@
 var http = require('http');
 var https = require('https');
 var url = require('url');
+var restify = require('restify');
 
-var log = require('restify').log;
+var Constants = require('amon-common').Constants;
 
-function _newOptions(path) {
-  var options = {
-    headers: {},
-    method: 'GET',
-    path: '/config',
-    socketPath: socketPath
-  };
-  options.headers['Content-Type'] = 'application/json';
-  options.headers['X-Api-Version'] = '6.1.0';
-  if (path) options.path += path;
-  return options;
-}
-
+var log = restify.log;
+var _error = restify.newError;
+var HttpCodes = restify.HttpCodes;
+var RestCodes = restify.RestCodes;
 
 /**
  * Constructor for a client to amon-master
@@ -52,7 +44,7 @@ Master.prototype.configMD5 = function(zone, callback) {
     }
 
     return callback(null, res.headers['content-md5']);
-  });
+  }).end();
 };
 
 
@@ -74,7 +66,58 @@ Master.prototype.config = function(zone, callback) {
     }
 
     return callback(null, res.params, res.headers['content-md5']);
-  });
+  }).end();
+};
+
+
+/**
+ * Forwards an agent alarm event on to the master.
+ *
+ * @param {Object} options the usual with:
+ *                 - check the check uuid.
+ *                 - zone the zone id.
+ *                 - status one of ok|error.
+ *                 - customer customer uuid.
+ *                 - metrics (must be an object).
+ *
+ * @param {Function} callback of the form Function(error).
+ */
+Master.prototype.sendEvent = function(options, callback) {
+  if (!options.check) throw new TypeError('check is required');
+  if (!options.zone) throw new TypeError('zone is required');
+  if (!options.status) throw new TypeError('status is required');
+  if (!options.customer) throw new TypeError('customer is required');
+  if (!options.metrics) throw new TypeError('metrics is required');
+  if (!callback) throw new TypeError('callback is required');
+
+  var _callback = function(err, res) {
+    if (err) {
+      log.warn('Master.sendEvent: HTTP error: ' + err);
+      return callback(_error({
+        httpCode: HttpCodes.InternalError,
+        restCode: RestCodes.UnknownError
+      }));
+    }
+    if (res.statusCode !== HttpCodes.Created) {
+      log.warn('Invalid status code for Master.sendEvent: ' + res.statusCode);
+      return callback(_error({
+        httpCode: HttpCodes.InternalError,
+        restCode: RestCodes.UnknownError
+      }));
+    }
+
+    return callback();
+  };
+
+  var req = this._request('POST', '/events', _callback);
+  req.write(JSON.stringify({
+    status: options.status,
+    check: options.check,
+    zone: options.zone,
+    customer: options.customer,
+    metrics: options.metrics
+  }));
+  req.end();
 };
 
 
@@ -84,9 +127,9 @@ Master.prototype._request = function(method, path, callback) {
   var options = {
     method: method,
     headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      'X-Api-Version': '6.1.0'
+      'Accept': Constants.JsonContentType,
+      'Content-Type': Constants.JsonContentType,
+      'X-Api-Version': Constants.ApiVersion
     },
     path: path,
     host: self.url.hostname,
@@ -132,7 +175,7 @@ Master.prototype._request = function(method, path, callback) {
     log.warn('HTTP error: ' + err);
     return callback(err);
   });
-  return req.end();
+  return req;
 };
 
 

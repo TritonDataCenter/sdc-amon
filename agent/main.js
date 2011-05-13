@@ -74,7 +74,11 @@ function _newCheck(plugin, check, callback) {
   }
 
   try {
-    var instance = plugin.newInstance(check.id, check.config);
+    var instance = plugin.newInstance({
+      id: check.id,
+      config: check.config,
+      _log: log
+    });
     instance.start(function(err) {
       if (err) {
         log.error('Plugin.start (id=%s) failed: %s', check.id, err.stack);

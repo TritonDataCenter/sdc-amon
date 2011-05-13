@@ -35,5 +35,6 @@ module.exports = {
   ContentType: 'Content-Type',
   HashHeader: 'ETag',
   ServerName: 'Joyent',
+  JsonContentType: 'application/json',
   TarContentType: 'application/x-tar'
 };

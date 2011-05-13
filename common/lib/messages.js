@@ -6,7 +6,7 @@ module.exports = {
 
   CustomerInvalidForCheck: 'customer %s is not associated with check %s',
   InvalidConfig: 'config is invalid: %s',
-  InvalidMetric: 'metric must contain an object with name, type and value',
+  InvalidMetric: 'metrics must contain an object with name, type and value',
   InvalidStatus: 'status must be one of: %s',
   InvalidUrn: 'urn %s is not a known check urn.',
   MissingParameter: '%s is a required parameter',

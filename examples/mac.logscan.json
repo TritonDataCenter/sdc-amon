@@ -1,0 +1,9 @@
+{
+  "urn": "amon:logscan",
+  "config": {
+    "path": "/var/log/appfirewall.log",
+    "regex": "last message repeated .*",
+    "threshold": 1,
+    "period": 120
+  }
+}

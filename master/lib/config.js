@@ -7,6 +7,7 @@ var amon_common = require('amon-common');
 var Check = require('./model/check');
 
 var Constants = amon_common.Constants;
+var Messages = amon_common.Messages;
 var w3clog = amon_common.w3clog;
 var log = restify.log;
 var HttpCodes = restify.HttpCodes;
@@ -32,14 +33,13 @@ function _sendConfig(req, res, next, sendData) {
         res.send(500);
       } else {
         var code = sendData ? HttpCodes.Ok : HttpCodes.NoContent;
-        if (log.debug()) {
-          log.debug('config._sendConfig returning %d, obj=%o', code, checks);
-        }
+        log.debug('config._sendConfig returning %d, obj=%o', code, checks);
         res.send(code, checks);
       }
       return next();
     });
   } else {
+    log.debug('Sending missingArgument error(zone)');
     res.sendError(_missingArgument('zone'));
     return next();
   }
@@ -49,16 +49,12 @@ function _sendConfig(req, res, next, sendData) {
 module.exports = {
 
   head: function(req, res, next) {
-    if (log.debug()) {
-      log.debug('config.headConfig: params=%o', req.params);
-    }
+    log.debug('config.headConfig: params=%o', req.params);
     return _sendConfig(req, res, next, false);
   },
 
   get: function(req, res, next) {
-    if (log.debug()) {
-      log.debug('config.getConfig: params=%o', req.params);
-    }
+    log.debug('config.getConfig: params=%o', req.params);
     return _sendConfig(req, res, next, true);
   }
 
