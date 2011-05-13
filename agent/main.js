@@ -156,7 +156,7 @@ function _updateConfig(force) {
     }
     log.info('update-config: Updated. Stopping all checks and recreating');
     for (var k in gChecks) {
-      if (checks.hasOwnProperty(k)) {
+      if (gChecks.hasOwnProperty(k)) {
         gChecks[k].stop();
         delete gChecks[k];
       }
