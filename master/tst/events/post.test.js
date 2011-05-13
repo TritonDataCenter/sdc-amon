@@ -13,19 +13,21 @@ restify.log.level(restify.LogLevel.Trace);
 
 // Generated Stuff
 var id;
+var check;
 var customer;
 var zone;
 
 function _options(path) {
   var options = {
     method: 'POST',
-    headers: {},
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Api-Version': '6.1.0'
+    },
     path: '/events',
     socketPath: socketPath
   };
   if (path) options.path += path;
-  options.headers['Content-Type'] = 'application/json';
-  options.headers['X-Api-Version'] = '6.1.0';
   return options;
 }
 
@@ -46,7 +48,29 @@ exports.setUp = function(test, assert) {
     config: cfg
   });
   app.listen(function() {
-    test.finish();
+    var opts = _options();
+    opts.path = '/checks';
+    var req = http.request(opts, function(res) {
+      common.checkResponse(assert, res);
+      assert.equal(res.statusCode, 201);
+      common.checkContent(assert, res, function() {
+        check = res.params.id;
+        test.finish();
+      });
+    });
+
+    req.write(JSON.stringify({
+      customer: customer,
+      zone: zone,
+      urn: 'amon:logscan',
+      config: {
+        path: '/' + uuid(),
+        regex: '*',
+        period: 10,
+        threshold: 1
+      }
+    }));
+    req.end();
   });
 };
 
@@ -94,6 +118,128 @@ exports.test_invalid_status = function(test, assert) {
 };
 
 
+exports.test_bogus_check = function(test, assert) {
+  var req = http.request(_options(), function(res) {
+    common.checkResponse(assert, res);
+    assert.equal(res.statusCode, 404);
+    common.checkContent(assert, res, function() {
+      assert.ok(res.params);
+      assert.ok(res.params.code);
+      assert.ok(res.params.message);
+      assert.equal(res.params.code, 'InvalidArgument');
+      test.finish();
+    });
+  });
+
+  req.write(JSON.stringify({
+    status: 'ok',
+    check: uuid(),
+    zone: zone,
+    customer: customer,
+    metrics: {
+      name: 'urn:cpu:util',
+      type: 'Integer',
+      value: 95
+    }
+  }));
+  req.end();
+};
+
+exports.test_bogus_customer = function(test, assert) {
+  var req = http.request(_options(), function(res) {
+    common.checkResponse(assert, res);
+    assert.equal(res.statusCode, 409);
+    common.checkContent(assert, res, function() {
+      assert.ok(res.params);
+      assert.ok(res.params.code);
+      assert.ok(res.params.message);
+      assert.equal(res.params.code, 'InvalidArgument');
+      test.finish();
+    });
+  });
+
+  req.write(JSON.stringify({
+    status: 'ok',
+    check: check,
+    zone: zone,
+    customer: uuid(),
+    metrics: {
+      name: 'urn:cpu:util',
+      type: 'Integer',
+      value: 95
+    }
+  }));
+  req.end();
+};
+
+exports.test_bogus_zone = function(test, assert) {
+  var req = http.request(_options(), function(res) {
+    common.checkResponse(assert, res);
+    assert.equal(res.statusCode, 409);
+    common.checkContent(assert, res, function() {
+      assert.ok(res.params);
+      assert.ok(res.params.code);
+      assert.ok(res.params.message);
+      assert.equal(res.params.code, 'InvalidArgument');
+      test.finish();
+    });
+  });
+
+  req.write(JSON.stringify({
+    status: 'ok',
+    check: check,
+    zone: uuid(),
+    customer: customer,
+    metrics: {
+      name: 'urn:cpu:util',
+      type: 'Integer',
+      value: 95
+    }
+  }));
+  req.end();
+};
+
+exports.test_success_with_object = function(test, assert) {
+  var req = http.request(_options(), function(res) {
+    common.checkResponse(assert, res);
+    assert.equal(res.statusCode, 201);
+    test.finish();
+  });
+
+  req.write(JSON.stringify({
+    status: 'ok',
+    check: check,
+    zone: zone,
+    customer: customer,
+    metrics: {
+      name: 'urn:cpu:util',
+      type: 'Integer',
+      value: 95
+    }
+  }));
+  req.end();
+};
+
+exports.test_success_with_array = function(test, assert) {
+  var req = http.request(_options(), function(res) {
+    common.checkResponse(assert, res);
+    assert.equal(res.statusCode, 201);
+    test.finish();
+  });
+
+  req.write(JSON.stringify({
+    status: 'ok',
+    check: check,
+    zone: zone,
+    customer: customer,
+    metrics: [{
+      name: 'urn:cpu:util',
+      type: 'Integer',
+      value: 95
+    }]
+  }));
+  req.end();
+};
 
 exports.tearDown = function(test, assert) {
   app.redis.flushdb(function(err, res) {

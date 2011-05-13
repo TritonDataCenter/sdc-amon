@@ -7,10 +7,10 @@ var uuid = require('node-uuid');
 
 var App = require('../../lib/app');
 var Config = require('amon-common').Config;
-var common = require('../lib/common');
+var common = require('amon-common')._test;
 
 // Our stuff for running
-restify.log.level(restify.LogLevel.Debug);
+restify.log.level(restify.LogLevel.Trace);
 
 var path = '/var/log/foo.log';
 var regex = 'ERROR';

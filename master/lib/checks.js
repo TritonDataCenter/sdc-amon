@@ -94,10 +94,8 @@ module.exports = {
         log.warn('Error saving new check to redis: ' + err);
         res.send(500);
       } else {
-        if (log.debug()) {
-          log.debug('checks.create returning %d, object=%o', 201,
-                    check.toObject());
-        }
+        log.debug('checks.create returning %d, object=%o', 201,
+                  check.toObject());
         res.send(201, check.toObject());
       }
       return next();

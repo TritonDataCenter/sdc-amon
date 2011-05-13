@@ -101,13 +101,13 @@ module.exports = {
       // For now this is just copying out the req.params, but it seems possible
       // we would extend this with more, so this interceptor sets up an
       // _amonEvent object.
-      res._amonEvent = {
+      req._amonEvent = {
         message: req.params.message || '',
         metrics: req.params.metrics,
         status: req.params.status
       };
 
-      log.debug('event: processed %o', res._amonEvent);
+      log.debug('event: processed %o', req._amonEvent);
     }
 
     return next();

@@ -3,6 +3,20 @@
 var uuid = require('node-uuid');
 var log = require('restify').log;
 
+function _iso_time(d) {
+  function pad(n) {
+    return n < 10 ? '0' + n : n;
+  }
+  if (!d) d = new Date();
+  return d.getUTCFullYear() + '-' +
+    pad(d.getUTCMonth() + 1) + '-' +
+    pad(d.getUTCDate()) + 'T' +
+    pad(d.getUTCHours()) + ':' +
+    pad(d.getUTCMinutes()) + ':' +
+    pad(d.getUTCSeconds()) + 'Z';
+}
+
+
 function Event(options) {
   if (!options || typeof(options) !== 'object')
     throw new TypeError('options must be an object');
@@ -14,6 +28,7 @@ function Event(options) {
   this.event = options.event;
   this.zone = options.zone;
   this.expiry = options.expiry || 604800;
+  this.ctime = _iso_time();
 }
 
 
@@ -23,7 +38,8 @@ Event.prototype.toObject = function() {
     id: self.id,
     check: self.check,
     zone: self.zone,
-    event: self.event
+    event: self.event,
+    ctime: self.ctime
   };
 };
 
@@ -31,6 +47,8 @@ Event.prototype.toObject = function() {
 Event.prototype.save = function(callback) {
   if (!this.id) throw new TypeError('this.id is required');
   if (!this.event) throw new TypeError('this.event is required');
+  if (!this.check) throw new TypeError('this.check is required');
+  if (!this.zone) throw new TypeError('this.zone is required');
 
   var self = this;
   var redis = this.client;
@@ -48,7 +66,7 @@ Event.prototype.save = function(callback) {
       log.debug('Event: redis.lpush(check) returned err=' + err);
       if (err) return callback(err);
 
-      return redis.lpush(self._checkZoneKey(), self.id, function(err, res) {
+      return redis.lpush(self._zoneIndexKey(), self.id, function(err, res) {
         log.debug('Event: redis.lpush(zone) returned err=' + err);
         if (err) return callback(err);
 
@@ -60,15 +78,24 @@ Event.prototype.save = function(callback) {
 
 
 Event.prototype._key = function() {
-  return '/events/' + this.id;
+  var k = '/events/' + this.id;
+  log.trace('event._key = ' + k);
+  return k;
 };
 
 
 Event.prototype._checkIndexKey = function() {
-  return '/events/checks' + this.check;
+  var k = '/events/checks/' + this.check;
+  log.trace('event._checkIndexKey = ' + k);
+  return k;
 };
 
 
 Event.prototype._zoneIndexKey = function() {
-  return '/events/zoness' + this.zone;
+  var k = '/events/zoness/' + this.zone;
+  log.trace('event._zoneIndexKey = ' + k);
+  return k;
 };
+
+
+module.exports = (function() { return Event; })();
