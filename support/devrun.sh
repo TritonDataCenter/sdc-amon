@@ -26,9 +26,28 @@ function fatal {
     exit 1
 }
 
+function errexit {
+    [[ $1 -ne 0 ]] || exit 0
+    cleanup
+    fatal "error exit status $1 at line $2"
+}
+
+function cleanup {
+    echo "== cleanup"
+    kill `cat $ROOT/tmp/dev-redis.pid`
+    ps -ef | grep node-de[v] | awk '{print $2}' | xargs kill
+}
 
 
 #---- mainline
+
+trap 'errexit $? $LINENO' EXIT
+
+echo "***"
+echo "* You might want to manually make this change to your node-dev:"
+echo "*   https://github.com/fgnass/node-dev/issues/14"
+echo "* It will mean that recovering from code errors will work."
+echo "***"
 
 echo "== preclean"
 [[ -e $ROOT/tmp/dev-redis.pid ]] && kill `cat $ROOT/tmp/dev-redis.pid` && sleep 1 || true
@@ -55,12 +74,4 @@ ${NODE_DEV} $ROOT/agent/main.js -d -p 10 -c $ROOT/tmp/dev-agent/config -t $ROOT/
 echo "== tail the logs ..."
 multitail -f $ROOT/tmp/dev-master.log $ROOT/tmp/dev-relay.log $ROOT/tmp/dev-agent.log
 
-echo "== shutdown everything"
-kill `cat $ROOT/tmp/dev-redis.pid`
-ps -ef | grep node-de[v] | awk '{print $2}' | xargs kill
-
-echo "***"
-echo "* You might want to manually make this change to your node-dev:"
-echo "*   https://github.com/fgnass/node-dev/issues/14"
-echo "* It will mean that recovering from code errors will work."
-echo "***"
+cleanup
