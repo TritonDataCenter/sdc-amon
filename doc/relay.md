@@ -1,7 +1,6 @@
 ---
-title: Joyent Public API
+title: Amon Relay API
 brand: api.no.de
-version: 0.2.0
 ---
 
 # Relay API
