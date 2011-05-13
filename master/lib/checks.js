@@ -8,7 +8,6 @@ var Check = require('./model/check');
 
 var Constants = amon_common.Constants;
 var Messages = amon_common.Messages;
-var w3clog = amon_common.w3clog;
 var log = restify.log;
 var HttpCodes = restify.HttpCodes;
 var RestCodes = restify.RestCodes;
@@ -44,9 +43,7 @@ module.exports = {
     assert.ok(req._config);
     assert.ok(req._config.plugins);
 
-    if (log.debug()) {
-      log.debug('checks.create entered: params=%o', req.params);
-    }
+    log.debug('checks.create entered: params=%o', req.params);
 
     var customer = req.params.customer;
     var zone = req.params.zone;

@@ -7,7 +7,7 @@ var restify = require('restify');
 var uuid = require('node-uuid');
 
 var App = require('../lib/app');
-var common = require('./lib/common');
+var common = require('amon-common')._test;
 
 restify.log.level(restify.LogLevel.Debug);
 
@@ -25,10 +25,10 @@ var zone;
 
 function _options(path) {
   var options = {
-    socketPath: socket,
+    headers: {},
     method: 'POST',
-    path: '/events/' + uuid(),
-    headers: {}
+    path: '/events',
+    socketPath: socket
   };
   if (path) options.path += path;
   options.headers['Content-Type'] = 'application/json';

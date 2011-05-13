@@ -45,28 +45,20 @@ Check.prototype.save = function(callback) {
   if (!self.id) self.id = uuid();
   var data = JSON.stringify(this.toObject());
 
-  if (log.debug()) {
-    log.debug('Saving %o to redis', this.toObject());
-  }
+  log.debug('Saving %o to redis', this.toObject());
 
   return redis.set(self.id, data, function(err, res) {
-    if (log.debug()) {
-      log.debug('redis set returned err=' + err + ', res=' + res);
-    }
+    log.debug('redis set returned err=' + err + ', res=' + res);
     if (err) return callback(err);
 
     // Build up the indices
     // Bug here if these already exist...
     redis.lpush(self.customer, self.id, function(err, res) {
-      if (log.debug()) {
-        log.debug('redis lpush(customer) returned err=' + err + ', res=' + res);
-      }
+      log.debug('redis lpush(customer) returned err=' + err + ', res=' + res);
       if (err) return callback(err);
 
       return redis.lpush(self.zone, self.id, function(err, res) {
-        if (log.debug()) {
-          log.debug('redis lpush(zone) returned err=' + err + ', res=' + res);
-        }
+        log.debug('redis lpush(zone) returned err=' + err + ', res=' + res);
         if (err) return callback(err);
 
         return callback();

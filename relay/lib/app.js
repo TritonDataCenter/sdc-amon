@@ -74,7 +74,6 @@ var App = function App(options) {
   });
 
   var _setup = function(req, res, next) {
-    log.debug('_setup entered');
     req._log = log;
     req._zone = self.zone;
     req._owner = self.owner;
@@ -93,12 +92,14 @@ var App = function App(options) {
 
   this.server.head('/config', self.before, config.checksum, self.after);
   this.server.get('/config', self.before, config.getConfig, self.after);
-  this.server.post('/events/:check',
+
+  this.server.post('/events',
                    self.before,
                    preEvents.event,
                    events.forward,
                    self.after);
 
+  // Register the config watcher
   this._poller = setInterval(function() {
     self._master.configMD5(self.zone, function(err, md5) {
       if (err) {

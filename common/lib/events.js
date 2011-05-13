@@ -95,9 +95,7 @@ module.exports = {
     log.debug('event: params=%o', req.params);
 
     if (!_validateInput(req, res)) {
-      log.debug('event: error sent: %d %s',
-                res.sentError.httpCode,
-                res.sentError.restCode);
+      log.debug('event: error sent: %o', res.sentError);
       res._eventResultSent = true;
     } else {
       // For now this is just copying out the req.params, but it seems possible
@@ -109,7 +107,7 @@ module.exports = {
         status: req.params.status
       };
 
-      log.debug('event: processed %o', res._amonEven);
+      log.debug('event: processed %o', res._amonEvent);
     }
 
     return next();

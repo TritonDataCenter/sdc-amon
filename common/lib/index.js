@@ -6,6 +6,6 @@ module.exports = {
   Constants: require('./constants'),
   Messages: require('./messages'),
   events: require('./events'),
-  w3clog: require('./w3clog')
-
+  w3clog: require('./w3clog'),
+  _test: require('./test-common')
 };

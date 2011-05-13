@@ -5,10 +5,12 @@ var redis = require('redis');
 var restify = require('restify');
 
 var checks = require('./checks');
+var events = require('./events');
 var config = require('./config');
 var amon_common = require('amon-common');
 
 var Constants = amon_common.Constants;
+var preEvents = amon_common.events;
 var w3clog = amon_common.w3clog;
 
 var log = restify.log;
@@ -47,9 +49,6 @@ var App = function App(options) {
   });
 
   var _setup = function(req, res, next) {
-    if (log.debug()) {
-      log.debug('_setup entered, config=%o', self.config);
-    }
     req._config = self.config.config;
     req._log = log;
     req._redis = self.redis;
@@ -69,6 +68,13 @@ var App = function App(options) {
   this.server.del('/checks/:id', self.before, checks.del, self.after);
   this.server.head('/config', self.before, config.head, self.after);
   this.server.get('/config', self.before, config.get, self.after);
+
+  this.server.post('/events',
+                   self.before,
+                   preEvents.event,
+                   events.handle,
+                   self.after);
+
 };
 
 
