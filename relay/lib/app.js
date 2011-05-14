@@ -133,7 +133,7 @@ var App = function App(options) {
         });
       });
     });
-  };
+  }
 
   // This is a little crazy, but...
   // Basically we want the config poller to run on a set interval, but so as not

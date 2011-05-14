@@ -9,7 +9,7 @@ var App = require('../../lib/app');
 var common = require('amon-common')._test;
 
 // Our stuff for running
-restify.log.level(restify.LogLevel.Trace);
+restify.log.level(restify.LogLevel.Debug);
 
 // Generated Stuff
 var id;
@@ -73,7 +73,7 @@ exports.setUp = function(test, assert) {
     req.end();
   });
 };
-
+/*
 exports.test_missing_status = function(test, assert) {
   http.request(_options(), function(res) {
     common.checkResponse(assert, res);
@@ -198,7 +198,7 @@ exports.test_bogus_zone = function(test, assert) {
   }));
   req.end();
 };
-
+*/
 exports.test_success_with_object = function(test, assert) {
   var req = http.request(_options(), function(res) {
     common.checkResponse(assert, res);
@@ -219,7 +219,7 @@ exports.test_success_with_object = function(test, assert) {
   }));
   req.end();
 };
-
+/*
 exports.test_success_with_array = function(test, assert) {
   var req = http.request(_options(), function(res) {
     common.checkResponse(assert, res);
@@ -240,7 +240,7 @@ exports.test_success_with_array = function(test, assert) {
   }));
   req.end();
 };
-
+*/
 exports.tearDown = function(test, assert) {
   app.redis.flushdb(function(err, res) {
     app.close(function() {

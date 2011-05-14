@@ -134,7 +134,7 @@ function _loadChecksFromConfig() {
       if (++loaded >= checks.length) {
         log.info('All checks loaded');
       }
-    };
+    }
 
     var loaded = 0;
     for (var i = 0; i < checks.length; i++) {

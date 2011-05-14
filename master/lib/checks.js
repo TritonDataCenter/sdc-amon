@@ -71,9 +71,9 @@ module.exports = {
       _sendInvalidArgument(res, Messages.InvalidUrn, urn);
       return next();
     }
-    if (log.debug()) {
-      log.debug('checks.create: found plugin %o', plugin);
-    }
+
+    log.debug('checks.create: found plugin %o', plugin);
+
     try {
       plugin.validateConfig(config);
     } catch (e) {
@@ -104,9 +104,7 @@ module.exports = {
 
 
   list: function(req, res, next) {
-    if (log.debug()) {
-      log.debug('checks.list entered: params=%o', req.params);
-    }
+    log.debug('checks.list entered: params=%o', req.params);
 
     var check = new Check({
       redis: req._redis
@@ -119,9 +117,7 @@ module.exports = {
           log.warn('Error finding checks in redis: ' + err);
           res.send(500);
         } else {
-          if (log.debug()) {
-            log.debug('checks.list returning %d, obj=%o', 200, checks);
-          }
+          log.debug('checks.list returning %d, obj=%o', 200, checks);
           res.send(200, checks);
         }
         return next();
@@ -136,9 +132,8 @@ module.exports = {
   },
 
   get: function(req, res, next) {
-    if (log.debug()) {
-      log.debug('checks.get entered: params=%o', req.params);
-    }
+    log.debug('checks.get entered: params=%o', req.params);
+
     var check = new Check({
       redis: req._redis,
       id: req.uriParams.id
@@ -149,9 +144,7 @@ module.exports = {
         log.warn('Error loading check from redis: ' + err);
         res.send(500);
       } else {
-        if (log.debug()) {
-          log.debug('checks.get returning %d, obj=%o', 200, check.toObject());
-        }
+        log.debug('checks.get returning %d, obj=%o', 200, check.toObject());
         res.send(200, check.toObject());
       }
       return next();
@@ -159,9 +152,8 @@ module.exports = {
   },
 
   del: function(req, res, next) {
-    if (log.debug()) {
-      log.debug('checks.del entered: params=%o', req.params);
-    }
+    log.debug('checks.del entered: params=%o', req.params);
+
     var check = new Check({
       redis: req._redis,
       id: req.uriParams.id
@@ -172,9 +164,7 @@ module.exports = {
         log.warn('Error destroying check from redis: ' + err);
         res.send(500);
       } else {
-        if (log.debug()) {
-          log.debug('checks.del returning %d', 204);
-        }
+        log.debug('checks.del returning %d', 204);
         res.send(204);
       }
       return next();

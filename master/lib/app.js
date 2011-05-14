@@ -67,10 +67,11 @@ var App = function App(options) {
   this.server.head('/config', self.before, config.head, self.after);
   this.server.get('/config', self.before, config.get, self.after);
 
+  this.server.get('/events', self.before, events.list, self.after);
   this.server.post('/events',
                    self.before,
                    preEvents.event,
-                   events.handle,
+                   events.create,
                    self.after);
 
 };

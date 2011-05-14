@@ -113,13 +113,9 @@ Check.prototype.load = function(callback) {
   var self = this;
   if (!this.id) throw new TypeError('check.id required');
 
-  if (log.debug()) {
-    log.debug('Check.load: id=%s', this.id);
-  }
+  log.debug('Check.load: id=%s', this.id);
   this.client.get(self._key(), function(err, res) {
-    if (log.debug()) {
-      log.debug('Check.load: redis returned err=' + err);
-    }
+    log.debug('Check.load: redis returned err=' + err);
     if (err) return callback(err);
 
     if (!res) return callback(null, false);

@@ -21,9 +21,8 @@ function _sendInternalError(res) {
   var e = _error({httpCode: HttpCodes.InternalError,
                   restCode: RestCodes.UnknownError
                  });
-  if (log.debug()) {
-    log.debug('sending error: ' + e);
-  }
+
+  log.debug('sending error: ' + e);
   res.sendError(e);
 }
 
@@ -32,9 +31,8 @@ function _sendMissingArgument(res, arg) {
                   restCode: RestCodes.MissingParameter,
                   message: _message(Messages.MissingParameter, arg)
                  });
-  if (log.debug()) {
-    log.debug('sending error: ' + e);
-  }
+
+  log.debug('sending error: ' + e);
   res.sendError(e);
 }
 
@@ -44,9 +42,8 @@ function _sendNoCheck(res, check) {
                   restCode: RestCodes.InvalidArgument,
                   message: _message(Messages.UnknownCheck, check)
                  });
-  if (log.debug()) {
-    log.debug('sending error: ' + e);
-  }
+
+  log.debug('sending error: ' + e);
   res.sendError(e);
 }
 
@@ -56,9 +53,7 @@ function _sendInvalidCustomer(res, customer, check) {
                   message: _message(Messages.CustomerInvalidForCheck,
                                     customer, check)
                  });
-  if (log.debug()) {
-    log.debug('sending error: ' + e);
-  }
+  log.debug('sending error: ' + e);
   res.sendError(e);
 }
 
@@ -67,19 +62,18 @@ function _sendInvalidZone(res, zone, check) {
                   restCode: RestCodes.InvalidArgument,
                   message: _message(Messages.ZoneInvalidForCheck, zone, check)
                  });
-  if (log.debug()) {
-    log.debug('sending error: ' + e);
-  }
+
+  log.debug('sending error: ' + e);
   res.sendError(e);
 }
 
 
 module.exports = {
 
-  handle: function handle(req, res, next) {
+  create: function handle(req, res, next) {
     if (res._eventResultSent) return next();
     assert.ok(req._amonEvent);
-    log.debug('events.handle: event=%o, params=%o',
+    log.debug('events.create: event=%o, params=%o',
               req._amonEvent, req.params);
 
     if (!req.params.check) {
@@ -141,13 +135,61 @@ module.exports = {
         if (err) {
           _sendInternalError(res);
         } else {
-          log.debug('events.handle returning %d, object=%o',
+          log.debug('events.create returning %d, object=%o',
                     HttpCodes.Created, event.toObject());
           res.send(HttpCodes.Created, event.toObject());
         }
         return next();
       });
     });
+  },
+
+  list: function(req, res, next) {
+    log.debug('events.list: params=%o', req.params);
+
+    var event = new Event({
+      redis: req._redis
+    });
+
+
+    if (req.params.check) {
+      event.findByCheck(req.params.check, function(err, events) {
+        if (err) {
+          log.warn('Error finding events in redis: ' + err);
+          res.send(500);
+        } else {
+          log.debug('events.list returning %d, obj=%o', 200, events);
+          res.send(200, events);
+        }
+        return next();
+      });
+    } else if (req.params.customer) {
+      event.findByCustomer(req.params.customer, function(err, events) {
+        if (err) {
+          log.warn('Error finding events in redis: ' + err);
+          res.send(500);
+        } else {
+          log.debug('events.list returning %d, obj=%o', 200, events);
+          res.send(200, events);
+        }
+        return next();
+      });
+    } else if (req.params.zone) {
+      event.findByZone(req.params.zone, function(err, events) {
+        if (err) {
+          log.warn('Error finding events in redis: ' + err);
+          res.send(500);
+        } else {
+          log.debug('events.list returning %d, obj=%o', 200, events);
+          res.send(200, events);
+        }
+        return next();
+      });
+
+    } else {
+      _sendMissingArgument(res, 'check, customer or zone');
+      return next();
+    }
   }
 
 };

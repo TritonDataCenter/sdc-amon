@@ -46,13 +46,10 @@ module.exports = {
     req._master.sendEvent(event, function(err) {
       if (err) res.sendError(err);
 
-      res.send(202);
+      log.debug('events.forward: sending %d', HttpCodes.Accepted);
+      res.send(HttpCodes.Accepted);
       return next();
     });
-
-    log.debug('events.forward: sending %d', HttpCodes.Accepted);
-    res.send(HttpCodes.Accepted);
-    return next();
   }
 
 };
