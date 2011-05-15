@@ -19,6 +19,13 @@ ulimit -n 2048
 ROOT=$(cd $(dirname $0)/../; pwd)
 NODE_DEV="env LD_PRELOAD_32=/usr/lib/extendedFILE.so.1 PATH=${ROOT}/deps/node-install/bin:${ROOT}/deps/riak/rel/riak/bin:$PATH node-dev"
 RIAK=$ROOT/deps/riak/rel/riak/bin/riak
+# A `tail` supporting multiple files:
+# 	Mac: brew install multitail
+# 	SmartOS: pkgin in mtail
+MTAIL=multitail
+if [[ `uname` == "SunOS" ]]; then
+    MTAIL=mtail
+fi
 
 
 #---- support functions
@@ -37,7 +44,7 @@ function errexit {
 function cleanup {
     echo "== cleanup"
     ${RIAK} stop
-    ps -ef | grep node-de[v] | awk '{print $2}' | xargs kill
+    ps -ef | grep node-de[v] | awk '{print $2}' | xargs kill 2>/dev/null || true
 }
 
 
@@ -48,7 +55,7 @@ trap 'errexit $? $LINENO' EXIT
 echo "== preclean"
 r_stat=$(${RIAK} ping)
 [[ "$r_stat" == "pong" ]] && ${RIAK} stop && sleep 1 || true
-ps -ef | grep node-de[v] | awk '{print $2}' | xargs kill
+ps -ef | grep node-de[v] | awk '{print $2}' | xargs kill 2>/dev/null || true
 rm -f $ROOT/tmp/dev-*.log.lastrun
 #TODO: move old logs to $file.lastrun  to start fresh
 # Later, might want to NOT wipe the agent and relay DBs to start, but for now:
@@ -72,6 +79,6 @@ mkdir -p $ROOT/tmp/dev-agent/tmp
 ${NODE_DEV} $ROOT/agent/main.js -p 10 -c $ROOT/tmp/dev-agent/config -t $ROOT/tmp/dev-agent/tmp -s 8081 > $ROOT/tmp/dev-agent.log 2>&1 &
 
 echo "== tail the logs ..."
-multitail -f $ROOT/tmp/dev-master.log $ROOT/tmp/dev-relay.log $ROOT/tmp/dev-agent.log
+${MTAIL} -f $ROOT/tmp/dev-master.log $ROOT/tmp/dev-relay.log $ROOT/tmp/dev-agent.log
 
 cleanup
