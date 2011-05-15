@@ -30,8 +30,7 @@ NODE := $(NODEDIR)/bin/node
 NODE_WAF := $(NODEDIR)/bin/node-waf
 NPM := npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH npm
 NODE_DEV := PATH=$(NODEDIR)/bin:$$PATH node-dev
-RIAK := deps/riak
-RIAK_CMD := $(RIAK)/rel/riak/bin/riak
+RIAK := deps/riak/rel/riak/bin/riak
 WHISKEY = bin/whiskey
 
 #
@@ -47,12 +46,12 @@ all:: common plugins agent relay bin/amon-zwatch master
 # deps
 #
 
-deps:	$(NODEDIR)/bin/node $(NODEDIR)/bin/npm $(RIAK_CMD) \
+deps:	$(NODEDIR)/bin/node $(NODEDIR)/bin/npm $(RIAK) \
 	$(NODEDIR)/lib/node_modules/whiskey $(NODEDIR)/lib/node_modules/jshint
 
 # Use 'Makefile' landmarks instead of the dir itself, because dir mtime
 # is that of the most recent file: results in unnecessary rebuilds.
-$(RIAK)/Makefile deps/node/Makefile deps/npm/Makefile:
+deps/riak/Makefile deps/node/Makefile deps/npm/Makefile:
 	(GIT_SSL_NO_VERIFY=1 git submodule update --init)
 
 $(NODEDIR)/bin/node: deps/node/Makefile
@@ -62,8 +61,8 @@ $(NODEDIR)/bin/npm: $(NODEDIR)/bin/node deps/npm/Makefile
 	(cd deps/npm && npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH $(MAKE) install)
 
 # `touch` to ensure built product is newer than the Makefile dep.
-$(RIAK_CMD): deps/riak/Makefile
-	(cd $(RIAK) && make rel && touch $(RIAK_CMD))
+$(RIAK): deps/riak/Makefile
+	(cd deps/riak && make rel && touch $(RIAK))
 
 # Global npm module deps (currently just test/lint stuff used by every amon
 # package). We install globally instead of 'npm install --dev' in every package
