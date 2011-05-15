@@ -61,8 +61,9 @@ $(NODEDIR)/bin/node: deps/node/Makefile
 $(NODEDIR)/bin/npm: $(NODEDIR)/bin/node deps/npm/Makefile
 	(cd deps/npm && npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH $(MAKE) install)
 
-$(RIAK_CMD): $(RIAK)/Makefile
-	(cd $(RIAK) && make rel)
+# `touch` to ensure built product is newer than the Makefile dep.
+$(RIAK_CMD): deps/riak/Makefile
+	(cd $(RIAK) && make rel && touch $(RIAK_CMD))
 
 # Global npm module deps (currently just test/lint stuff used by every amon
 # package). We install globally instead of 'npm install --dev' in every package
