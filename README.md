@@ -113,23 +113,24 @@ there is an excellent chance he will go postal on you):
 
 Great, now CRUD some checks:
 
-    alias jcurl='curl -is -H "x-api-version: 6.1.0" -H "Content-Type: application/json"'
-    jcurl localhost:8080/checks?customer=joyent\&zone=global -X POST -d @examples/mac.logscan.json
-    jcurl localhost:8080/checks?zone=global
+    touch /tmp/whistleblower.log   # workaround for MON-2
+    bin/amon-mapi /checks?customer=joyent\&zone=global -X POST -d @examples/whistleblower.logscan.json
+    bin/amon-mapi /checks?zone=global
 
-Now cause the logscan alarm to match. You can do this by having some simple
-node HTTP server that you start in a loop.  Basically, do it 10x, then wait
-about a minute until apple writes out a record to your firewall.log. You should
-see an event flow agent -> relay -> master.  After which, you can see this
-magical alert with:
+Now cause the logscan alarm to match:
 
-    jcurl localhost:8080/events?customer=joyent | json
-    jcurl localhost:8080/events?zone=global | json
-    jcurl localhost:8080/events?check=387D4037-4E1B-43C8-B81D-35F9157ABD77 | json
+    echo tweet >> /tmp/whistleblower.log
+
+You should see an event flow agent -> relay -> master. After which, you can
+see this magical alert with:
+
+    bin/amon-mapi /events?customer=joyent
+    bin/amon-mapi /events?zone=global
+    bin/amon-mapi /events?check=387D4037-4E1B-43C8-B81D-35F9157ABD77
 
 Clean up with:
 
-    jcurl localhost:8080/checks/387D4037-4E1B-43C8-B81D-35F9157ABD77
-    jcurl localhost:8080/checks/387D4037-4E1B-43C8-B81D-35F9157ABD77 -X DELETE
+    bin/amon-mapi /checks/387D4037-4E1B-43C8-B81D-35F9157ABD77
+    bin/amon-mapi /checks/387D4037-4E1B-43C8-B81D-35F9157ABD77 -X DELETE
 
 (note that the events are not deletable, and will expire in a week).
