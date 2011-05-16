@@ -1,0 +1,54 @@
+#!/bin/bash
+#
+# Copyright (c) 2011 Joyent Inc., All rights reserved.
+#
+# Convenience wrapper for calling the Amon Master API.
+#
+
+#export PS4='${BASH_SOURCE}:${LINENO}: ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+if [ "$DEBUG" != "" ]; then
+    set -o xtrace
+fi
+set -o errexit
+set -o pipefail
+
+
+JSON=$(which json 2>/dev/null || true)
+CURL_OPTS="-H x-api-version:6.1.0 -H Content-Type:application/json"
+
+# Arguments.
+verbose=0
+if [ "$1" == "-v" ]; then
+    shift
+    verbose=1
+fi
+path=$1
+if [[ -z "$path" ]]; then
+    echo "error: no PATH argument given"
+    echo "Usage: amon-mapi [-v] PATH [EXTRA-CURL-ARGS]"
+    exit 1
+fi
+shift;
+
+
+# Determine AMON MAPI URL.
+if [[ ! -z "$AMON_MAPI_URL" ]]; then
+    true
+else
+    AMON_MAPI_URL=http://localhost:8080
+fi
+if [[ -z "$AMON_MAPI_URL" ]]; then
+    echo "error: could not determine Amon Master URL, set 'AMON_MAPI_URL' envvar"
+    exit 1
+fi
+
+
+# Note: the 'echo' doesn't show the real quoting of args.
+
+[ "$verbose" == "1" ] && echo "# curl -sS -i $CURL_OPTS --url $AMON_MAPI_URL$path $@" >&2
+if [[ ! -x "$JSON" ]]; then
+    curl -sS -i $CURL_OPTS --url "$AMON_MAPI_URL$path" "$@"
+    echo ""
+else
+    curl -sS -i $CURL_OPTS --url "$AMON_MAPI_URL$path" "$@" | json -q
+fi
