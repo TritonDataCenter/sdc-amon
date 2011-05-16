@@ -70,7 +70,7 @@ function _sendInvalidZone(res, zone, check) {
 
 module.exports = {
 
-  create: function handle(req, res, next) {
+  create: function(req, res, next) {
     if (res._eventResultSent) return next();
     assert.ok(req._amonEvent);
     log.debug('events.create: event=%o, params=%o',
