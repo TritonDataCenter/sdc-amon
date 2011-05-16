@@ -101,23 +101,19 @@ function _loadChecksFromConfig() {
     if (err) {
       log.error('Unabled to read checks: ' + err);
     }
+    log.debug('Loaded checks: %o', gConfig.checks);
 
-    if (log.debug()) {
-      log.debug('Loaded checks: %o', gConfig.checks);
-    }
-
-    var plugins = gConfig.plugins;
     var checks = gConfig.checks;
 
     function _checkCallback(err, check) {
       if (err) return;
 
-      check._notify = new Notification({
+      check._notification = new Notification({
         socket: relaySocket,
         id: check.id
       });
       check.on('alarm', function(status, metrics) {
-        check._notify.send(status, metrics, function(err) {
+        check._notification.send(status, metrics, function(err) {
           if (err) {
             log.warn('Failed to send notification: ' + err);
             return;
@@ -137,6 +133,7 @@ function _loadChecksFromConfig() {
     }
 
     var loaded = 0;
+    var plugins = gConfig.plugins;
     for (var i = 0; i < checks.length; i++) {
       _newCheck(plugins[checks[i].urn], checks[i], _checkCallback);
     }
