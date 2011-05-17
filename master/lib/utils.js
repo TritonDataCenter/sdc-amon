@@ -26,7 +26,7 @@ exports.sendInternalError = function(res) {
   });
   log.debug('sending error: ' + e);
   res.sendError(e);
-}
+};
 
 
 exports.sendMissingArgument = function(res, arg) {
@@ -37,7 +37,7 @@ exports.sendMissingArgument = function(res, arg) {
   });
   log.debug('sending error: ' + e);
   res.sendError(e);
-}
+};
 
 
 exports.sendNoCheck = function(res, check) {
@@ -48,7 +48,7 @@ exports.sendNoCheck = function(res, check) {
   });
   log.debug('sending error: ' + e);
   res.sendError(e);
-}
+};
 
 
 exports.sendInvalidCustomer = function(res, customer, check) {
@@ -60,7 +60,7 @@ exports.sendInvalidCustomer = function(res, customer, check) {
   });
   log.debug('sending error: ' + e);
   res.sendError(e);
-}
+};
 
 
 exports.sendInvalidZone = function(res, zone, check) {
@@ -71,7 +71,7 @@ exports.sendInvalidZone = function(res, zone, check) {
   });
   log.debug('sending error: ' + e);
   res.sendError(e);
-}
+};
 
 
 exports.sendInvalidUrn = function(res, urn) {
@@ -82,7 +82,7 @@ exports.sendInvalidUrn = function(res, urn) {
   });
   log.debug('sending error: ' + e);
   res.sendError(e);
-}
+};
 
 
 exports.sendInvalidConfig = function(res, msg) {
@@ -93,4 +93,4 @@ exports.sendInvalidConfig = function(res, msg) {
   });
   log.debug('sending error: ' + e);
   res.sendError(e);
-}
+};
