@@ -1,4 +1,8 @@
-// Copyright 2011 Joyent, Inc.  All rights reserved.
+/*
+ * Copyright 2011 Joyent, Inc.  All rights reserved.
+ *
+ * Amon Master "Event" model.
+ */
 
 var uuid = require('node-uuid');
 var log = require('restify').log;
