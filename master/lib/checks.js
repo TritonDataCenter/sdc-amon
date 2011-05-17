@@ -17,11 +17,6 @@ var log = restify.log;
 
 var Check = require('./model/check');
 
-var Constants = amon_common.Constants;
-var Messages = amon_common.Messages;
-var HttpCodes = restify.HttpCodes;
-var RestCodes = restify.RestCodes;
-
 
 
 //---- controllers

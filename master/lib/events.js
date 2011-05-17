@@ -14,14 +14,10 @@ var utils = require('./utils');
 //---- globals
 
 var log = restify.log;
+var HttpCodes = restify.HttpCodes;
 
 var Check = require('./model/check');
 var Event = require('./model/event');
-
-var Constants = amon_common.Constants;
-var Messages = amon_common.Messages;
-var HttpCodes = restify.HttpCodes;
-var RestCodes = restify.RestCodes;
 
 
 
