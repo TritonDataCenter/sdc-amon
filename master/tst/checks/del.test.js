@@ -59,9 +59,9 @@ exports.setUp = function(test, assert) {
 
   var cfg = new Config({});
   cfg.plugins = require('amon-plugins');
-  cfg.redis = {
+  cfg.riak = {
     host: 'localhost',
-    port: process.env.REDIS_PORT || 6379
+    port: process.env.RIAK_PORT || 8098
   };
 
   app = new App({
@@ -106,9 +106,7 @@ exports.test_del_success = function(test, assert) {
 };
 
 exports.tearDown = function(test, assert) {
-  app.redis.flushdb(function(err, res) {
-    app.close(function() {
-      test.finish();
-    });
+  app.close(function() {
+    test.finish();
   });
 };

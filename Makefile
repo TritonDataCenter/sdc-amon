@@ -30,7 +30,8 @@ NODE := $(NODEDIR)/bin/node
 NODE_WAF := $(NODEDIR)/bin/node-waf
 NPM := npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH npm
 NODE_DEV := PATH=$(NODEDIR)/bin:$$PATH node-dev
-REDIS_SERVER := deps/redis/src/redis-server
+RIAK := deps/riak
+RIAK_CMD := $(RIAK)/rel/riak/bin/riak
 WHISKEY = bin/whiskey
 
 #
@@ -46,12 +47,12 @@ all:: common plugins agent relay bin/amon-zwatch master
 # deps
 #
 
-deps:	$(NODEDIR)/bin/node $(NODEDIR)/bin/npm $(REDIS_SERVER) \
+deps:	$(NODEDIR)/bin/node $(NODEDIR)/bin/npm $(RIAK_CMD) \
 	$(NODEDIR)/lib/node_modules/whiskey $(NODEDIR)/lib/node_modules/jshint
 
 # Use 'Makefile' landmarks instead of the dir itself, because dir mtime
 # is that of the most recent file: results in unnecessary rebuilds.
-deps/redis/Makefile deps/node/Makefile deps/npm/Makefile:
+$(RIAK)/Makefile deps/node/Makefile deps/npm/Makefile:
 	(GIT_SSL_NO_VERIFY=1 git submodule update --init)
 
 $(NODEDIR)/bin/node: deps/node/Makefile
@@ -60,8 +61,8 @@ $(NODEDIR)/bin/node: deps/node/Makefile
 $(NODEDIR)/bin/npm: $(NODEDIR)/bin/node deps/npm/Makefile
 	(cd deps/npm && npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH $(MAKE) install)
 
-$(REDIS_SERVER): deps/redis/Makefile
-	(cd deps/redis && make)
+$(RIAK_CMD): $(RIAK)/Makefile
+	(cd $(RIAK) && make rel)
 
 # Global npm module deps (currently just test/lint stuff used by every amon
 # package). We install globally instead of 'npm install --dev' in every package
@@ -120,8 +121,9 @@ endif
 tmp:
 	mkdir -p tmp
 test: tmp
-	deps/redis/src/redis-server support/test-redis.conf > tmp/test-redis.log &
-	(REDIS_PORT=`grep '^port' support/test-redis.conf | awk '{print $$2}'` bin/whiskey --timeout 1000 --tests "$(shell find . -name "*.test.js" | grep -v 'node_modules/' | xargs)"; kill `cat tmp/test-redis.pid`)
+	ulimit -n 2048
+	$(RIAK_CMD) start
+	(RIAK_PORT=8098 bin/whiskey --timeout 1000 --tests "$(shell find . -name "*.test.js" | grep -v 'node_modules/' | xargs)"; $(RIAK_CMD) stop 2>&1 > /dev/null)
 
 #TODO(trent): add deps/restdown submodule
 docs:
@@ -141,7 +143,7 @@ devrun: tmp $(NODEDIR)/bin/node-dev
 clean:
 	(cd deps/npm && $(MAKE) clean)
 	(cd deps/node && $(MAKE) distclean)
-	(cd deps/redis && $(MAKE) clean)
+	(cd deps/riak && $(MAKE) clean)
 	rm -rf $(NODEDIR) agent/node_modules relay/node_modules \
 		master/node_modules bin/amon-zwatch
 

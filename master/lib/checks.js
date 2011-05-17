@@ -66,7 +66,7 @@ module.exports = {
     }
 
     var check = new Check({
-      redis: req._redis,
+      riak: req._riak,
       customer: req.params.customer,
       zone: req.params.zone,
       urn: urn,
@@ -75,12 +75,13 @@ module.exports = {
 
     check.save(function(err) {
       if (err) {
-        log.warn('Error saving new check to redis: ' + err);
+        log.warn('Error saving new check to riak: ' + err);
         res.send(500);
       } else {
+        var data = check.serialize();
         log.debug('checks.create returning %d, object=%o', 201,
-                  check.toObject());
-        res.send(201, check.toObject());
+                  data);
+        res.send(201, data);
       }
       return next();
     });
@@ -91,7 +92,7 @@ module.exports = {
     log.debug('checks.list entered: params=%o', req.params);
 
     var check = new Check({
-      redis: req._redis
+      riak: req._riak
     });
     // Bug here in that it's possible for an idiot to pass in a zone not owned
     // by the customer. That's a problem for future amon developers...
@@ -119,17 +120,17 @@ module.exports = {
     log.debug('checks.get entered: params=%o', req.params);
 
     var check = new Check({
-      redis: req._redis,
-      id: req.uriParams.id
+      riak: req._riak
     });
 
-    check.load(function(err) {
+    check.load(req.uriParams.id, function(err) {
       if (err) {
         log.warn('Error loading check from redis: ' + err);
         res.send(500);
       } else {
-        log.debug('checks.get returning %d, obj=%o', 200, check.toObject());
-        res.send(200, check.toObject());
+        var obj = check.serialize();
+        log.debug('checks.get returning %d, obj=%o', 200, obj);
+        res.send(200, obj);
       }
       return next();
     });
@@ -139,11 +140,10 @@ module.exports = {
     log.debug('checks.del entered: params=%o', req.params);
 
     var check = new Check({
-      redis: req._redis,
-      id: req.uriParams.id
+      riak: req._riak
     });
 
-    check.destroy(function(err) {
+    check.destroy(req.uriParams.id, function(err) {
       if (err) {
         log.warn('Error destroying check from redis: ' + err);
         res.send(500);

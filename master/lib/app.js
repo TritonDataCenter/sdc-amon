@@ -5,7 +5,6 @@
  */
 
 var http = require('http');
-var redis = require('redis');
 var restify = require('restify');
 var amon_common = require('amon-common');
 
@@ -46,19 +45,10 @@ var App = function App(options) {
     serverName: Constants.ServerName
   });
 
-  this.redis = redis.createClient(this.config.redis.port,
-                                  this.config.redis.host);
-  this.redis.on('error', function(err) {
-    log.error('Redis connection error to ' +
-              self.redis.host + ':' +
-              self.redis.port + ' - ' +
-              err);
-  });
-
   var _setup = function(req, res, next) {
     req._config = self.config.config;
     req._log = log;
-    req._redis = self.redis;
+    req._riak = self.config.riak;
     return next();
   };
 
@@ -112,7 +102,6 @@ App.prototype.listen = function(callback) {
 App.prototype.close = function(callback) {
   var self = this;
   this.server.on('close', function() {
-    self.redis.quit();
     return callback();
   });
   this.server.close();

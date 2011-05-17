@@ -12,14 +12,11 @@
     "Mark Cavage <mark.cavage@joyent.com> (http://www.joyent.com)",
     "Trent Mick <trent.mick@joyent.com> (http://www.joyent.com)"
   ],
-  "DISABLED-dependencies": {
-    "hiredis": ">=0.1.9"
-  },
   "dependencies": {
     "node-uuid": ">=1.1.0",
     "nopt": ">=1.0.5",
-    "redis": "0.6.0",
     "restify": ">=0.1.5",
+    "riak-js": "=0.4.0rc2",
     "httpu": ">=0.0.1"
   },
   "devDependencies": {

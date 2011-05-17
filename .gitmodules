@@ -4,6 +4,6 @@
 [submodule "deps/npm"]
 	path = deps/npm
 	url = git://github.com/isaacs/npm.git
-[submodule "deps/redis"]
-	path = deps/redis
-	url = git://github.com/antirez/redis.git
+[submodule "deps/riak"]
+	path = deps/riak
+	url = https://github.com/basho/riak.git
