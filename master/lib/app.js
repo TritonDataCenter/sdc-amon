@@ -1,4 +1,8 @@
-// Copyright 2011 Joyent, Inc.  All rights reserved.
+/*
+ * Copyright 2011 Joyent, Inc.  All rights reserved.
+ *
+ * The Amon Master app. It defines the master API endpoints.
+ */
 
 var http = require('http');
 var redis = require('redis');
@@ -10,10 +14,9 @@ var config = require('./config');
 var amon_common = require('amon-common');
 
 var Constants = amon_common.Constants;
-var preEvents = amon_common.events;
-var w3clog = amon_common.w3clog;
-
 var log = restify.log;
+
+
 
 /**
  * Constructor for the amon "application".
@@ -57,7 +60,7 @@ var App = function App(options) {
     _setup
   ];
   this.after = [
-    w3clog
+    amon_common.w3clog
   ];
 
   this.server.get('/checks', self.before, checks.list, self.after);
@@ -70,10 +73,9 @@ var App = function App(options) {
   this.server.get('/events', self.before, events.list, self.after);
   this.server.post('/events',
                    self.before,
-                   preEvents.event,
+                   amon_common.events.event,
                    events.create,
                    self.after);
-
 };
 
 
@@ -89,6 +91,7 @@ var App = function App(options) {
 App.prototype.listen = function(callback) {
   this.server.listen(this.port, callback);
 };
+
 
 /**
  * Shuts down the zsock in this application's zone.
