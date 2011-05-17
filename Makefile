@@ -126,6 +126,8 @@ test: tmp
 #TODO(trent): add deps/restdown submodule
 docs:
 	restdown -v -m doc doc/api.md
+apisummary:
+	@grep '^\(# \| *\(POST\|GET\|DELETE\|HEAD\|PUT\)\)' doc/api.md
 
 
 # A supervisor for restarting node processes when relevant files change.
