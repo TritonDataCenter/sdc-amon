@@ -1,4 +1,9 @@
-// Copyright 2011 Joyent, Inc.  All rights reserved.
+/*
+ * Copyright 2011 Joyent, Inc.  All rights reserved.
+ *
+ * Restify middleware to log a request in W3C Common Log format.
+ */
+
 
 function pad(val) {
   if (parseInt(val, 10) < 10) {
@@ -7,8 +12,8 @@ function pad(val) {
   return val;
 }
 
-function logRequest(request, response, next) {
-  // Logs in the W3C Common Log Format
+
+module.exports = function w3clog(request, response, next) {
   var d = new Date();
   console.log((request.connection.remoteAddress || request._zone) +
               ' - - [' +
@@ -28,4 +33,3 @@ function logRequest(request, response, next) {
   return next();
 }
 
-module.exports = (function() { return logRequest; })();
