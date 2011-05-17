@@ -94,22 +94,40 @@ exports.setUp = function(test, assert) {
 
 };
 
-exports.test_logscan_list_one = function(test, assert) {
-  // var options = _newOptions();
-  // options.method = 'GET';
-  // options.path += '?zone=' + zone;
-  // http.request(options, function(res) {
-  //   common.checkResponse(assert, res);
-  //   assert.equal(res.statusCode, 200);
-  //   common.checkContent(assert, res, function() {
-  //     assert.ok(res.params);
-  //     assert.equal(res.params.length, 1);
-  //     _validateCheck(assert, res.params[0]);
-  //     test.finish();
-  //   });
-  // }).end();
-  test.finish();
+
+exports.test_logscan_list_one_by_zone = function(test, assert) {
+  var options = _newOptions();
+  options.method = 'GET';
+  options.path += '?zone=' + zone;
+  http.request(options, function(res) {
+    common.checkResponse(assert, res);
+    assert.equal(res.statusCode, 200);
+    common.checkContent(assert, res, function() {
+      assert.ok(res.params);
+      assert.equal(res.params.length, 1);
+      _validateCheck(assert, res.params[0]);
+      test.finish();
+    });
+  }).end();
 };
+
+
+exports.test_logscan_list_one_by_customer = function(test, assert) {
+  var options = _newOptions();
+  options.method = 'GET';
+  options.path += '?customer=' + customer;
+  http.request(options, function(res) {
+    common.checkResponse(assert, res);
+    assert.equal(res.statusCode, 200);
+    common.checkContent(assert, res, function() {
+      assert.ok(res.params);
+      assert.equal(res.params.length, 1);
+      _validateCheck(assert, res.params[0]);
+      test.finish();
+    });
+  }).end();
+};
+
 
 exports.tearDown = function(test, assert) {
   app.close(function() {

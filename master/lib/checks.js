@@ -97,9 +97,9 @@ module.exports = {
     // Bug here in that it's possible for an idiot to pass in a zone not owned
     // by the customer. That's a problem for future amon developers...
     if (req.params.zone) {
-      check.findChecksByZone(req.params.zone, function(err, checks) {
+      check.findByZone(req.params.zone, function(err, checks) {
         if (err) {
-          log.warn('Error finding checks in redis: ' + err);
+          log.warn('Error finding checks in riak: ' + err);
           res.send(500);
         } else {
           log.debug('checks.list returning %d, obj=%o', 200, checks);
@@ -108,7 +108,16 @@ module.exports = {
         return next();
       });
     } else if (req.params.customer) {
-
+      check.findByCustomer(req.params.customer, function(err, checks) {
+        if (err) {
+          log.warn('Error finding checks in riak: ' + err);
+          res.send(500);
+        } else {
+          log.debug('checks.list returning %d, obj=%o', 200, checks);
+          res.send(200, checks);
+        }
+        return next();
+      });
     } else {
       utils.sendMissingArgument(res, 'zone');
       return next();
@@ -125,7 +134,7 @@ module.exports = {
 
     check.load(req.uriParams.id, function(err) {
       if (err) {
-        log.warn('Error loading check from redis: ' + err);
+        log.warn('Error loading check from riak: ' + err);
         res.send(500);
       } else {
         var obj = check.serialize();
@@ -143,15 +152,22 @@ module.exports = {
       riak: req._riak
     });
 
-    check.destroy(req.uriParams.id, function(err) {
+    check.load(req.uriParams.id, function(err) {
       if (err) {
-        log.warn('Error destroying check from redis: ' + err);
+        log.warn('Error loading check from riak: ' + err);
         res.send(500);
-      } else {
-        log.debug('checks.del returning %d', 204);
-        res.send(204);
       }
-      return next();
+
+      return check.destroy(req.uriParams.id, function(err) {
+        if (err) {
+          log.warn('Error destroying check from riak: ' + err);
+          res.send(500);
+        } else {
+          log.debug('checks.del returning %d', 204);
+          res.send(204);
+        }
+        return next();
+      });
     });
   }
 

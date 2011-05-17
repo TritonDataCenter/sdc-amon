@@ -5,6 +5,7 @@ var riak = require('riak-js');
 var uuid = require('node-uuid');
 
 
+
 function _iso_time(d) {
   function pad(n) {
     return n < 10 ? '0' + n : n;
@@ -18,6 +19,8 @@ function _iso_time(d) {
     pad(d.getUTCSeconds()) + 'Z';
 }
 
+
+
 /**
  * Constructor (obviously).
  *
@@ -28,15 +31,15 @@ function _iso_time(d) {
 function Entity(options) {
   if (!options || typeof(options) !== 'object')
     throw new TypeError('options must be an object');
-  if (!options._type)
-    throw new TypeError('options.type is required');
+  if (!options._bucket)
+    throw new TypeError('options._bucket is required');
 
   var _riakOpts = options.riak || {};
-  _riakOpts.debug = false;
+  _riakOpts.debug = log.debug();
 
   this._db = riak.getClient(_riakOpts);
   this._meta = null;
-  this._bucket = options._type;
+  this._bucket = options._bucket;
 
   this.id = options.id;
   this.mtime = _iso_time();
@@ -89,13 +92,13 @@ Entity.prototype.load = function(id, callback) {
   this._db.get(this._bucket, id, this._meta, function(err, obj, meta) {
     log.debug('Entity.load(id=%s): riak returned: err=%o, data=%o, vclock=%s',
               id, err, obj, meta ? meta.vclock : '');
-    // TODO check for 404
-    if (err) return callback(err);
+    if (err && err.statusCode !== 404) return callback(err);
+
     self._meta = meta;
     try {
       self.deserialize(obj);
       self.validate();
-      return callback(null, true);
+      return callback();
     } catch (e) {
       return callback(e);
     }
@@ -104,24 +107,31 @@ Entity.prototype.load = function(id, callback) {
 
 
 Entity.prototype.save = function(callback) {
-  if (!this.id)
-    this.id = uuid();
+  var self = this;
+
+  if (!this.id) this.id = uuid().toLowerCase();
   this.validate();
 
-  var self = this;
-  var key = this.key();
-  var object = this.serialize();
-
-  var _callback = function(err, obj, meta) {
-    log.debug('Entity.save: riak returned: err=%o, data=%o, vclock=%o',
-              err, obj, meta ? meta.vclock : '');
-    if (err) return callback(err);
-
+  function _callback(err, obj, meta) {
+    if (err) {
+      if (log.debug())
+        log.debug('Entity.save: riak returned: err=' + err);
+      return callback(err);
+    }
     self._meta = meta;
-    return callback(err);
+
+    if (self._addIndices && typeof(self._addIndices) === 'function') {
+      log.debug('Entity.save(%s) succeeded, creating indices', self.id);
+      self._addIndices(callback);
+    } else {
+      log.debug('Entity.save(%s) no indices; done.');
+      return callback();
+    }
   };
 
-  log.debug('Entity.save(%s): saving %s => %o', this._bucket, key, object);
+  var object = this.serialize();
+  log.debug('Entity.save(%s): saving %s => %o, meta?=%s',
+            this._bucket, this.id, object, this._meta ? 'exists' : 'null');
   return this._db.save(this._bucket, this.id, object, this._meta, _callback);
 };
 
@@ -129,26 +139,35 @@ Entity.prototype.save = function(callback) {
 Entity.prototype.destroy = function(id, callback) {
   if (typeof(id) === 'function') {
     callback = id;
-    id = null;
-  }
-  if (!id) {
-    if (!this.id) {
-      throw new TypeError('either id or this.id must be set');
-    }
     id = this.id;
   }
-  if (!callback || typeof(callback) !== 'function') {
-    throw new TypeError('callback is required to be a Function');
-  }
+  if (!id) throw new TypeError('either id or this.id must be set');
 
   var self = this;
-  this._db.remove(this._bucket, id, this._meta, function(err, obj, meta) {
-    log.debug('Entity.load(id=%s): riak returned: err=%o, data=%o, vclock=%s',
-              id, err, obj, meta ? meta.vclock : '');
-    // TODO check for 404
-    if (err) return callback(err);
-    return callback(null, true);
-  });
+
+  function _delete() {
+    self._db.remove(self._bucket, id, self._meta, function(err, obj, meta) {
+      log.debug('Entity.destroy(%s): riak returned: err=%o, data=%o, vclock=%s',
+                id, err, obj, meta ? meta.vclock : '');
+      if (err && err.statusCode !== 404) return callback(err);
+
+      return callback();
+    });
+  };
+
+
+  if (self._deleteIndices && typeof(self._deleteIndices) === 'function') {
+    log.debug('Entity.destroy(%s): starting destruction of indices', id);
+    self._deleteIndices(function(err) {
+      if (err) return callback(err);
+
+      log.debug('Entity.destroy(%s): deleting..', id);
+      return _delete();
+    });
+  } else {
+    log.debug('Entity.destroy(%s): deleting..', id);
+    return _delete();
+  }
 };
 
 
@@ -161,11 +180,86 @@ Entity.prototype.validate = function() {
 };
 
 
-Entity.prototype.key = function(id) {
-  var k = this.id ? this.id : id;
-  log.trace('Entity.key(id=%s) => %s', id || '', k);
-  return k;
+Entity.prototype._addIndex = function(index, key, tag, callback) {
+  var self = this;
+  var riak = this._db;
+
+  log.debug('Entitiy._addIndex(%s) entered: /%s/%s?tag==%s',
+            this.id, index, key, tag);
+
+  riak.head(index, key, function(err, obj, meta) {
+    if (err && err.statusCode !== 404) return callback(err);
+
+    log.debug('Entity._addIndex(%s): /%s/%s links=%o',
+              self.id, index, key, meta ? meta.links : []);
+
+    function _newLink() {
+      return {
+        bucket: self._bucket,
+        key: self.id,
+        tag: tag
+      };
+    };
+
+    if (meta) {
+      meta.addLink(_newLink());
+    } else {
+      meta = { links: [] };
+      meta.links.push(_newLink());
+    }
+
+    log.debug('Entity._addIndex(%s) /%s/%s saving %o',
+              self.id, index, key, meta.links);
+
+    riak.save(index, key, ' ', meta, function(err, obj, meta) {
+      if (err) return callback(err);
+
+      log.debug('Entity._addIndex(%s): /%s/%s done.', self.id, index, key);
+      return callback();
+    });
+  });
 };
 
+
+Entity.prototype._delIndex = function(index, key, tag, callback) {
+  var self = this;
+  var riak = this._db;
+
+  log.debug('Entitiy._delIndex(%s) entered: /%s/%s?tag==%s',
+            this.id, index, key, tag);
+
+  riak.head(index, key, function(err, obj, meta) {
+    if (err && err.statusCode !== 404) return callback(err);
+    if (!meta || !meta.links || meta.links.length === 0) return callback();
+
+    log.debug('Entity._delIndex(%s): /%s/%s links=%o',
+              self.id, index, key, meta.links);
+
+    meta.removeLink({
+      bucket: self._bucket,
+      key: self.id,
+      tag: tag
+    });
+
+    log.debug('Entity._delIndex(%s) /%s/%s saving %o',
+              self.id, index, key, meta.links);
+    riak.save(index, key, ' ', meta, function(err, obj, meta) {
+      if (err) return callback(err);
+
+      log.debug('Entity._delIndex(%s): /%s/%s done.', self.id, index, key);
+      return callback();
+    });
+  });
+};
+
+
+Entity.prototype._find = function(bucket, key, callback) {
+  this._db.walk(bucket, key, [['_', '_']], function(err, obj, meta) {
+    log.debug('Entity.find(/%s/%s): err=%o, obj=%o', bucket, key, err, obj);
+    if (err) return callback(err);
+
+    return callback(null, obj);
+  });
+};
 
 module.exports = (function() { return Entity; })();
