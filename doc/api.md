@@ -30,9 +30,9 @@ These APIs provide info on recent alarms for this customer. Closed alarms are
 only guaranteed to be persisted for a week. I.e. this is mainly about showing
 open (i.e. unresolved) alarm situations.
 
-    GET /public/:customer/alarms                           # NYI
-    GET /public/:customer/alarms/:id                       # NYI
-    PUT /public/:customer/alarms/:id -d closed=true        # NYI
+    GET  /public/:customer/alarms                           # NYI
+    GET  /public/:customer/alarms/:alarm                       # NYI
+    POST /public/:customer/alarms/:alarm?action=close          # NYI
 
 
 
@@ -44,9 +44,8 @@ any of the checks fail (i.e. an alarm).
 
     GET    /public/:customer/monitors                      # NYI
     POST   /public/:customer/monitors                      # NYI
-    PUT    /public/:customer/monitors/:name                # NYI
-    GET    /public/:customer/monitors/:name                # NYI
-    DELETE /public/:customer/monitors/:name                # NYI
+    GET    /public/:customer/monitors/:monitor                # NYI
+    DELETE /public/:customer/monitors/:monitor                # NYI
 
 
 
@@ -55,18 +54,17 @@ any of the checks fail (i.e. an alarm).
 A monitor has one or more checks. A "check" is a single thing to test
 periodically.
 
-    GET    /public/:customer/monitors/:name/checks         # NYI
-    POST   /public/:customer/monitors/:name/checks         # NYI
-    PUT    /public/:customer/monitors/:name/checks/:name   # NYI
-    GET    /public/:customer/monitors/:name/checks/:name   # NYI
-    DELETE /public/:customer/monitors/:name/checks/:name   # NYI
+    GET    /public/:customer/monitors/:monitor/checks         # NYI
+    POST   /public/:customer/monitors/:monitor/checks         # NYI
+    GET    /public/:customer/monitors/:monitor/checks/:check   # NYI
+    DELETE /public/:customer/monitors/:monitor/checks/:check   # NYI
 
 # Master API: Contacts
 
     GET    /public/:customer/contacts                      # NYI
-    PUT    /public/:customer/contacts/:name                # NYI
-    GET    /public/:customer/contacts/:name                # NYI
-    DELETE /public/:customer/contacts/:name                # NYI
+    POST   /public/:customer/contacts/:contact                # NYI
+    GET    /public/:customer/contacts/:contact                # NYI
+    DELETE /public/:customer/contacts/:contact                # NYI
 
 A "contact" contains the information required (who and what method) to send a
 notification to some endpoint.
