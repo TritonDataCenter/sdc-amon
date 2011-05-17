@@ -17,7 +17,7 @@ var RestCodes = restify.RestCodes;
 
 
 
-//---- internal support functions
+//---- exports
 
 exports.sendInternalError = function(res) {
   var e = restify.newError({

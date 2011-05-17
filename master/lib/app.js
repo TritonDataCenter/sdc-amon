@@ -7,11 +7,17 @@
 var http = require('http');
 var redis = require('redis');
 var restify = require('restify');
+var amon_common = require('amon-common');
 
+// Endpoint controller modules.
 var checks = require('./checks');
 var events = require('./events');
 var config = require('./config');
-var amon_common = require('amon-common');
+var monitors = require('./monitors');
+
+
+
+//---- globals
 
 var Constants = amon_common.Constants;
 var log = restify.log;
@@ -76,6 +82,11 @@ var App = function App(options) {
                    amon_common.events.event,
                    events.create,
                    self.after);
+
+  this.server.get('/public/:customer/monitors', self.before, monitors.list, self.after);
+  this.server.post('/public/:customer/monitors', self.before, monitors.create, self.after);
+  this.server.get('/public/:customer/monitors/:monitor', self.before, monitors.get, self.after);
+  this.server.del('/public/:customer/monitors/:monitor', self.before, monitors.del, self.after);
 };
 
 

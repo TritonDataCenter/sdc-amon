@@ -1,0 +1,15 @@
+{
+  "name": "Whistle",
+  "contacts": ["trent-email"],
+  "checks": [
+    {
+      "urn": "amon:logscan",
+      "config": {
+        "path": "/tmp/whistleblower.log",
+        "regex": "tweet",
+        "threshold": 1,
+        "period": 120
+      }
+    }
+  ]
+}
