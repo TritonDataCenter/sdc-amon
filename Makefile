@@ -123,6 +123,10 @@ test: tmp
 	deps/redis/src/redis-server support/test-redis.conf > tmp/test-redis.log &
 	(REDIS_PORT=`grep '^port' support/test-redis.conf | awk '{print $$2}'` bin/whiskey --timeout 1000 --tests "$(shell find . -name "*.test.js" | grep -v 'node_modules/' | xargs)"; kill `cat tmp/test-redis.pid`)
 
+#TODO(trent): add deps/restdown submodule
+docs:
+	restdown -v -m doc doc/api.md
+
 
 # A supervisor for restarting node processes when relevant files change.
 $(NODEDIR)/bin/node-dev: $(NODEDIR)/bin/npm

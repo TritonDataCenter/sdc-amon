@@ -9,3 +9,8 @@ bin/amon-zwatch
 agent/checks
 agent/*.json
 *.rdb
+
+# built docs (ignore for now)
+doc/media
+doc/api.html
+doc/api.json
