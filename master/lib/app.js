@@ -20,7 +20,7 @@ var log = restify.log;
  *
  * @param {Object} options
  *    - port  {Number} The port to listen on.
- *    - config {amon-config.Config} The check config object.
+ *    - config {amon-common.Config} The check config object.
  */
 var App = function App(options) {
   if (!options) throw TypeError('options is required');
