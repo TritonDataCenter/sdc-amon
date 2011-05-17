@@ -19,6 +19,9 @@ describes the (internal) Relay API and Agent API.
 
 Below, "NYI" means not yet implemented.
 
+XXX: Problem with '/:customer/...' endpoints is collisions for the other names. Perhaps
+  group all the admin ones under "/_/" or put "/:customer" under "/customers/...".
+
 
 # Master API: Alarms
 
@@ -27,10 +30,9 @@ These APIs provide info on recent alarms for this customer. Closed alarms are
 only guaranteed to be persisted for a week. I.e. this is mainly about showing
 open (i.e. unresolved) alarm situations.
 
-    GET /:customer/alarms                           # NYI
-    GET /:customer/alarms/:id                       # NYI
-    PUT /:customer/alarms/:id -d closed=true        # NYI
-
+    GET /public/:customer/alarms                           # NYI
+    GET /public/:customer/alarms/:id                       # NYI
+    PUT /public/:customer/alarms/:id -d closed=true        # NYI
 
 
 
@@ -40,11 +42,12 @@ A monitor is a list of checks to run (e.g. check for N occurrences of "ERROR"
 in "/var/foo/bar.log" in a minute) and a list of contacts to notify when
 any of the checks fail (i.e. an alarm).
 
-    GET    /:customer/monitors                      # NYI
-    POST   /:customer/monitors                      # NYI
-    PUT    /:customer/monitors/:name                # NYI
-    GET    /:customer/monitors/:name                # NYI
-    DELETE /:customer/monitors/:name                # NYI
+    GET    /public/:customer/monitors                      # NYI
+    POST   /public/:customer/monitors                      # NYI
+    PUT    /public/:customer/monitors/:name                # NYI
+    GET    /public/:customer/monitors/:name                # NYI
+    DELETE /public/:customer/monitors/:name                # NYI
+
 
 
 # Master API: Checks
@@ -52,18 +55,18 @@ any of the checks fail (i.e. an alarm).
 A monitor has one or more checks. A "check" is a single thing to test
 periodically.
 
-    GET    /:customer/monitors/:name/checks         # NYI
-    POST   /:customer/monitors/:name/checks         # NYI
-    PUT    /:customer/monitors/:name/checks/:name   # NYI
-    GET    /:customer/monitors/:name/checks/:name   # NYI
-    DELETE /:customer/monitors/:name/checks/:name   # NYI
+    GET    /public/:customer/monitors/:name/checks         # NYI
+    POST   /public/:customer/monitors/:name/checks         # NYI
+    PUT    /public/:customer/monitors/:name/checks/:name   # NYI
+    GET    /public/:customer/monitors/:name/checks/:name   # NYI
+    DELETE /public/:customer/monitors/:name/checks/:name   # NYI
 
 # Master API: Contacts
 
-    GET    /:customer/contacts                      # NYI
-    PUT    /:customer/contacts/:name                # NYI
-    GET    /:customer/contacts/:name                # NYI
-    DELETE /:customer/contacts/:name                # NYI
+    GET    /public/:customer/contacts                      # NYI
+    PUT    /public/:customer/contacts/:name                # NYI
+    GET    /public/:customer/contacts/:name                # NYI
+    DELETE /public/:customer/contacts/:name                # NYI
 
 A "contact" contains the information required (who and what method) to send a
 notification to some endpoint.
@@ -72,8 +75,6 @@ Note: "Contacts" isn't exactly right either. A single contact can have
 multiple ways to be contacted. Eventually, with re-factored
 user/group/contact handling in CAPI, we might want this API of sending to a
 contact and have the contact itself decide the method (e.g. email or SMS).
-
-TODO(trent): where did my "AlarmAction" go?
 
 
 # Master API: Internal
@@ -84,13 +85,11 @@ Called by relays (ultimately from agents calling the equivalent event
 API endpoint on their relay) on alarm events. Eventually other types of
 events (e.g. a heartbeat, automatically closing an alarm) may be added.
 
-    HEAD /config
-    GET /config
+    HEAD /config                # NYI: rename to /agentconfig/:zone
+    GET /config                 # NYI: rename to /agentconfig/:zone
 
 Called by relays (ultimately from agents) to get all relevant checks to
 run.
-
-TODO(trent): Change to a name other than "config" (overloaded). "/checkball"?
 
 
 # Master API: Admin
