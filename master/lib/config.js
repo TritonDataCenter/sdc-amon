@@ -1,25 +1,25 @@
-// Copyright 2011 Joyent, Inc.  All rights reserved.
+/*
+ * Copyright 2011 Joyent, Inc.  All rights reserved.
+ *
+ * Amon Master controller for '/config/...' endpoints.
+ */
 
 var restify = require('restify');
-
 var amon_common = require('amon-common');
+var utils = require('./utils');
+
+
+
+//---- globals
+
+var log = restify.log;
+var HttpCodes = restify.HttpCodes;
 
 var Check = require('./model/check');
 
-var Constants = amon_common.Constants;
-var Messages = amon_common.Messages;
-var w3clog = amon_common.w3clog;
-var log = restify.log;
-var HttpCodes = restify.HttpCodes;
-var RestCodes = restify.RestCodes;
 
-function _missingArgument(argument) {
-  return restify.newError({httpCode: HttpCodes.Conflict,
-                           restCode: RestCodes.MissingParameter,
-                           message: Messages.message(Messages.MissingParameter,
-                                                     argument)
-                          });
-}
+
+//---- internal support functions
 
 function _sendConfig(req, res, next, sendData) {
   var check = new Check({
@@ -39,12 +39,14 @@ function _sendConfig(req, res, next, sendData) {
       return next();
     });
   } else {
-    log.debug('Sending missingArgument error(zone)');
-    res.sendError(_missingArgument('zone'));
+    utils.sendMissingArgument(res, 'zone');
     return next();
   }
 }
 
+
+
+//---- controllers
 
 module.exports = {
 
