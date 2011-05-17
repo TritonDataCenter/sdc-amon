@@ -1,4 +1,6 @@
-/**
+/*
+ * Copyright 2011 Joyent, Inc.  All rights reserved.
+ *
  * Main entry-point for the amon agent. This agent is meant to run in all
  * zones. It gets config info (checks to run) from its amon-relay in the
  * global zone and emits alarm (to the relay) when a check fails.
@@ -11,9 +13,8 @@ var path = require('path');
 
 var log = require('restify').log;
 
-var common = require('amon-common');
+var Config = require('amon-common').Config;
 var plugins = require('amon-plugins');
-var Config = common.Config;
 
 var Notification = require('./lib/notify');
 
