@@ -1,72 +1,31 @@
-// Copyright 2011 Joyent, Inc.  All rights reserved.
+/*
+ * Copyright 2011 Joyent, Inc.  All rights reserved.
+ *
+ * Amon Master controller for '/events/...' endpoints.
+ */
+
 var assert = require('assert');
 var restify = require('restify');
-
 var amon_common = require('amon-common');
+var utils = require('./utils');
+
+
+
+//---- globals
+
+var log = restify.log;
 
 var Check = require('./model/check');
 var Event = require('./model/event');
 
 var Constants = amon_common.Constants;
 var Messages = amon_common.Messages;
-
-var log = restify.log;
-var _error = restify.newError;
 var HttpCodes = restify.HttpCodes;
 var RestCodes = restify.RestCodes;
 
-var _message = Messages.message;
-
-function _sendInternalError(res) {
-  var e = _error({httpCode: HttpCodes.InternalError,
-                  restCode: RestCodes.UnknownError
-                 });
-
-  log.debug('sending error: ' + e);
-  res.sendError(e);
-}
-
-function _sendMissingArgument(res, arg) {
-  var e = _error({httpCode: HttpCodes.Conflict,
-                  restCode: RestCodes.MissingParameter,
-                  message: _message(Messages.MissingParameter, arg)
-                 });
-
-  log.debug('sending error: ' + e);
-  res.sendError(e);
-}
 
 
-function _sendNoCheck(res, check) {
-  var e = _error({httpCode: HttpCodes.NotFound,
-                  restCode: RestCodes.InvalidArgument,
-                  message: _message(Messages.UnknownCheck, check)
-                 });
-
-  log.debug('sending error: ' + e);
-  res.sendError(e);
-}
-
-function _sendInvalidCustomer(res, customer, check) {
-  var e = _error({httpCode: HttpCodes.Conflict,
-                  restCode: RestCodes.InvalidArgument,
-                  message: _message(Messages.CustomerInvalidForCheck,
-                                    customer, check)
-                 });
-  log.debug('sending error: ' + e);
-  res.sendError(e);
-}
-
-function _sendInvalidZone(res, zone, check) {
-  var e = _error({httpCode: HttpCodes.Conflict,
-                  restCode: RestCodes.InvalidArgument,
-                  message: _message(Messages.ZoneInvalidForCheck, zone, check)
-                 });
-
-  log.debug('sending error: ' + e);
-  res.sendError(e);
-}
-
+//---- controllers
 
 module.exports = {
 
@@ -77,17 +36,15 @@ module.exports = {
               req._amonEvent, req.params);
 
     if (!req.params.check) {
-      _sendMissingArgument(res, 'check');
+      utils.sendMissingArgument(res, 'check');
       return next();
     }
-
     if (!req.params.zone) {
-      _sendMissingArgument(res, 'zone');
+      utils.sendMissingArgument(res, 'zone');
       return next();
     }
-
     if (!req.params.customer) {
-      _sendMissingArgument(res, 'customer');
+      utils.sendMissingArgument(res, 'customer');
       return next();
     }
 
@@ -104,21 +61,21 @@ module.exports = {
       }
       if (!loaded) {
         log.debug('Check %s not found', req.params.check);
-        _sendNoCheck(res, req.params.check);
+        utils.sendNoCheck(res, req.params.check);
         return next();
       }
 
       if (check.customer !== req.params.customer) {
         log.debug('Check %s is for customer %s. Request asked for customer %s',
                   check.id, check.customer, req.params.customer);
-        _sendInvalidCustomer(res, req.params.customer, check.id);
+        utils.sendInvalidCustomer(res, req.params.customer, check.id);
         return next();
       }
 
       if (check.zone !== req.params.zone) {
         log.debug('Check %s is for zone %s. Request asked for zone %s',
                   check.id, check.zone, req.params.zone);
-        _sendInvalidZone(res, req.params.zone, check.id);
+        utils.sendInvalidZone(res, req.params.zone, check.id);
         return next();
       }
 
@@ -133,7 +90,7 @@ module.exports = {
       event.save(function(err) {
         log.debug('event(' + event.id + ').save: err=' + err);
         if (err) {
-          _sendInternalError(res);
+          utils.sendInternalError(res);
         } else {
           log.debug('events.create returning %d, object=%o',
                     HttpCodes.Created, event.toObject());
@@ -187,7 +144,7 @@ module.exports = {
       });
 
     } else {
-      _sendMissingArgument(res, 'check, customer or zone');
+      utils.sendMissingArgument(res, 'check, customer or zone');
       return next();
     }
   }

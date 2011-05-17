@@ -1,41 +1,30 @@
-// Copyright 2011 Joyent, Inc.  All rights reserved.
+/*
+ * Copyright 2011 Joyent, Inc.  All rights reserved.
+ *
+ * Amon Master controller for '/checks/...' endpoints.
+ */
+
 var assert = require('assert');
 var restify = require('restify');
-
 var amon_common = require('amon-common');
+var utils = require('./utils');
+
+
+
+//--- globals
+
+var log = restify.log;
 
 var Check = require('./model/check');
 
 var Constants = amon_common.Constants;
 var Messages = amon_common.Messages;
-var log = restify.log;
 var HttpCodes = restify.HttpCodes;
 var RestCodes = restify.RestCodes;
 
-var _message = Messages.message;
 
-function _sendMissingArgument(res, arg) {
-  var e = restify.newError({httpCode: HttpCodes.Conflict,
-                            restCode: RestCodes.MissingParameter,
-                            message: _message(Messages.MissingParameter,
-                                              arg)
-                           });
-  if (log.debug()) {
-    log.debug('sending error: ' + e);
-  }
-  res.sendError(e);
-}
 
-function _sendInvalidArgument(res, msg, param) {
-  var e = restify.newError({httpCode: HttpCodes.Conflict,
-                            restCode: RestCodes.InvalidArgument,
-                            message: _message(msg, param)
-                          });
-  if (log.debug()) {
-    log.debug('sending error: ' + e);
-  }
-  res.sendError(e);
-}
+//---- controllers
 
 module.exports = {
 
@@ -51,24 +40,24 @@ module.exports = {
     var config = req.params.config;
 
     if (!customer) {
-      _sendMissingArgument(res, 'customer');
+      utils.sendMissingArgument(res, 'customer');
       return next();
     }
     if (!zone) {
-      _sendMissingArgument(res, 'zone');
+      utils.sendMissingArgument(res, 'zone');
       return next();
     }
     if (!urn) {
-      _sendMissingArgument(res, 'urn');
+      utils.sendMissingArgument(res, 'urn');
       return next();
     }
     if (!config) {
-      _sendMissingArgument(res, 'config');
+      utils.sendMissingArgument(res, 'config');
       return next();
     }
     var plugin = req._config.plugins[urn];
     if (!plugin) {
-      _sendInvalidArgument(res, Messages.InvalidUrn, urn);
+      utils.sendInvalidUrn(res, urn);
       return next();
     }
 
@@ -77,7 +66,7 @@ module.exports = {
     try {
       plugin.validateConfig(config);
     } catch (e) {
-      _sendInvalidArgument(res, Messages.InvalidConfig, e.message);
+      utils.sendInvalidConfig(res, e.message);
       return next();
     }
 
@@ -125,7 +114,7 @@ module.exports = {
     } else if (req.params.customer) {
 
     } else {
-      _sendMissingArgument(res, 'zone');
+      utils.sendMissingArgument(res, 'zone');
       return next();
     }
 
