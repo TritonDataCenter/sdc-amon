@@ -127,15 +127,7 @@ apisummary:
 tmp:
 	mkdir -p tmp
 test: tmp
-	@ulimit -n 2048
-	($(RIAK_CMD) start)
-	@echo "\n\n-+-+- Waiting for riak -+-+-\n\n"
-	@sleep 1
-	@echo "Running relay tests...\n\n"
-	(RIAK_PORT=8098 bin/whiskey --timeout 500 --tests "$(shell find relay -name "*.test.js" | grep -v 'node_modules/' | xargs)")
-	@echo "\n\nRunning master check tests...\n\n"
-	(RIAK_PORT=8098 bin/whiskey --concurrency 1 --timeout 500 --tests "$(shell find master/tst -name "*.test.js" | grep -v 'node_modules/' | xargs)")
-	($(RIAK_CMD) stop 2>&1 > /dev/null)
+	support/test.sh
 
 # A supervisor for restarting node processes when relevant files change.
 $(NODEDIR)/bin/node-dev: $(NODEDIR)/bin/npm
