@@ -59,7 +59,7 @@ fi
 if [[ -n "$files" ]]; then
     echo "== test relay"
     (cd ${ROOT} && RIAK_PORT=8098 ${WHISKEY} --timeout 500 \
-         --test "$(echo "$files" | xargs)")
+         --tests "$(echo "$files" | xargs)")
     #(cd ${ROOT} && RIAK_PORT=8098 ${WHISKEY} --timeout 500 \
     #    $(echo "$files" | xargs))
     status=$?
