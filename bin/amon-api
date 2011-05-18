@@ -31,24 +31,24 @@ fi
 shift;
 
 
-# Determine AMON MAPI URL.
-if [[ ! -z "$AMON_MAPI_URL" ]]; then
+# Determine AMON Master API URL.
+if [[ ! -z "$AMON_MASTER" ]]; then
     true
 else
-    AMON_MAPI_URL=http://localhost:8080
+    AMON_MASTER=http://localhost:8080
 fi
-if [[ -z "$AMON_MAPI_URL" ]]; then
-    echo "error: could not determine Amon Master URL, set 'AMON_MAPI_URL' envvar"
+if [[ -z "$AMON_MASTER" ]]; then
+    echo "error: could not determine Amon Master URL, set 'AMON_MASTER' envvar"
     exit 1
 fi
 
 
 # Note: the 'echo' doesn't show the real quoting of args.
 
-[ "$verbose" == "1" ] && echo "# curl -sS -i $CURL_OPTS --url $AMON_MAPI_URL$path $@" >&2
+[ "$verbose" == "1" ] && echo "# curl -sS -i $CURL_OPTS --url $AMON_MASTER$path $@" >&2
 if [[ ! -x "$JSON" ]]; then
-    curl -sS -i $CURL_OPTS --url "$AMON_MAPI_URL$path" "$@"
+    curl -sS -i $CURL_OPTS --url "$AMON_MASTER$path" "$@"
     echo ""
 else
-    curl -sS -i $CURL_OPTS --url "$AMON_MAPI_URL$path" "$@" | json -q
+    curl -sS -i $CURL_OPTS --url "$AMON_MASTER$path" "$@" | json -q
 fi
