@@ -46,8 +46,8 @@ function cleanup {
 trap 'errexit $? $LINENO' EXIT
 
 echo "== preclean"
-stat="${RIAK} ping"
-[[ "$r_stat" -eq "pong" ]] && ${RIAK} stop && sleep 1 || true
+r_stat=$(${RIAK} ping)
+[[ "$r_stat" == "pong" ]] && ${RIAK} stop && sleep 1 || true
 ps -ef | grep node-de[v] | awk '{print $2}' | xargs kill
 rm -f $ROOT/tmp/dev-*.log.lastrun
 #TODO: move old logs to $file.lastrun  to start fresh
