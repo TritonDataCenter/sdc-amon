@@ -45,6 +45,7 @@ You need:
 
 * restdown
 * gjslint (http://code.google.com/closure/utilities/docs/linter_howto.html)
+* erlang (brew install erlang)
 
 ## COAL
 
