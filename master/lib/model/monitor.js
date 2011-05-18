@@ -40,7 +40,6 @@ util.inherits(Monitor, Entity);
 
 Monitor.prototype._serialize = function() {
   return {
-    id: this.id,
     name: this.name,
     customer: this.customer,
     contacts: this.contacts,
