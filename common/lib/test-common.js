@@ -1,7 +1,12 @@
-// Copyright 2011 Joyent, Inc.  All rights reserved.
+/*
+ * Copyright 2011 Joyent, Inc.  All rights reserved.
+ *
+ * Common utilities for the Amon test suites.
+ */
 
 var crypto = require('crypto');
 var uuid = require('node-uuid');
+
 
 module.exports = {
 
