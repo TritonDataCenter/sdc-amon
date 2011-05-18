@@ -144,7 +144,7 @@ module.exports = {
         res.send(500);
       } else {
         if (!loaded) {
-          _sendNoCheck(res, req.uriParams.id);
+          utils.sendNoCheck(res, req.uriParams.id);
         } else {
           var obj = check.serialize();
           log.debug('checks.get returning %d, obj=%o', 200, obj);
@@ -170,7 +170,7 @@ module.exports = {
       }
 
       if (!loaded) {
-        _sendNoCheck(res, req.uriParams.id);
+        utils.sendNoCheck(res, req.uriParams.id);
         return next();
       }
 
