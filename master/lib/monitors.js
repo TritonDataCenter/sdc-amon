@@ -1,7 +1,7 @@
 /*
  * Copyright 2011 Joyent, Inc.  All rights reserved.
  *
- * Amon Master controller for '/monitors/...' endpoints.
+ * Amon Master controller for '/public/:customer/monitors/...' endpoints.
  */
 
 var assert = require('assert');

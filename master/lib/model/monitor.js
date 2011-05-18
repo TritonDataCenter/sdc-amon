@@ -3,9 +3,8 @@
  *
  * Amon Master "Monitor" model:
  *
- *    id (uuid)
  *    name (short string): Unique for the customer
- *    customer (Customer)
+ *    customer (uuid): Owning customer id.
  *    checks (array of Check)
  *    contacts (array of Contact)
  */

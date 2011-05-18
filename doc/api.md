@@ -42,8 +42,8 @@ A monitor is a list of checks to run (e.g. check for N occurrences of "ERROR"
 in "/var/foo/bar.log" in a minute) and a list of contacts to notify when
 any of the checks fail (i.e. an alarm).
 
-    GET    /public/:customer/monitors                      # NYI
-    POST   /public/:customer/monitors                      # NYI
+    GET    /public/:customer/monitors
+    POST   /public/:customer/monitors
     GET    /public/:customer/monitors/:monitor                # NYI
     DELETE /public/:customer/monitors/:monitor                # NYI
 
@@ -61,8 +61,8 @@ periodically.
 
 # Master API: Contacts
 
-    GET    /public/:customer/contacts                      # NYI
-    POST   /public/:customer/contacts/:contact                # NYI
+    GET    /public/:customer/contacts
+    POST   /public/:customer/contacts
     GET    /public/:customer/contacts/:contact                # NYI
     DELETE /public/:customer/contacts/:contact                # NYI
 
@@ -93,12 +93,12 @@ run.
 # Master API: Admin
 
     GET /checks                                     # NYI
-    
+
 TODO(trent): Add whatever here is helpful for admin/dev.
 
 
 # Relay API
- 
+
 TODO
 
 # Agent API

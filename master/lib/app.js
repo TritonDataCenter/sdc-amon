@@ -13,6 +13,7 @@ var checks = require('./checks');
 var events = require('./events');
 var config = require('./config');
 var monitors = require('./monitors');
+var contacts = require('./contacts');
 
 
 
@@ -77,6 +78,11 @@ var App = function App(options) {
   this.server.post('/public/:customer/monitors', self.before, monitors.create, self.after);
   this.server.get('/public/:customer/monitors/:monitor', self.before, monitors.get, self.after);
   this.server.del('/public/:customer/monitors/:monitor', self.before, monitors.del, self.after);
+
+  this.server.get('/public/:customer/contacts', self.before, contacts.list, self.after);
+  this.server.post('/public/:customer/contacts', self.before, contacts.create, self.after);
+  this.server.get('/public/:customer/contacts/:contact', self.before, contacts.get, self.after);
+  this.server.del('/public/:customer/contacts/:contact', self.before, contacts.del, self.after);
 };
 
 
