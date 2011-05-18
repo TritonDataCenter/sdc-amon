@@ -8,10 +8,11 @@
  *    customer (Customer)
  *    checks (array of Check)
  *    contacts (array of Contact)
- *    TODO: add zones association
  */
 
+var util = require('util');
 var uuid = require('node-uuid');
+var Entity = require('./entity');
 
 
 //---- globals
@@ -26,41 +27,61 @@ function Monitor(options) {
   if (!options || typeof(options) !== 'object')
     throw new TypeError('options must be an object');
 
-  this.id = options.id;
+  options._bucket = 'monitors';
+  Entity.call(this, options);
+
   this.name = options.name;
-  this.customerId = options.customerId;
+  this.customer = options.customer;
   this.contacts = options.contacts;
   this.checks = options.checks;
-
-  if (!this.name) throw new TypeError('"name" required');
-  if (!this.customerId) throw new TypeError('"customerId" required');
-  if (!this.contacts) throw new TypeError('"contacts" required');
-  if (!this.checks) throw new TypeError('"checks" required');
 }
+util.inherits(Monitor, Entity);
 
-Monitor.prototype.toObject = function() {
+
+Monitor.prototype._serialize = function() {
   return {
     id: this.id,
     name: this.name,
-    customerId: this.customerId,
+    customer: this.customer,
     contacts: this.contacts,
     checks: this.checks
   };
 };
 
-Monitor.prototype.fromObject = function(object) {
-  this.id = object.id || this.id;
-  this.customerId = object.customerId;
+
+Monitor.prototype._deserialize = function(object) {
+  this.customer = object.customer;
   this.name = object.name;
-  //TODO: contacts vs. contactNames
   this.contacts = object.contacts;
   this.checks = object.checks;
 };
 
-Monitor.prototype.save = function(callback) {
-  XXX
+
+Monitor.prototype._validate = function(callback) {
+  if (!this.name) throw new TypeError('"name" required');
+  if (!this.customer) throw new TypeError('"customer" required');
+  if (!this.contacts) throw new TypeError('"contacts" required');
+  if (!this.checks) throw new TypeError('"checks" required');
 };
 
+
+Monitor.prototype._addIndices = function(callback) {
+  this._addIndex('customers', this.customer, null, callback);
+};
+
+
+Monitor.prototype._deleteIndices = function(callback) {
+  this._delIndex('customers', this.customer, null, callback);
+};
+
+
+Monitor.prototype.findByCustomer = function(customer, callback) {
+  if (!customer) throw new TypeError('customer is required');
+  if (!callback || typeof(callback) !== 'function')
+    throw new TypeError('callback is required');
+
+  return this._find('customers', customer, callback);
+};
 
 
 module.exports = Monitor
