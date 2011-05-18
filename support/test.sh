@@ -11,7 +11,6 @@ if [ "$DEBUG" != "" ]; then
     export PS4='${BASH_SOURCE}:${LINENO}: '
     set -o xtrace
 fi
-set -o pipefail
 set -o errexit
 
 ulimit -n 2048
@@ -19,6 +18,8 @@ ulimit -n 2048
 ROOT=$(cd $(dirname $0)/../; pwd)
 NODE_DEV="env LD_PRELOAD_32=/usr/lib/extendedFILE.so.1 PATH=${ROOT}/deps/node-install/bin:${ROOT}/deps/riak/rel/riak/bin:$PATH node-dev"
 RIAK=$ROOT/deps/riak/rel/riak/bin/riak
+WHISKEY=$ROOT/bin/whiskey
+#WHISKEY=$HOME/tm/whiskey/bin/whiskey
 
 
 #---- support functions
@@ -49,17 +50,38 @@ r_stat=$(${RIAK} ping)
 
 echo "== start riak (${ROOT}/deps/riak/rel/riak/log)"
 ${RIAK} start
+while [[ `${RIAK} ping` != "pong" ]]; do sleep 1; done;
 
-echo "== test relay"
-(cd ${ROOT} && RIAK_PORT=8098 bin/whiskey --timeout 500 \
-    --tests "$(find relay -name "*.test.js" | grep -v 'node_modules/' | xargs)")
-status=$?
-[[ "$status" != 0 ]] && exit $status
+files=$(find relay -name "*.test.js" | grep -v 'node_modules/')
+if [[ -n "$TEST" ]]; then
+    files=$(echo "$files" | grep -- "$TEST" || true)
+fi
+if [[ -n "$files" ]]; then
+    echo "== test relay"
+    (cd ${ROOT} && RIAK_PORT=8098 ${WHISKEY} --timeout 500 \
+         --test "$(echo "$files" | xargs)")
+    #(cd ${ROOT} && RIAK_PORT=8098 ${WHISKEY} --timeout 500 \
+    #    $(echo "$files" | xargs))
+    status=$?
+    [[ "$status" != 0 ]] && exit $status
+else
+    echo "== no relay tests match '$TEST'"
+fi
 
-echo "== test master"
-(cd ${ROOT} && RIAK_PORT=8098 bin/whiskey --concurrency 1 --timeout 500 \
-    --tests "$(find master/tst -name "*.test.js" | grep -v 'node_modules/' | xargs)")
-status=$?
-[[ "$status" != 0 ]] && exit $status
+files=$(find master -name "*.test.js" | grep -v 'node_modules/')
+if [[ -n "$TEST" ]]; then
+    files=$(echo "$files" | grep -- "$TEST" || true)
+fi
+if [[ -n "$files" ]]; then
+    echo "== test master"
+    (cd ${ROOT} && RIAK_PORT=8098 ${WHISKEY} --timeout 500 \
+        --tests "$(echo "$files" | xargs)")
+    #(cd ${ROOT} && RIAK_PORT=8098 ${WHISKEY} --timeout 500 \
+    #    $(echo "$files" | xargs))
+    status=$?
+    [[ "$status" != 0 ]] && exit $status
+else
+    echo "== no master tests match '$TEST'"
+fi
 
 cleanup
