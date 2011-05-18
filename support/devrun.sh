@@ -14,9 +14,11 @@ if [ "$DEBUG" != "" ]; then
 fi
 set -o errexit
 
-ROOT=$(cd $(dirname $0)/../; pwd)
-NODE_DEV="env LD_PRELOAD_32=/usr/lib/extendedFILE.so.1 PATH=${ROOT}/deps/node-install/bin:$PATH node-dev"
+ulimit -n 2048
 
+ROOT=$(cd $(dirname $0)/../; pwd)
+NODE_DEV="env LD_PRELOAD_32=/usr/lib/extendedFILE.so.1 PATH=${ROOT}/deps/node-install/bin:${ROOT}/deps/riak/rel/riak/bin:$PATH node-dev"
+RIAK=$ROOT/deps/riak/rel/riak/bin/riak
 
 
 #---- support functions
@@ -34,7 +36,7 @@ function errexit {
 
 function cleanup {
     echo "== cleanup"
-    kill `cat $ROOT/tmp/dev-redis.pid`
+    ${RIAK} stop
     ps -ef | grep node-de[v] | awk '{print $2}' | xargs kill
 }
 
@@ -44,15 +46,16 @@ function cleanup {
 trap 'errexit $? $LINENO' EXIT
 
 echo "== preclean"
-[[ -e $ROOT/tmp/dev-redis.pid ]] && kill `cat $ROOT/tmp/dev-redis.pid` && sleep 1 || true
+stat="${RIAK} ping"
+[[ "$r_stat" -eq "pong" ]] && ${RIAK} stop && sleep 1 || true
 ps -ef | grep node-de[v] | awk '{print $2}' | xargs kill
 rm -f $ROOT/tmp/dev-*.log.lastrun
 #TODO: move old logs to $file.lastrun  to start fresh
 # Later, might want to NOT wipe the agent and relay DBs to start, but for now:
 rm -rf $ROOT/tmp/dev-relay $ROOT/tmp/dev-agent
 
-echo "== start redis (tmp/dev-redis.log)"
-$ROOT/deps/redis/src/redis-server $ROOT/support/dev-redis.conf
+echo "== start riak (${ROOT}/deps/riak/rel/riak/log)"
+${RIAK} start
 
 echo "== start master (tmp/dev-master.log)"
 ${NODE_DEV} $ROOT/master/main.js -d -f $ROOT/support/dev-master-config.json -p 8080 > $ROOT/tmp/dev-master.log 2>&1 &

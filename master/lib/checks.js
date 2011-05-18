@@ -7,15 +7,21 @@
 var assert = require('assert');
 var restify = require('restify');
 var amon_common = require('amon-common');
-var utils = require('./utils');
 
+var utils = require('./utils');
+var Check = require('./model/check');
 
 
 //--- globals
 
-var log = restify.log;
+var Constants = amon_common.Constants;
+var Messages = amon_common.Messages;
 
-var Check = require('./model/check');
+var _message = Messages.message;
+
+var HttpCodes = restify.HttpCodes;
+var RestCodes = restify.RestCodes;
+var log = restify.log;
 
 
 
@@ -132,14 +138,18 @@ module.exports = {
       riak: req._riak
     });
 
-    check.load(req.uriParams.id, function(err) {
+    check.load(req.uriParams.id, function(err, loaded) {
       if (err) {
         log.warn('Error loading check from riak: ' + err);
         res.send(500);
       } else {
-        var obj = check.serialize();
-        log.debug('checks.get returning %d, obj=%o', 200, obj);
-        res.send(200, obj);
+        if (!loaded) {
+          _sendNoCheck(res, req.uriParams.id);
+        } else {
+          var obj = check.serialize();
+          log.debug('checks.get returning %d, obj=%o', 200, obj);
+          res.send(200, obj);
+        }
       }
       return next();
     });
@@ -152,10 +162,16 @@ module.exports = {
       riak: req._riak
     });
 
-    check.load(req.uriParams.id, function(err) {
+    check.load(req.uriParams.id, function(err, loaded) {
       if (err) {
         log.warn('Error loading check from riak: ' + err);
         res.send(500);
+        return next();
+      }
+
+      if (!loaded) {
+        _sendNoCheck(res, req.uriParams.id);
+        return next();
       }
 
       return check.destroy(req.uriParams.id, function(err) {

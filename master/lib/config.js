@@ -6,16 +6,22 @@
 
 var restify = require('restify');
 var amon_common = require('amon-common');
+
 var utils = require('./utils');
+
+var Check = require('./model/check');
 
 
 
 //---- globals
 
+var Constants = amon_common.Constants;
+var Messages = amon_common.Messages;
+var w3clog = amon_common.w3clog;
+
 var log = restify.log;
 var HttpCodes = restify.HttpCodes;
-
-var Check = require('./model/check');
+var RestCodes = restify.RestCodes;
 
 
 
@@ -23,11 +29,11 @@ var Check = require('./model/check');
 
 function _sendConfig(req, res, next, sendData) {
   var check = new Check({
-    redis: req._redis
+    riak: req._riak
   });
 
   if (req.params.zone) {
-    check.findChecksByZone(req.params.zone, function(err, checks) {
+    check.findByZone(req.params.zone, function(err, checks) {
       if (err) {
         log.warn('Error finding checks in redis: ' + err);
         res.send(500);

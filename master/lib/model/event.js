@@ -4,283 +4,113 @@
  * Amon Master "Event" model.
  */
 
-var uuid = require('node-uuid');
+var util = require('util');
 var log = require('restify').log;
+var Entity = require('./entity');
 
-function _iso_time(d) {
-  function pad(n) {
-    return n < 10 ? '0' + n : n;
-  }
-  if (!d) d = new Date();
-  return d.getUTCFullYear() + '-' +
-    pad(d.getUTCMonth() + 1) + '-' +
-    pad(d.getUTCDate()) + 'T' +
-    pad(d.getUTCHours()) + ':' +
-    pad(d.getUTCMinutes()) + ':' +
-    pad(d.getUTCSeconds()) + 'Z';
-}
 
 
 function Event(options) {
   if (!options || typeof(options) !== 'object')
     throw new TypeError('options must be an object');
-  if (!options.redis) throw new TypeError('options.redis required');
 
-  this.id = options.id;
-  this.client = options.redis;
+  options._bucket = 'events';
+  Entity.call(this, options);
+
   this.check = options.check;
   this.customer = options.customer;
   this.event = options.event;
   this.zone = options.zone;
   this.expiry = options.expiry || 604800;
-  this.ctime = _iso_time();
 }
+util.inherits(Event, Entity);
 
 
-Event.prototype.toObject = function() {
+Event.prototype._serialize = function() {
   var self = this;
   return {
-    id: self.id,
     check: self.check,
     customer: self.customer,
-    zone: self.zone,
     event: self.event,
-    ctime: self.ctime
+    zone: self.zone
   };
 };
 
-Event.prototype.fromObject = function(object) {
-  this.id = object.id;
-  this.customer = object.customer;
+
+Event.prototype._deserialize = function(object) {
   this.check = object.check;
-  this.zone = object.zone;
+  this.customer = object.customer;
   this.event = object.event;
-  this.ctime = object.ctime;
+  this.zone = object.zone;
 };
 
-Event.prototype.save = function(callback) {
-  if (!this.event) throw new TypeError('this.event is required');
-  if (!this.check) throw new TypeError('this.check is required');
-  if (!this.zone) throw new TypeError('this.zone is required');
 
-  if (!this.id) this.id = uuid();
-
-  var self = this;
-  var redis = this.client;
-  var data = JSON.stringify(this.toObject());
-
-  log.debug('Saving %o to redis', this.toObject());
-
-  return redis.setex(self._key(), self.expiry, data, function(err, res) {
-    log.debug('Event: redis.setex returned err=' + err);
-    if (err) return callback(err);
-
-    // Build up the indices
-    // Bug here if these already exist...
-    return redis.lpush(self._checkIndexKey(), self.id, function(err, res) {
-      log.debug('Event: redis.lpush(check) returned err=' + err);
-      if (err) return callback(err);
-
-      return redis.lpush(self._customerIndexKey(), self.id, function(err, res) {
-        log.debug('Event: redis.lpush(customer) returned err=' + err);
-        if (err) return callback(err);
-
-        return redis.lpush(self._zoneIndexKey(), self.id, function(err, res) {
-          log.debug('Event: redis.lpush(zone) returned err=' + err);
-          if (err) return callback(err);
-
-          return callback();
-        });
-      });
-    });
-  });
+Event.prototype._validate = function() {
+  if (!this.check) throw new TypeError('event.check required');
+  if (!this.customer) throw new TypeError('event.customer required');
+  if (!this.event) throw new TypeError('event.event required');
+  if (!this.zone) throw new TypeError('event.zone required');
 };
 
 
 Event.prototype.findByCheck = function(check, callback) {
-  var self = this;
-  var redis = this.client;
+  if (!check) throw new TypeError('check is required');
+  if (!callback || typeof(callback) !== 'function')
+    throw new TypeError('callback is required');
 
-  var key = self._checkIndexKey(check);
-  redis.llen(key, function(err, len) {
-    if (err) return callback(err);
-
-    log.debug('Event.findByCheck (c=' + check + ') llen => ' + len);
-
-    if (len === 0) return callback(null, []);
-
-    redis.lrange(key, 0, len, function(err, keys) {
-      if (err) return callback(err);
-
-      log.debug('Event.findByCheck (c=' + check + ') lrange => ' + keys);
-
-      if (!keys || keys.length === 0) return callback(null, []);
-
-      var i = 0;
-      var events = [];
-      keys.forEach(function(k) {
-        redis.get(self._key(k), function(err, res) {
-          if (err) return callback(err);
-
-          if (res) {
-            var e = new Event({redis: redis});
-            e.fromObject(JSON.parse(res));
-            events.push(e.toObject());
-          }
-
-          if (++i >= keys.length) {
-            if (log.debug()) {
-              log.debug('Event.findByCheck returning ' + events);
-            }
-            return callback(null, events);
-          }
-        });
-      });
-    });
-  });
+  return this._find('checks', check, callback);
 };
 
 
 Event.prototype.findByCustomer = function(customer, callback) {
-  var self = this;
-  var redis = this.client;
+  if (!customer) throw new TypeError('customer is required');
+  if (!callback || typeof(callback) !== 'function')
+    throw new TypeError('callback is required');
 
-  var key = self._customerIndexKey(customer);
-  redis.llen(key, function(err, len) {
-    if (err) return callback(err);
-
-    log.debug('Event.findByCustomer (c=' + customer + ') llen => ' + len);
-
-    if (len === 0) return callback(null, []);
-
-    redis.lrange(key, 0, len, function(err, keys) {
-      if (err) return callback(err);
-
-      log.debug('Event.findByCustomer (c=' + customer + ') lrange => ' + keys);
-
-      if (!keys || keys.length === 0) return callback(null, []);
-
-      var i = 0;
-      var events = [];
-      keys.forEach(function(k) {
-        redis.get(self._key(k), function(err, res) {
-          if (err) return callback(err);
-
-          if (res) {
-            var e = new Event({redis: redis});
-            e.fromObject(JSON.parse(res));
-            events.push(e.toObject());
-          }
-
-          if (++i >= keys.length) {
-            if (log.debug()) {
-              log.debug('Event.findByCustomer returning ' + events);
-            }
-            return callback(null, events);
-          }
-        });
-      });
-    });
-  });
+  return this._find('customers', customer, callback);
 };
 
 
 Event.prototype.findByZone = function(zone, callback) {
-  var self = this;
-  var redis = this.client;
+  if (!zone) throw new TypeError('zone is required');
+  if (!callback || typeof(callback) !== 'function')
+    throw new TypeError('callback is required');
 
-  var key = self._zoneIndexKey(zone);
-  redis.llen(key, function(err, len) {
+  return this._find('zones', zone, callback);
+};
+
+
+Event.prototype._addIndices = function(callback) {
+  var self = this;
+  var tag = this.event.status;
+
+  self._addIndex('customers', self.customer, tag, function(err) {
     if (err) return callback(err);
 
-    log.debug('Event.findByZone (z=' + zone + ') llen => ' + len);
-
-    if (len === 0) return callback(null, []);
-
-    redis.lrange(key, 0, len, function(err, keys) {
+    self._addIndex('checks', self.check, tag, function(err) {
       if (err) return callback(err);
 
-      log.debug('Event.findByZone (z=' + zone + ') lrange => ' + keys);
-
-      if (!keys || keys.length === 0) return callback(null, []);
-
-      var i = 0;
-      var events = [];
-      keys.forEach(function(k) {
-        var _key = self._key(k);
-        redis.get(_key, function(err, res) {
-          if (err) return callback(err);
-
-          log.debug('Event.findByZone ' + _key + ' res=' + res);
-
-          if (res) {
-            var e = new Event({redis: redis});
-            e.fromObject(JSON.parse(res));
-            events.push(e.toObject());
-          }
-
-          if (++i >= keys.length) {
-            log.debug('Event.findByZone returning %o', events);
-            return callback(null, events);
-          }
-        });
-      });
+      self._addIndex('zones', self.zone, tag, callback);
     });
   });
 };
 
 
-Event.prototype.load = function(callback) {
+Event.prototype._deleteIndices = function(callback) {
   var self = this;
-  if (!this.id) throw new TypeError('this.id required');
+  var tag = this.event.status;
 
-  log.debug('Event.load: id=%s', this.id);
-
-  this.client.get(self._key(), function(err, res) {
-    if (log.debug()) {
-      log.debug('Event.load: redis returned err=' + err);
-    }
+  self._delIndex('zones', self.zone, tag, function(err) {
     if (err) return callback(err);
 
-    if (!res) return callback(null, false);
+    self._delIndex('checks', self.zone, tag, function(err) {
+      if (err) return callback(err);
 
-    try {
-      self.fromObject(JSON.parse(res));
-      return callback(null, true);
-    } catch (e) {
-      log.fatal('Corrupt data encountered in redis for key= ' + self.id +
-                ': ' + e);
-      return callback(e);
-    }
+      self._delIndex('customers', self.customer, tag, callback);
+    });
   });
 };
 
-
-Event.prototype._key = function(id) {
-  var k = '/events/' + (this.id ? this.id : id);
-  log.trace('event._key = ' + k);
-  return k;
-};
-
-
-Event.prototype._checkIndexKey = function(check) {
-  var k = '/events/checks/' + (this.check ? this.check : check);
-  log.trace('event._checkIndexKey = ' + k);
-  return k;
-};
-
-Event.prototype._customerIndexKey = function(customer) {
-  var k = '/events/customers/' + (this.customer ? this.customer : customer);
-  log.trace('event._customerIndexKey = ' + k);
-  return k;
-};
-
-
-Event.prototype._zoneIndexKey = function(zone) {
-  var k = '/events/zones/' + (this.zone ? this.zone : zone);
-  log.trace('event._zoneIndexKey = ' + k);
-  return k;
-};
 
 
 module.exports = (function() { return Event; })();

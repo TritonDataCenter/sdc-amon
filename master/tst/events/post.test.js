@@ -38,9 +38,9 @@ exports.setUp = function(test, assert) {
 
   var cfg = new Config({});
   cfg.plugins = require('amon-plugins');
-  cfg.redis = {
+  cfg.riak = {
     host: 'localhost',
-    port: process.env.REDIS_PORT || 6379
+    port: process.env.RIAK_PORT || 8098
   };
 
   app = new App({
@@ -73,7 +73,8 @@ exports.setUp = function(test, assert) {
     req.end();
   });
 };
-/*
+
+
 exports.test_missing_status = function(test, assert) {
   http.request(_options(), function(res) {
     common.checkResponse(assert, res);
@@ -88,6 +89,7 @@ exports.test_missing_status = function(test, assert) {
   }).end();
 };
 
+
 exports.test_missing_metrics = function(test, assert) {
   http.request(_options('?status=ok'), function(res) {
     common.checkResponse(assert, res);
@@ -101,6 +103,7 @@ exports.test_missing_metrics = function(test, assert) {
     });
   }).end();
 };
+
 
 exports.test_invalid_status = function(test, assert) {
   var opts = _options('?status=' + uuid() + '&metrics=foo');
@@ -145,6 +148,7 @@ exports.test_bogus_check = function(test, assert) {
   req.end();
 };
 
+
 exports.test_bogus_customer = function(test, assert) {
   var req = http.request(_options(), function(res) {
     common.checkResponse(assert, res);
@@ -172,6 +176,7 @@ exports.test_bogus_customer = function(test, assert) {
   req.end();
 };
 
+
 exports.test_bogus_zone = function(test, assert) {
   var req = http.request(_options(), function(res) {
     common.checkResponse(assert, res);
@@ -198,7 +203,8 @@ exports.test_bogus_zone = function(test, assert) {
   }));
   req.end();
 };
-*/
+
+
 exports.test_success_with_object = function(test, assert) {
   var req = http.request(_options(), function(res) {
     common.checkResponse(assert, res);
@@ -219,7 +225,8 @@ exports.test_success_with_object = function(test, assert) {
   }));
   req.end();
 };
-/*
+
+
 exports.test_success_with_array = function(test, assert) {
   var req = http.request(_options(), function(res) {
     common.checkResponse(assert, res);
@@ -240,11 +247,10 @@ exports.test_success_with_array = function(test, assert) {
   }));
   req.end();
 };
-*/
+
+
 exports.tearDown = function(test, assert) {
-  app.redis.flushdb(function(err, res) {
-    app.close(function() {
-      test.finish();
-    });
+  app.close(function() {
+    test.finish();
   });
 };

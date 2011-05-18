@@ -1,18 +1,19 @@
 // Copyright 2011 Joyent, Inc.  All rights reserved.
 
 var http = require('httpu');
-
 var restify = require('restify');
 var uuid = require('node-uuid');
-
 var Config = require('amon-common').Config;
-
 var App = require('../../lib/app');
 var common = require('../lib/common');
 
+
+
 // Our stuff for running
+
 restify.log.level(restify.LogLevel.Debug);
 
+// Statics
 var path = '/var/log/foo.log';
 var regex = 'ERROR';
 var period = 100;
@@ -27,6 +28,9 @@ var zone;
 var app;
 var socketPath;
 
+
+
+
 function _newOptions(path) {
   var options = {
     method: 'GET',
@@ -39,6 +43,7 @@ function _newOptions(path) {
   if (path) options.path += path;
   return options;
 }
+
 
 function _validateCheck(assert, check) {
   assert.ok(check.id);
@@ -53,6 +58,7 @@ function _validateCheck(assert, check) {
 }
 
 
+
 exports.setUp = function(test, assert) {
   customer = uuid();
   zone = uuid();
@@ -60,9 +66,9 @@ exports.setUp = function(test, assert) {
 
   var cfg = new Config({});
   cfg.plugins = require('amon-plugins');
-  cfg.redis = {
+  cfg.riak = {
     host: 'localhost',
-    port: process.env.REDIS_PORT || 6379
+    port: process.env.RIAK_PORT || 8098
   };
 
   app = new App({
@@ -98,6 +104,7 @@ exports.setUp = function(test, assert) {
   });
 };
 
+
 exports.test_get_success = function(test, assert) {
   http.request(_newOptions('?zone=' + zone), function(res) {
     common.checkResponse(assert, res);
@@ -111,6 +118,7 @@ exports.test_get_success = function(test, assert) {
   }).end();
 };
 
+
 exports.test_head_success = function(test, assert) {
   var opts = _newOptions('?zone=' + zone);
   opts.method = 'HEAD';
@@ -121,10 +129,9 @@ exports.test_head_success = function(test, assert) {
   }).end();
 };
 
+
 exports.tearDown = function(test, assert) {
-  app.redis.flushdb(function(err, res) {
-    app.close(function() {
-      test.finish();
-    });
+  app.close(function() {
+    test.finish();
   });
 };

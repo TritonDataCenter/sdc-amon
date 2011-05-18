@@ -92,13 +92,16 @@ Entity.prototype.load = function(id, callback) {
   this._db.get(this._bucket, id, this._meta, function(err, obj, meta) {
     log.debug('Entity.load(id=%s): riak returned: err=%o, data=%o, vclock=%s',
               id, err, obj, meta ? meta.vclock : '');
-    if (err && err.statusCode !== 404) return callback(err);
+    if (err) {
+      if (err.statusCode !== 404) return callback(err);
+      return callback(null, false);
+    }
 
     self._meta = meta;
     try {
       self.deserialize(obj);
       self.validate();
-      return callback();
+      return callback(null, true);
     } catch (e) {
       return callback(e);
     }
@@ -122,7 +125,7 @@ Entity.prototype.save = function(callback) {
 
     if (self._addIndices && typeof(self._addIndices) === 'function') {
       log.debug('Entity.save(%s) succeeded, creating indices', self.id);
-      self._addIndices(callback);
+      return self._addIndices(callback);
     } else {
       log.debug('Entity.save(%s) no indices; done.');
       return callback();
@@ -184,14 +187,16 @@ Entity.prototype._addIndex = function(index, key, tag, callback) {
   var self = this;
   var riak = this._db;
 
-  log.debug('Entitiy._addIndex(%s) entered: /%s/%s?tag==%s',
-            this.id, index, key, tag);
+  var _index = self._bucket + '_' + index;
 
-  riak.head(index, key, function(err, obj, meta) {
+  log.debug('Entitiy._addIndex(%s) entered: /%s/%s?tag==%s',
+            this.id, _index, key, tag);
+
+  riak.head(_index, key, function(err, obj, meta) {
     if (err && err.statusCode !== 404) return callback(err);
 
     log.debug('Entity._addIndex(%s): /%s/%s links=%o',
-              self.id, index, key, meta ? meta.links : []);
+              self.id, _index, key, meta ? meta.links : []);
 
     function _newLink() {
       return {
@@ -209,12 +214,12 @@ Entity.prototype._addIndex = function(index, key, tag, callback) {
     }
 
     log.debug('Entity._addIndex(%s) /%s/%s saving %o',
-              self.id, index, key, meta.links);
+              self.id, _index, key, meta.links);
 
-    riak.save(index, key, ' ', meta, function(err, obj, meta) {
+    riak.save(_index, key, ' ', meta, function(err, obj, meta) {
       if (err) return callback(err);
 
-      log.debug('Entity._addIndex(%s): /%s/%s done.', self.id, index, key);
+      log.debug('Entity._addIndex(%s): /%s/%s done.', self.id, _index, key);
       return callback();
     });
   });
@@ -225,15 +230,17 @@ Entity.prototype._delIndex = function(index, key, tag, callback) {
   var self = this;
   var riak = this._db;
 
+  var _index = self._bucket + '_' + index;
+
   log.debug('Entitiy._delIndex(%s) entered: /%s/%s?tag==%s',
             this.id, index, key, tag);
 
-  riak.head(index, key, function(err, obj, meta) {
+  riak.head(_index, key, function(err, obj, meta) {
     if (err && err.statusCode !== 404) return callback(err);
     if (!meta || !meta.links || meta.links.length === 0) return callback();
 
     log.debug('Entity._delIndex(%s): /%s/%s links=%o',
-              self.id, index, key, meta.links);
+              self.id, _index, key, meta.links);
 
     meta.removeLink({
       bucket: self._bucket,
@@ -242,20 +249,24 @@ Entity.prototype._delIndex = function(index, key, tag, callback) {
     });
 
     log.debug('Entity._delIndex(%s) /%s/%s saving %o',
-              self.id, index, key, meta.links);
-    riak.save(index, key, ' ', meta, function(err, obj, meta) {
+              self.id, _index, key, meta.links);
+    riak.save(_index, key, ' ', meta, function(err, obj, meta) {
       if (err) return callback(err);
 
-      log.debug('Entity._delIndex(%s): /%s/%s done.', self.id, index, key);
+      log.debug('Entity._delIndex(%s): /%s/%s done.', self.id, _index, key);
       return callback();
     });
   });
 };
 
 
-Entity.prototype._find = function(bucket, key, callback) {
-  this._db.walk(bucket, key, [['_', '_']], function(err, obj, meta) {
-    log.debug('Entity.find(/%s/%s): err=%o, obj=%o', bucket, key, err, obj);
+Entity.prototype._find = function(index, key, callback) {
+  var _index = this._bucket + '_' + index;
+
+  log.debug('Entitiy._find entered: /%s/%s?tag==%s', _index, key);
+
+  this._db.walk(_index, key, [['_', '_']], function(err, obj, meta) {
+    log.debug('Entity.find(/%s/%s): err=%o, obj=%o', _index, key, err, obj);
     if (err) return callback(err);
 
     return callback(null, obj);

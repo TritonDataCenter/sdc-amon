@@ -118,19 +118,24 @@ lint: jshint
 	@echo "* * *"
 endif
 
-tmp:
-	mkdir -p tmp
-test: tmp
-	ulimit -n 2048
-	$(RIAK_CMD) start
-	(RIAK_PORT=8098 bin/whiskey --timeout 1000 --tests "$(shell find . -name "*.test.js" | grep -v 'node_modules/' | xargs)"; $(RIAK_CMD) stop 2>&1 > /dev/null)
-
 #TODO(trent): add deps/restdown submodule
 docs:
 	restdown -v -m doc doc/api.md
 apisummary:
 	@grep '^\(# \| *\(POST\|GET\|DELETE\|HEAD\|PUT\)\)' doc/api.md
 
+tmp:
+	mkdir -p tmp
+test: tmp
+	@ulimit -n 2048
+	($(RIAK_CMD) start)
+	@echo "\n\n-+-+- Waiting for riak -+-+-\n\n"
+	@sleep 1
+	@echo "Running relay tests...\n\n"
+	(RIAK_PORT=8098 bin/whiskey --timeout 500 --tests "$(shell find relay -name "*.test.js" | grep -v 'node_modules/' | xargs)")
+	@echo "\n\nRunning master check tests...\n\n"
+	(RIAK_PORT=8098 bin/whiskey --concurrency 1 --timeout 500 --tests "$(shell find master/tst/checks -name "*.test.js" | grep -v 'node_modules/' | xargs)")
+	($(RIAK_CMD) stop 2>&1 > /dev/null)
 
 # A supervisor for restarting node processes when relevant files change.
 $(NODEDIR)/bin/node-dev: $(NODEDIR)/bin/npm
