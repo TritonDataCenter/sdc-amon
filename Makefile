@@ -134,7 +134,7 @@ test: tmp
 	@echo "Running relay tests...\n\n"
 	(RIAK_PORT=8098 bin/whiskey --timeout 500 --tests "$(shell find relay -name "*.test.js" | grep -v 'node_modules/' | xargs)")
 	@echo "\n\nRunning master check tests...\n\n"
-	(RIAK_PORT=8098 bin/whiskey --concurrency 1 --timeout 500 --tests "$(shell find master/tst/checks -name "*.test.js" | grep -v 'node_modules/' | xargs)")
+	(RIAK_PORT=8098 bin/whiskey --concurrency 1 --timeout 500 --tests "$(shell find master/tst -name "*.test.js" | grep -v 'node_modules/' | xargs)")
 	($(RIAK_CMD) stop 2>&1 > /dev/null)
 
 # A supervisor for restarting node processes when relevant files change.
@@ -151,5 +151,3 @@ clean:
 	(cd deps/riak && $(MAKE) clean)
 	rm -rf $(NODEDIR) agent/node_modules relay/node_modules \
 		master/node_modules bin/amon-zwatch
-
-
