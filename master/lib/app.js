@@ -40,6 +40,19 @@ var App = function App(options) {
 
   this.config = options.config;
   this.port = options.port;
+  this.notificationPlugins = {};
+
+  var plugins = options.config.notificationPlugins;
+  for (var k in plugins) {
+    if (plugins.hasOwnProperty(k)) {
+      try {
+        this.notificationPlugins[k] = require(plugins[k].path).newInstance(plugins[k].config);
+      } catch (e) {
+        log.error('Unable to load notification plugin %s: %s', k, e.stack);
+      }
+    }
+  }
+  log.debug('Loaded notification plugins: %o', this.notificationPlugins);
 
   this.server = restify.createServer({
     apiVersion: Constants.ApiVersion,
@@ -47,9 +60,10 @@ var App = function App(options) {
   });
 
   var _setup = function(req, res, next) {
-    req._config = self.config.config;
+    req._config = self.config;
     req._log = log;
     req._riak = self.config.riak;
+    req._notificationPlugins = self.notificationPlugins;
     return next();
   };
 
@@ -80,9 +94,9 @@ var App = function App(options) {
   this.server.del('/public/:customer/monitors/:monitor', self.before, monitors.del, self.after);
 
   this.server.get('/public/:customer/contacts', self.before, contacts.list, self.after);
-  this.server.post('/public/:customer/contacts', self.before, contacts.create, self.after);
-  this.server.get('/public/:customer/contacts/:contact', self.before, contacts.get, self.after);
-  this.server.del('/public/:customer/contacts/:contact', self.before, contacts.del, self.after);
+  this.server.put('/public/:customer/contacts/:name', self.before, contacts.put, self.after);
+  this.server.get('/public/:customer/contacts/:name', self.before, contacts.get, self.after);
+  this.server.del('/public/:customer/contacts/:name', self.before, contacts.del, self.after);
 };
 
 

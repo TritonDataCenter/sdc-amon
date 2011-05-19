@@ -31,6 +31,8 @@ function Contact(options) {
   if (!options || typeof(options) !== 'object')
     throw new TypeError('options must be an object');
 
+  if (options.customer && options.name)
+    options.id = options.customer + '_' + options.name;
   options._bucket = 'contacts';
   Entity.call(this, options);
 

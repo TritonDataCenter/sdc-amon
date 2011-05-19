@@ -21,11 +21,14 @@ module.exports = {
   // Standard Amon messages.
   CustomerInvalidForCheck: 'customer %s is not associated with check %s',
   InvalidConfig: 'config is invalid: %s',
+  InvalidContactData: 'contact data %s is invalid.',
   InvalidMetric: 'metrics must contain an object with name, type and value',
   InvalidStatus: 'status must be one of: %s',
   InvalidUrn: 'urn %s is not a known check urn.',
   MissingParameter: '"%s" is a required parameter',
   UnknownCheck: '%s is not a registered check',
+  UnknownContact: '%s is not a registered contact',
+  UnknownMedium: '%s is not a registered notification plugin',
   ZoneInvalidForCheck: 'zone %s is not associated with check %s',
 
   message: function() {

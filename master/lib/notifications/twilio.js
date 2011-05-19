@@ -17,22 +17,37 @@ function Twilio(options) {
     throw new TypeError('options.authToken is required');
   if (!options.from)
     throw new TypeError('options.from is required');
-  if (!options.to)
-    throw new TypeError('options.to is required');
-  if (!options.url)
-    throw new TypeError('options.url is required');
-  if (!options.event)
-    throw new TypeError('options.event is required');
 
   this.accountSid = options.accountSid;
   this.authToken = options.authToken;
   this.from = options.from;
-  this.to = options.to;
   this.url = options.url;
 }
 
 
-Twilio.prototype.notify = function(callback) {
+Twilio.prototype.sanitize = function(handle) {
+  if (!handle || typeof(handle) !== 'string') {
+    log.debug('Twilio.validateHandle: handle %s is not a string', handle);
+    return false;
+  }
+  var stripped = handle.replace(/[\(\)\.\-\ ]/g, '');
+  if (isNaN(parseInt(stripped))) {
+    log.debug('Twilio.validateHandle: handle %s is not a phone number', handle);
+    return false;
+  }
+  if (!(stripped.length == 10)) {
+    log.debug('Twilio.validateHandle: handle %s > 10 digits', handle);
+    return false;
+  }
+  return '+1' + stripped;
+};
+
+
+Twilio.prototype.notify = function(event, handle, callback) {
+  if (!event || typeof(event) !== 'string')
+    throw new TypeError('event must be a string');
+  if (!handle || typeof(handle) !== 'string')
+    throw new TypeError('handle must be a phone number');
   if (!callback || typeof(callback) !== 'function')
     throw new TypeError('callback must be a function');
 
@@ -41,7 +56,7 @@ Twilio.prototype.notify = function(callback) {
     new Buffer(self.accountSid + ':' + self.authToken).toString('base64');
   var path = '/2008-08-01/Accounts/' + self.accountSid + '/Calls';
   var body = 'Caller=' + querystring.escape(self.from) +
-    '&Called=' + querystring.escape(self.to) +
+    '&Called=' + querystring.escape(handle) +
     '&Method=GET&Url=' + querystring.escape(self.url);
 
   var options = {
@@ -59,11 +74,11 @@ Twilio.prototype.notify = function(callback) {
 
   var operation = retry.operation();
   operation.try(function(currentAttempt) {
-    log.debug('Twilio(%s): request => %o', self.event, options);
+    log.debug('Twilio(%s): request => %o', event, options);
     var req = https.request(options, function(res) {
       if (res.statusCode >= 500) {
         log.warn('Twilio(%s): failure code: %d, calling retry',
-                 self.event, res.statusCode);
+                 event, res.statusCode);
         return operation.retry(new Error());
       }
 
@@ -75,29 +90,29 @@ Twilio.prototype.notify = function(callback) {
       res.on('end', function() {
         if (res.statusCode !== 201) {
           log.debug('Twilio(%s): error => %s',
-                    self.event, res.body ? res.body : '?????');
+                    event, res.body ? res.body : '?????');
           log.warn('Twilio(%s): failed to issue twilio notification(%s): %d',
-                   self.event, self.to, res.statusCode);
+                   event, self.to, res.statusCode);
           return callback(new Error(res.body ? res.body : 'UnknownError?'));
         } else {
           log.info('Twilio(%s): notification sent to %s => %s',
-                   self.event, self.to, res.body ? res.body : 'empty');
+                   event, self.to, res.body ? res.body : 'empty');
           return callback();
         }
       });
 
       if (log.debug()) {
         log.debug('Twilio(%s) HTTP=%s, headers=%o',
-                  self.event, res.statusCode, res.headers);
+                  event, res.statusCode, res.headers);
       }
     });
 
     req.on('error', function(err) {
-      log.warn('Twilio(%s): error => %s', self.event, err.stack);
+      log.warn('Twilio(%s): error => %s', event, err.stack);
       operation.retry(err);
     });
 
-    log.debug('Twilio(%s): writing %s', self.event, body);
+    log.debug('Twilio(%s): writing %s', event, body);
     req.write(body);
     req.end();
   });
@@ -105,4 +120,10 @@ Twilio.prototype.notify = function(callback) {
 
 
 
-module.exports = (function() { return Twilio; })();
+module.exports = {
+
+  newInstance: function(options) {
+    return new Twilio(options);
+  }
+
+};

@@ -174,7 +174,7 @@ module.exports = {
         return next();
       }
 
-      return check.destroy(req.uriParams.id, function(err) {
+      return check.destroy(function(err) {
         if (err) {
           log.warn('Error destroying check from riak: ' + err);
           res.send(500);

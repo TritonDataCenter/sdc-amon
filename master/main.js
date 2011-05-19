@@ -74,7 +74,7 @@ function main() {
     cfg.plugins = require('amon-plugins');
     var app = new App({
       port: port,
-      config: cfg
+      config: cfg.config
     });
     app.listen(function() {
       log.info('amon-master listening on ' + port);

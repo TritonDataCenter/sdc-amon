@@ -76,17 +76,12 @@ Entity.prototype.deserialize = function(object) {
 Entity.prototype.load = function(id, callback) {
   if (typeof(id) === 'function') {
     callback = id;
-    id = null;
-  }
-  if (!id) {
-    if (!this.id) {
-      throw new TypeError('either id or this.id must be set');
-    }
     id = this.id;
   }
-  if (!callback || typeof(callback) !== 'function') {
+  if (!id)
+    throw new TypeError('either id or this.id must be set');
+  if (!callback || typeof(callback) !== 'function')
     throw new TypeError('callback is required to be a Function');
-  }
 
   var self = this;
   this._db.get(this._bucket, id, this._meta, function(err, obj, meta) {
@@ -144,7 +139,10 @@ Entity.prototype.destroy = function(id, callback) {
     callback = id;
     id = this.id;
   }
-  if (!id) throw new TypeError('either id or this.id must be set');
+  if (!id)
+    throw new TypeError('either id or this.id must be set');
+  if (!callback || typeof(callback) !== 'function')
+    throw new TypeError('callback is required to be a Function');
 
   var self = this;
 

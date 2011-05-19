@@ -94,3 +94,38 @@ exports.sendInvalidConfig = function(res, msg) {
   log.debug('sending error: ' + e);
   res.sendError(e);
 };
+
+
+exports.sendNoMedium = function(res, msg) {
+  var e = restify.newError({
+    httpCode: HttpCodes.Conflict,
+    restCode: RestCodes.InvalidArgument,
+    message: Messages.message(Messages.UnknownMedium, msg)
+  });
+  log.debug('sending error: ' + e);
+  res.sendError(e);
+};
+
+
+exports.sendInvalidContactData = function(res, msg) {
+  var _msg = msg;
+  if (typeof(msg) === 'object') _msg = JSON.stringify(msg);
+  var e = restify.newError({
+    httpCode: HttpCodes.Conflict,
+    restCode: RestCodes.InvalidArgument,
+    message: Messages.message(Messages.InvalidContactData, _msg)
+  });
+  log.debug('sending error: ' + e);
+  res.sendError(e);
+};
+
+
+exports.sendNoContact = function(res, msg) {
+  var e = restify.newError({
+    httpCode: HttpCodes.Conflict,
+    restCode: RestCodes.InvalidArgument,
+    message: Messages.message(Messages.UnknownContact, msg)
+  });
+  log.debug('sending error: ' + e);
+  res.sendError(e);
+};
