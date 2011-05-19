@@ -135,6 +135,8 @@ $(NODEDIR)/bin/node-dev: $(NODEDIR)/bin/npm
 
 devrun: tmp $(NODEDIR)/bin/node-dev
 	support/devrun.sh
+devwipedb:
+	rm -rf deps/riak/rel/riak/data/bitcask
 
 
 clean:
