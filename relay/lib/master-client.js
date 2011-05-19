@@ -99,11 +99,19 @@ Master.prototype.sendEvent = function(options, callback) {
       }));
     }
     if (res.statusCode !== HttpCodes.Created) {
-      log.warn('Invalid status code for Master.sendEvent: ' + res.statusCode);
-      return callback(_error({
-        httpCode: HttpCodes.InternalError,
-        restCode: RestCodes.UnknownError
-      }));
+      res.setEncoding('utf8');
+      res.body = ''; //TODO: Just have local `var body = '';` ?
+      res.on('data', function(chunk) {
+        res.body += chunk;
+      });
+      res.on('end', function() {
+        log.warn('Invalid status code for Master.sendEvent: %d => %s',
+                 res.statusCode, res.body);
+        return callback(_error({
+          httpCode: HttpCodes.InternalError,
+          restCode: RestCodes.UnknownError
+        }));
+      });
     }
 
     return callback();
