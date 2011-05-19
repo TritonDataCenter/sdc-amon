@@ -130,9 +130,10 @@ exports.put = function(req, res, next) {
   var contactsFinished = 0;
 
   for (j = 0; j < checks.length; j++) {
+    var j_ = j; // capture
     _validateCheck(req, checks[j], function(valid) {
       if (!valid) {
-        utils.sendNoCheck(res, checks[j].name);
+        utils.sendNoCheck(res, checks[j_].name);
         return next();
       }
       if (++checksFinished >= checks.length) {
@@ -145,9 +146,10 @@ exports.put = function(req, res, next) {
 
 
   for (i = 0; i < contacts.length; i++) {
+    var i_ = i; // capture
     _validateContact(req, contacts[i],   function(valid) {
       if (!valid) {
-        utils.sendNoContact(res, contacts[i].name);
+        utils.sendNoContact(res, contacts[i_].name);
         return next();
       }
       if (++contactsFinished >= contacts.length) {
