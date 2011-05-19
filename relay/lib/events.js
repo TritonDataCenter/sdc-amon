@@ -44,7 +44,11 @@ module.exports = {
     };
 
     req._master.sendEvent(event, function(err) {
-      if (err) res.sendError(err);
+      if (err) {
+        log.warn("error forwarding event to master: %o", err)
+        res.sendError(err);
+        return next();
+      }
 
       log.debug('events.forward: sending %d', HttpCodes.Accepted);
       res.send(HttpCodes.Accepted);
