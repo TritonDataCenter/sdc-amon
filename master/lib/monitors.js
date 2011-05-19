@@ -129,34 +129,34 @@ exports.put = function(req, res, next) {
   var checksFinished = 0;
   var contactsFinished = 0;
 
-  function _checkCb(valid) {
-    if (!valid) {
-      utils.sendNoCheck(res, checks[j].name);
-      return next();
-    }
-    if (++checksFinished >= checks.length) {
-      if (contactsFinished >= contacts.length) {
-        return _putMonitor();
+  for (j = 0; j < checks.length; j++) {
+    _validateCheck(req, checks[j], function(valid) {
+      if (!valid) {
+        utils.sendNoCheck(res, checks[j].name);
+        return next();
       }
-    }
+      if (++checksFinished >= checks.length) {
+        if (contactsFinished >= contacts.length) {
+          return _putMonitor();
+        }
+      }
+    });
   }
-  for (j = 0; j < checks.length; j++)
-    _validateCheck(req, checks[j], _checkCb);
 
 
-  function _contactCb(valid) {
-    if (!valid) {
-      utils.sendNoContact(res, contacts[i].name);
-      return next();
-    }
-    if (++contactsFinished >= contacts.length) {
-      if (checksFinished >= checks.length) {
-        return _putMonitor();
+  for (i = 0; i < contacts.length; i++) {
+    _validateContact(req, contacts[i],   function(valid) {
+      if (!valid) {
+        utils.sendNoContact(res, contacts[i].name);
+        return next();
       }
-    }
+      if (++contactsFinished >= contacts.length) {
+        if (checksFinished >= checks.length) {
+          return _putMonitor();
+        }
+      }
+    });
   }
-  for (i = 0; i < contacts.length; i++)
-    _validateContact(req, contacts[i], _contactCb);
 };
 
 
