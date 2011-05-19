@@ -53,16 +53,6 @@ function Monitor(options) {
     }
   }
 
-  if (this.checks) {
-    for (i = 0; i < this.checks.length; i++) {
-      this._meta.links.push({
-        bucket: 'checks',
-        key: self.checks[i].customer + '_' + self.checks[i].name,
-        tag: null
-      });
-    }
-  }
-
 }
 util.inherits(Monitor, Entity);
 
@@ -94,12 +84,39 @@ Monitor.prototype._validate = function(callback) {
 
 
 Monitor.prototype._addIndices = function(callback) {
-  this._addIndex('customers', this.customer, null, callback);
+  var self = this;
+  var finished = 0;
+
+  function _callback(err) {
+    if (err) return callback(err);
+
+    if (++finished >= self.checks.length)
+      return self._addIndex('customers', self.customer, null, callback);
+  }
+
+  for (var i = 0; i < self.checks.length; i++) {
+    var c = self.checks[i];
+    console.log('here...');
+    self._addIndex('checks', c.customer + '_' + c.name, null, _callback);
+  }
 };
 
 
 Monitor.prototype._deleteIndices = function(callback) {
-  this._delIndex('customers', this.customer, null, callback);
+  var self = this;
+  var i = 0;
+  var finished = 0;
+
+  function _callback(err) {
+    if (err) return callback(err);
+    if (++finished >= self.checks.length)
+      return self._delIndex('customers', self.customer, null, callback);
+  }
+
+  for (i = 0; i < this.checks.length; i++) {
+    var c = self.checks[i];
+    self._delIndex('checks', c.customer + '_' + c.name, null, _callback);
+  }
 };
 
 
@@ -109,6 +126,29 @@ Monitor.prototype.findByCustomer = function(customer, callback) {
     throw new TypeError('callback is required');
 
   return this._find('customers', customer, callback);
+};
+
+
+Monitor.prototype.findByCheck = function(customer, check, callback) {
+  if (!customer) throw new TypeError('customer is required');
+  if (!customer) throw new TypeError('check is required');
+  if (!callback || typeof(callback) !== 'function')
+    throw new TypeError('callback is required');
+
+  return this._find('checks', customer + '_' + check, callback);
+};
+
+
+Monitor.prototype.loadContactsByCheckId = function(check, callback) {
+  if (!check) throw new TypeError('check is required');
+  if (!callback || typeof(callback) !== 'function')
+    throw new TypeError('callback is required');
+
+  return this._find('checks',
+                    check,
+                    callback,
+                    [['monitors', '_'], ['contacts', '_']]
+                   );
 };
 
 

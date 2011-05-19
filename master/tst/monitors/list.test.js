@@ -60,7 +60,7 @@ exports.setUp = function(test, assert) {
   var cfg = new Config({});
   cfg.plugins = require('amon-plugins');
   cfg.riak = {
-    host: 'localhost',
+    host: process.env.RIAK_HOST || 'localhost',
     port: process.env.RIAK_PORT || 8098
   };
   cfg.notificationPlugins = {
@@ -90,7 +90,7 @@ exports.setUp = function(test, assert) {
 };
 
 
-exports.test_get_success = function(test, assert) {
+exports.test_get_by_customer_success = function(test, assert) {
   var req = http.request(
     {
       method: 'GET',
@@ -110,6 +110,29 @@ exports.test_get_success = function(test, assert) {
   });
   req.end();
 };
+
+
+exports.test_get_by_customer_check_success = function(test, assert) {
+  var req = http.request(
+    {
+      method: 'GET',
+      headers: headers,
+      path: '/pub/' + customer + '/monitors?check=db',
+      socketPath: socketPath
+    },
+    function(res) {
+      common.checkResponse(assert, res);
+      assert.equal(res.statusCode, 200);
+      common.checkContent(assert, res, function() {
+        assert.ok(res.params);
+        assert.equal(res.params.length, 1);
+        _validateMonitor(assert, res.params[0]);
+        test.finish();
+    });
+  });
+  req.end();
+};
+
 
 exports.tearDown = function(test, assert) {
   app.close(function() {

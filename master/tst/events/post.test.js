@@ -9,6 +9,8 @@ var Constants = require('amon-common').Constants;
 var App = require('../../lib/app');
 var common = require('amon-common')._test;
 
+
+
 // Our stuff for running
 restify.log.level(restify.LogLevel.Debug);
 
@@ -18,61 +20,75 @@ var check;
 var customer;
 var zone;
 
-function _options(path) {
-  var options = {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Api-Version': Constants.ApiVersion
-    },
-    path: '/events',
-    socketPath: socketPath
-  };
-  if (path) options.path += path;
-  return options;
-}
+
+
+//---- test data
+
+var headers = {
+  'Content-Type': 'application/json',
+  'X-Api-Version': Constants.ApiVersion
+};
+
+var name = 'HealthyUnitTest';
+var checks = [
+  {
+    name: 'db',
+    urn: 'amon:logscan',
+    zone: uuid(),
+    config: {
+      path: '/var/mydb/db.log',
+      regex: 'ERROR',
+      threshold: 3,
+      period: 120
+    }
+  }
+];
+var contacts = [
+  {
+    name: 'cellPhone',
+    medium: 'sms',
+    data: '(206) 555-1212'
+  }
+];
+
+
 
 exports.setUp = function(test, assert) {
   customer = uuid();
-  zone = uuid();
+  check = customer + '_' + checks[0].name;
+  zone = checks[0].zone;
   socketPath = '/tmp/.' + uuid();
 
   var cfg = new Config({});
   cfg.plugins = require('amon-plugins');
   cfg.riak = {
-    host: 'localhost',
+    host: process.env.RIAK_HOST || 'localhost',
     port: process.env.RIAK_PORT || 8098
   };
+  cfg.notificationPlugins = {
+    'sms': {
+      'path': './notifications/twilio',
+      'config': {
+        'accountSid': uuid(),
+        'authToken': uuid(),
+        'from': '+12064555313'
+      }
+    }
+  };
+
 
   app = new App({
     port: socketPath,
     config: cfg
   });
   app.listen(function() {
-    var opts = _options();
-    opts.method = 'PUT';
-    opts.path = '/pub/' + customer + '/checks/' + uuid();
-    var req = http.request(opts, function(res) {
-      common.checkResponse(assert, res);
-      assert.equal(res.statusCode, 200);
-      common.checkContent(assert, res, function() {
-        check = res.params.id;
-        test.finish();
+    _addContact(assert, contacts[0], function() {
+      _addCheck(assert, checks[0], function() {
+        _addMonitor(assert, function() {
+          test.finish();
+        });
       });
     });
-
-    req.write(JSON.stringify({
-      customer: customer,
-      zone: zone,
-      urn: 'amon:logscan',
-      config: {
-        path: '/' + uuid(),
-        regex: '*',
-        period: 10,
-        threshold: 1
-      }
-    }));
-    req.end();
   });
 };
 
@@ -215,7 +231,7 @@ exports.test_success_with_object = function(test, assert) {
   });
 
   req.write(JSON.stringify({
-    status: 'ok',
+    status: 'error',
     check: check,
     zone: zone,
     customer: customer,
@@ -256,3 +272,86 @@ exports.tearDown = function(test, assert) {
     test.finish();
   });
 };
+
+
+
+function _options(path) {
+  var options = {
+    method: 'POST',
+    headers: headers,
+    path: '/events',
+    socketPath: socketPath
+  };
+  if (path) options.path += path;
+  return options;
+}
+
+
+function _addContact(assert, contact, callback) {
+  var req = http.request(
+    {
+      method: 'PUT',
+      headers: headers,
+      path: '/pub/' + customer + '/contacts/' + contact.name,
+      socketPath: socketPath
+    },
+    function(res) {
+      assert.equal(res.statusCode, 200);
+      res.on('end', function() { callback(); });
+    }
+  );
+  req.write(JSON.stringify(contact));
+  req.end();
+}
+
+
+function _addCheck(assert, check, callback) {
+  var req = http.request(
+    {
+      method: 'PUT',
+      headers: headers,
+      path: '/pub/' + customer + '/checks/' + check.name,
+      socketPath: socketPath
+    },
+    function(res) {
+      assert.equal(res.statusCode, 200);
+      res.on('end', function() {
+        callback();
+      });
+    }
+  );
+  req.write(JSON.stringify(check));
+  req.end();
+}
+
+
+function _addMonitor(assert, callback) {
+  var req = http.request(
+    {
+      method: 'PUT',
+      headers: headers,
+      path: '/pub/' + customer + '/monitors/' + name,
+      socketPath: socketPath
+    },
+    function(res) {
+      common.checkResponse(assert, res);
+      assert.equal(res.statusCode, 200);
+      common.checkContent(assert, res, function() {
+        callback();
+    });
+  });
+
+  req.write(JSON.stringify({
+    name: name,
+    customer: customer,
+    checks: [{
+      customer: customer,
+      name: checks[0].name
+    }],
+    contacts: [{
+      customer: customer,
+      name: contacts[0].name
+    }]
+  }));
+  req.end();
+}

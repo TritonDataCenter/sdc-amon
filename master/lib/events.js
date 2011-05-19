@@ -11,6 +11,7 @@ var amon_common = require('amon-common');
 var utils = require('./utils');
 var Check = require('./model/check');
 var Event = require('./model/event');
+var Monitor = require('./model/monitor');
 
 
 
@@ -68,7 +69,11 @@ function _validCheck(req, res, check) {
   return true;
 }
 
-
+function _notifyCb(err) {
+  // Plugins already log,
+  // so we may want to get
+  // rid of this.
+}
 
 //---- controllers
 
@@ -87,14 +92,19 @@ module.exports = {
       id: req.params.check
     });
 
-    check.load(function(err, loaded) {
+    var monitor = new Monitor({
+      riak: req._riak
+    });
+
+    var customer = req.params.customer;
+    check.load(function(err, exists) {
       if (err) {
         log.warn('Error loading check from riak: ' + err);
         res.send(500);
         return next();
       }
 
-      if (!loaded) {
+      if (!exists) {
         log.debug('Check %s not found', req.params.check);
         utils.sendNoCheck(res, req.params.check);
         return next();
@@ -102,10 +112,36 @@ module.exports = {
 
       if (!_validCheck(req, res, check)) return next();
 
+      // Send any notificationd we have to.
+      if (req._amonEvent.status !== 'ok') {
+        monitor.loadContactsByCheckId(check.id, function(err, contacts) {
+          if (!err && contacts) {
+            log.debug('events.create(%s): contacts=%o', check.id, contacts);
+
+            contacts.forEach(function(contact) {
+              var plugin = req._notificationPlugins[contact.medium];
+              if (!plugin) {
+                log.error('events.create: notification plugin %s not found',
+                          contact.medium);
+                return;
+              }
+
+              plugin.notify(check.name,
+                            contact.data,
+                            req._amonEvent.message,
+                            _notifyCb);
+            });
+          } else {
+            // TODO - load up email from CAPI
+          }
+        });
+      }
+
+      // Record this event
       var event = new Event({
         riak: req._riak,
         check: check.id,
-        customer: req.params.customer,
+        customer: customer,
         event: req._amonEvent,
         zone: req.params.zone
       });
@@ -123,6 +159,7 @@ module.exports = {
       });
     });
   },
+
 
 
   list: function(req, res, next) {

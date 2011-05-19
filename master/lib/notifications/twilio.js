@@ -43,11 +43,13 @@ Twilio.prototype.sanitize = function(handle) {
 };
 
 
-Twilio.prototype.notify = function(event, handle, callback) {
+Twilio.prototype.notify = function(event, handle, message, callback) {
   if (!event || typeof(event) !== 'string')
     throw new TypeError('event must be a string');
   if (!handle || typeof(handle) !== 'string')
     throw new TypeError('handle must be a phone number');
+  if (typeof(message) !== 'string')
+    throw new TypeError('message must be a string');
   if (!callback || typeof(callback) !== 'function')
     throw new TypeError('callback must be a function');
 

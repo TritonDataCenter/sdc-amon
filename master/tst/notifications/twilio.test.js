@@ -26,7 +26,7 @@ exports.setUp = function(test, assert) {
 
 exports.test_notify = function(test, assert) {
   // Don't run up mark's bill!!!
-  // twilio.notify(uuid(), '+12067259570', function(err) {
+  // twilio.notify(uuid(), '+12067259570', uuid(), function(err) {
   //   assert.ifError(err);
   //   test.finish();
   // });

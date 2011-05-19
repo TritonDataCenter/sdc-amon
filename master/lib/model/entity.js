@@ -191,8 +191,8 @@ Entity.prototype.exists = function(id, callback) {
   if (!callback || typeof(callback) !== 'function')
     throw new TypeError('callback is required to be a Function');
 
-  this._db.exists(this._bucket, id, this._meta, function(err, obj, meta) {
-    return callback(err, obj);
+  this._db.exists(this._bucket, id, this._meta, function(err, exists, meta) {
+    return callback(err, exists);
   });
 };
 
@@ -274,12 +274,14 @@ Entity.prototype._delIndex = function(index, key, tag, callback) {
 };
 
 
-Entity.prototype._find = function(index, key, callback) {
+Entity.prototype._find = function(index, key, callback, filter) {
   var _index = this._bucket + '_' + index;
 
-  log.debug('Entitiy._find entered: /%s/%s?tag==%s', _index, key);
+  var _filter = filter || [['_', '_']];
 
-  this._db.walk(_index, key, [['_', '_']], function(err, obj, meta) {
+  log.debug('Entity._find entered: /%s/%s/%o', _index, key, _filter);
+
+  this._db.walk(_index, key, _filter, function(err, obj, meta) {
     log.debug('Entity.find(/%s/%s): err=%o, obj=%o', _index, key, err, obj);
     if (err) return callback(err);
 

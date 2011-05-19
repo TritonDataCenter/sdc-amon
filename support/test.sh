@@ -19,7 +19,6 @@ ROOT=$(cd $(dirname $0)/../; pwd)
 NODE_DEV="env LD_PRELOAD_32=/usr/lib/extendedFILE.so.1 PATH=${ROOT}/deps/node-install/bin:${ROOT}/deps/riak/rel/riak/bin:$PATH node-dev"
 RIAK=$ROOT/deps/riak/rel/riak/bin/riak
 WHISKEY=$ROOT/bin/whiskey
-#WHISKEY=$HOME/tm/whiskey/bin/whiskey
 
 
 #---- support functions
@@ -58,7 +57,7 @@ if [[ -n "$TEST" ]]; then
 fi
 if [[ -n "$files" ]]; then
     echo "== test relay"
-    (cd ${ROOT} && RIAK_PORT=8098 ${WHISKEY} --timeout 750 \
+    (cd ${ROOT} && RIAK_PORT=8098 ${WHISKEY} --timeout 2000 \
         --concurrency 1 --tests "$(echo "$files" | xargs)")
     status=$?
     [[ "$status" != 0 ]] && exit $status
@@ -72,7 +71,7 @@ if [[ -n "$TEST" ]]; then
 fi
 if [[ -n "$files" ]]; then
     echo "== test master"
-    (cd ${ROOT} && RIAK_PORT=8098 ${WHISKEY} --timeout 750 \
+    (cd ${ROOT} && RIAK_PORT=8098 ${WHISKEY} --timeout 2000 \
         --concurrency 1 --tests "$(echo "$files" | xargs)")
     status=$?
     [[ "$status" != 0 ]] && exit $status

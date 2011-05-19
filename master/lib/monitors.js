@@ -23,40 +23,7 @@ var RestCodes = restify.RestCodes;
 
 
 
-
-
 //---- internal support routines
-
-///**
-// * Resolve `Contact` model instances for each of the given contact names.
-// *
-// * Calls `callback(err, contacts)` on complete. On success, `contacts` is
-// * an array (in order) of `Contact`. On error `err` looks like:
-// *
-// *    {
-// *      "code": ...,
-// *      "message": ...
-// *    }
-// *
-// * Where "code" is one of "UnknownContact" or "InternalError".
-// */
-//function _getContacts(contactNames, callback) {
-//  var contacts = [];
-//  for (var i=0; i < contactNames.length; i++) {
-//    var name = contactNames[i];
-//    contact = "<Contact "+name+">"; // HACK
-//    //var contact = _hackdb.contactFromName[name];
-//    //if (!contact) {
-//    //  callback({
-//    //    code: "UnknownContact",
-//    //    message: Messages.message("contact '%s' is unknown", name)
-//    //  });
-//    //  return;
-//    //}
-//    contacts.push(contact);
-//  }
-//  callback(null, contacts);
-//}
 
 function _validateContact(req, c, callback) {
   var contact = new Contact({
@@ -93,10 +60,7 @@ exports.list = function(req, res, next) {
   log.debug('monitors.list entered: params=%o, uriParams=%o',
             req.params, req.uriParams);
 
-  var monitor = new Monitor({
-    riak: req._riak
-  });
-  monitor.findByCustomer(req.uriParams.customer, function(err, monitors) {
+  function _callback(err, monitors) {
     if (err) {
       log.warn('Error finding monitors: ' + err);
       res.send(500);
@@ -105,7 +69,17 @@ exports.list = function(req, res, next) {
       res.send(200, monitors);
     }
     return next();
+  }
+
+  var customer = req.uriParams.customer;
+  var monitor = new Monitor({
+    riak: req._riak
   });
+  if (req.params.check) {
+    monitor.findByCheck(customer, req.params.check, _callback);
+  } else {
+    monitor.findByCustomer(customer, _callback);
+  }
 };
 
 

@@ -61,7 +61,7 @@ exports.setUp = function(test, assert) {
 
   var cfg = new Config({});
   cfg.riak = {
-    host: 'localhost',
+    host: process.env.RIAK_HOST || 'localhost',
     port: process.env.RIAK_PORT || 8098
   };
   cfg.notificationPlugins = {
