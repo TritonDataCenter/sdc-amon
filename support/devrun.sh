@@ -65,7 +65,7 @@ echo "== start riak (${ROOT}/deps/riak/rel/riak/log)"
 ${RIAK} start
 
 echo "== start master (tmp/dev-master.log)"
-${NODE_DEV} $ROOT/master/main.js -d -f $ROOT/support/dev-master-config.json -p 8080 > $ROOT/tmp/dev-master.log 2>&1 &
+${NODE_DEV} $ROOT/master/main.js -d -f $ROOT/master/config.coal.json -p 8080 > $ROOT/tmp/dev-master.log 2>&1 &
 sleep 1
 
 echo "== start relay (tmp/dev-relay.log)"
