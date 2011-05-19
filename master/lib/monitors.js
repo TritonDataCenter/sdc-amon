@@ -1,7 +1,7 @@
 /*
  * Copyright 2011 Joyent, Inc.  All rights reserved.
  *
- * Amon Master controller for '/public/:customer/monitors/...' endpoints.
+ * Amon Master controller for '/pub/:customer/monitors/...' endpoints.
  */
 
 var assert = require('assert');
@@ -55,7 +55,7 @@ function _validateCheck(req, c, callback) {
 
 var exports = module.exports;
 
-// GET /public/:customer/monitors
+// GET /pub/:customer/monitors
 exports.list = function(req, res, next) {
   log.debug('monitors.list entered: params=%o, uriParams=%o',
             req.params, req.uriParams);
@@ -83,7 +83,7 @@ exports.list = function(req, res, next) {
 };
 
 
-// PUT /public/:customer/monitors/:name
+// PUT /pub/:customer/monitors/:name
 exports.put = function(req, res, next) {
   log.debug('monitors.put entered: params=%o, uriParams=%o',
             req.params, req.uriParams);
@@ -160,7 +160,7 @@ exports.put = function(req, res, next) {
 };
 
 
-// GET /public/:customer/monitors/:monitor
+// GET /pub/:customer/monitors/:monitor
 exports.get = function(req, res, next) {
   log.debug('monitors.get entered: params=%o, uriParams=%o',
             req.params, req.uriParams);
@@ -188,7 +188,7 @@ exports.get = function(req, res, next) {
 };
 
 
-// DELETE /public/:customer/monitors/:monitor
+// DELETE /pub/:customer/monitors/:monitor
 exports.del = function(req, res, next) {
   log.debug('monitors.del entered: params=%o, uriParams=%o',
             req.params, req.uriParams);
