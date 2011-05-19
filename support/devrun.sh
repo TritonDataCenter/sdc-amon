@@ -76,7 +76,7 @@ sleep 1  # work around for MON-3
 echo "== start agent (tmp/dev-agent.log)"
 mkdir -p $ROOT/tmp/dev-agent/config
 mkdir -p $ROOT/tmp/dev-agent/tmp
-${NODE_DEV} $ROOT/agent/main.js -p 10 -c $ROOT/tmp/dev-agent/config -t $ROOT/tmp/dev-agent/tmp -s 8081 > $ROOT/tmp/dev-agent.log 2>&1 &
+${NODE_DEV} $ROOT/agent/main.js -d -p 10 -c $ROOT/tmp/dev-agent/config -t $ROOT/tmp/dev-agent/tmp -s 8081 > $ROOT/tmp/dev-agent.log 2>&1 &
 
 echo "== tail the logs ..."
 ${MTAIL} -f $ROOT/tmp/dev-master.log $ROOT/tmp/dev-relay.log $ROOT/tmp/dev-agent.log
