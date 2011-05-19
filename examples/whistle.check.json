@@ -1,7 +1,7 @@
 {
   "urn": "amon:logscan",
   "config": {
-    "path": "/tmp/whistleblower.log",
+    "path": "/tmp/whistle.log",
     "regex": "tweet",
     "threshold": 1,
     "period": 120

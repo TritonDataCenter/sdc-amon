@@ -1,7 +1,6 @@
 {
-    "name": "trent-email",
-    "medium": "email",
-    "data": {
-        "address": "Trent Mick (trent.mick@joyent.com)"
-    }
+  "medium": "email",
+  "data": {
+    "address": "Trent Mick (trent.mick@joyent.com)"
+  }
 }

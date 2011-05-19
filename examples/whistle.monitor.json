@@ -1,15 +1,8 @@
 {
-  "name": "Whistle",
-  "contacts": ["trent-email"],
+  "contacts": [
+    {"customer": "trent", "name": "email"},
+  ],
   "checks": [
-    {
-      "urn": "amon:logscan",
-      "config": {
-        "path": "/tmp/whistleblower.log",
-        "regex": "tweet",
-        "threshold": 1,
-        "period": 120
-      }
-    }
+    {"customer": "trent", "name": "whistle"},
   ]
 }
