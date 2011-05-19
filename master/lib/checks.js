@@ -29,21 +29,18 @@ var log = restify.log;
 
 module.exports = {
 
-  create: function(req, res, next) {
+  put: function(req, res, next) {
     assert.ok(req._config);
     assert.ok(req._config.plugins);
 
-    log.debug('checks.create entered: params=%o', req.params);
+    log.debug('checks.put entered: params=%o', req.params);
 
-    var customer = req.params.customer;
+    var customer = req.uriParams.customer;
+    var name = req.uriParams.name;
     var zone = req.params.zone;
     var urn = req.params.urn;
     var config = req.params.config;
 
-    if (!customer) {
-      utils.sendMissingArgument(res, 'customer');
-      return next();
-    }
     if (!zone) {
       utils.sendMissingArgument(res, 'zone');
       return next();
@@ -62,7 +59,7 @@ module.exports = {
       return next();
     }
 
-    log.debug('checks.create: found plugin %o', plugin);
+    log.debug('checks.put: found plugin %o', plugin);
 
     try {
       plugin.validateConfig(config);
@@ -73,8 +70,9 @@ module.exports = {
 
     var check = new Check({
       riak: req._riak,
-      customer: req.params.customer,
-      zone: req.params.zone,
+      customer: customer,
+      name: name,
+      zone: zone,
       urn: urn,
       config: config
     });
@@ -85,9 +83,8 @@ module.exports = {
         res.send(500);
       } else {
         var data = check.serialize();
-        log.debug('checks.create returning %d, object=%o', 201,
-                  data);
-        res.send(201, data);
+        log.debug('checks.put returning %d, object=%o', 200, data);
+        res.send(200, data);
       }
       return next();
     });
@@ -98,7 +95,8 @@ module.exports = {
     log.debug('checks.list entered: params=%o', req.params);
 
     var check = new Check({
-      riak: req._riak
+      riak: req._riak,
+      customer: req.uriParams.customer
     });
     // Bug here in that it's possible for an idiot to pass in a zone not owned
     // by the customer. That's a problem for future amon developers...
@@ -113,8 +111,8 @@ module.exports = {
         }
         return next();
       });
-    } else if (req.params.customer) {
-      check.findByCustomer(req.params.customer, function(err, checks) {
+    } else {
+      check.findByCustomer(req.uriParams.customer, function(err, checks) {
         if (err) {
           log.warn('Error finding checks in riak: ' + err);
           res.send(500);
@@ -124,27 +122,27 @@ module.exports = {
         }
         return next();
       });
-    } else {
-      utils.sendMissingArgument(res, 'zone');
-      return next();
     }
 
   },
+
 
   get: function(req, res, next) {
     log.debug('checks.get entered: params=%o', req.params);
 
     var check = new Check({
-      riak: req._riak
+      riak: req._riak,
+      customer: req.uriParams.customer,
+      name: req.uriParams.name
     });
 
-    check.load(req.uriParams.id, function(err, loaded) {
+    check.load(function(err, loaded) {
       if (err) {
         log.warn('Error loading check from riak: ' + err);
         res.send(500);
       } else {
         if (!loaded) {
-          utils.sendNoCheck(res, req.uriParams.id);
+          utils.sendNoCheck(res, req.uriParams.name);
         } else {
           var obj = check.serialize();
           log.debug('checks.get returning %d, obj=%o', 200, obj);
@@ -155,14 +153,17 @@ module.exports = {
     });
   },
 
+
   del: function(req, res, next) {
     log.debug('checks.del entered: params=%o', req.params);
 
     var check = new Check({
-      riak: req._riak
+      riak: req._riak,
+      customer: req.uriParams.customer,
+      name: req.uriParams.name
     });
 
-    check.load(req.uriParams.id, function(err, loaded) {
+    check.load(function(err, loaded) {
       if (err) {
         log.warn('Error loading check from riak: ' + err);
         res.send(500);

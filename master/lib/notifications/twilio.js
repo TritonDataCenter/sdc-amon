@@ -31,11 +31,11 @@ Twilio.prototype.sanitize = function(handle) {
     return false;
   }
   var stripped = handle.replace(/[\(\)\.\-\ ]/g, '');
-  if (isNaN(parseInt(stripped))) {
+  if (isNaN(parseInt(stripped, 10))) {
     log.debug('Twilio.validateHandle: handle %s is not a phone number', handle);
     return false;
   }
-  if (!(stripped.length == 10)) {
+  if (stripped.length !== 10) {
     log.debug('Twilio.validateHandle: handle %s > 10 digits', handle);
     return false;
   }
@@ -73,7 +73,9 @@ Twilio.prototype.notify = function(event, handle, callback) {
   };
 
   var operation = retry.operation();
+  /*jsl:ignore*/
   operation.try(function(currentAttempt) {
+    /*jsl:end*/
     log.debug('Twilio(%s): request => %o', event, options);
     var req = https.request(options, function(res) {
       if (res.statusCode >= 500) {

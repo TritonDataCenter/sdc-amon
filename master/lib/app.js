@@ -46,7 +46,8 @@ var App = function App(options) {
   for (var k in plugins) {
     if (plugins.hasOwnProperty(k)) {
       try {
-        this.notificationPlugins[k] = require(plugins[k].path).newInstance(plugins[k].config);
+        this.notificationPlugins[k] =
+          require(plugins[k].path).newInstance(plugins[k].config);
       } catch (e) {
         log.error('Unable to load notification plugin %s: %s', k, e.stack);
       }
@@ -74,29 +75,44 @@ var App = function App(options) {
     amon_common.w3clog
   ];
 
-  this.server.get('/checks', self.before, checks.list, self.after);
-  this.server.post('/checks', self.before, checks.create, self.after);
-  this.server.get('/checks/:id', self.before, checks.get, self.after);
-  this.server.del('/checks/:id', self.before, checks.del, self.after);
-  this.server.head('/config', self.before, config.head, self.after);
-  this.server.get('/config', self.before, config.get, self.after);
+  var server = this.server;
 
-  this.server.get('/events', self.before, events.list, self.after);
-  this.server.post('/events',
-                   self.before,
-                   amon_common.events.event,
-                   events.create,
-                   self.after);
+  server.head('/config', self.before, config.head, self.after);
+  server.get('/config', self.before, config.get, self.after);
 
-  this.server.get('/public/:customer/monitors', self.before, monitors.list, self.after);
-  this.server.post('/public/:customer/monitors', self.before, monitors.create, self.after);
-  this.server.get('/public/:customer/monitors/:monitor', self.before, monitors.get, self.after);
-  this.server.del('/public/:customer/monitors/:monitor', self.before, monitors.del, self.after);
+  server.get('/events', self.before, events.list, self.after);
+  server.post('/events',
+              self.before,
+              amon_common.events.event,
+              events.create,
+              self.after);
 
-  this.server.get('/public/:customer/contacts', self.before, contacts.list, self.after);
-  this.server.put('/public/:customer/contacts/:name', self.before, contacts.put, self.after);
-  this.server.get('/public/:customer/contacts/:name', self.before, contacts.get, self.after);
-  this.server.del('/public/:customer/contacts/:name', self.before, contacts.del, self.after);
+  server.get('/pub/:customer/checks',
+             self.before, checks.list, self.after);
+  server.put('/pub/:customer/checks/:name',
+             self.before, checks.put, self.after);
+  server.get('/pub/:customer/checks/:name',
+             self.before, checks.get, self.after);
+  server.del('/pub/:customer/checks/:name',
+             self.before, checks.del, self.after);
+
+  server.get('/pub/:customer/contacts',
+             self.before, contacts.list, self.after);
+  server.put('/pub/:customer/contacts/:name',
+             self.before, contacts.put, self.after);
+  server.get('/pub/:customer/contacts/:name',
+             self.before, contacts.get, self.after);
+  server.del('/pub/:customer/contacts/:name',
+             self.before, contacts.del, self.after);
+
+  server.get('/pub/:customer/monitors',
+             self.before, monitors.list, self.after);
+  server.put('/pub/:customer/monitors/:name',
+             self.before, monitors.put, self.after);
+  server.get('/pub/:customer/monitors/:name',
+             self.before, monitors.get, self.after);
+  server.del('/pub/:customer/monitors/:name',
+             self.before, monitors.del, self.after);
 };
 
 

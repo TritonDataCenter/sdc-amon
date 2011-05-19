@@ -31,5 +31,5 @@ module.exports = function w3clog(request, response, next) {
               response._time
              );
   return next();
-}
+};
 

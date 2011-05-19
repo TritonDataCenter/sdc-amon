@@ -33,7 +33,7 @@ function _newOptions(_customer) {
       'Content-Type': 'application/json',
       'X-Api-Version': Constants.ApiVersion
     },
-    path: '/public/' + _customer + '/contacts',
+    path: '/pub/' + _customer + '/contacts',
     socketPath: socketPath
   };
   return options;

@@ -4,6 +4,8 @@ var http = require('httpu');
 var restify = require('restify');
 var uuid = require('node-uuid');
 var Config = require('amon-common').Config;
+var Constants = require('amon-common').Constants;
+
 var App = require('../../lib/app');
 var common = require('../lib/common');
 
@@ -23,6 +25,7 @@ var urn = 'amon:logscan';
 // Generated Stuff
 var id;
 var customer;
+var name;
 var zone;
 
 var app;
@@ -39,7 +42,7 @@ function _newOptions(path) {
     socketPath: socketPath
   };
   options.headers['Content-Type'] = 'application/json';
-  options.headers['X-Api-Version'] = '6.1.0';
+  options.headers['X-Api-Version'] = Constants.ApiVersion;
   if (path) options.path += path;
   return options;
 }
@@ -62,6 +65,7 @@ function _validateCheck(assert, check) {
 exports.setUp = function(test, assert) {
   customer = uuid();
   zone = uuid();
+  name = uuid();
   socketPath = '/tmp/.' + uuid();
 
   var cfg = new Config({});
@@ -77,11 +81,11 @@ exports.setUp = function(test, assert) {
   });
   app.listen(function() {
     var opts = _newOptions();
-    opts.method = 'POST';
-    opts.path = '/checks';
+    opts.method = 'PUT';
+    opts.path = '/pub/' + customer + '/checks/' + name;
     var req = http.request(opts, function(res) {
       common.checkResponse(assert, res);
-      assert.equal(res.statusCode, 201);
+      assert.equal(res.statusCode, 200);
       common.checkContent(assert, res, function() {
         _validateCheck(assert, res.params);
         id = res.params.id;

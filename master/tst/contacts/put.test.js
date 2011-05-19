@@ -31,7 +31,7 @@ function _newOptions(path) {
       'Content-Type': 'application/json',
       'X-Api-Version': Constants.ApiVersion
     },
-    path: '/public/' + customer + '/contacts/' + name,
+    path: '/pub/' + customer + '/contacts/' + name,
     socketPath: socketPath
   };
   if (path) options.path += path;

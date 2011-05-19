@@ -9,6 +9,7 @@ var restify = require('restify');
 var Messages = require('amon-common').Messages;
 
 var utils = require('./utils');
+var Contact = require('./model/contact');
 
 
 
@@ -17,8 +18,6 @@ var utils = require('./utils');
 var log = restify.log;
 var HttpCodes = restify.HttpCodes;
 var RestCodes = restify.RestCodes;
-
-var Contact = require('./model/contact');
 
 
 
@@ -44,12 +43,12 @@ exports.list = function(req, res, next) {
     }
     return next();
   });
-}
+};
 
 
 // PUT /public/:customer/contacts/:name
 exports.put = function(req, res, next) {
-  log.debug('contacts.create entered: params=%o, uriParams=%o',
+  log.debug('contacts.put entered: params=%o, uriParams=%o',
             req.params, req.uriParams);
 
   var medium = req.params.medium;
@@ -93,7 +92,7 @@ exports.put = function(req, res, next) {
     }
     return next();
   });
-}
+};
 
 
 // GET /public/:customer/contacts/:contact
@@ -122,7 +121,7 @@ exports.get = function(req, res, next) {
    }
    return next();
   });
-}
+};
 
 
 // DELETE /public/:customer/contacts/:contact
@@ -158,4 +157,4 @@ exports.del = function(req, res, next) {
       return next();
     });
   });
-}
+};

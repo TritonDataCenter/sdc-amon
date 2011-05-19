@@ -5,8 +5,8 @@
  *
  *    name (short string): Unique for the customer
  *    customer (uuid): Owning customer id.
- *    checks (array of Check)
- *    contacts (array of Contact)
+ *    checks (array of Check keys)
+ *    contacts (array of Contact keys)
  */
 
 var util = require('util');
@@ -26,13 +26,37 @@ function Monitor(options) {
   if (!options || typeof(options) !== 'object')
     throw new TypeError('options must be an object');
 
+  if (options.customer && options.name)
+    options.id = options.customer + '_' + options.name;
+
   options._bucket = 'monitors';
   Entity.call(this, options);
+  var self = this;
 
   this.name = options.name;
   this.customer = options.customer;
   this.contacts = options.contacts;
   this.checks = options.checks;
+
+  // We have a special need here to create links from monitor to checks/contacts
+  this._meta = { links: [] };
+
+  var i = 0;
+  for (i = 0; i < this.contacts.length; i++) {
+    this._meta.links.push({
+      bucket: 'contacts',
+      key: self.contacts[i].customer + '_' + self.contacts[i].name,
+      tag: null
+    });
+  }
+  for (i = 0; i < this.checks.length; i++) {
+    this._meta.links.push({
+      bucket: 'checks',
+      key: self.checks[i].customer + '_' + self.checks[i].name,
+      tag: null
+    });
+  }
+
 }
 util.inherits(Monitor, Entity);
 
@@ -82,4 +106,4 @@ Monitor.prototype.findByCustomer = function(customer, callback) {
 };
 
 
-module.exports = Monitor
+module.exports = Monitor;

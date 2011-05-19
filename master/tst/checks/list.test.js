@@ -1,13 +1,15 @@
 // Copyright 2011 Joyent, Inc.  All rights reserved.
 
 var http = require('httpu');
-
-var restify = require('restify');
 var uuid = require('node-uuid');
+var restify = require('restify');
 
-var App = require('../../lib/app');
 var Config = require('amon-common').Config;
-var common = require('amon-common')._test;
+var Constants = require('amon-common').Constants;
+var App = require('../../lib/app');
+var common = require('../lib/common');
+
+
 
 // Our stuff for running
 restify.log.level(restify.LogLevel.Debug);
@@ -19,28 +21,31 @@ var threshold = 10;
 var urn = 'amon:logscan';
 
 // Generated Stuff
-var id;
 var customer;
+var name;
 var zone;
 
-var app;
-var socketPath;
 
-function _newOptions() {
+
+function _newOptions(path) {
   var options = {
-    method: 'POST',
-    headers: {},
-    path: '/checks',
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Api-Version': Constants.ApiVersion
+    },
+    path: '/pub/' + customer + '/checks' + (path ? path : ''),
     socketPath: socketPath
   };
-  options.headers['Content-Type'] = 'application/json';
-  options.headers['X-Api-Version'] = '6.1.0';
   return options;
 }
 
+
 function _validateCheck(assert, check) {
-  assert.ok(check.id);
+  assert.ok(check);
   assert.equal(check.customer, customer);
+  assert.equal(check.name, name);
+  assert.equal(check.id, (customer + '_' + name));
   assert.equal(check.zone, zone);
   assert.equal(check.urn, urn);
   assert.ok(check.config);
@@ -53,6 +58,7 @@ function _validateCheck(assert, check) {
 
 exports.setUp = function(test, assert) {
   customer = uuid();
+  name = uuid();
   zone = uuid();
   socketPath = '/tmp/.' + uuid();
 
@@ -68,18 +74,18 @@ exports.setUp = function(test, assert) {
     config: cfg
   });
   app.listen(function() {
-    var req = http.request(_newOptions(), function(res) {
+    var opts = _newOptions('/' + name);
+    opts.method = 'PUT';
+    var req = http.request(opts, function(res) {
       common.checkResponse(assert, res);
-      assert.equal(res.statusCode, 201);
+      assert.equal(res.statusCode, 200);
       common.checkContent(assert, res, function() {
         _validateCheck(assert, res.params);
-        id = res.params.id;
         test.finish();
       });
     });
 
     req.write(JSON.stringify({
-      customer: customer,
       zone: zone,
       urn: urn,
       config: {
@@ -96,9 +102,7 @@ exports.setUp = function(test, assert) {
 
 
 exports.test_logscan_list_one_by_zone = function(test, assert) {
-  var options = _newOptions();
-  options.method = 'GET';
-  options.path += '?zone=' + zone;
+  var options = _newOptions('?zone=' + zone);
   http.request(options, function(res) {
     common.checkResponse(assert, res);
     assert.equal(res.statusCode, 200);
@@ -114,8 +118,6 @@ exports.test_logscan_list_one_by_zone = function(test, assert) {
 
 exports.test_logscan_list_one_by_customer = function(test, assert) {
   var options = _newOptions();
-  options.method = 'GET';
-  options.path += '?customer=' + customer;
   http.request(options, function(res) {
     common.checkResponse(assert, res);
     assert.equal(res.statusCode, 200);

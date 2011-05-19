@@ -92,4 +92,4 @@ Contact.prototype.findByCustomer = function(customer, callback) {
 };
 
 
-module.exports = Contact
+module.exports = Contact;

@@ -5,6 +5,7 @@ var uuid = require('node-uuid');
 var restify = require('restify');
 
 var Config = require('amon-common').Config;
+var Constants = require('amon-common').Constants;
 var App = require('../../lib/app');
 var common = require('amon-common')._test;
 
@@ -22,7 +23,7 @@ function _options(path) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Api-Version': '6.1.0'
+      'X-Api-Version': Constants.ApiVersion
     },
     path: '/events',
     socketPath: socketPath
@@ -49,10 +50,11 @@ exports.setUp = function(test, assert) {
   });
   app.listen(function() {
     var opts = _options();
-    opts.path = '/checks';
+    opts.method = 'PUT';
+    opts.path = '/pub/' + customer + '/checks/' + uuid();
     var req = http.request(opts, function(res) {
       common.checkResponse(assert, res);
-      assert.equal(res.statusCode, 201);
+      assert.equal(res.statusCode, 200);
       common.checkContent(assert, res, function() {
         check = res.params.id;
         test.finish();

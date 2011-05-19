@@ -129,7 +129,7 @@ module.exports = {
     log.debug('events.list: params=%o', req.params);
 
     var event = new Event({
-      riak: req._riak,
+      riak: req._riak
     });
 
 

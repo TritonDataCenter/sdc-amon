@@ -25,7 +25,7 @@ function _iso_time(d) {
  * Constructor (obviously).
  *
  * @param {Object} options the usual with:
- *                 - riak {Object} parameters to be passed to riak-js
+ *                 - riak {Object} parameters to be passed to riak-js.
  *
  */
 function Entity(options) {
@@ -48,7 +48,7 @@ function Entity(options) {
 
 
 Entity.prototype.serialize = function() {
-  var obj = undefined;
+  var obj = null;
   if (this._serialize && typeof(this._serialize) === 'function')
     obj = this._serialize() || {};
 
@@ -125,7 +125,7 @@ Entity.prototype.save = function(callback) {
       log.debug('Entity.save(%s) no indices; done.');
       return callback();
     }
-  };
+  }
 
   var object = this.serialize();
   log.debug('Entity.save(%s): saving %s => %o, meta?=%s',
@@ -154,7 +154,7 @@ Entity.prototype.destroy = function(id, callback) {
 
       return callback();
     });
-  };
+  }
 
 
   if (self._deleteIndices && typeof(self._deleteIndices) === 'function') {
@@ -181,6 +181,22 @@ Entity.prototype.validate = function() {
 };
 
 
+Entity.prototype.exists = function(id, callback) {
+  if (typeof(id) === 'function') {
+    callback = id;
+    id = this.id;
+  }
+  if (!id)
+    throw new TypeError('either id or this.id must be set');
+  if (!callback || typeof(callback) !== 'function')
+    throw new TypeError('callback is required to be a Function');
+
+  this._db.exists(this._bucket, id, this._meta, function(err, obj, meta) {
+    return callback(err, obj);
+  });
+};
+
+
 Entity.prototype._addIndex = function(index, key, tag, callback) {
   var self = this;
   var riak = this._db;
@@ -202,7 +218,7 @@ Entity.prototype._addIndex = function(index, key, tag, callback) {
         key: self.id,
         tag: tag
       };
-    };
+    }
 
     if (meta) {
       meta.addLink(_newLink());

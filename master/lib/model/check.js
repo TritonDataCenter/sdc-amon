@@ -15,10 +15,13 @@ function Check(options) {
   if (!options || typeof(options) !== 'object')
     throw new TypeError('options must be an object');
 
+  if (options.customer && options.name)
+    options.id = options.customer + '_' + options.name;
   options._bucket = 'checks';
   Entity.call(this, options);
 
   this.customer = options.customer;
+  this.name = options.name;
   this.zone = options.zone;
   this.urn = options.urn;
   this.config = options.config;
@@ -30,6 +33,7 @@ Check.prototype._serialize = function() {
   var self = this;
   return {
     customer: self.customer,
+    name: self.name,
     zone: self.zone,
     urn: self.urn,
     config: self.config
@@ -39,6 +43,7 @@ Check.prototype._serialize = function() {
 
 Check.prototype._deserialize = function(object) {
   this.customer = object.customer;
+  this.name = object.name;
   this.zone = object.zone;
   this.urn = object.urn;
   this.config = object.config;
@@ -47,6 +52,7 @@ Check.prototype._deserialize = function(object) {
 
 Check.prototype._validate = function() {
   if (!this.customer) throw new TypeError('check.customer required');
+  if (!this.name) throw new TypeError('check.name required');
   if (!this.zone) throw new TypeError('check.zone required');
   if (!this.urn) throw new TypeError('check.urn required');
   if (!this.config) throw new TypeError('check.config required');

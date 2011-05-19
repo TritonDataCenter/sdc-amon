@@ -5,8 +5,11 @@ var uuid = require('node-uuid');
 var restify = require('restify');
 
 var Config = require('amon-common').Config;
+var Constants = require('amon-common').Constants;
 var App = require('../../lib/app');
 var common = require('../lib/common');
+
+
 
 // Our stuff for running
 restify.log.level(restify.LogLevel.Debug);
@@ -18,27 +21,31 @@ var threshold = 10;
 var urn = 'amon:logscan';
 
 // Generated Stuff
-var id;
 var customer;
+var name;
 var zone;
+
 
 
 function _newOptions() {
   var options = {
-    method: 'POST',
-    headers: {},
-    path: '/checks',
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Api-Version': Constants.ApiVersion
+    },
+    path: '/pub/' + customer + '/checks/' + name,
     socketPath: socketPath
   };
-  options.headers['Content-Type'] = 'application/json';
-  options.headers['X-Api-Version'] = '6.1.0';
   return options;
 }
 
 
 function _validateCheck(assert, check) {
-  assert.ok(check.id);
+  assert.ok(check);
   assert.equal(check.customer, customer);
+  assert.equal(check.name, name);
+  assert.equal(check.id, (customer + '_' + name));
   assert.equal(check.zone, zone);
   assert.equal(check.urn, urn);
   assert.ok(check.config);
@@ -48,8 +55,11 @@ function _validateCheck(assert, check) {
   assert.equal(check.config.threshold, threshold);
 }
 
+
+
 exports.setUp = function(test, assert) {
   customer = uuid();
+  name = uuid();
   zone = uuid();
   socketPath = '/tmp/.' + uuid();
 
@@ -105,7 +115,7 @@ exports.test_create_missing_config = function(test, assert) {
 exports.test_logscan_create_success = function(test, assert) {
   var req = http.request(_newOptions(), function(res) {
     common.checkResponse(assert, res);
-    assert.equal(res.statusCode, 201);
+    assert.equal(res.statusCode, 200);
     common.checkContent(assert, res, function() {
       _validateCheck(assert, res.params);
       test.finish();
@@ -113,7 +123,6 @@ exports.test_logscan_create_success = function(test, assert) {
   });
 
   req.write(JSON.stringify({
-    customer: customer,
     zone: zone,
     urn: urn,
     config: {
