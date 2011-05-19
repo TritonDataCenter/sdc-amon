@@ -1,8 +1,0 @@
-{
-  "contacts": [
-    {"customer": "trent", "name": "email"},
-  ],
-  "checks": [
-    {"customer": "trent", "name": "whistle"},
-  ]
-}

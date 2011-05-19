@@ -1,5 +1,6 @@
 {
   "urn": "amon:logscan",
+  "zone": "global",
   "config": {
     "path": "/tmp/whistle.log",
     "regex": "tweet",
