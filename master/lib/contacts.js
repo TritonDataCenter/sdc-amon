@@ -148,7 +148,7 @@ exports.del = function(req, res, next) {
 
     return contact.destroy(function(err) {
       if (err) {
-        log.warn('Error destroying cotact from riak: ' + err);
+        log.warn('Error destroying contact from riak: ' + err);
         res.send(500);
       } else {
         log.debug('contacts.del returning %d', 204);

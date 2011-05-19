@@ -39,22 +39,28 @@ function Monitor(options) {
   this.checks = options.checks;
 
   // We have a special need here to create links from monitor to checks/contacts
+  if (!this.contacts && !this.checks) return;
   this._meta = { links: [] };
 
   var i = 0;
-  for (i = 0; i < this.contacts.length; i++) {
-    this._meta.links.push({
-      bucket: 'contacts',
-      key: self.contacts[i].customer + '_' + self.contacts[i].name,
-      tag: null
-    });
+  if (this.contacts) {
+    for (i = 0; i < this.contacts.length; i++) {
+      this._meta.links.push({
+        bucket: 'contacts',
+        key: self.contacts[i].customer + '_' + self.contacts[i].name,
+        tag: null
+      });
+    }
   }
-  for (i = 0; i < this.checks.length; i++) {
-    this._meta.links.push({
-      bucket: 'checks',
-      key: self.checks[i].customer + '_' + self.checks[i].name,
-      tag: null
-    });
+
+  if (this.checks) {
+    for (i = 0; i < this.checks.length; i++) {
+      this._meta.links.push({
+        bucket: 'checks',
+        key: self.checks[i].customer + '_' + self.checks[i].name,
+        tag: null
+      });
+    }
   }
 
 }

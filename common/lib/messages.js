@@ -29,6 +29,7 @@ module.exports = {
   UnknownCheck: '%s is not a registered check',
   UnknownContact: '%s is not a registered contact',
   UnknownMedium: '%s is not a registered notification plugin',
+  UnknownMonitor: '%s is not a registered monitor',
   ZoneInvalidForCheck: 'zone %s is not associated with check %s',
 
   message: function() {

@@ -129,3 +129,14 @@ exports.sendNoContact = function(res, msg) {
   log.debug('sending error: ' + e);
   res.sendError(e);
 };
+
+
+exports.sendNoMonitor = function(res, msg) {
+  var e = restify.newError({
+    httpCode: HttpCodes.Conflict,
+    restCode: RestCodes.InvalidArgument,
+    message: Messages.message(Messages.UnknownMonitor, msg)
+  });
+  log.debug('sending error: ' + e);
+  res.sendError(e);
+};

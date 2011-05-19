@@ -191,28 +191,26 @@ exports.get = function(req, res, next) {
   log.debug('monitors.get entered: params=%o, uriParams=%o',
             req.params, req.uriParams);
 
-  res.send(500);
-  return next();
-  //TODO:
-  //var monitor = new Monitor({
-  //  riak: req._riak
-  //});
-  //
-  //monitor.load(req.uriParams.monitor, function(err, loaded) {
-  //  if (err) {
-  //    log.warn('Error loading: ' + err);
-  //    res.send(500);
-  //  } else {
-  //    if (!loaded) {
-  //      _sendNoCheck(res, req.uriParams.id);
-  //    } else {
-  //      var obj = monitor.serialize();
-  //      log.debug('checks.get returning %d, obj=%o', 200, obj);
-  //      res.send(200, obj);
-  //    }
-  //  }
-  //  return next();
-  //});
+  var monitor = new Monitor({
+    riak: req._riak,
+    customer: req.uriParams.customer,
+    name: req.uriParams.name
+  });
+  monitor.load(function(err, loaded) {
+   if (err) {
+     log.warn('Error loading: ' + err);
+     res.send(500);
+   } else {
+     if (!loaded) {
+       utils.sendNoMonitor(res, req.uriParams.name);
+     } else {
+       var obj = monitor.serialize();
+       log.debug('monitors.get returning %d, obj=%o', 200, obj);
+       res.send(200, obj);
+     }
+   }
+   return next();
+  });
 };
 
 
@@ -221,7 +219,31 @@ exports.del = function(req, res, next) {
   log.debug('monitors.del entered: params=%o, uriParams=%o',
             req.params, req.uriParams);
 
-  //TODO
-  res.send(500);
-  return next();
+  var monitor = new Monitor({
+    riak: req._riak,
+    customer: req.uriParams.customer,
+    name: req.uriParams.name
+  });
+  monitor.load(function(err, loaded) {
+    if (err) {
+      log.warn('Error loading: ' + err);
+      res.send(500);
+      return next();
+    }
+    if (!loaded) {
+      utils.sendNoMonitor(res, req.uriParams.name);
+      return next();
+     }
+
+    return monitor.destroy(function(err) {
+      if (err) {
+        log.warn('Error destroying monitor from riak: ' + err);
+        res.send(500);
+      } else {
+        log.debug('monitors.del returning %d', 204);
+        res.send(204);
+      }
+      return next();
+    });
+  });
 };
