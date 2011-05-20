@@ -62,37 +62,22 @@ You need:
 And really, you should do a `pkgin install emacs-nox11` to be awesome...
 Anyway, once you've done the above, you can do:
 
-    gmake
+    cd /opt
+    git clone git@git.joyent.com:amon.git
+    cd amon
+    make
     source env.sh
 
 And start running (see next section).
 
+
 # Running
 
-## COAL
-
-Important (if you don't do this, and ask markc why mysterious problems occur,
-there is an excellent chance he will go postal on you):
+COAL Note: Important (if you don't do this, and ask markc why mysterious
+problems occur, there is an excellent chance he will go postal on you):
 
     export LD_PRELOAD_32=/usr/lib/extendedFILE.so.1
 
-
-### Master
-
-    redis-server
-    node main.js -d -f ./config.coal.json
-
-### Relay
-
-    mkdir -p /var/run/joyent/amon/relay/config
-    node main.js -c /var/run/joyent/amon/relay/config -d
-
-### Agent
-
-    mkdir -p /var/run/joyent/amon/agent/config
-    mkdir -p /var/run/joyent/amon/agent/tmp
-    node main.js -d -p 10 -c /var/run/joyent/amon/agent/config \
-      -t /var/run/joyent/amon/agent/tmp
 
 ## Mac
 
@@ -116,7 +101,7 @@ In a separate terminal, call the Amon Master API to add some data:
     amon-api /pub/joyent/checks/whistle -X PUT -d @examples/check-whistle.json
 
     # Add a monitor.
-    amon-api /pub/joyent/monitors -X PUT -d @examples/monitor-joyent-whistle.json
+    amon-api /pub/joyent/monitors/whistle -X PUT -d @examples/monitor-joyent-whistle.json
 
 Now cause the logscan alarm to match:
 
