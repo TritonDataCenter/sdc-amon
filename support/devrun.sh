@@ -94,6 +94,9 @@ mkdir -p $ROOT/tmp/dev-agent/tmp
 ${NODE_DEV} $ROOT/agent/main.js -d -p 10 -c $ROOT/tmp/dev-agent/config -t $ROOT/tmp/dev-agent/tmp $AGENT_OPTS > $ROOT/tmp/dev-agent.log 2>&1 &
 
 echo "== tail the logs ..."
-${MTAIL} -f $ROOT/tmp/dev-master.log $ROOT/tmp/dev-relay.log $ROOT/tmp/dev-agent.log
+if [[ -z "$LOG" ]]; then
+    LOG="$ROOT/tmp/dev-master.log $ROOT/tmp/dev-relay.log $ROOT/tmp/dev-agent.log"
+fi
+${MTAIL} -f $LOG
 
 cleanup
