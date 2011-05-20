@@ -73,7 +73,7 @@ Config.prototype.load = function(callback) {
   if (!this.file) throw new TypeError('this.file is required');
   var self = this;
 
-  log.debug('reading %s', this.file);
+  log.debug('config: reading %s', this.file);
   fs.readFile(this.file, 'utf8', function(err, file) {
     if (err) return callback(err);
     try {
@@ -81,7 +81,6 @@ Config.prototype.load = function(callback) {
     } catch (e) {
       return callback(e);
     }
-    log.debug('config is now %o', self.config);
 
     for (var k in self.config.plugins) {
       if (self.config.plugins.hasOwnProperty(k)) {
@@ -94,6 +93,7 @@ Config.prototype.load = function(callback) {
       }
     }
 
+    log.debug('config: loaded config: %o', self.config);
     return callback(null);
   });
 };
@@ -115,7 +115,7 @@ Config.prototype.loadChecks = function(callback) {
   fs.readdir(path, function(err, files) {
     if (err) return callback(err);
 
-    log.debug('found config %o', files);
+    log.trace('config: loadChecks: files=%o', files);
     if (files.length === 0) return callback();
 
     var finished = 0;
@@ -127,8 +127,8 @@ Config.prototype.loadChecks = function(callback) {
         return callback(e);
       }
 
-      log.debug('loaded config for: %o', self.config.checks);
       if (++finished >= files.length) {
+        log.trace('config: loaded all checks: %o', self.config.checks);
         return callback();
       }
     };
@@ -164,25 +164,23 @@ Config.prototype.needsUpdate = function(callback) {
   var self = this;
 
   function checkAmon() {
-    log.debug('Current checksum is: %s, checking parent.',
-              self._checksum || '(empty)');
     self._httpRequest('HEAD', function(res) {
-      log.debug('HTTP Response: code=%s, headers=%o',
+      log.trace('config: HEAD response: code=%s, headers=%o',
                 res.statusCode, res.headers);
       if (res.statusCode !== 204) {
         return callback(new Error('HTTP failure: ' + res.statusCode));
       }
 
       if (res.headers.etag === undefined) {
-        log.warn('config update: no etag header?');
+        log.error('config: HEAD returned no etag header');
         return callback(new Error('No Etag Header found'));
       }
+      log.trace('config: "%s" (current) vs "%s" (parent)', self._checksum,
+                res.headers.etag);
       if (self._checksum === res.headers.etag) {
-        log.debug('ETag matches on-disk tree, nothing to do');
         return callback(null, false);
       }
-      return callback(null, true);
-
+      return callback(null, (self._checksum !== res.headers.etag));
     }).end();
   }
 
@@ -214,19 +212,17 @@ Config.prototype.needsUpdate = function(callback) {
  * @param {Function} callback of the form function(error).
  */
 Config.prototype.update = function(callback) {
-  log.trace('Config.update entered');
+  log.trace('config: update entered');
 
   var self = this;
   self.needsUpdate(function(err, pull) {
     if (err) return callback(err);
 
-    log.debug('Config.update: update needed? ' + pull);
     if (pull) {
       return self._pull(function(err) {
         return callback(err, true);
       });
     }
-
     return callback(null, false);
   });
 };
@@ -264,34 +260,35 @@ Config.prototype._pull = function(callback) {
   if (!this.tmp) throw new TypeError('this.tmp is required');
   var self = this;
 
+  log.trace('config: Pulling config update.')
   self._untar(function(err, tar) {
     if (err) return callback(err);
 
-    log.debug('Config._pull: got tar handle. Starting HTTP request');
+    log.trace('config: Got tar handle. Starting HTTP request');
     self._httpRequest(function(res) {
       try {
         if (!self._parseTarResponse(res)) {
-          log.debug('No result to parse from GET, skipping');
+          log.trace('config: No result to parse from GET, skipping');
           return callback(null);
         }
       } catch (e) {
         return callback(e);
       }
 
-      log.debug('Config._pull: got HTTP handle, waiting for data...');
+      log.trace('config: Got HTTP handle, waiting for data...');
       // Since we check the MD5, we don't bother revalidating the
       // data off disk and just trust the etag
       var hash = crypto.createHash('md5');
       res.on('data', function(chunk) {
-        log.debug('Got HTTP response chunk: ' + chunk);
+        log.trace('config: Got HTTP response chunk: ' + chunk);
         hash.update(chunk);
         tar.stdin.write(chunk);
       });
       res.on('end', function() {
-        if (!self._checkMD5(res.trailers, hash.digest('base64'))) {
+        if (!self._checkContentMd5(res.trailers, hash.digest('base64'))) {
           return callback(new Error('content-md5 failure'));
         }
-        log.debug('HTTP response complete, finishing tar');
+        log.trace('config: HTTP response complete, finishing tar');
         tar._etag = res.headers.etag;
         tar.stdin.end();
       }); // res.on('end')
@@ -330,9 +327,9 @@ Config.prototype._httpRequest = function(method, callback) {
   options.headers['X-Api-Version'] = '6.1.0';
   var req = http.request(options, callback);
   req.on('error', function(err) {
-    log.warn('config: HTTP error: ' + err);
+    log.warn('config: HTTP error: %o', err);
   });
-  log.trace('Config._httpRequest returning: %o', req);
+  log.trace('config: _httpRequest: %o', req);
   return req;
 };
 
@@ -373,50 +370,53 @@ Config.prototype._untar = function(callback, userCallback) {
 
   var self = this;
 
-  log.debug('Config._untar entered');
+  log.trace('config: _untar entered');
   var tmp = self.tmp + '/.' + uuid();
   fs.mkdir(tmp, '0700', function(err) {
     if (err) return callback(err);
 
-    log.debug('Config._untar: mkdir(%s) succeeded', tmp);
+    log.trace('config: _untar: mkdir(%s) succeeded', tmp);
     var tar = spawn(__tar, ['-C', tmp, '-x']);
     tar._dir = tmp;
+    var stdout = '', stderr = '';
     tar.stdout.on('data', function(data) {
-      log.warn('tar stdout: ' + data);
+      stdout += data;
     });
     tar.stderr.on('data', function(data) {
-      log.warn('tar stderr: ' + data);
+      stderr += data;
     });
     tar.on('exit', function(code) {
       if (code !== 0) {
-        log.warn('tar exited ungracefully: ' + code);
+        log.warn('config: tar exited ungracefully: code=%s, stdout="%s", '
+                 + 'stderr="%s"', code, stdout, stderr);
         fs.rmdir(tmp, function(err) {
           return userCallback(new Error('tar exit: ' + code));
         });
       }
       var save = self.tmp + '/.' + uuid();
-      log.debug('Config._untar: renaming config root to: ' + save);
+      log.trace('config: _untar: renaming config root to: ' + save);
       fs.rename(self.root, save, function(err) {
         if (err) return userCallback(err);
 
-        log.debug('Config._untar: renaming %s to new config root.', tmp);
+        log.trace('config: _untar: renaming %s to new config root.', tmp);
         fs.rename(tmp, self.root, function(err) {
           if (err) {
-            log.fatal('Unable to replace config; attempting recovery...');
+            log.error('config: Unable to replace config; attempting recovery...');
             fs.rename(save, self.root, function(err2) {
               if (err2) {
-                log.fatal('Unable to recover!');
+                log.fatal('config: Unable to recover!');
                 return userCallback(err2);
               }
               return userCallback(err);
             });
           }
 
-          log.debug('Config._untar: New config in place. Cleaning up.');
+          log.trace('config: _untar: New config in place. Cleaning up.');
           var rm = spawn(__rm, ['-rf', save]);
           rm.on('exit', function(code) {
             if (code !== 0) {
-              log.warn('Unable to clean up old config in ' + save);
+              log.warn('config: Unable to clean up old config "%s": code=%s',
+                       save, code);
             }
             self._checksum = tar._etag;
             return userCallback();
@@ -438,14 +438,13 @@ Config.prototype._untar = function(callback, userCallback) {
  * @param {Object} headers either res.headers or res.trailers.
  * @param {String} md5 base64 encoded MD5 you calculated.
  */
-Config.prototype._checkMD5 = function(headers, md5) {
-  log.debug('Config._checkMD5 headers=%o, md5=%s', headers, md5);
+Config.prototype._checkContentMd5 = function(headers, md5) {
   if (!headers['content-md5']) {
-    log.warn('no content-md5 returned: %o', headers);
+    log.warn('config: No content-md5 header returned: %o', headers);
     return false;
   }
   if (md5 !== headers['content-md5']) {
-    log.warn('Content-MD5 mismatch. http=%s, calculated=%s',
+    log.warn('config: Content-MD5 mismatch: http=%s, calculated=%s',
              headers['content-md5'], md5);
     return false;
   }
@@ -462,21 +461,23 @@ Config.prototype._parseTarResponse = function(res) {
   res.setEncoding(encoding = 'utf8');
   res.body = '';
 
-  log.debug('HTTP Response: code=%s, headers=%o', res.statusCode, res.headers);
+  log.trace('config: _parseTarResponse: HTTP Response: code=%s, headers=%o',
+            res.statusCode, res.headers);
   if (res.statusCode === 204) {
-    log.debug('No content returned from parent');
+    log.trace('config: No content returned from parent');
     return false;
   } else if (res.statusCode !== 200) {
     throw new Error('HTTP failure: ' + res.statusCode);
   }
   if (!res.headers.etag) {
-    log.warn('config: no etag header?');
+    log.error('config: GET returned no etag header');
     throw new Error('No Etag Header found');
   }
 
   var _contentType = res.headers['content-type'];
   if (!_contentType || _contentType !== 'application/x-tar') {
-    log.warn('config: bad content-type header in amon response');
+    log.warn('config: Bad content-type header in GET response: '
+             + 'content-type=%o', _contentType);
     throw new Error('Content-Type: ' + _contentType);
   }
 

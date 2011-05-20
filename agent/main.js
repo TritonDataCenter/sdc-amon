@@ -145,14 +145,14 @@ function _updateConfig(force) {
   log.trace('_updateConfig entered');
   gConfig.update(function(err, updated) {
     if (err) {
-      log.warn('update-config: Update of configuration failed: ' + err);
+      log.warn('config: Update of configuration failed: ' + err);
       return;
     }
     if (!updated && !force) {
-      log.debug('update-config: No config updates.');
+      log.debug('config: No config updates.');
       return;
     }
-    log.info('update-config: Updated. Stopping all checks and recreating');
+    log.info('config: Updated. Stopping all checks and recreating.');
     for (var k in gChecks) {
       if (gChecks.hasOwnProperty(k)) {
         gChecks[k].stop();
