@@ -73,9 +73,7 @@ Config.prototype.load = function(callback) {
   if (!this.file) throw new TypeError('this.file is required');
   var self = this;
 
-  if (log.debug()) {
-    log.debug('reading %s', this.file);
-  }
+  log.debug('reading %s', this.file);
   fs.readFile(this.file, 'utf8', function(err, file) {
     if (err) return callback(err);
     try {
@@ -83,9 +81,7 @@ Config.prototype.load = function(callback) {
     } catch (e) {
       return callback(e);
     }
-    if (log.debug()) {
-      log.debug('config is now %o', self.config);
-    }
+    log.debug('config is now %o', self.config);
 
     for (var k in self.config.plugins) {
       if (self.config.plugins.hasOwnProperty(k)) {
@@ -119,9 +115,7 @@ Config.prototype.loadChecks = function(callback) {
   fs.readdir(path, function(err, files) {
     if (err) return callback(err);
 
-    if (log.debug()) {
-      log.debug('found config %o', files);
-    }
+    log.debug('found config %o', files);
     if (files.length === 0) return callback();
 
     var finished = 0;
@@ -133,9 +127,7 @@ Config.prototype.loadChecks = function(callback) {
         return callback(e);
       }
 
-      if (log.debug()) {
-        log.debug('loaded config for: %o', self.config.checks);
-      }
+      log.debug('loaded config for: %o', self.config.checks);
       if (++finished >= files.length) {
         return callback();
       }
@@ -175,10 +167,8 @@ Config.prototype.needsUpdate = function(callback) {
     log.debug('Current checksum is: %s, checking parent.',
               self._checksum || '(empty)');
     self._httpRequest('HEAD', function(res) {
-      if (log.debug()) {
-        log.debug('HTTP Response: code=%s, headers=%o',
-                  res.statusCode, res.headers);
-      }
+      log.debug('HTTP Response: code=%s, headers=%o',
+                res.statusCode, res.headers);
       if (res.statusCode !== 204) {
         return callback(new Error('HTTP failure: ' + res.statusCode));
       }
@@ -188,9 +178,7 @@ Config.prototype.needsUpdate = function(callback) {
         return callback(new Error('No Etag Header found'));
       }
       if (self._checksum === res.headers.etag) {
-        if (log.debug()) {
-          log.debug('ETag matches on-disk tree, nothing to do');
-        }
+        log.debug('ETag matches on-disk tree, nothing to do');
         return callback(null, false);
       }
       return callback(null, true);
@@ -232,10 +220,7 @@ Config.prototype.update = function(callback) {
   self.needsUpdate(function(err, pull) {
     if (err) return callback(err);
 
-    if (log.debug()) {
-      log.debug('Config.update: update needed? ' + pull);
-    }
-
+    log.debug('Config.update: update needed? ' + pull);
     if (pull) {
       return self._pull(function(err) {
         return callback(err, true);
@@ -282,32 +267,23 @@ Config.prototype._pull = function(callback) {
   self._untar(function(err, tar) {
     if (err) return callback(err);
 
-    if (log.debug()) {
-      log.debug('Config._pull: got tar handle. Starting HTTP request');
-    }
-
+    log.debug('Config._pull: got tar handle. Starting HTTP request');
     self._httpRequest(function(res) {
       try {
         if (!self._parseTarResponse(res)) {
-          if (log.debug()) {
-            log.debug('No result to parse from GET, skipping');
-          }
+          log.debug('No result to parse from GET, skipping');
           return callback(null);
         }
       } catch (e) {
         return callback(e);
       }
 
-      if (log.debug()) {
-        log.debug('Config._pull: got HTTP handle, waiting for data...');
-      }
+      log.debug('Config._pull: got HTTP handle, waiting for data...');
       // Since we check the MD5, we don't bother revalidating the
       // data off disk and just trust the etag
       var hash = crypto.createHash('md5');
       res.on('data', function(chunk) {
-        if (log.debug()) {
-          log.debug('Got HTTP response chunk: ' + chunk);
-        }
+        log.debug('Got HTTP response chunk: ' + chunk);
         hash.update(chunk);
         tar.stdin.write(chunk);
       });
@@ -315,9 +291,7 @@ Config.prototype._pull = function(callback) {
         if (!self._checkMD5(res.trailers, hash.digest('base64'))) {
           return callback(new Error('content-md5 failure'));
         }
-        if (log.debug()) {
-          log.debug('HTTP response complete, finishing tar');
-        }
+        log.debug('HTTP response complete, finishing tar');
         tar._etag = res.headers.etag;
         tar.stdin.end();
       }); // res.on('end')
@@ -358,9 +332,7 @@ Config.prototype._httpRequest = function(method, callback) {
   req.on('error', function(err) {
     log.warn('config: HTTP error: ' + err);
   });
-  if (log.trace()) {
-    log.trace('Config._httpRequest returning: %o', req);
-  }
+  log.trace('Config._httpRequest returning: %o', req);
   return req;
 };
 
@@ -401,16 +373,12 @@ Config.prototype._untar = function(callback, userCallback) {
 
   var self = this;
 
-  if (log.debug()) {
-    log.debug('Config._untar entered');
-  }
+  log.debug('Config._untar entered');
   var tmp = self.tmp + '/.' + uuid();
   fs.mkdir(tmp, '0700', function(err) {
     if (err) return callback(err);
 
-    if (log.debug()) {
-      log.debug('Config._untar: mkdir(%s) succeeded', tmp);
-    }
+    log.debug('Config._untar: mkdir(%s) succeeded', tmp);
     var tar = spawn(__tar, ['-C', tmp, '-x']);
     tar._dir = tmp;
     tar.stdout.on('data', function(data) {
@@ -427,15 +395,11 @@ Config.prototype._untar = function(callback, userCallback) {
         });
       }
       var save = self.tmp + '/.' + uuid();
-      if (log.debug()) {
-        log.debug('Config._untar: renaming config root to: ' + save);
-      }
+      log.debug('Config._untar: renaming config root to: ' + save);
       fs.rename(self.root, save, function(err) {
         if (err) return userCallback(err);
 
-        if (log.debug()) {
-          log.debug('Config._untar: renaming %s to new config root.', tmp);
-        }
+        log.debug('Config._untar: renaming %s to new config root.', tmp);
         fs.rename(tmp, self.root, function(err) {
           if (err) {
             log.fatal('Unable to replace config; attempting recovery...');
@@ -448,9 +412,7 @@ Config.prototype._untar = function(callback, userCallback) {
             });
           }
 
-          if (log.debug()) {
-            log.debug('Config._untar: New config in place. Cleaning up.');
-          }
+          log.debug('Config._untar: New config in place. Cleaning up.');
           var rm = spawn(__rm, ['-rf', save]);
           rm.on('exit', function(code) {
             if (code !== 0) {
@@ -477,9 +439,7 @@ Config.prototype._untar = function(callback, userCallback) {
  * @param {String} md5 base64 encoded MD5 you calculated.
  */
 Config.prototype._checkMD5 = function(headers, md5) {
-  if (log.debug()) {
-    log.debug('Config._checkMD5 headers=%o, md5=%s', headers, md5);
-  }
+  log.debug('Config._checkMD5 headers=%o, md5=%s', headers, md5);
   if (!headers['content-md5']) {
     log.warn('no content-md5 returned: %o', headers);
     return false;
@@ -502,14 +462,9 @@ Config.prototype._parseTarResponse = function(res) {
   res.setEncoding(encoding = 'utf8');
   res.body = '';
 
-  if (log.debug()) {
-    log.debug('HTTP Response: code=%s, headers=%o',
-              res.statusCode, res.headers);
-  }
+  log.debug('HTTP Response: code=%s, headers=%o', res.statusCode, res.headers);
   if (res.statusCode === 204) {
-    if (log.debug()) {
-      log.debug('No content returned from parent');
-    }
+    log.debug('No content returned from parent');
     return false;
   } else if (res.statusCode !== 200) {
     throw new Error('HTTP failure: ' + res.statusCode);
