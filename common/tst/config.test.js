@@ -102,7 +102,6 @@ exports.setUp = function(test, assert) {
 exports.test_load = function(test, assert) {
   config.load(function(err) {
     assert.ifError(err);
-    assert.ok(config.redis);
     assert.ok(config.plugins);
     test.finish();
   });

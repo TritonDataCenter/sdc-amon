@@ -173,7 +173,7 @@ module.exports = {
     if (req.params.check) {
       event.findByCheck(req.params.check, function(err, events) {
         if (err) {
-          log.warn('Error finding events in redis: ' + err);
+          log.warn('Error finding events: ' + err);
           res.send(500);
         } else {
           log.debug('events.list returning %d, obj=%o', 200, events);
@@ -184,7 +184,7 @@ module.exports = {
     } else if (req.params.customer) {
       event.findByCustomer(req.params.customer, function(err, events) {
         if (err) {
-          log.warn('Error finding events in redis: ' + err);
+          log.warn('Error finding events: ' + err);
           res.send(500);
         } else {
           log.debug('events.list returning %d, obj=%o', 200, events);
@@ -195,7 +195,7 @@ module.exports = {
     } else if (req.params.zone) {
       event.findByZone(req.params.zone, function(err, events) {
         if (err) {
-          log.warn('Error finding events in redis: ' + err);
+          log.warn('Error finding events: ' + err);
           res.send(500);
         } else {
           log.debug('events.list returning %d, obj=%o', 200, events);

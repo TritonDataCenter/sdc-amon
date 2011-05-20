@@ -35,7 +35,7 @@ function _sendConfig(req, res, next, sendData) {
   if (req.params.zone) {
     check.findByZone(req.params.zone, function(err, checks) {
       if (err) {
-        log.warn('Error finding checks in redis: ' + err);
+        log.warn('Error finding checks: ' + err);
         res.send(500);
       } else {
         var code = sendData ? HttpCodes.Ok : HttpCodes.NoContent;

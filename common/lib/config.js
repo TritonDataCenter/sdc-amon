@@ -45,12 +45,6 @@ function Config(options) {
   this.config.checks = [];
 
   var self = this;
-  this.__defineGetter__('redis', function() {
-    return self.config.redis;
-  });
-  this.__defineSetter__('redis', function(redis) {
-    self.config.redis = redis;
-  });
   this.__defineGetter__('plugins', function() {
     return self.config.plugins;
   });
