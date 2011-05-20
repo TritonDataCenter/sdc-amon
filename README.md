@@ -96,43 +96,28 @@ there is an excellent chance he will go postal on you):
 
 ## Mac
 
-### Master
+    # Start all the services: riak, master, relay, agent.
+    make devrun
 
-    redis-server
-    node main.js -d -f ./config.coal.json -p 8080
+This will start multitail (you installed that above) on the master, relay
+and agent logs.
 
-### Relay
+In a separate terminal, call the Amon Master API to add some data:
 
-    mkdir -p /tmp/amon-relay
-    node main.js -d -n -c /tmp/amon-relay -p 10 -m http://127.0.0.1:8080 -s 8081
+    source env.sh
+    touch /tmp/whistle.log   # workaround for MON-2
 
-### Agent
+    # Add some contacts for the 'joyent' user (our demo user).
+    amon-api /pub/joyent/contacts/trent -X PUT -d @examples/contact-trent-sms.json
+    amon-api /pub/joyent/contacts/mark -X PUT -d @examples/contact-mark-sms.json
 
-    mkdir -p /tmp/amon-agent/config && mkdir -p /tmp/amon-agent/tmp
-    node main.js -d -p 10 -c /tmp/amon-agent/config -t /tmp/amon-agent/tmp -s 8081
+    # Add a check (check for 'tweet' occurrences in /tmp/whistle.log).
+    # We'll name it the 'whistle' check.
+    amon-api /pub/joyent/checks/whistle -X PUT -d @examples/check-whistle.json
 
-## Add some data in
-
-Great, now CRUD some checks:
-
-    touch /tmp/whistleblower.log   # workaround for MON-2
-    bin/amon-mapi /checks?customer=joyent\&zone=global -X POST -d @examples/whistleblower.logscan.json
-    bin/amon-mapi /checks?zone=global
+    # Add a monitor.
+    amon-api /pub/joyent/monitors -X PUT -d @examples/monitor-joyent-whistle.json
 
 Now cause the logscan alarm to match:
 
-    echo tweet >> /tmp/whistleblower.log
-
-You should see an event flow agent -> relay -> master. After which, you can
-see this magical alert with:
-
-    bin/amon-mapi /events?customer=joyent
-    bin/amon-mapi /events?zone=global
-    bin/amon-mapi /events?check=387D4037-4E1B-43C8-B81D-35F9157ABD77
-
-Clean up with:
-
-    bin/amon-mapi /checks/387D4037-4E1B-43C8-B81D-35F9157ABD77
-    bin/amon-mapi /checks/387D4037-4E1B-43C8-B81D-35F9157ABD77 -X DELETE
-
-(note that the events are not deletable, and will expire in a week).
+    echo tweet >> /tmp/whistle.log
