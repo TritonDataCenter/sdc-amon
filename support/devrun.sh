@@ -26,6 +26,17 @@ MTAIL=multitail
 if [[ `uname` == "SunOS" ]]; then
     MTAIL=mtail
 fi
+USE_ZSOCK=0
+if [[ `uname` == "SunOS" ]]; then
+    USE_ZSOCK=1
+fi
+RELAY_OPTS=
+AGENT_OPTS=
+if [[ "$USE_ZSOCK" == "0" ]]; then
+    RELAY_OPTS=-s 8081
+    AGENT_OPTS=-s 8081
+fi
+
 
 
 #---- support functions
@@ -60,6 +71,10 @@ rm -f $ROOT/tmp/dev-*.log.lastrun
 #TODO: move old logs to $file.lastrun  to start fresh
 # Later, might want to NOT wipe the agent and relay DBs to start, but for now:
 rm -rf $ROOT/tmp/dev-relay $ROOT/tmp/dev-agent
+if [[ `uname` == "SunOS" ]] && [[ `zonename` == "global" ]]; then
+    [[ `svcs -H -o state amon-relay` == "online" ]] && svcadm disable -s amon-relay
+    [[ `svcs -H -o state amon-zwatch` == "online" ]] && svcadm disable -s amon-zwatch
+fi
 
 echo "== start riak (${ROOT}/deps/riak/rel/riak/log)"
 ${RIAK} start
@@ -70,13 +85,13 @@ sleep 1
 
 echo "== start relay (tmp/dev-relay.log)"
 mkdir -p $ROOT/tmp/dev-relay
-${NODE_DEV} $ROOT/relay/main.js -d -n -c $ROOT/tmp/dev-relay -p 10 -m http://127.0.0.1:8080 -s 8081 > $ROOT/tmp/dev-relay.log 2>&1 &
+${NODE_DEV} $ROOT/relay/main.js -d -n -c $ROOT/tmp/dev-relay -p 10 -m http://127.0.0.1:8080 $RELAY_OPTS > $ROOT/tmp/dev-relay.log 2>&1 &
 sleep 1  # work around for MON-3
 
 echo "== start agent (tmp/dev-agent.log)"
 mkdir -p $ROOT/tmp/dev-agent/config
 mkdir -p $ROOT/tmp/dev-agent/tmp
-${NODE_DEV} $ROOT/agent/main.js -d -p 10 -c $ROOT/tmp/dev-agent/config -t $ROOT/tmp/dev-agent/tmp -s 8081 > $ROOT/tmp/dev-agent.log 2>&1 &
+${NODE_DEV} $ROOT/agent/main.js -d -p 10 -c $ROOT/tmp/dev-agent/config -t $ROOT/tmp/dev-agent/tmp $AGENT_OPTS > $ROOT/tmp/dev-agent.log 2>&1 &
 
 echo "== tail the logs ..."
 ${MTAIL} -f $ROOT/tmp/dev-master.log $ROOT/tmp/dev-relay.log $ROOT/tmp/dev-agent.log
