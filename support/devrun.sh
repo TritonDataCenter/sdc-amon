@@ -33,8 +33,8 @@ fi
 RELAY_OPTS=
 AGENT_OPTS=
 if [[ "$USE_ZSOCK" == "0" ]]; then
-    RELAY_OPTS=-s 8081
-    AGENT_OPTS=-s 8081
+    RELAY_OPTS="-s 8081"
+    AGENT_OPTS="-s 8081"
 fi
 
 
