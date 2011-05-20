@@ -96,7 +96,6 @@ Monitor.prototype._addIndices = function(callback) {
 
   for (var i = 0; i < self.checks.length; i++) {
     var c = self.checks[i];
-    console.log('here...');
     self._addIndex('checks', c.customer + '_' + c.name, null, _callback);
   }
 };
