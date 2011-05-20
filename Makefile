@@ -62,7 +62,7 @@ $(NODEDIR)/bin/npm: $(NODEDIR)/bin/node deps/npm/Makefile
 
 # `touch` to ensure built product is newer than the Makefile dep.
 $(RIAK): deps/riak/Makefile
-	(cd deps/riak && make rel && touch $(RIAK))
+	(cd deps/riak && make rel && touch rel/riak/bin/riak)
 
 # Global npm module deps (currently just test/lint stuff used by every amon
 # package). We install globally instead of 'npm install --dev' in every package
