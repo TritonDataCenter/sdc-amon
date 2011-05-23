@@ -10,6 +10,7 @@ endif
 # Directories
 SRC := $(shell pwd)
 NODEDIR = $(SRC)/deps/node-install
+NODE_PATH = $(NODEDIR)
 
 # Tools
 MAKE = make
@@ -28,7 +29,7 @@ DOC_CMD = restdown
 HAVE_GJSLINT := $(shell which gjslint >/dev/null && echo yes || echo no)
 NODE := $(NODEDIR)/bin/node
 NODE_WAF := $(NODEDIR)/bin/node-waf
-NPM := npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH npm
+NPM := npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH $(NODEDIR)/bin/npm
 NODE_DEV := PATH=$(NODEDIR)/bin:$$PATH node-dev
 PKG_DIR := .pkg
 RIAK := deps/riak/rel/riak/bin/riak
