@@ -17,7 +17,7 @@
     <exec_method
       type="method"
       name="start"
-      exec="@@ROOT@@/bin/amon-agent -c @@CFG_DIR@@ -t @@TMP_DIR@@ &amp;"
+      exec="@@BASEDIR@@/bin/amon-agent &amp;"
       timeout_seconds="10">
       <method_context>
         <method_credential user="root" group="staff"/>

@@ -164,8 +164,32 @@ pkg_relay:
 
 	(cd $(PKG_DIR) && $(TAR) zcf ../amon-relay.tar.gz relay)
 
+pkg_agent:
+	@rm -fr $(PKG_DIR)/agent
+	@mkdir -p $(PKG_DIR)/agent/bin
+	@mkdir -p $(PKG_DIR)/agent/deps
+	@mkdir -p $(PKG_DIR)/agent
 
-pkg: common plugins agent relay bin/amon-zwatch master
+	cp -r	bin/amon-agent		\
+		$(PKG_DIR)/agent/bin
+
+	cp -r 	deps/node-install	\
+		$(PKG_DIR)/agent/deps
+
+	cp -r 	agent/lib		\
+		agent/main.js		\
+		agent/node_modules	\
+		agent/package.json	\
+		agent/smf		\
+		agent/smf_scripts	\
+		$(PKG_DIR)/agent
+
+	@mkdir $(PKG_DIR)/agent/agent
+	@(cd $(PKG_DIR)/agent/agent && ln -s ../main.js main.js)
+
+	(cd $(PKG_DIR) && $(TAR) zcf ../amon-agent.tar.gz agent)
+
+pkg: common plugins agent relay bin/amon-zwatch master pkg_relay pkg_agent pkg_relay
 
 clean:
 	(cd deps/npm && $(MAKE) clean)

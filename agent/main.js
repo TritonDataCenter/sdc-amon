@@ -172,14 +172,14 @@ function main() {
 
   if (parsed.help) usage(0);
   if (parsed.debug) log.level(log.Level.Debug);
-  if (!parsed['config-repository']) usage(1, 'config-repository is required');
 
   relaySocket = parsed.socket || '/var/run/.joyent_amon.sock';
-  var poll = parsed.poll || 60; // default to 1m config update
-  var tmpDir = parsed.tmp || '/tmp';
+  var poll = parsed.poll || 45;
+  var cfgDir = parsed['config-repository'] || '/var/run/joyent/amon/agent/config';
+  var tmpDir = parsed.tmp || '/var/run/joyent/amon/agent/tmp';
 
   gConfig = new Config({
-    root: parsed['config-repository'],
+    root: cfgDir,
     socket: relaySocket,
     tmp: tmpDir
   });

@@ -20,6 +20,6 @@ if svcs amon-relay; then
 fi
 
 rm -f "$SMFDIR/amon-relay.xml"
-rm -f "$SMFDIR/amon-zwarch.xml"
+rm -f "$SMFDIR/amon-zwatch.xml"
 
 rm -fr /var/run/joyent/amon/relay

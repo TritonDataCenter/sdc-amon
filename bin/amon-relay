@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/bash
 
 OS=$(uname -s)
 TOP=$(cd $(dirname $0)/../; pwd)
@@ -8,10 +8,9 @@ if [[ $OS -eq "SunOS" ]]; then
     DIR=`/opt/smartdc/agents/bin/agents-npm -s explore amon-relay pwd 2>&1`
     if  [[ $? -eq 0 ]]; then
 	TOP=${DIR}
-	cd ${TOP}
     fi
 fi
 
-
+cd ${TOP}
 NODEDIR=${TOP}/deps/node-install
-PATH=${NODEDIR}/bin:${PATH} node relay/main.js "$@"
+${NODEDIR}/bin/node relay/main.js "$@"

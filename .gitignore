@@ -5,6 +5,7 @@ node-install
 *.tar.gz
 *.tar.bz2
 *.log
+.pkg
 common/node_modules
 bin/amon-zwatch
 agent/checks

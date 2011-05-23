@@ -17,7 +17,7 @@
     <exec_method
       type="method"
       name="start"
-      exec="@@BASEDIR@@/bin/amon-relay &amp;"
+      exec="@@BASEDIR@@/bin/amon-relay -m http://10.99.99.16:8080 &amp;"
       timeout_seconds="10">
       <method_context>
         <method_credential user="root" group="staff"/>

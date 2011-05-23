@@ -1,6 +1,16 @@
-#!/bin/bash
+#!/usr/bin/bash
 
+OS=$(/usr/bin/uname -s)
 TOP=$(cd $(dirname $0)/../; pwd)
-NODEDIR=${TOP}/deps/node-install
 
-PATH=${NODEDIR}/bin:${PATH} node agent/main.js "$@"
+# Check if we're a real install
+if [[ $OS -eq "SunOS" ]]; then
+    DIR=`npm -s explore amon-agent pwd 2>&1`
+    if  [[ $? -eq 0 ]]; then
+	TOP=${DIR}
+    fi
+fi
+
+cd ${TOP}
+NODEDIR=${TOP}/deps/node-install
+${NODEDIR}/bin/node agent/main.js "$@"
