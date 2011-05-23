@@ -45,7 +45,7 @@ module.exports = {
 
     req._master.sendEvent(event, function(err) {
       if (err) {
-        log.warn("error forwarding event to master: %o", err)
+        log.warn("error forwarding event to master: %o", err);
         res.sendError(err);
         return next();
       }

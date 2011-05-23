@@ -18,7 +18,7 @@ var AppIndex = {};
 var debug = false;
 var developer = false;
 var poll = 30;
-var configRoot = '/var/run/joyent/amon/config';
+var configRoot = '/var/run/joyent/amon/relay/config';
 var socket = '/var/run/.joyent_amon.sock';
 var ZWATCH_SOCKET = '/var/run/.joyent_amon_zwatch.sock';
 

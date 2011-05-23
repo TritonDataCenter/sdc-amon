@@ -22,10 +22,16 @@
     "zsock": ">=1.0.5",
     "zutil": ">=0.1"
   },
+  "bin": {
+    "amon-relay": "./bin/amon-relay",
+    "amon-zwatch": "./bin/amon-zwatch"  
+  },
   "scripts": {
     "start": "node ./main.js",
     "pretest": "./node_modules/jshint/bin/jshint lib tst",
-    "test": "./node_modules/.bin/whiskey -t tst/checks.test.js"
+    "test": "./node_modules/.bin/whiskey -t tst/checks.test.js",
+    "postactivate": "./smf_scripts/postinstall.sh",
+    "predeactivate": "./smf_scripts/preuninstall.sh"
   },
   "devDependencies": {
     "jshint": "=0.1.9",

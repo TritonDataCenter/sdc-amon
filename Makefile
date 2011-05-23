@@ -30,6 +30,7 @@ NODE := $(NODEDIR)/bin/node
 NODE_WAF := $(NODEDIR)/bin/node-waf
 NPM := npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH npm
 NODE_DEV := PATH=$(NODEDIR)/bin:$$PATH node-dev
+PKG_DIR := .pkg
 RIAK := deps/riak/rel/riak/bin/riak
 WHISKEY = bin/whiskey
 
@@ -37,9 +38,8 @@ WHISKEY = bin/whiskey
 # Targets
 #
 
-all:: common plugins agent relay bin/amon-zwatch master
-
-.PHONY: deps agent relay master common plugins test lint gjslint jshint
+all:: pkg
+.PHONY: deps agent relay master common plugins test lint gjslint jshint pkg
 
 
 #
@@ -138,10 +138,38 @@ devrun: tmp $(NODEDIR)/bin/node-dev
 devwipedb:
 	rm -rf deps/riak/rel/riak/data/bitcask
 
+pkg_relay:
+	@rm -fr $(PKG_DIR)/relay
+	@mkdir -p $(PKG_DIR)/relay/bin
+	@mkdir -p $(PKG_DIR)/relay/deps
+	@mkdir -p $(PKG_DIR)/relay
+
+	cp -r	bin/amon-relay		\
+		bin/amon-zwatch		\
+		$(PKG_DIR)/relay/bin
+
+	cp -r 	deps/node-install	\
+		$(PKG_DIR)/relay/deps
+
+	cp -r 	relay/lib		\
+		relay/main.js		\
+		relay/node_modules	\
+		relay/package.json	\
+		relay/smf		\
+		relay/smf_scripts	\
+		$(PKG_DIR)/relay
+
+	@mkdir $(PKG_DIR)/relay/relay
+	@(cd $(PKG_DIR)/relay/relay && ln -s ../main.js main.js)
+
+	(cd $(PKG_DIR) && $(TAR) zcf ../amon-relay.tar.gz relay)
+
+
+pkg: common plugins agent relay bin/amon-zwatch master
 
 clean:
 	(cd deps/npm && $(MAKE) clean)
 	(cd deps/node && $(MAKE) distclean)
 	(cd deps/riak && $(MAKE) clean)
-	rm -rf $(NODEDIR) agent/node_modules relay/node_modules \
-		master/node_modules bin/amon-zwatch
+	@rm -rf $(NODEDIR) agent/node_modules relay/node_modules \
+		master/node_modules bin/amon-zwatch .pkg *.tar.gz
