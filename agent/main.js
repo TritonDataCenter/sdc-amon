@@ -149,7 +149,7 @@ function _updateConfig(force) {
       return;
     }
     if (!updated && !force) {
-      log.debug('config: No config updates.');
+      log.trace('config: No config updates.');
       return;
     }
     log.info('config: Updated. Stopping all checks and recreating.');

@@ -35,7 +35,7 @@ function Entity(options) {
     throw new TypeError('options._bucket is required');
 
   var _riakOpts = options.riak || {};
-  _riakOpts.debug = log.debug();
+  _riakOpts.debug = log.trace();
 
   this._db = riak.getClient(_riakOpts);
   this._meta = null;

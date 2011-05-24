@@ -114,8 +114,8 @@ var App = function App(options) {
                   + 'vs "%s" (curr)', self.zone, masterMD5, currMD5);
 
         if (masterMD5 === currMD5) {
+          log.trace('config: No config update.')
           return;
-          log.debug('config: No config update.')
         }
         self._master.config(self.zone, function(err, config, masterMD5) {
           if (err || !config || !masterMD5) {
