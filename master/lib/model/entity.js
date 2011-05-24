@@ -276,13 +276,11 @@ Entity.prototype._delIndex = function(index, key, tag, callback) {
 
 Entity.prototype._find = function(index, key, callback, filter) {
   var _index = this._bucket + '_' + index;
-
   var _filter = filter || [['_', '_']];
-
-  log.debug('Entity._find entered: /%s/%s/%o', _index, key, _filter);
+  log.trace('Entity._find entered: /%s/%s/%o', _index, key, _filter);
 
   this._db.walk(_index, key, _filter, function(err, obj, meta) {
-    log.debug('Entity.find(/%s/%s): err=%o, obj=%o', _index, key, err, obj);
+    log.trace('Entity.find(/%s/%s): err=%o, obj=%o', _index, key, err, obj);
     if (err) return callback(err);
 
     return callback(null, obj);

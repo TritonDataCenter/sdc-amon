@@ -35,11 +35,13 @@ function _sendConfig(req, res, next, sendData) {
   if (req.params.zone) {
     check.findByZone(req.params.zone, function(err, checks) {
       if (err) {
-        log.warn('Error finding checks: ' + err);
+        log.warn('config: Error finding checks: ' + err);
         res.send(500);
       } else {
         var code = sendData ? HttpCodes.Ok : HttpCodes.NoContent;
-        log.debug('config._sendConfig returning %d, obj=%o', code, checks);
+        if (sendData) {
+          log.debug('config: returning %d, obj=%o', code, checks);
+        }
         res.send(code, checks);
       }
       return next();
@@ -57,12 +59,12 @@ function _sendConfig(req, res, next, sendData) {
 module.exports = {
 
   head: function(req, res, next) {
-    log.debug('config.headConfig: params=%o', req.params);
+    log.trace('config.headConfig: params=%o', req.params);
     return _sendConfig(req, res, next, false);
   },
 
   get: function(req, res, next) {
-    log.debug('config.getConfig: params=%o', req.params);
+    log.trace('config.getConfig: params=%o', req.params);
     return _sendConfig(req, res, next, true);
   }
 
