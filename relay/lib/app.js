@@ -243,9 +243,7 @@ App.prototype.writeConfig = function(config, md5, callback) {
   fs.mkdir(tmp, '0750', function(err) {
     if (err) return callback(err);
 
-    if (log.debug()) {
-      log.debug('app.writeConfig(z=%s). Made tmp dir %s', self.zone, tmp);
-    }
+    log.debug('app.writeConfig(z=%s). Made tmp dir %s', self.zone, tmp);
 
     var finished = 0;
     config.forEach(function(c) {
@@ -258,18 +256,15 @@ App.prototype.writeConfig = function(config, md5, callback) {
       fs.writeFile(tmp + '/' + c.id, _config, function(err) {
         if (err) return callback(err);
 
-        if (log.debug()) {
-          log.debug('app.writeConfig(z=%s). Wrote config %s',
-                    self.zone, _config);
-        }
+        log.debug('app.writeConfig(z=%s). Wrote config %s',
+                  self.zone, _config);
 
         if (++finished >= config.length) {
           fs.rename(self._stage, save, function(err) {
             if (err) return callback(err);
 
-            if (log.debug()) {
-              log.debug('app.writeConfig(z=%s). Renamed stage to %s', save);
-            }
+            log.debug('app.writeConfig(z=%s). Renamed stage to %s',
+                      self.zone, save);
 
             fs.rename(tmp, self._stage, function(err) {
               if (err) {
@@ -280,21 +275,18 @@ App.prototype.writeConfig = function(config, md5, callback) {
                 });
               }
 
-              if (log.debug()) {
-                log.debug('app.writeConfig(z=%s). Renamed %s to stage', tmp);
-              }
+              log.debug('app.writeConfig(z=%s). Renamed %s to stage',
+                        self.zone, tmp);
 
               fs.writeFile(self._stageMD5File, md5, function(err) {
                 if (err) return callback(err);
 
-                if (log.debug()) {
-                  log.debug('app.writeConfig(z=%s). Wrote MD5.');
-                }
-
+                log.debug('app.writeConfig(z=%s). Wrote MD5.', self.zone);
                 var rm = spawn(__rm, ['-rf', save]);
                 rm.on('exit', function(code) {
                   if (code !== 0) {
-                    log.warn('Unable to clean up old config in ' + save);
+                    log.warn('config: Unable to clean up old config in %s',
+                             save);
                   }
                   return callback();
                 }); // rm.on('exit')
