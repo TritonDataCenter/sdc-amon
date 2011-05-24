@@ -102,32 +102,33 @@ var App = function App(options) {
 
   // Register the config watcher
   function _getConfig() {
-    log.debug('Checking master for new config...');
-    self._master.configMD5(self.zone, function(err, md5) {
+    log.trace('config: Checking master for new config.');
+    self._master.configMD5(self.zone, function(err, masterMD5) {
       if (err) {
-        log.warn('Error getting master config MD5 (zone=%s): %s',
+        log.warn('config: Error getting master config MD5 (zone=%s): %s',
                  self.zone, err);
         return;
       }
-      log.debug('master config md5=%s, checking ours.', md5);
-      self._md5(function(_md5) {
-        log.debug('our md5=%s', _md5);
+      self._getCurrMD5(function(currMD5) {
+        log.trace('config: zone "%s" config md5: "%s" (from master) '
+                  + 'vs "%s" (curr)', self.zone, masterMD5, currMD5);
 
-        if (md5 === _md5) return;
-        log.debug('Master md5 for zone %s => %s, stage => %s',
-                  self.zone, md5, _md5);
-        self._master.config(self.zone, function(err, config, md5) {
-          if (err || !config || !md5) {
-            log.warn('Error getting master config (zone=%s): %s',
+        if (masterMD5 === currMD5) {
+          return;
+          log.debug('config: No config update.')
+        }
+        self._master.config(self.zone, function(err, config, masterMD5) {
+          if (err || !config || !masterMD5) {
+            log.warn('config: Error getting master config (zone=%s): %s',
                      self.zone, err);
             return;
           }
-          log.debug('retrieved master config: %s', config);
-          self.writeConfig(config, md5, function(err) {
+          log.trace('config: retrieved master config: %s', config);
+          self.writeConfig(config, masterMD5, function(err) {
             if (err) {
-              log.warn('Unable to save new config: ' + err);
+              log.warn('config: Unable to save new config: ' + err);
             }
-            log.debug('successfully updated config from master');
+            log.debug('config: Successfully updated config from master.');
             return;
           });
         });
@@ -216,7 +217,7 @@ App.prototype.close = function(callback) {
  *
  * @param {Function} callback of the form Function(md5).
  */
-App.prototype._md5 = function(callback) {
+App.prototype._getCurrMD5 = function(callback) {
   var self = this;
   fs.readFile(this._stageMD5File, 'utf8', function(err, data) {
     if (err && err.code !== 'ENOENT') {

@@ -4,7 +4,7 @@
   "config": {
     "path": "/tmp/whistle.log",
     "regex": "tweet",
-    "threshold": 1,
-    "period": 120
+    "threshold": 2,
+    "period": 60
   }
 }

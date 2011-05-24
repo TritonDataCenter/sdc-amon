@@ -190,7 +190,7 @@ pkg_agent:
 
 	(cd $(PKG_DIR) && $(TAR) zcf ../amon-agent.tar.gz agent)
 
-pkg: common plugins agent relay bin/amon-zwatch master pkg_relay pkg_agent pkg_relay
+pkg: common plugins agent relay bin/amon-zwatch master pkg_agent pkg_relay
 
 clean:
 	(cd deps/npm && $(MAKE) clean)
