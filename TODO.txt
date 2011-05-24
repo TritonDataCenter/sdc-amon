@@ -1,0 +1,19 @@
+- Build/install:
+  - riak
+  - master
+  - relay (SMF packaging done; bamboo started)
+  - agent
+- CA Agent Plugin
+- HTTP Agent Plugin
+- Email Notification Plugin
+- Change Twilio to SMS
+- Retry/backoff everywhere
+- Default to CAPI lookup user email on no contacts
+- missing data alarms in master
+- edge-triggered alarms in master for checks
+- /events cleanup (look like other master apis)
+- in riak, use uuid instead of customer_name for keys, if possible
+- Garbage collection of /events and orphans
+- client SDK
+- docs
+- Admin UI
