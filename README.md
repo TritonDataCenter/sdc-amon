@@ -62,10 +62,10 @@ You need:
 And really, you should do a `pkgin install emacs-nox11` to be awesome...
 Anyway, once you've done the above, you can do:
 
-    cd /opt
-    git clone git@git.joyent.com:amon.git
-    cd amon
-    make
+    cd /opt && \
+    git clone git@git.joyent.com:amon.git && \
+    cd amon && \
+    make && \
     source env.sh
 
 And start running (see next section).
