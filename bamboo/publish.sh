@@ -1,9 +1,10 @@
 #!/bin/bash
 
-if [[ `hostname` = 'bh1-autobuild' ]]; then
-  pfexec mkdir -p $RELAY_PUBLISH_LOCATION
-  pfexec cp ${RELAY}.tar.gz $RELAY_PUBLISH_LOCATION/$RELAY_PKG
-  pfexec cp ${AGENT}.tar.gz $AGENT_PUBLISH_LOCATION/$AGENT_PKG
-else
-  echo scp
-fi
+ssh bamboo@10.2.0.190 mkdir -p $AGENT_PUBLISH_LOCATION
+scp $AGENT_PKG bamboo@10.2.0.190:$AGENT_PUBLISH_LOCATION/
+
+ssh bamboo@10.2.0.190 mkdir -p $RELAY_PUBLISH_LOCATION
+scp $RELAY_PKG bamboo@10.2.0.190:$RELAY_PUBLISH_LOCATION/
+
+ssh bamboo@10.2.0.190 mkdir -p $MASTER_PUBLISH_LOCATION
+scp $MASTER_PKG bamboo@10.2.0.190:$MASTER_PUBLISH_LOCATION/

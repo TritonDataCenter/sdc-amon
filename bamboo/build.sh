@@ -3,22 +3,26 @@
 set -e
 
 DIRNAME=$(cd `dirname $0`; pwd)
-gmake clean && gmake
 
-BRANCH=$(git symbolic-ref HEAD | cut -d'/' -f3)
-BUILDSTAMP=`TZ=UTC date "+%Y%m%dT%H%M%SZ"`; export BUILDSTAMP
-PKG_SUFFIX=${BRANCH}-${BUILDSTAMP}.tgz
+
+gmake clean && gmake all pkg
+
+
+NAME=amon
+BRANCH=$(git describe --contains --all HEAD)
+REVISION=$(cat .pkg/REVISION)
 PUBLISH_PREFIX=/rpool/data/coal/live_147/agents
 
-## Relay
+# This is https://216.57.203.66:444/coal/live_147/agents/
+AGENT_PKG=amon-agent-${REVISION}.tar.gz
+AGENT_PUBLISH_LOCATION=/rpool/data/coal/live_147/agents/${NAME}/${BRANCH}
+RELAY_PKG=amon-relay-${REVISION}.tar.gz
+RELAY_PUBLISH_LOCATION=/rpool/data/coal/live_147/agents/${NAME}/${BRANCH}
 
-RELAY=amon-relay
-RELAY_PKG=${RELAY}-${PKG_SUFFIX}
-RELAY_PUBLISH_LOCATION=${PUBLISH_PREFIX}/${RELAY}/${BRANCH}/
+#TODO(trentm): want to publish to https://assets.joyent.us/datasets/liveimg/
+# because that is where usb-headnode pulls 'amon-tarball' from.
+MASTER_PKG=amon-relay-${REVISION}.tar.gz
+MASTER_PUBLISH_LOCATION=/rpool/data/coal/live_147/amon/${BRANCH}
 
-## Agent
-AGENT=amon-agent
-AGENT_PKG=${AGENT}-${PKG_SUFFIX}
-AGENT_PUBLISH_LOCATION=${PUBLISH_PREFIX}/${AGENT}/${BRANCH}
 
 source $DIRNAME/publish.sh

@@ -106,6 +106,7 @@ master: $(NODEDIR)/bin/npm common plugins
 #
 
 pkg: pkg_agent pkg_relay pkg_master
+	echo "$(REVISION)" >$(PKG_DIR)/REVISION   # used by bamboo build
 
 pkg_relay:
 	@rm -fr $(PKG_DIR)/relay
