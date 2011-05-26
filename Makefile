@@ -265,7 +265,7 @@ devwipedb:
 	rm -rf deps/riak/rel/riak/data/bitcask
 
 clean:
-	(cd deps/npm && $(MAKE) clean)
+	([[ -f $(NODE) ]] && cd deps/npm && PATH=$(NODEDIR)/bin:$$PATH $(MAKE) clean || true)
 	(cd deps/node && $(MAKE) distclean)
 	(cd deps/riak && $(MAKE) clean)
 	@rm -rf $(NODEDIR) agent/node_modules relay/node_modules \
