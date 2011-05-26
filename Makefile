@@ -98,46 +98,9 @@ endif
 master: $(NODEDIR)/bin/npm common plugins
 	(cd master && $(NPM) install && $(NPM) link amon-common amon-plugins)
 
-
 #
-# Lint, test and miscellaneous targets
+# Packaging targets
 #
-
-jshint: deps
-	bin/node $(NODEDIR)/lib/node_modules/jshint/bin/jshint common/lib plugins/lib master/main.js master/lib relay/main.js relay/lib agent/main.js agent/lib
-
-gjslint:
-	gjslint --nojsdoc -e deps,node_modules,tmp -x common/lib/sprintf.js -r .
-
-ifeq ($(HAVE_GJSLINT), yes)
-lint: jshint gjslint
-else
-lint: jshint
-	@echo "* * *"
-	@echo "* Warning: Cannot lint with gjslint. Install it from:"
-	@echo "*    http://code.google.com/closure/utilities/docs/linter_howto.html"
-	@echo "* * *"
-endif
-
-#TODO(trent): add deps/restdown submodule
-docs:
-	restdown -v -m doc doc/api.md
-apisummary:
-	@grep '^\(# \| *\(POST\|GET\|DELETE\|HEAD\|PUT\)\)' doc/api.md
-
-tmp:
-	mkdir -p tmp
-test: tmp
-	support/test.sh
-
-# A supervisor for restarting node processes when relevant files change.
-$(NODEDIR)/bin/node-dev: $(NODEDIR)/bin/npm
-	$(NPM) install -g node-dev
-
-devrun: tmp $(NODEDIR)/bin/node-dev
-	support/devrun.sh
-devwipedb:
-	rm -rf deps/riak/rel/riak/data/bitcask
 
 pkg_relay:
 	@rm -fr $(PKG_DIR)/relay
@@ -191,6 +154,48 @@ pkg_agent:
 	(cd $(PKG_DIR) && $(TAR) zcf ../amon-agent.tar.gz agent)
 
 pkg: common plugins agent relay bin/amon-zwatch master pkg_agent pkg_relay
+
+
+
+#
+# Lint, test and miscellaneous targets
+#
+
+jshint: deps
+	bin/node $(NODEDIR)/lib/node_modules/jshint/bin/jshint common/lib plugins/lib master/main.js master/lib relay/main.js relay/lib agent/main.js agent/lib
+
+gjslint:
+	gjslint --nojsdoc -e deps,node_modules,tmp -x common/lib/sprintf.js -r .
+
+ifeq ($(HAVE_GJSLINT), yes)
+lint: jshint gjslint
+else
+lint: jshint
+	@echo "* * *"
+	@echo "* Warning: Cannot lint with gjslint. Install it from:"
+	@echo "*    http://code.google.com/closure/utilities/docs/linter_howto.html"
+	@echo "* * *"
+endif
+
+#TODO(trent): add deps/restdown submodule
+docs:
+	restdown -v -m doc doc/api.md
+apisummary:
+	@grep '^\(# \| *\(POST\|GET\|DELETE\|HEAD\|PUT\)\)' doc/api.md
+
+tmp:
+	mkdir -p tmp
+test: tmp
+	support/test.sh
+
+# A supervisor for restarting node processes when relevant files change.
+$(NODEDIR)/bin/node-dev: $(NODEDIR)/bin/npm
+	$(NPM) install -g node-dev
+
+devrun: tmp $(NODEDIR)/bin/node-dev
+	support/devrun.sh
+devwipedb:
+	rm -rf deps/riak/rel/riak/data/bitcask
 
 clean:
 	(cd deps/npm && $(MAKE) clean)
