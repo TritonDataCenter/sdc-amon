@@ -265,8 +265,7 @@ devwipedb:
 	rm -rf deps/riak/rel/riak/data/bitcask
 
 clean:
-	rm -rf $(NODEDIR)
-	(cd deps/node && $(MAKE) distclean)
-	(cd deps/riak && $(MAKE) clean)
+	([[ -d deps/node ]] && cd deps/node && $(MAKE) distclean || true)
+	([[ -d deps/riak ]] && cd deps/riak && $(MAKE) clean || true)
 	@rm -rf $(NODEDIR) agent/node_modules relay/node_modules \
 		master/node_modules bin/amon-zwatch .pkg amon-*.tar.gz
