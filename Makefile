@@ -43,7 +43,7 @@ WHISKEY = bin/whiskey
 
 all:: common plugins agent relay bin/amon-zwatch master
 
-.PHONY: deps agent relay master common plugins test lint gjslint jshint pkg
+.PHONY: deps agent relay master common plugins test lint gjslint jshint pkg pkg_agent pkg_relay pkg_master upload
 
 
 #
@@ -163,6 +163,15 @@ pkg_agent:
 pkg_master:
 	@echo TODO: pkg_master
 
+# This presumes the running user has ssh keys setup for jill@assets.joyent.us.
+upload:
+	@echo "# https://assets.joyent.us/datasets/liveimg/"
+	scp amon-agent-$(REVISION).tar.gz jill@assets.joyent.us:/data/assets/datasets/liveimg/.amon-agent-$(REVISION).tar.gz.partial
+	ssh jill@assets.joyent.us "cd /data/assets/datasets/liveimg && mv .amon-agent-$(REVISION).tar.gz.partial amon-agent-$(REVISION).tar.gz"
+	scp amon-relay-$(REVISION).tar.gz jill@assets.joyent.us:/data/assets/datasets/liveimg/.amon-relay-$(REVISION).tar.gz.partial
+	ssh jill@assets.joyent.us "cd /data/assets/datasets/liveimg && mv .amon-relay-$(REVISION).tar.gz.partial amon-relay-$(REVISION).tar.gz"
+	#scp amon-master-$(REVISION).tar.gz jill@assets.joyent.us:/data/assets/datasets/liveimg/.amon-master-$(REVISION).tar.gz.partial
+	#ssh jill@assets.joyent.us "cd /data/assets/datasets/liveimg && mv .amon-master-$(REVISION).tar.gz.partial amon-master-$(REVISION).tar.gz"
 
 
 #
