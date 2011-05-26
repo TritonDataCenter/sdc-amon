@@ -7,6 +7,8 @@ endif
 # Config
 #
 
+REVISION=$(shell git describe --contains --all HEAD)-$(shell git describe --tags)
+
 # Directories
 SRC := $(shell pwd)
 NODEDIR = $(SRC)/deps/node-install
@@ -39,7 +41,8 @@ WHISKEY = bin/whiskey
 # Targets
 #
 
-all:: pkg
+all:: common plugins agent relay bin/amon-zwatch master
+
 .PHONY: deps agent relay master common plugins test lint gjslint jshint pkg
 
 
@@ -87,7 +90,7 @@ plugins: $(NODEDIR)/bin/npm
 agent: $(NODEDIR)/bin/npm common plugins
 	(cd agent && $(NPM) install && $(NPM) link amon-common amon-plugins)
 
-relay: $(NODEDIR)/bin/npm common plugin
+relay: $(NODEDIR)/bin/npm common plugins
 	(cd relay && $(NPM) install && $(NPM) link amon-common amon-plugins)
 
 bin/amon-zwatch:
@@ -101,6 +104,8 @@ master: $(NODEDIR)/bin/npm common plugins
 #
 # Packaging targets
 #
+
+pkg: pkg_agent pkg_relay pkg_master
 
 pkg_relay:
 	@rm -fr $(PKG_DIR)/relay
@@ -126,7 +131,8 @@ pkg_relay:
 	@mkdir $(PKG_DIR)/relay/relay
 	@(cd $(PKG_DIR)/relay/relay && ln -s ../main.js main.js)
 
-	(cd $(PKG_DIR) && $(TAR) zcf ../amon-relay.tar.gz relay)
+	(cd $(PKG_DIR) && $(TAR) zcf ../amon-relay-$(REVISION).tar.gz relay)
+	@echo "created amon-relay-$(REVISION).tar.gz"
 
 pkg_agent:
 	@rm -fr $(PKG_DIR)/agent
@@ -151,9 +157,11 @@ pkg_agent:
 	@mkdir $(PKG_DIR)/agent/agent
 	@(cd $(PKG_DIR)/agent/agent && ln -s ../main.js main.js)
 
-	(cd $(PKG_DIR) && $(TAR) zcf ../amon-agent.tar.gz agent)
+	(cd $(PKG_DIR) && $(TAR) zcf ../amon-agent-$(REVISION).tar.gz agent)
+	@echo "created amon-agent-$(REVISION).tar.gz"
 
-pkg: common plugins agent relay bin/amon-zwatch master pkg_agent pkg_relay
+pkg_master:
+	@echo TODO: pkg_master
 
 
 
@@ -202,4 +210,4 @@ clean:
 	(cd deps/node && $(MAKE) distclean)
 	(cd deps/riak && $(MAKE) clean)
 	@rm -rf $(NODEDIR) agent/node_modules relay/node_modules \
-		master/node_modules bin/amon-zwatch .pkg *.tar.gz
+		master/node_modules bin/amon-zwatch .pkg amon-*.tar.gz
