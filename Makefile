@@ -78,16 +78,16 @@ $(NODEDIR)/lib/node_modules/jshint: $(NODEDIR)/bin/npm
 # The main amon components
 #
 
-common: deps
+common: $(NODEDIR)/bin/npm
 	(cd common && $(NPM) install && $(NPM) link)
 
-plugins: deps
+plugins: $(NODEDIR)/bin/npm
 	(cd plugins && $(NPM) install && $(NPM) link)
 
-agent: deps
+agent: $(NODEDIR)/bin/npm common plugins
 	(cd agent && $(NPM) install && $(NPM) link amon-common amon-plugins)
 
-relay: deps
+relay: $(NODEDIR)/bin/npm common plugin
 	(cd relay && $(NPM) install && $(NPM) link amon-common amon-plugins)
 
 bin/amon-zwatch:
@@ -95,7 +95,7 @@ ifeq ($(UNAME), SunOS)
 	${CC} ${CCFLAGS} ${LDFLAGS} -o bin/amon-zwatch $^ zwatch/zwatch.c ${LIBS}
 endif
 
-master: deps
+master: $(NODEDIR)/bin/npm common plugins
 	(cd master && $(NPM) install && $(NPM) link amon-common amon-plugins)
 
 
