@@ -128,11 +128,20 @@ pkg_relay:
 		relay/smf_scripts	\
 		$(PKG_DIR)/relay
 
+	# Trim out some unnecessary, duplicated, or dev-only pieces.
+	rm -rf \
+			$(PKG_DIR)/relay/deps/node-install/lib/node_modules/amon-common \
+			$(PKG_DIR)/relay/deps/node-install/lib/node_modules/amon-plugins
+	find $(PKG_DIR)/relay -type d | grep 'node_modules\/jshint$$' | xargs rm -rf
+	find $(PKG_DIR)/relay -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
+	find $(PKG_DIR)/relay -type d | grep 'dirsum\/tst$$' | xargs rm -rf
+
+	# For 'devrun' to work with a package install.
 	@mkdir $(PKG_DIR)/relay/relay
 	@(cd $(PKG_DIR)/relay/relay && ln -s ../main.js main.js)
 
 	(cd $(PKG_DIR) && $(TAR) zcf ../amon-relay-$(REVISION).tar.gz relay)
-	@echo "created amon-relay-$(REVISION).tar.gz"
+	@echo "Created 'amon-relay-$(REVISION).tar.gz'."
 
 pkg_agent:
 	@rm -fr $(PKG_DIR)/agent
@@ -154,14 +163,51 @@ pkg_agent:
 		agent/smf_scripts	\
 		$(PKG_DIR)/agent
 
+	# Trim out some unnecessary, duplicated, or dev-only pieces.
+	rm -rf \
+			$(PKG_DIR)/agent/deps/node-install/lib/node_modules/amon-common \
+			$(PKG_DIR)/agent/deps/node-install/lib/node_modules/amon-plugins
+	find $(PKG_DIR)/agent -type d | grep 'node_modules\/jshint$$' | xargs rm -rf
+	find $(PKG_DIR)/agent -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
+	find $(PKG_DIR)/agent -type d | grep 'dirsum\/tst$$' | xargs rm -rf
+
+	# For 'devrun' to work with a package install.
 	@mkdir $(PKG_DIR)/agent/agent
 	@(cd $(PKG_DIR)/agent/agent && ln -s ../main.js main.js)
 
 	(cd $(PKG_DIR) && $(TAR) zcf ../amon-agent-$(REVISION).tar.gz agent)
-	@echo "created amon-agent-$(REVISION).tar.gz"
+	@echo "Created 'amon-agent-$(REVISION).tar.gz'."
 
 pkg_master:
-	@echo TODO: pkg_master
+	@rm -fr $(PKG_DIR)/master
+	@mkdir -p $(PKG_DIR)/master/bin
+	@mkdir -p $(PKG_DIR)/master/deps
+	@mkdir -p $(PKG_DIR)/master
+
+	cp -r	bin/amon-master		\
+		$(PKG_DIR)/master/bin
+
+	cp -r 	deps/node-install	\
+		$(PKG_DIR)/master/deps
+
+	cp -r 	master/lib \
+		master/main.js \
+		master/node_modules \
+		master/package.json \
+		master/config.coal.json \
+		master/smf \
+		$(PKG_DIR)/master
+
+	# Trim out some unnecessary, duplicated, or dev-only pieces.
+	rm -rf \
+			$(PKG_DIR)/master/deps/node-install/lib/node_modules/amon-common \
+			$(PKG_DIR)/master/deps/node-install/lib/node_modules/amon-plugins
+	find $(PKG_DIR)/master -type d | grep 'node_modules\/jshint$$' | xargs rm -rf
+	find $(PKG_DIR)/master -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
+	find $(PKG_DIR)/master -type d | grep 'dirsum\/tst$$' | xargs rm -rf
+
+	(cd $(PKG_DIR) && $(TAR) zcf ../amon-master-$(REVISION).tar.gz master)
+	@echo "Created 'amon-master-$(REVISION).tar.gz'."
 
 # This presumes the running user has ssh keys setup for jill@assets.joyent.us.
 upload:
@@ -170,8 +216,8 @@ upload:
 	ssh jill@assets.joyent.us "cd /data/assets/datasets/liveimg && mv .amon-agent-$(REVISION).tar.gz.partial amon-agent-$(REVISION).tar.gz"
 	scp amon-relay-$(REVISION).tar.gz jill@assets.joyent.us:/data/assets/datasets/liveimg/.amon-relay-$(REVISION).tar.gz.partial
 	ssh jill@assets.joyent.us "cd /data/assets/datasets/liveimg && mv .amon-relay-$(REVISION).tar.gz.partial amon-relay-$(REVISION).tar.gz"
-	#scp amon-master-$(REVISION).tar.gz jill@assets.joyent.us:/data/assets/datasets/liveimg/.amon-master-$(REVISION).tar.gz.partial
-	#ssh jill@assets.joyent.us "cd /data/assets/datasets/liveimg && mv .amon-master-$(REVISION).tar.gz.partial amon-master-$(REVISION).tar.gz"
+	scp amon-master-$(REVISION).tar.gz jill@assets.joyent.us:/data/assets/datasets/liveimg/.amon-master-$(REVISION).tar.gz.partial
+	ssh jill@assets.joyent.us "cd /data/assets/datasets/liveimg && mv .amon-master-$(REVISION).tar.gz.partial amon-master-$(REVISION).tar.gz"
 
 
 #

@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<!DOCTYPE service_bundle SYSTEM "/usr/share/lib/xml/dtd/service_bundle.dtd.1">
+<service_bundle type="manifest" name="amon">
+  <service name="smartdc/site/amon" type="service" version="@@VERSION@@">
+    <create_default_instance enabled="true"/>
+    <single_instance/>
+
+    <dependency name="network" grouping="require_all" restart_on="error" type="service">
+      <service_fmri value="svc:/milestone/network:default"/>
+    </dependency>
+
+    <dependency name="filesystem" grouping="require_all" restart_on="error" type="service">
+      <service_fmri value="svc:/system/filesystem/local"/>
+    </dependency>
+
+    <exec_method
+      type="method"
+      name="start"
+      exec="/opt/smartdc/amon/bin/amon-master -f master/config.coal.json -p 8080 &amp;"
+      timeout_seconds="60">
+      <method_context working_directory="/opt/smartdc/amon">
+        <method_credential user="nobody" group="nobody" privileges="basic,net_privaddr"/>
+        <method_environment>
+          <envvar name="PATH" value="/opt/local/bin:/usr/bin:/usr/sbin:/bin"/>
+          <envvar name="LD_PRELOAD_32" value="/usr/lib/extendedFILE.so.1" />
+        </method_environment>
+      </method_context>
+    </exec_method>
+
+    <exec_method type="method" name="restart" exec=":kill" timeout_seconds="10">
+      <method_context working_directory="/opt/smartdc/amon">
+        <method_credential user="root" group="staff"/>
+      </method_context>
+    </exec_method>
+
+    <exec_method type="method" name="stop" exec=":kill" timeout_seconds="10">
+      <method_context working_directory="/opt/smartdc/amon">
+        <method_credential user="root" group="staff"/>
+      </method_context>
+    </exec_method>
+
+    <property_group name="startd" type="framework" />
+    <property_group name="application" type="application" />
+
+    <stability value="Evolving"/>
+
+    <template>
+      <common_name>
+        <loctext xml:lang="C">SDC Amon master daemon</loctext>
+      </common_name>
+    </template>
+  </service>
+</service_bundle>
