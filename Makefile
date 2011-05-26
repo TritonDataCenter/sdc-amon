@@ -132,6 +132,7 @@ pkg_relay:
 	rm -rf \
 			$(PKG_DIR)/relay/deps/node-install/lib/node_modules/amon-common \
 			$(PKG_DIR)/relay/deps/node-install/lib/node_modules/amon-plugins
+	find $(PKG_DIR)/relay -name "*.pyc" | xargs rm
 	find $(PKG_DIR)/relay -type d | grep 'node_modules\/jshint$$' | xargs rm -rf
 	find $(PKG_DIR)/relay -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
 	find $(PKG_DIR)/relay -type d | grep 'dirsum\/tst$$' | xargs rm -rf
@@ -167,6 +168,7 @@ pkg_agent:
 	rm -rf \
 			$(PKG_DIR)/agent/deps/node-install/lib/node_modules/amon-common \
 			$(PKG_DIR)/agent/deps/node-install/lib/node_modules/amon-plugins
+	find $(PKG_DIR)/agent -name "*.pyc" | xargs rm
 	find $(PKG_DIR)/agent -type d | grep 'node_modules\/jshint$$' | xargs rm -rf
 	find $(PKG_DIR)/agent -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
 	find $(PKG_DIR)/agent -type d | grep 'dirsum\/tst$$' | xargs rm -rf
@@ -202,6 +204,7 @@ pkg_master:
 	rm -rf \
 			$(PKG_DIR)/master/deps/node-install/lib/node_modules/amon-common \
 			$(PKG_DIR)/master/deps/node-install/lib/node_modules/amon-plugins
+	find $(PKG_DIR)/master -name "*.pyc" | xargs rm
 	find $(PKG_DIR)/master -type d | grep 'node_modules\/jshint$$' | xargs rm -rf
 	find $(PKG_DIR)/master -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
 	find $(PKG_DIR)/master -type d | grep 'dirsum\/tst$$' | xargs rm -rf
