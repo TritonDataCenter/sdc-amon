@@ -7,6 +7,10 @@ DIRNAME=$(cd `dirname $0`; pwd)
 
 echo "* * *"
 ls -alF
+echo "* * *"
+which gmake
+echo $PATH
+echo "* * *"
 rm -rf /home/bamboo/.npm/npm/1.0.6/___package.npm/package
 rm -rf "/home/bamboo/.npm/npm/1.0.6/package/package.json" "/home/bamboo/.npm/npm/1.0.6/package" "/home/bamboo/.npm/npm/1.0.6/package/package.json" "/home/bamboo/.npm/npm/1.0.6/package"
 echo "* * *"
