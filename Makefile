@@ -10,8 +10,8 @@ endif
 REVISION=$(shell git describe --contains --all HEAD)-$(shell git describe --tags)
 
 # Directories
-SRC := $(shell pwd)
-NODEDIR = $(SRC)/deps/node-install
+ROOT := $(shell pwd)
+NODEDIR = $(ROOT)/deps/node-install
 NODE_PATH = $(NODEDIR)
 
 # Tools
@@ -31,11 +31,13 @@ DOC_CMD = restdown
 HAVE_GJSLINT := $(shell which gjslint >/dev/null && echo yes || echo no)
 NODE := $(NODEDIR)/bin/node
 NODE_WAF := $(NODEDIR)/bin/node-waf
-NPM := npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH $(NODEDIR)/bin/npm
+NPM_ENV := npm_config_cache=$(shell echo $(ROOT)/tmp/npm-cache) npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH
+NPM := $(NPM_ENV) $(NODEDIR)/bin/npm
 NODE_DEV := PATH=$(NODEDIR)/bin:$$PATH node-dev
 PKG_DIR := .pkg
 RIAK := deps/riak/rel/riak/bin/riak
 WHISKEY = bin/whiskey
+
 
 #
 # Targets
@@ -62,7 +64,7 @@ $(NODEDIR)/bin/node: deps/node/Makefile
 	(cd deps/node && ./configure --prefix=$(NODEDIR) && $(MAKE) -j 4 && $(MAKE) install)
 
 $(NODEDIR)/bin/npm: $(NODEDIR)/bin/node deps/npm/Makefile
-	(cd deps/npm && npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH $(MAKE) install)
+	(mkdir tmp && cd deps/npm && $(NPM_ENV) $(MAKE) install)
 
 # `touch` to ensure built product is newer than the Makefile dep.
 $(RIAK): deps/riak/Makefile
@@ -268,4 +270,5 @@ clean:
 	([[ -d deps/node ]] && cd deps/node && $(MAKE) distclean || true)
 	([[ -d deps/riak ]] && cd deps/riak && $(MAKE) clean || true)
 	@rm -rf $(NODEDIR) agent/node_modules relay/node_modules \
-		master/node_modules bin/amon-zwatch .pkg amon-*.tar.gz
+		master/node_modules bin/amon-zwatch .pkg amon-*.tar.gz \
+		tmp/npm-cache
