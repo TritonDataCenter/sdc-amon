@@ -30,7 +30,7 @@ RELAY_PUBLISH_LOCATION=/rpool/data/coal/live_147/agents/${NAME}/${BRANCH}
 #TODO(trentm): want to publish to https://assets.joyent.us/datasets/liveimg/
 # because that is where usb-headnode pulls 'amon-tarball' from.
 MASTER_PKG=amon-master-${REVISION}.tar.gz
-MASTER_PUBLISH_LOCATION=/rpool/data/coal/live_147/amon/${BRANCH}
+MASTER_PUBLISH_LOCATION=/rpool/data/coal/live_147/assets
 
 
 source $DIRNAME/publish.sh
