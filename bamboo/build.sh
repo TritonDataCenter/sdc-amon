@@ -5,7 +5,11 @@ set -e
 DIRNAME=$(cd `dirname $0`; pwd)
 
 
-gmake clean && gmake all pkg
+echo "* * *"
+ls -alF
+echo "* * *"
+gmake clean
+gmake all pkg
 
 
 NAME=amon
