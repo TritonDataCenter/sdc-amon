@@ -64,7 +64,7 @@ $(NODEDIR)/bin/node: deps/node/Makefile
 	(cd deps/node && ./configure --prefix=$(NODEDIR) && $(MAKE) -j 4 && $(MAKE) install)
 
 $(NODEDIR)/bin/npm: $(NODEDIR)/bin/node deps/npm/Makefile
-	(mkdir tmp && cd deps/npm && $(NPM_ENV) $(MAKE) install)
+	(cd deps/npm && $(NPM_ENV) $(MAKE) install)
 
 # `touch` to ensure built product is newer than the Makefile dep.
 $(RIAK): deps/riak/Makefile
