@@ -7,7 +7,9 @@ DIRNAME=$(cd `dirname $0`; pwd)
 
 echo "* * *"
 ls -alF
+rm -rf "/home/bamboo/.npm/npm/1.0.6/package/package.json" "/home/bamboo/.npm/npm/1.0.6/package" "/home/bamboo/.npm/npm/1.0.6/package/package.json" "/home/bamboo/.npm/npm/1.0.6/package"
 echo "* * *"
+
 gmake clean
 gmake all pkg
 
