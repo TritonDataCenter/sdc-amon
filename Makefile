@@ -10,8 +10,8 @@ endif
 REVISION=$(shell git describe --contains --all HEAD)-$(shell git describe --tags)
 
 # Directories
-ROOT := $(shell pwd)
-NODEDIR = $(ROOT)/deps/node-install
+TOP := $(shell pwd)
+NODEDIR = $(TOP)/deps/node-install
 NODE_PATH = $(NODEDIR)
 
 # Tools
@@ -31,7 +31,7 @@ DOC_CMD = restdown
 HAVE_GJSLINT := $(shell which gjslint >/dev/null && echo yes || echo no)
 NODE := $(NODEDIR)/bin/node
 NODE_WAF := $(NODEDIR)/bin/node-waf
-NPM_ENV := npm_config_cache=$(shell echo $(ROOT)/tmp/npm-cache) npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH
+NPM_ENV := npm_config_cache=$(shell echo $(TOP)/tmp/npm-cache) npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH
 NPM := $(NPM_ENV) $(NODEDIR)/bin/npm
 NODE_DEV := PATH=$(NODEDIR)/bin:$$PATH node-dev
 PKG_DIR := .pkg
@@ -133,8 +133,8 @@ pkg_relay:
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
 	rm -rf \
-			$(PKG_DIR)/relay/deps/node-install/lib/node_modules/amon-common \
-			$(PKG_DIR)/relay/deps/node-install/lib/node_modules/amon-plugins
+		$(PKG_DIR)/relay/deps/node-install/lib/node_modules/amon-common \
+		$(PKG_DIR)/relay/deps/node-install/lib/node_modules/amon-plugins
 	find $(PKG_DIR)/relay -name "*.pyc" | xargs rm
 	find $(PKG_DIR)/relay -type d | grep 'node_modules\/jshint$$' | xargs rm -rf
 	find $(PKG_DIR)/relay -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
@@ -169,8 +169,8 @@ pkg_agent:
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
 	rm -rf \
-			$(PKG_DIR)/agent/deps/node-install/lib/node_modules/amon-common \
-			$(PKG_DIR)/agent/deps/node-install/lib/node_modules/amon-plugins
+		$(PKG_DIR)/agent/deps/node-install/lib/node_modules/amon-common \
+		$(PKG_DIR)/agent/deps/node-install/lib/node_modules/amon-plugins
 	find $(PKG_DIR)/agent -name "*.pyc" | xargs rm
 	find $(PKG_DIR)/agent -type d | grep 'node_modules\/jshint$$' | xargs rm -rf
 	find $(PKG_DIR)/agent -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
@@ -184,35 +184,29 @@ pkg_agent:
 	@echo "Created 'amon-agent-$(REVISION).tar.gz'."
 
 pkg_master:
-	@rm -fr $(PKG_DIR)/master
-	@mkdir -p $(PKG_DIR)/master/bin
-	@mkdir -p $(PKG_DIR)/master/deps
-	@mkdir -p $(PKG_DIR)/master
+	@rm -fr $(PKG_DIR)/pkg_master
+	@mkdir -p $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/bin
+	@mkdir -p $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/deps
 
-	cp -r	bin/amon-master		\
-		$(PKG_DIR)/master/bin
+	cp -r bin/amon-master \
+		$(PKG_DIR)/pkg_master/root/opt/smartdc/amon/bin
 
-	cp -r 	deps/node-install	\
-		$(PKG_DIR)/master/deps
+	cp -r deps/node-install \
+		$(PKG_DIR)/pkg_master/root/opt/smartdc/amon/deps
 
-	cp -r 	master/lib \
-		master/main.js \
-		master/node_modules \
-		master/package.json \
-		master/config.coal.json \
-		master/smf \
-		$(PKG_DIR)/master
+	cp -r master \
+		$(PKG_DIR)/pkg_master/root/opt/smartdc/amon/
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
 	rm -rf \
-			$(PKG_DIR)/master/deps/node-install/lib/node_modules/amon-common \
-			$(PKG_DIR)/master/deps/node-install/lib/node_modules/amon-plugins
-	find $(PKG_DIR)/master -name "*.pyc" | xargs rm
-	find $(PKG_DIR)/master -type d | grep 'node_modules\/jshint$$' | xargs rm -rf
-	find $(PKG_DIR)/master -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
-	find $(PKG_DIR)/master -type d | grep 'dirsum\/tst$$' | xargs rm -rf
+		$(PKG_DIR)/pkg_master/root/opt/smartdc/amon/deps/node-install/lib/node_modules/amon-common \
+		$(PKG_DIR)/pkg_master/root/opt/smartdc/amon/deps/node-install/lib/node_modules/amon-plugins
+	find $(PKG_DIR)/pkg_master -name "*.pyc" | xargs rm
+	find $(PKG_DIR)/pkg_master -type d | grep 'node_modules\/jshint$$' | xargs rm -rf
+	find $(PKG_DIR)/pkg_master -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
+	find $(PKG_DIR)/pkg_master -type d | grep 'dirsum\/tst$$' | xargs rm -rf
 
-	(cd $(PKG_DIR) && $(TAR) cjf ../amon-master-$(REVISION).tar.bz2 master)
+	(cd $(PKG_DIR)/pkg_master && $(TAR) cjf $(TOP)/amon-master-$(REVISION).tar.bz2 *)
 	@echo "Created 'amon-master-$(REVISION).tar.bz2'."
 
 # This presumes the running user has ssh keys setup for jill@assets.joyent.us.
