@@ -21,15 +21,12 @@ BRANCH=$(git describe --contains --all HEAD)
 REVISION=$(cat .pkg/REVISION)
 PUBLISH_PREFIX=/rpool/data/coal/live_147/agents
 
-# This is https://216.57.203.66:444/coal/live_147/agents/
+# This '/rpool/data' dir is https://216.57.203.66:444/coal/live_147/agents/
 AGENT_PKG=amon-agent-${REVISION}.tar.gz
 AGENT_PUBLISH_LOCATION=/rpool/data/coal/live_147/agents/${NAME}/${BRANCH}
 RELAY_PKG=amon-relay-${REVISION}.tar.gz
 RELAY_PUBLISH_LOCATION=/rpool/data/coal/live_147/agents/${NAME}/${BRANCH}
-
-#TODO(trentm): want to publish to https://assets.joyent.us/datasets/liveimg/
-# because that is where usb-headnode pulls 'amon-tarball' from.
-MASTER_PKG=amon-master-${REVISION}.tar.gz
+MASTER_PKG=amon-master-${REVISION}.tar.bz2
 MASTER_PUBLISH_LOCATION=/rpool/data/coal/live_147/assets
 
 

@@ -212,8 +212,8 @@ pkg_master:
 	find $(PKG_DIR)/master -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
 	find $(PKG_DIR)/master -type d | grep 'dirsum\/tst$$' | xargs rm -rf
 
-	(cd $(PKG_DIR) && $(TAR) zcf ../amon-master-$(REVISION).tar.gz master)
-	@echo "Created 'amon-master-$(REVISION).tar.gz'."
+	(cd $(PKG_DIR) && $(TAR) cjf ../amon-master-$(REVISION).tar.bz2 master)
+	@echo "Created 'amon-master-$(REVISION).tar.bz2'."
 
 # This presumes the running user has ssh keys setup for jill@assets.joyent.us.
 upload:
