@@ -35,7 +35,7 @@ Remaining days. Fixed holidays, milestones and non-amon work "[in brackets]".
 Proposed target functionality/work for the other days. Note that John has
 offered to do some work on amon if feasible.
 
-- Tue,  9 Aug: Hack up watching zone start/stop and vm start/stop.
+- Tue,  9 Aug: Hack up watching zone start/stop and vm start/stop. Grokking Riak models and indexing.
 - Wed, 10 Aug: Test plan for zone/vm start/stop in COAL. Test cases. Clean up test suite.
 - Thu, 11 Aug: [Nectarine] Email notification plugin. Amon-master and amon-relay builds (bamboo, mountain-gorilla).
 - Fri, 12 Aug: Amon-master and amon-relay builds (bamboo, mountain-gorilla).
@@ -75,12 +75,12 @@ Workdays left: 14 days (starting at 9-Aug) - 2 days lost to no.de help (at least
 - Email Notification Plugin
 - Retry/backoff everywhere: Restify-client supports everything needed here?
 - event on zone/vm transitions: use zwatch
+  - what does it mean to design to have events coming NOT from amon-agent
 - Garbage collection of /events and orphans
 - in riak, use uuid instead of customer_name for keys, if possible
 - load testing (hook into mock cloud for this?)
   - estimate of design-limit on number of watches/notifications/events
   - e.g., what would it be on no.de
-- amon-agent in all smartos zones? Necessary for 6.5?
 - upgrade plan and testing
   - versioning (see ca/Makefile, and 1.0.0 instead of 6.1)
   - config handling
@@ -89,6 +89,7 @@ Workdays left: 14 days (starting at 9-Aug) - 2 days lost to no.de help (at least
 
 # Post-6.5 TODOs and RFEs
 
+- amon-agent in all smartos zones
 - *trying* with a second riak node
 - CA Agent Plugin
 - HTTP Agent Plugin
