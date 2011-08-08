@@ -1,11 +1,3 @@
-
-
-
-# SDC 6.5
-
-cutoff: Sep 1
-
-
 # MVP
 
 "The absolute MVP for Monitoring is having the ability to alert when a
@@ -14,13 +6,16 @@ VM or Zone goes down, and the ability to alert someone via email." -- Trevor
 More specific MVP:
 - Amon is up an running in a default SDC setup (modulo headnode-refactor work).
   Details: 'amon' headnode zone running amon-master. 'amonriak' headnode
-  zone. 'amon-relay' running in each compute node GZ. Unsure whether getting
-  an amon-agent running in each zone is necessary. Also what about amon-agent
-  in VMs? That would have to be optional and not possible for Windows right
-  now.
+  zone. 'amon-relay' running in each compute node GZ.
+  Q: Unsure whether getting an amon-agent running in each zone is necessary.
+  A: If only requirement is zone/vm start/stop, then don't need agent in zone.
+  Q: Also what about amon-agent in VMs? That would have to be optional and not feasible for Windows right now.
+  A: Punt for SDC 6.5.
 - Amon can be setup to email an operator when a VM or Zone goes down.
   Q: distinguishing between intentional reboots and shutdowns?
+  A:
   Q: required to guard against email flood on *server* shutdown?
+  A:
 - Docs on adding more amonriak nodes.
 - Docs on setting up the notifications above.
 
@@ -34,6 +29,39 @@ Internal requirements for first release:
 - Load testing.
 
 
+# SDC 6.5
+
+Remaining days. Fixed holidays, milestones and non-amon work "[in brackets]".
+Proposed target functionality/work for the other days. Note that John has
+offered to do some work on amon if feasible.
+
+- Tue,  9 Aug: Hack up watching zone start/stop and vm start/stop.
+- Wed, 10 Aug: Test plan for zone/vm start/stop in COAL. Test cases. Clean up test suite.
+- Thu, 11 Aug: [Nectarine] Email notification plugin. Amon-master and amon-relay builds (bamboo, mountain-gorilla).
+- Fri, 12 Aug: Amon-master and amon-relay builds (bamboo, mountain-gorilla).
+- Mon, 15 Aug: amon & amonriak headnode zones (using Jerry's headnode-refactor process)
+- Tue, 16 Aug: [Trent on Lime-no.de upgrade.]
+- Wed, 17 Aug: [Lime-no.de updated. Trent on Lime-no.de upgrade.] 
+- Thu, 18 Aug: More headnode zones work. Upgrade plan. 
+- Fri, 19 Aug: Finish upgrading impl.
+- Mon, 22 Aug: [Trent DSAPI work.]
+- Tue, 23 Aug: [Trent DSAPI work.]
+- Wed, 24 Aug: [Trent vacation]
+- Thu, 25 Aug: [Olive] Retry/backoff everywhere (restify). 
+- Fri, 26 Aug: [Trent vacation]
+- Mon, 29 Aug: Amon load testing and test suite improvements. Amon db garbage collection.
+- Tue, 30 Aug:
+- Wed, 31 Aug: [Trent vacation]
+- Thu,  1 Sep: [cutoff day (morning)]
+- Fri,  2 Sep: [Trent vacation]
+- Mon,  5 Sep: [Public holiday (Labour day)]
+- Tue,  6 Sep:
+- Wed,  7 Sep:
+- Thu,  8 Sep: [Papaya, SDC 6.5 release]
+
+Workdays left: 14 days (starting at 9-Aug) - 2 days lost to no.de help (at least).
+
+
 
 # TODOs for MVP
 
@@ -43,12 +71,10 @@ Internal requirements for first release:
   - master
   - relay (SMF packaging done; bamboo started)
   - agent
+  - package.json: get specific about included versions
 - Email Notification Plugin
 - Retry/backoff everywhere: Restify-client supports everything needed here?
-- event on zone transitions:
-  - can just have relay fwd events from zwatch?
-  - ask Orlando for work on this, discussion on XMPP on this recent to Aug 3 btwn Orlando and wdp(?)
-- event on VM transitions: ask Josh about how to do this
+- event on zone/vm transitions: use zwatch
 - Garbage collection of /events and orphans
 - in riak, use uuid instead of customer_name for keys, if possible
 - load testing (hook into mock cloud for this?)
@@ -72,6 +98,7 @@ Internal requirements for first release:
 - edge-triggered alarms in master for checks: ???
 - /events cleanup (look like other master apis)
 - client SDK
+- s/joyent/sdc/ in various runtime files and dirs
 - Admin UI
 - amon client
 - snmp (MarkC: "snmp traps". Me: What's that?)
