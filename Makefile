@@ -100,7 +100,7 @@ ifeq ($(UNAME), SunOS)
 	${CC} ${CCFLAGS} ${LDFLAGS} -o bin/amon-zwatch $^ zwatch/zwatch.c ${LIBS}
 endif
 
-master: $(NODEDIR)/bin/npm common plugins
+master: $(NODEDIR)/bin/npm common plugins $(RIAK)
 	(cd master && $(NPM) install && $(NPM) link amon-common amon-plugins)
 
 #
