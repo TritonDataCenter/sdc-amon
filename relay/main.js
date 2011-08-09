@@ -38,10 +38,8 @@ function listenInZone(zone, callback) {
       master: master,
       poll: poll
     });
-    if (log.debug()) {
-      log.debug('Starting new amon for %s at "%s". owner=%s',
-                zone, socket, attr.value);
-    }
+    log.debug('Starting new amon-relay for %s at "%s" (owner=%s).',
+      zone, socket, attr.value);
     AppIndex[zone].listen(function(error) {
       if (!error) {
         log.info('amon-relay listening in zone %s at zsock: %s', zone, socket);
