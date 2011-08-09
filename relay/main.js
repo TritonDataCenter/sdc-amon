@@ -148,7 +148,7 @@ function _createGlobalApp() {
     owner: 'joyent',
     configRoot: configRoot,
     localMode: true,
-    _developer: developer,
+    developer: developer,
     master: master,
     poll: poll
   });
