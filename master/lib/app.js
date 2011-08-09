@@ -77,6 +77,15 @@ var App = function App(options) {
 
   var server = this.server;
 
+  // Temporary debug/dev-support endpoint.
+  server.get('/ping', self.before, function(req, res, next) {
+    var data = {
+      ping: "pong",
+    };
+    res.send(200, data);
+    return next();
+  }, self.after);
+
   server.head('/config', self.before, config.head, self.after);
   server.get('/config', self.before, config.get, self.after);
 
