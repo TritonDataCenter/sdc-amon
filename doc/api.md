@@ -19,11 +19,6 @@ describes the (internal) Relay API and Agent API.
 
 Below, "NYI" means not yet implemented.
 
-XXX: Problem with '/:customer/...' endpoints is collisions for the other names. Perhaps
-  group all the admin ones under "/_/" or put "/:customer" under "/customers/...".
-  Currently "/pub/..." in master code. "/customers" would be more consistent with
-  MAPI, if not exactly desirable.
-
 
 # Master API: Alarms
 
