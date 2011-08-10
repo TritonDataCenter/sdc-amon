@@ -13,16 +13,16 @@
     "Trent Mick <trent.mick@joyent.com> (http://www.joyent.com)"
   ],
   "dependencies": {
-    "node-uuid": ">=1.1.0",
-    "nopt": ">=1.0.5",
-    "restify": ">=0.1.5",
-    "retry": ">=0.2.0",
-    "riak-js": "=0.4.0rc2",
-    "httpu": ">=0.0.1"
+    "node-uuid": "1.2.0",
+    "nopt": "1.0.6",
+    "restify": "0.3.15",
+    "retry": "0.4.0",
+    "riak-js": "0.4.0",
+    "httpu": "0.0.1"
   },
   "devDependencies": {
-    "jshint": "=0.1.9",
-    "whiskey": ">=0.3.2"
+    "jshint": "0.2.3",
+    "whiskey": "0.4.1"
   },
   "scripts": {
     "start": "node ./main.js",
