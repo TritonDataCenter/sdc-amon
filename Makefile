@@ -248,6 +248,8 @@ apisummary:
 
 tmp:
 	mkdir -p tmp
+
+# Use "TEST=foo make test" to limit to test files matching 'foo'.
 test: tmp $(WHISKEY)
 	support/test.sh
 
