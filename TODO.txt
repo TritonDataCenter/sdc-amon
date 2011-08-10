@@ -37,7 +37,7 @@ offered to do some work on amon if feasible.
 
 - Tue,  9 Aug: Hack up watching zone start/stop and vm start/stop. Grokking Riak models and indexing.
 - Wed, 10 Aug: Test plan for zone/vm start/stop in COAL. Test cases. Clean up test suite.
-- Thu, 11 Aug: [Nectarine] Email notification plugin. Amon-master and amon-relay builds (bamboo, mountain-gorilla).
+- Thu, 11 Aug: [Nectarine] Email notification plugin (nodemailer). Amon-master and amon-relay builds (bamboo, mountain-gorilla).
 - Fri, 12 Aug: Amon-master and amon-relay builds (bamboo, mountain-gorilla).
 - Mon, 15 Aug: amon & amonriak headnode zones (using Jerry's headnode-refactor process)
 - Tue, 16 Aug: [Trent on Lime-no.de upgrade.]
@@ -81,10 +81,76 @@ Workdays left: 14 days (starting at 9-Aug) - 2 days lost to no.de help (at least
 - load testing (hook into mock cloud for this?)
   - estimate of design-limit on number of watches/notifications/events
   - e.g., what would it be on no.de
+  - capacity planning:
+    - http://wiki.basho.com/Cluster-Capacity-Planning.html
+    - shared riak cluster with billing and ufds
+    - http://wiki.basho.com/Bitcask-Capacity-Planning.html
 - upgrade plan and testing
   - versioning (see ca/Makefile, and 1.0.0 instead of 6.1)
   - config handling
 
+
+# Trent's scratch area
+
+- suppressing some zone transition events: How?
+  - the start + reboot for zone provisioning:
+    - talk with Orlando about a "ready" zoneconfig var set by provisioner
+  - the stop/start of an intentional reboot (by an operator at the GZ
+    command line)
+    - sdc-amon-suppress ...   # or some command line that
+  - intentional reboot or shutdown in adminui
+    - either adminui or mapi's shutdown/reboot command would call Amon
+      API to suppress?
+    - or this is a separate action in adminui to manually suppress
+  - intentional reboot or shutdown in portal/cloudapi
+    - if MAPI above, then this is done.
+  - intentional reboot of the *compute node* for maintenance by operator
+    - sdc-amon-suppress command, and/or equivalent in adminui UI.
+  - sdc-amon-suppress:
+    - one shot?
+    - toggle?
+    - what is scope? Low-level: per zone name and per monitor name. Optionally
+      just per monitor name for all applicable zones?
+        "Suppress this monitor [until enabled again later]."
+        "Suppress this monitor for machines X, Y and Z."
+        "Suppress all monitors for machines X, Y and Z."
+      Or is this only about suppressing *alarms*? I.e. only at the master-level.
+      Yes.
+        "Suppress alarms for monitors M and N [until enabled again later]."
+        "Suppress alarms for monitor M for N for machines X, Y, and Z."
+        "... for the next hour."
+      general:
+        "Suppress alarms
+          for monitors M and N (or all)
+          for machines X, Y and Z (or all)
+          for a certain amount of time (or until re-enabled)."
+        
+- too much noise in the (master) log: can't have the logs grow this fast.
+  Ticket to not log normal "HEAD /config" hits?
+  Perhaps a flag set on the response object that the post-middleware logger
+  uses to suppress.
+- running on smartos global zone:
+  devrun.sh: USE_ZSOCK=1
+- /config -> /zonechecks
+- use "/customers" prefix instead of "/pub" for Master API.
+- riaktag for contacts_customers:
+    $ r /riak/contacts_customers/joyent
+    HTTP/1.1 200 OK
+    X-Riak-Vclock: a85hYGBgymDKBVIszHNmG2YwJTLmsTK84Nt2nA8qzMpqnwoVPsUPFM4CAA==
+    Vary: Accept-Encoding
+    Server: MochiWeb/1.1 WebMachine/1.7.3 (participate in the frantic)
+    Link: </riak/contacts/joyent_trent>; riaktag="_", </riak/contacts/joyent_mark>; riaktag="_", </riak/contacts_customers>; rel="up"
+    Last-Modified: Tue, 09 Aug 2011 20:08:42 GMT
+    ETag: "4RLm0K8wDfGytxwFX4E3FQ"
+    Date: Tue, 09 Aug 2011 20:08:53 GMT
+    Content-Type: text/plain
+    Content-Length: 1
+  Don't like "_" for riaktag. Perhaps "contact"? Or does re-used of "_" make
+  the Entity class easier? With separate riaktag we could probably
+  have *one* "customers" bucket with links to contacts, events, etc. Tho,
+  perhaps that is more expensive.
+- bucket_prefix config value ("amon_") for shared riak usage.
+  
 
 
 # Post-6.5 TODOs and RFEs

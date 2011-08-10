@@ -21,6 +21,8 @@ Below, "NYI" means not yet implemented.
 
 XXX: Problem with '/:customer/...' endpoints is collisions for the other names. Perhaps
   group all the admin ones under "/_/" or put "/:customer" under "/customers/...".
+  Currently "/pub/..." in master code. "/customers" would be more consistent with
+  MAPI, if not exactly desirable.
 
 
 # Master API: Alarms
@@ -30,9 +32,9 @@ These APIs provide info on recent alarms for this customer. Closed alarms are
 only guaranteed to be persisted for a week. I.e. this is mainly about showing
 open (i.e. unresolved) alarm situations.
 
-    GET  /public/:customer/alarms                           # NYI
-    GET  /public/:customer/alarms/:alarm                       # NYI
-    POST /public/:customer/alarms/:alarm?action=close          # NYI
+    GET  /pub/:customer/alarms                           # NYI
+    GET  /pub/:customer/alarms/:alarm                       # NYI
+    POST /pub/:customer/alarms/:alarm?action=close          # NYI
 
 
 
@@ -42,10 +44,10 @@ A monitor is a list of checks to run (e.g. check for N occurrences of "ERROR"
 in "/var/foo/bar.log" in a minute) and a list of contacts to notify when
 any of the checks fail (i.e. an alarm).
 
-    GET    /public/:customer/monitors
-    POST   /public/:customer/monitors
-    GET    /public/:customer/monitors/:monitor                # NYI
-    DELETE /public/:customer/monitors/:monitor                # NYI
+    GET    /pub/:customer/monitors
+    POST   /pub/:customer/monitors
+    GET    /pub/:customer/monitors/:monitor                # NYI
+    DELETE /pub/:customer/monitors/:monitor                # NYI
 
 
 
@@ -54,17 +56,17 @@ any of the checks fail (i.e. an alarm).
 A monitor has one or more checks. A "check" is a single thing to test
 periodically.
 
-    GET    /public/:customer/monitors/:monitor/checks         # NYI
-    POST   /public/:customer/monitors/:monitor/checks         # NYI
-    GET    /public/:customer/monitors/:monitor/checks/:check   # NYI
-    DELETE /public/:customer/monitors/:monitor/checks/:check   # NYI
+    GET    /pub/:customer/monitors/:monitor/checks         # NYI
+    POST   /pub/:customer/monitors/:monitor/checks         # NYI
+    GET    /pub/:customer/monitors/:monitor/checks/:check   # NYI
+    DELETE /pub/:customer/monitors/:monitor/checks/:check   # NYI
 
 # Master API: Contacts
 
-    GET    /public/:customer/contacts
-    POST   /public/:customer/contacts
-    GET    /public/:customer/contacts/:contact                # NYI
-    DELETE /public/:customer/contacts/:contact                # NYI
+    GET    /pub/:customer/contacts
+    POST   /pub/:customer/contacts
+    GET    /pub/:customer/contacts/:contact                # NYI
+    DELETE /pub/:customer/contacts/:contact                # NYI
 
 A "contact" contains the information required (who and what method) to send a
 notification to some endpoint.
