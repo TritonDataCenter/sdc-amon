@@ -57,7 +57,7 @@ if [[ -n "$TEST" ]]; then
 fi
 if [[ -n "$files" ]]; then
     echo "== test relay"
-    (cd ${ROOT} && RIAK_PORT=8098 ${WHISKEY} --timeout 2000 \
+    (cd ${ROOT} && RIAK_PORT=8098 ${WHISKEY} --quiet --timeout 2000 \
         --concurrency 1 --tests "$(echo "$files" | xargs)")
     status=$?
     [[ "$status" != 0 ]] && exit $status
@@ -71,7 +71,7 @@ if [[ -n "$TEST" ]]; then
 fi
 if [[ -n "$files" ]]; then
     echo "== test master"
-    (cd ${ROOT} && RIAK_PORT=8098 ${WHISKEY} --timeout 2000 \
+    (cd ${ROOT} && RIAK_PORT=8098 ${WHISKEY} --quiet --timeout 2000 \
         --concurrency 1 --tests "$(echo "$files" | xargs)")
     status=$?
     [[ "$status" != 0 ]] && exit $status
