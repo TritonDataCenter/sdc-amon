@@ -1,7 +1,6 @@
 {
   "contacts": [
-    {"customer": "joyent", "name": "trent"},
-    {"customer": "joyent", "name": "mark"}
+    {"customer": "joyent", "name": "trent"}
   ],
   "checks": [
     {"customer": "joyent", "name": "whistle"}
