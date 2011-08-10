@@ -36,7 +36,7 @@ NPM := $(NPM_ENV) $(NODEDIR)/bin/npm
 NODE_DEV := PATH=$(NODEDIR)/bin:$$PATH node-dev
 PKG_DIR := .pkg
 RIAK := deps/riak/rel/riak/bin/riak
-WHISKEY = bin/whiskey
+WHISKEY = deps/node-install/bin/whiskey
 
 
 #
@@ -73,7 +73,7 @@ $(RIAK): deps/riak/Makefile
 # Global npm module deps (currently just test/lint stuff used by every amon
 # package). We install globally instead of 'npm install --dev' in every package
 # and having duplicated.
-$(NODEDIR)/lib/node_modules/whiskey: $(NODEDIR)/bin/npm
+$(WHISKEY): $(NODEDIR)/bin/npm
 	$(NPM) install -g whiskey
 $(NODEDIR)/lib/node_modules/jshint: $(NODEDIR)/bin/npm
 	$(NPM) install -g jshint@0.1.9
@@ -248,7 +248,7 @@ apisummary:
 
 tmp:
 	mkdir -p tmp
-test: tmp
+test: tmp $(WHISKEY)
 	support/test.sh
 
 # A supervisor for restarting node processes when relevant files change.
