@@ -1,0 +1,16 @@
+
+## Name of the riak node
+-name amonriak@{{PRIVATE_IP}}
+
+## Cookie for distributed erlang
+-setcookie amonriak
+
+## Enable kernel poll and a few async threads
++K true
++A 64
+
+## Increase number of concurrent ports/sockets
+-env ERL_MAX_PORTS 4096
+
+## Tweak GC to run more often
+-env ERL_FULLSWEEP_AFTER 0
