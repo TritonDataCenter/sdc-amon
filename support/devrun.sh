@@ -26,15 +26,15 @@ MTAIL=multitail
 if [[ `uname` == "SunOS" ]]; then
     MTAIL=mtail
 fi
-USE_ZSOCK=0
+USE_ZSOCK_AND_ZWATCH=0
 if [[ `uname` == "SunOS" ]]; then
-    USE_ZSOCK=1
+    USE_ZSOCK_AND_ZWATCH=1
 fi
 RELAY_OPTS=
 AGENT_OPTS=
-if [[ "$USE_ZSOCK" == "0" ]]; then
-    RELAY_OPTS="-s 8081"
-    AGENT_OPTS="-s 8081"
+if [[ "$USE_ZSOCK_AND_ZWATCH" == "0" ]]; then
+    RELAY_OPTS+=" -s 8081 -n"
+    AGENT_OPTS+=" -s 8081"
 fi
 
 
@@ -55,7 +55,8 @@ function errexit {
 function cleanup {
     echo "== cleanup"
     ${RIAK} stop
-    ps -ef | grep node-de[v] | awk '{print $2}' | xargs kill 2>/dev/null || true
+    ps -ef | grep 'amon-zwatc[h]' | awk '{print $2}' | xargs kill 2>/dev/null || true
+    ps -ef | grep 'node-de[v]' | awk '{print $2}' | xargs kill 2>/dev/null || true
 }
 
 
@@ -83,9 +84,16 @@ echo "== start master (tmp/dev-master.log)"
 ${NODE_DEV} $ROOT/master/main.js -d -f $ROOT/master/config.coal.json -p 8080 > $ROOT/tmp/dev-master.log 2>&1 &
 sleep 1
 
+if [[ "$USE_ZSOCK_AND_ZWATCH" == "1" ]]; then
+    echo "== start zwatch (tmp/dev-zwatch.log)"
+    mkdir -p $ROOT/tmp
+    ${ROOT}/bin/amon-zwatch >$ROOT/tmp/dev-zwatch.log 2>&1 &
+fi
+
 echo "== start relay (tmp/dev-relay.log)"
 mkdir -p $ROOT/tmp/dev-relay
-${NODE_DEV} $ROOT/relay/main.js -d -n -c $ROOT/tmp/dev-relay -p 10 -m http://127.0.0.1:8080 $RELAY_OPTS > $ROOT/tmp/dev-relay.log 2>&1 &
+echo "${NODE_DEV} $ROOT/relay/main.js -d -c $ROOT/tmp/dev-relay -p 10 -m http://127.0.0.1:8080 $RELAY_OPTS > $ROOT/tmp/dev-relay.log 2>&1 &"
+${NODE_DEV} $ROOT/relay/main.js -d -c $ROOT/tmp/dev-relay -p 10 -m http://127.0.0.1:8080 $RELAY_OPTS > $ROOT/tmp/dev-relay.log 2>&1 &
 sleep 1  # work around for MON-3
 
 echo "== start agent (tmp/dev-agent.log)"
@@ -96,7 +104,12 @@ ${NODE_DEV} $ROOT/agent/main.js -d -p 10 -c $ROOT/tmp/dev-agent/config -t $ROOT/
 if [[ -z "$NOLOG" ]]; then
     echo "== tail the logs ..."
     if [[ -z "$LOG" ]]; then
-        LOG="$ROOT/tmp/dev-master.log $ROOT/tmp/dev-relay.log $ROOT/tmp/dev-agent.log"
+        LOG="$ROOT/tmp/dev-master.log $ROOT/tmp/dev-zwatch.log $ROOT/tmp/dev-relay.log $ROOT/tmp/dev-agent.log"
+        if [[ "$USE_ZSOCK_AND_ZWATCH" == "1" ]]; then
+            LOG="$ROOT/tmp/dev-master.log $ROOT/tmp/dev-zwatch.log $ROOT/tmp/dev-relay.log $ROOT/tmp/dev-agent.log"
+        else
+            LOG="$ROOT/tmp/dev-master.log $ROOT/tmp/dev-relay.log $ROOT/tmp/dev-agent.log"
+        fi
     fi
     ${MTAIL} -f $LOG
 else
