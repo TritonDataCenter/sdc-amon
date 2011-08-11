@@ -92,6 +92,12 @@ Workdays left: 14 days (starting at 9-Aug) - 2 days lost to no.de help (at least
 
 # Trent's scratch area
 
+- faking an event (calling Relay API):
+    $ bin/amon-relay-api /events -X POST -d @-
+    {"check":"joyent_whistle","status":"error","metrics":{"name":"amon:logscan","type":"Integer","value":2,"data":{"match":"i hear a tweet from someone"}}}
+    ^D
+- too much noise in the log: can't have the logs grow this fast. Ticket to
+  not log normal "HEAD /config" hits?
 - suppressing some zone transition events: How?
   - the start + reboot for zone provisioning:
     - talk with Orlando about a "ready" zoneconfig var set by provisioner
