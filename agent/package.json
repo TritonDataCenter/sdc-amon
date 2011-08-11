@@ -13,14 +13,14 @@
     "Trent Mick <trent.mick@joyent.com> (http://www.joyent.com)"
   ],
   "dependencies": {
-    "dirsum": ">=0.1.0",
-    "httpu": ">=0.0.1",
-    "nopt": ">=1.0",
-    "node-uuid": ">=1.1.0",
-    "restify": ">0.1.0"
+    "dirsum": "0.1.1",
+    "httpu": "0.0.1",
+    "nopt": "1.0.6",
+    "node-uuid": "1.2.0",
+    "restify": "0.3.15"
   },
   "devDependencies": {
-    "jshint": "=0.1.9"
+    "jshint": "0.2.3"
   },
   "bin": {
     "amon-agent": "./bin/amon-agent"
