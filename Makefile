@@ -76,7 +76,7 @@ $(RIAK): deps/riak/Makefile
 $(WHISKEY): $(NODEDIR)/bin/npm
 	$(NPM) install -g whiskey
 $(NODEDIR)/lib/node_modules/jshint: $(NODEDIR)/bin/npm
-	$(NPM) install -g jshint@0.1.9
+	$(NPM) install -g jshint
 
 
 #
