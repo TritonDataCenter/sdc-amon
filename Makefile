@@ -242,9 +242,9 @@ endif
 
 #TODO(trent): add deps/restdown submodule
 doc:
-	restdown -v -m docs docs/api.md
+	restdown -v -m docs docs/index.md
 apisummary:
-	@grep '^\(# \| *\(POST\|GET\|DELETE\|HEAD\|PUT\)\)' docs/api.md
+	@grep '^\(# \| *\(POST\|GET\|DELETE\|HEAD\|PUT\)\)' docs/index.md
 
 tmp:
 	mkdir -p tmp

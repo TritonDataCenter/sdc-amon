@@ -13,5 +13,5 @@ agent/*.json
 
 # built docs (ignore for now)
 docs/media
-docs/api.html
-docs/api.json
+docs/index.html
+docs/index.json
