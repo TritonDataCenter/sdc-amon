@@ -12,6 +12,6 @@ agent/checks
 agent/*.json
 
 # built docs (ignore for now)
-doc/media
-doc/api.html
-doc/api.json
+docs/media
+docs/api.html
+docs/api.json

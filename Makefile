@@ -241,10 +241,10 @@ lint: jshint
 endif
 
 #TODO(trent): add deps/restdown submodule
-docs:
-	restdown -v -m doc doc/api.md
+doc:
+	restdown -v -m docs docs/api.md
 apisummary:
-	@grep '^\(# \| *\(POST\|GET\|DELETE\|HEAD\|PUT\)\)' doc/api.md
+	@grep '^\(# \| *\(POST\|GET\|DELETE\|HEAD\|PUT\)\)' docs/api.md
 
 tmp:
 	mkdir -p tmp
