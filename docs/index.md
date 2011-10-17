@@ -1,12 +1,11 @@
 ---
-title: Amon API
-brand: api.no.de
-version: 1.0.0
+title: Amon (SDC Monitoring and Alarming)
+markdown2extras: wiki-tables
 ---
 
 # Amon API
 
-Amon is a monitoring and alarming system for Smart DataCenter 6 (SDC6).
+Amon is a monitoring and alarming system for SmartDataCenter (SDC).
 It has three components: a central master, a tree of relays and agents.
 Monitors, checks and notifications are configured on the master. This
 configuration is pulled to the agents via the relays. Agents run
@@ -17,7 +16,7 @@ operators.
 Mostly it is the Amon Master API that is relevant, but this document also
 describes the (internal) Relay API and Agent API.
 
-Below, "NYI" means not yet implemented.
+"NYI" means not yet implemented.
 
 
 # Master API: Alarms

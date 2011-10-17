@@ -16,16 +16,9 @@ docs current live here:
 XMPP discussion at <monitoring@groupchat.joyent.com>. Tickets/bugs to
 <https://devhub.joyent.com/jira/browse/MON>.
 
-# Comparison services and notes
 
-Interesting services for hooking into. Messaging services that might be useful:
 
-- http://aws.amazon.com/cloudwatch/
-- https://www.cloudkick.com/
-- http://www.splunk.com/
-- http://www.pagerduty.com/
-
-# Layout
+# Code Layout
 
 TODO: code tree overview
 
@@ -37,7 +30,10 @@ TODO: code tree overview
 
     support/        General support stuff for development of amon.
 
+
 # Development Setup
+
+**Out of date. TODO: update this section.**
 
 ## Mac
 
@@ -73,6 +69,8 @@ And start running (see next section).
 
 # Running
 
+**Out of date. TODO: update this section.**
+
 COAL Note: Important (if you don't do this, and ask markc why mysterious
 problems occur, there is an excellent chance he will go postal on you):
 
@@ -106,3 +104,82 @@ In a separate terminal, call the Amon Master API to add some data:
 Now cause the logscan alarm to match:
 
     echo tweet >> /tmp/whistle.log
+
+
+
+
+# MVP
+
+Roughly said:
+
+"The absolute MVP for Monitoring is having the ability to alert when a
+VM or Zone goes down, and the ability to alert someone via email." -- Trevor
+
+More detail:
+
+- Only necessary alert medium: email.
+- Ability to alert operator when a machine goes down. Presumably only wanted
+  when going down is a fault.
+- Ability to alert operator when that machine comes back up (aka a "clear" or "ok").
+- Ability to alert customer when their machine goes down.
+  Option to distinguish between going down for a fault (FMA) or any reason
+  (includes intentional reboots).
+  Q: Where does the reboot of a full CN fit in here?
+- Ability to alert customer when their machine comes back up (aka a "clear" or "ok").
+- Ability to suppress alerts on an open alarm. (Yes, I know there is a
+  problem here, quit bugging me about it.)
+- Ability to disable a monitor.
+- Ability for customer to set a maintenance window on a monitor (alert
+  suppression for a pre-defined period of time).
+- Ability for operator to set a maintenance window on a CN and on the whole
+  cloud. This would disable alerts to operator.
+  Q: Disable alerts to customers? How about it adds a "BTW, this is during a
+  maint window" ps to each alert?
+- Amon Master API integrated into Cloud API.
+- Integration of Monitor management into AdminUI and Portal.
+- Upgradable amon system.
+
+
+# Terminology
+
+- A "monitor" is a the main conceptual object that is configured by operators
+  and customers using Amon. It includes the details for what checks to
+  run and, when a check trips, who and how to notify ("contacts").
+- A "check" is a single thing to check (the atom of physical monitoring
+  done by the Amon agents). E.g. "Check the running state of zone X." "Check
+  for 3 occurrences of 'ERROR' in 'foo.log' in zone X within 1 minute." A
+  monitor includes one or more checks.
+- An "event" is a message sent from an Amon agent up to the Amon master that
+  might create or update an alarm.
+- An open or active "alarm" is the state of a failing monitor. An alarm is
+  created when a monitor trips (i.e. one of its checks fails). An alarm can
+  be closed by user action (via the API or in the Operator or User Portals)
+  or via an Amon clear event -- the failing state is no longer failing, e.g.
+  a halted machine has come back up.  An alarm object lives until it is
+  closed.
+- A "notification" is a message sent for an alarm to one or more contacts
+  associated with that monitor. An alarm may result in many notifications
+  through its lifetime.
+
+
+# Design Overview
+
+There is an "Amon Master" HTTP server that runs in the "amon" headnode
+special zone. This is the endpoint for the "Amon API". The Amon Master
+stores long-lived Amon system data (monitors, contacts, checks) in UFDS
+and shorter-lived data in a local redis.
+
+There is an "Amon Relay" (which could be a tree of Amon Relays if necessary)
+running on each node global zone to ferry (1) check/monitor configuration
+down to end Amon Agents where checks are run; and (2) events up from agents
+to the master for handling.
+
+There is an "Amon Agent" running at each location where the support checks
+need to run. For starters we only require an agent in each node global zone.
+Eventually we may include an agent inside zones (communicating out via a
+zsocket) and VMs (not sure how communicating out) to support checks that
+must run inside.
+
+...
+
+

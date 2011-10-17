@@ -1,35 +1,19 @@
-# MVP
+# restart
 
-"The absolute MVP for Monitoring is having the ability to alert when a
-VM or Zone goes down, and the ability to alert someone via email." -- Trevor
+- work through use cases
+- update doc
+- revisit design. Top Qs:
+  - drop "contact" model if just using the email on customer record?
+  - Run some checks on relay? Or have an agent in the GZ? For first pass
+    we are NOT having agents running in each zone.
+  - How is this exposed to end user.
+- update the schedule
 
-More specific MVP:
-- Amon is up an running in a default SDC setup (modulo headnode-refactor work).
-  Details: 'amon' headnode zone running amon-master. 'amonriak' headnode
-  zone. 'amon-relay' running in each compute node GZ.
-  Q: Unsure whether getting an amon-agent running in each zone is necessary.
-  A: If only requirement is zone/vm start/stop, then don't need agent in zone.
-  Q: Also what about amon-agent in VMs? That would have to be optional and not feasible for Windows right now.
-  A: Punt for SDC 6.5.
-- Amon can be setup to email an operator when a VM or Zone goes down.
-  Q: distinguishing between intentional reboots and shutdowns?
-  A:
-  Q: required to guard against email flood on *server* shutdown?
-  A:
-- Docs on adding more amonriak nodes.
-- Docs on setting up the notifications above.
-
-Internal requirements for first release:
-- Upgradeable:
-  - db migration story
-  - amon-master upgrade story
-  - amon-relay upgrade story
-  - amon-agent install/upgrade story
-- Test suite with decent coverage.
-- Load testing.
+- tack on amon records to ufds/tools/genldif
 
 
-# SDC 6.5
+
+# Old out-of-data dev schedule
 
 Remaining days. Fixed holidays, milestones and non-amon work "[in brackets]".
 Proposed target functionality/work for the other days. Note that John has
@@ -63,6 +47,19 @@ offered to do some work on amon if feasible.
 
 Workdays left: 14 days (starting at 9-Aug) - 2 days lost to no.de help (at least).
 
+
+# smartos event streams notes
+
+sysevent: core element, syseventadm
+  https://mo.joyent.com/source/xref/illumos-joyent/usr/src/lib/libsysevent/libsysevent.c#2653
+    sysevent_subscribe_event
+  Note that zonecfg_notify_* itself calls a slightly different "sysevent_evc_subscribe":
+    https://mo.joyent.com/source/xref/illumos-joyent/usr/src/lib/libsysevent/libevchannel.c#566
+    https://mo.joyent.com/source/xref/illumos-joyent/usr/src/lib/libzonecfg/common/libzonecfg.c#6692
+zonecfg_notify_bind: uses sysevent, might not need that
+  defined here: illumos/usr/src/lib/libzonecfg/common/libzonecfg.c
+fma: fmdump, FMA: http://hub.opensolaris.org/bin/download/Community+Group+fm/WebHome/FMDPRM.pdf
+  
 
 
 # TODOs for MVP
@@ -99,8 +96,8 @@ Workdays left: 14 days (starting at 9-Aug) - 2 days lost to no.de help (at least
     $ bin/amon-relay-api /events -X POST -d @-
     {"check":"joyent_whistle","status":"error","metrics":{"name":"amon:logscan","type":"Integer","value":2,"data":{"match":"i hear a tweet from someone"}}}
     ^D
-- too much noise in the log: can't have the logs grow this fast. Ticket to
-  not log normal "HEAD /config" hits?
+- too much noise in the log: can't have the logs grow this fast
+  don't log normal "HEAD /config" hits
 - suppressing some zone transition events: How?
   - the start + reboot for zone provisioning:
     - talk with Orlando about a "ready" zoneconfig var set by provisioner
@@ -134,38 +131,15 @@ Workdays left: 14 days (starting at 9-Aug) - 2 days lost to no.de help (at least
           for machines X, Y and Z (or all)
           for a certain amount of time (or until re-enabled)."
         
-- too much noise in the (master) log: can't have the logs grow this fast.
-  Ticket to not log normal "HEAD /config" hits?
-  Perhaps a flag set on the response object that the post-middleware logger
-  uses to suppress.
 - running on smartos global zone:
   devrun.sh: USE_ZSOCK=1
 - /config -> /zonechecks
 - use "/customers" prefix instead of "/pub" for Master API.
-- riaktag for contacts_customers:
-    $ r /riak/contacts_customers/joyent
-    HTTP/1.1 200 OK
-    X-Riak-Vclock: a85hYGBgymDKBVIszHNmG2YwJTLmsTK84Nt2nA8qzMpqnwoVPsUPFM4CAA==
-    Vary: Accept-Encoding
-    Server: MochiWeb/1.1 WebMachine/1.7.3 (participate in the frantic)
-    Link: </riak/contacts/joyent_trent>; riaktag="_", </riak/contacts/joyent_mark>; riaktag="_", </riak/contacts_customers>; rel="up"
-    Last-Modified: Tue, 09 Aug 2011 20:08:42 GMT
-    ETag: "4RLm0K8wDfGytxwFX4E3FQ"
-    Date: Tue, 09 Aug 2011 20:08:53 GMT
-    Content-Type: text/plain
-    Content-Length: 1
-  Don't like "_" for riaktag. Perhaps "contact"? Or does re-used of "_" make
-  the Entity class easier? With separate riaktag we could probably
-  have *one* "customers" bucket with links to contacts, events, etc. Tho,
-  perhaps that is more expensive.
-- bucket_prefix config value ("amon_") for shared riak usage.
   
 
 
 # Post-6.5 TODOs and RFEs
 
-- amon-agent in all smartos zones
-- *trying* with a second riak node
 - CA Agent Plugin
 - HTTP Agent Plugin
 - revive twillio notification backend as "sms"
@@ -176,5 +150,10 @@ Workdays left: 14 days (starting at 9-Aug) - 2 days lost to no.de help (at least
 - client SDK
 - s/joyent/sdc/ in various runtime files and dirs
 - Admin UI
-- amon client
+- amon client: just integrate into node-smartdc?
 - snmp (MarkC: "snmp traps". Me: What's that?)
+- Interesting services for hooking into. Messaging services that might be useful:
+    - http://aws.amazon.com/cloudwatch/
+    - https://www.cloudkick.com/
+    - http://www.splunk.com/
+    - http://www.pagerduty.com/
