@@ -1,9 +1,8 @@
 tmp
 *.swp
 node_modules
-node-install
-*.tar.gz
-*.tar.bz2
+deps/node-install
+amon-*.tgz
 *.log
 .pkg
 common/node_modules

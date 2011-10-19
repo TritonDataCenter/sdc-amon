@@ -7,7 +7,20 @@ endif
 # Config
 #
 
-REVISION=$(shell git describe --contains --all HEAD)-$(shell git describe --tags)
+# Mountain Gorilla-spec'd versioning.
+# Need GNU awk for multi-char arg to "-F".
+AWK=$(shell (which gawk 2>/dev/null | grep -v "^no ") || which awk)
+BRANCH=$(shell git symbolic-ref HEAD | $(AWK) -F/ '{print $$3}')
+ifeq ($(TIMESTAMP),)
+	TIMESTAMP=$(shell date -u "+%Y%m%dT%H%M%SZ")
+endif
+DIRTY_ARG=--dirty
+ifeq ($(IGNORE_DIRTY), 1)
+	DIRTY_ARG=
+endif
+GITDESCRIBE=g$(shell git describe --all --long $(DIRTY_ARG) | $(AWK) -F'-g' '{print $$NF}')
+STAMP=$(BRANCH)-$(TIMESTAMP)-$(GITDESCRIBE)
+
 
 # Directories
 TOP := $(shell pwd)
@@ -103,7 +116,7 @@ master: $(NODEDIR)/bin/npm common plugins
 #
 
 pkg: pkg_agent pkg_relay pkg_master
-	echo "$(REVISION)" >$(PKG_DIR)/REVISION   # used by bamboo build
+	echo "$(STAMP)" >$(PKG_DIR)/REVISION   # used by bamboo build
 
 pkg_relay:
 	@rm -fr $(PKG_DIR)/relay
@@ -139,8 +152,8 @@ pkg_relay:
 	@mkdir $(PKG_DIR)/relay/relay
 	@(cd $(PKG_DIR)/relay/relay && ln -s ../main.js main.js)
 
-	(cd $(PKG_DIR) && $(TAR) zcf ../amon-relay-$(REVISION).tar.gz relay)
-	@echo "Created 'amon-relay-$(REVISION).tar.gz'."
+	(cd $(PKG_DIR) && $(TAR) zcf ../amon-relay-$(STAMP).tgz relay)
+	@echo "Created 'amon-relay-$(STAMP).tgz'."
 
 pkg_agent:
 	@rm -fr $(PKG_DIR)/agent
@@ -175,8 +188,8 @@ pkg_agent:
 	@mkdir $(PKG_DIR)/agent/agent
 	@(cd $(PKG_DIR)/agent/agent && ln -s ../main.js main.js)
 
-	(cd $(PKG_DIR) && $(TAR) zcf ../amon-agent-$(REVISION).tar.gz agent)
-	@echo "Created 'amon-agent-$(REVISION).tar.gz'."
+	(cd $(PKG_DIR) && $(TAR) zcf ../amon-agent-$(STAMP).tgz agent)
+	@echo "Created 'amon-agent-$(STAMP).tgz'."
 
 pkg_master:
 	@rm -fr $(PKG_DIR)/pkg_master
@@ -201,18 +214,20 @@ pkg_master:
 	find $(PKG_DIR)/pkg_master -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
 	find $(PKG_DIR)/pkg_master -type d | grep 'dirsum\/tst$$' | xargs rm -rf
 
-	(cd $(PKG_DIR)/pkg_master && $(TAR) cjf $(TOP)/amon-master-$(REVISION).tar.bz2 *)
-	@echo "Created 'amon-master-$(REVISION).tar.bz2'."
+	(cd $(PKG_DIR)/pkg_master && $(TAR) czf $(TOP)/amon-master-$(STAMP).tgz *)
+	@echo "Created 'amon-master-$(STAMP).tgz'."
 
-# This presumes the running user has ssh keys setup for jill@assets.joyent.us.
-upload:
-	@echo "# https://assets.joyent.us/datasets/liveimg/"
-	scp amon-agent-$(REVISION).tar.gz jill@assets.joyent.us:/data/assets/datasets/liveimg/.amon-agent-$(REVISION).tar.gz.partial
-	ssh jill@assets.joyent.us "cd /data/assets/datasets/liveimg && mv .amon-agent-$(REVISION).tar.gz.partial amon-agent-$(REVISION).tar.gz"
-	scp amon-relay-$(REVISION).tar.gz jill@assets.joyent.us:/data/assets/datasets/liveimg/.amon-relay-$(REVISION).tar.gz.partial
-	ssh jill@assets.joyent.us "cd /data/assets/datasets/liveimg && mv .amon-relay-$(REVISION).tar.gz.partial amon-relay-$(REVISION).tar.gz"
-	scp amon-master-$(REVISION).tar.gz jill@assets.joyent.us:/data/assets/datasets/liveimg/.amon-master-$(REVISION).tar.gz.partial
-	ssh jill@assets.joyent.us "cd /data/assets/datasets/liveimg && mv .amon-master-$(REVISION).tar.gz.partial amon-master-$(REVISION).tar.gz"
+
+# The "publish" target requires that "BITS_DIR" be defined.
+# Used by Mountain Gorilla.
+publish: $(BITS_DIR)
+	@if [[ -z "$(BITS_DIR)" ]]; then \
+		echo "error: 'BITS_DIR' must be set for 'publish' target"; \
+		exit 1; \
+	fi
+	mkdir -p $(BITS_DIR)/amon
+	cp amon-master-$(STAMP).tgz amon-relay-$(STAMP).tgz amon-agent-$(STAMP).tgz \
+		$(BITS_DIR)/amon/
 
 
 #
@@ -258,5 +273,6 @@ devrun: tmp $(NODEDIR)/bin/node-dev
 clean:
 	([[ -d deps/node ]] && cd deps/node && $(MAKE) distclean || true)
 	@rm -rf $(NODEDIR) agent/node_modules relay/node_modules \
-		master/node_modules bin/amon-zwatch .pkg amon-*.tar.gz \
+		master/node_modules bin/amon-zwatch .pkg amon-*.tgz \
 		tmp/npm-cache
+
