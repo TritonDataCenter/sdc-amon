@@ -35,7 +35,6 @@ NPM_ENV := npm_config_cache=$(shell echo $(TOP)/tmp/npm-cache) npm_config_tar=$(
 NPM := $(NPM_ENV) $(NODEDIR)/bin/npm
 NODE_DEV := PATH=$(NODEDIR)/bin:$$PATH node-dev
 PKG_DIR := .pkg
-RIAK := deps/riak/rel/riak/bin/riak
 WHISKEY = deps/node-install/bin/whiskey
 
 
@@ -52,7 +51,7 @@ all:: common plugins agent relay bin/amon-zwatch master
 # deps
 #
 
-deps:	$(NODEDIR)/bin/node $(NODEDIR)/bin/npm $(RIAK) \
+deps:	$(NODEDIR)/bin/node $(NODEDIR)/bin/npm \
 	$(NODEDIR)/lib/node_modules/whiskey $(NODEDIR)/lib/node_modules/jshint
 
 # Use 'Makefile' landmarks instead of the dir itself, because dir mtime
@@ -65,10 +64,6 @@ $(NODEDIR)/bin/node: deps/node/Makefile
 
 $(NODEDIR)/bin/npm: $(NODEDIR)/bin/node deps/npm/Makefile
 	(cd deps/npm && $(NPM_ENV) $(MAKE) install)
-
-# `touch` to ensure built product is newer than the Makefile dep.
-$(RIAK): deps/riak/Makefile
-	(cd deps/riak && make rel && touch rel/riak/bin/riak)
 
 # Global npm module deps (currently just test/lint stuff used by every amon
 # package). We install globally instead of 'npm install --dev' in every package
@@ -100,7 +95,7 @@ ifeq ($(UNAME), SunOS)
 	${CC} ${CCFLAGS} ${LDFLAGS} -o bin/amon-zwatch $^ zwatch/zwatch.c ${LIBS}
 endif
 
-master: $(NODEDIR)/bin/npm common plugins $(RIAK)
+master: $(NODEDIR)/bin/npm common plugins
 	(cd master && $(NPM) install && $(NPM) link amon-common amon-plugins)
 
 #
@@ -259,12 +254,9 @@ $(NODEDIR)/bin/node-dev: $(NODEDIR)/bin/npm
 
 devrun: tmp $(NODEDIR)/bin/node-dev
 	support/devrun.sh
-devwipedb:
-	rm -rf deps/riak/rel/riak/data/bitcask
 
 clean:
 	([[ -d deps/node ]] && cd deps/node && $(MAKE) distclean || true)
-	([[ -d deps/riak ]] && cd deps/riak && $(MAKE) clean || true)
 	@rm -rf $(NODEDIR) agent/node_modules relay/node_modules \
 		master/node_modules bin/amon-zwatch .pkg amon-*.tar.gz \
 		tmp/npm-cache
