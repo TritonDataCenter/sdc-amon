@@ -17,8 +17,7 @@ set -o errexit
 ulimit -n 2048
 
 ROOT=$(cd $(dirname $0)/../; pwd)
-NODE_DEV="env LD_PRELOAD_32=/usr/lib/extendedFILE.so.1 PATH=${ROOT}/deps/node-install/bin:${ROOT}/deps/riak/rel/riak/bin:$PATH node-dev"
-RIAK=$ROOT/deps/riak/rel/riak/bin/riak
+NODE_DEV="env LD_PRELOAD_32=/usr/lib/extendedFILE.so.1 PATH=${ROOT}/deps/node-install/bin:$PATH node-dev"
 # A `tail` supporting multiple files:
 # 	Mac: brew install multitail
 # 	SmartOS: pkgin in mtail
@@ -54,7 +53,6 @@ function errexit {
 
 function cleanup {
     echo "== cleanup"
-    ${RIAK} stop
     ps -ef | grep 'amon-zwatc[h]' | awk '{print $2}' | xargs kill 2>/dev/null || true
     ps -ef | grep 'node-de[v]' | awk '{print $2}' | xargs kill 2>/dev/null || true
 }
@@ -65,8 +63,6 @@ function cleanup {
 trap 'errexit $? $LINENO' EXIT
 
 echo "== preclean"
-r_stat=$(${RIAK} ping)
-[[ "$r_stat" == "pong" ]] && ${RIAK} stop && sleep 1 || true
 ps -ef | grep node-de[v] | awk '{print $2}' | xargs kill 2>/dev/null || true
 rm -f $ROOT/tmp/dev-*.log.lastrun
 #TODO: move old logs to $file.lastrun  to start fresh
@@ -76,9 +72,6 @@ if [[ `uname` == "SunOS" ]] && [[ `zonename` == "global" ]]; then
     [[ `svcs -H -o state amon-relay` == "online" ]] && svcadm disable -s amon-relay
     [[ `svcs -H -o state amon-zwatch` == "online" ]] && svcadm disable -s amon-zwatch
 fi
-
-echo "== start riak (${ROOT}/deps/riak/rel/riak/log)"
-${RIAK} start
 
 echo "== start master (tmp/dev-master.log)"
 ${NODE_DEV} $ROOT/master/main.js -d -f $ROOT/master/config.coal.json -p 8080 > $ROOT/tmp/dev-master.log 2>&1 &
