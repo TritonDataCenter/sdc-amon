@@ -1,6 +1,7 @@
 # restart
 
 - work through use cases
+- update api
 - update doc
 - revisit design. Top Qs:
   - drop "contact" model if just using the email on customer record?
@@ -11,6 +12,17 @@
 
 - tack on amon records to ufds/tools/genldif
 
+
+# use case: operator wants an alert for every zone fault
+
+- FMA-based check in amon-agent in all CN GZs
+  Q: Ask rm how to trigger that FMA event.
+- Q: Exclude explicit reboots? What about an explicit reboot, but it doesn't
+  come back up?
+  A: Yes, exclude for now.
+- Q: how to handle clearing an alarm. Does FMA give me an event for that?
+  Ditto for non-fma-based zone status watching? Are we going to send an
+  amon event for *every* zone running state every minute? No way.
 
 
 # Old out-of-data dev schedule
@@ -50,15 +62,19 @@ Workdays left: 14 days (starting at 9-Aug) - 2 days lost to no.de help (at least
 
 # smartos event streams notes
 
-sysevent: core element, syseventadm
+- sysevent: core element, syseventadm
   https://mo.joyent.com/source/xref/illumos-joyent/usr/src/lib/libsysevent/libsysevent.c#2653
     sysevent_subscribe_event
   Note that zonecfg_notify_* itself calls a slightly different "sysevent_evc_subscribe":
     https://mo.joyent.com/source/xref/illumos-joyent/usr/src/lib/libsysevent/libevchannel.c#566
     https://mo.joyent.com/source/xref/illumos-joyent/usr/src/lib/libzonecfg/common/libzonecfg.c#6692
-zonecfg_notify_bind: uses sysevent, might not need that
+- zonecfg_notify_bind: uses sysevent, might not need that
   defined here: illumos/usr/src/lib/libzonecfg/common/libzonecfg.c
-fma: fmdump, FMA: http://hub.opensolaris.org/bin/download/Community+Group+fm/WebHome/FMDPRM.pdf
+- fma:
+  fmdump
+  FMA: http://hub.opensolaris.org/bin/download/Community+Group+fm/WebHome/FMDPRM.pdf
+  http://download.oracle.com/docs/cd/E19082-01/819-3196/6n5ed4h40/index.html#indexterm-289
+  fminject to test
   
 
 
@@ -87,6 +103,8 @@ fma: fmdump, FMA: http://hub.opensolaris.org/bin/download/Community+Group+fm/Web
 - upgrade plan and testing
   - versioning (see ca/Makefile, and 1.0.0 instead of 6.1)
   - config handling
+- headnode GZ cronjob that emails the /usbkey/config'd admin if amon and/or
+  redis zones are down themselves.
 
 
 # Trent's scratch area

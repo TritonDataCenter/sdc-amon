@@ -113,13 +113,14 @@ Now cause the logscan alarm to match:
 Roughly said:
 
 "The absolute MVP for Monitoring is having the ability to alert when a
-VM or Zone goes down, and the ability to alert someone via email." -- Trevor
+VM or Zone goes down, and the ability to alert someone via email."
 
 More detail:
 
 - Only necessary alert medium: email.
 - Ability to alert operator when a machine goes down. Presumably only wanted
-  when going down is a fault.
+  when going down is a fault. (Or perhaps not, Trevor is going to ask
+  JPC ops guys about that.)
 - Ability to alert operator when that machine comes back up (aka a "clear" or "ok").
 - Ability to alert customer when their machine goes down.
   Option to distinguish between going down for a fault (FMA) or any reason
