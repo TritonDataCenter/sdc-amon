@@ -105,6 +105,11 @@ Workdays left: 14 days (starting at 9-Aug) - 2 days lost to no.de help (at least
   - config handling
 - headnode GZ cronjob that emails the /usbkey/config'd admin if amon and/or
   redis zones are down themselves.
+- redis zone config: have "save 60 1". Make sure that isn't filling up disk
+  with lots of snapshots. I *presume* this is just one or two files on
+  disk, but should check.
+- test: test how events are handled when redis runs out of memory
+  Might want "maxmemory" and "maxmemory-policy ..." in redis.conf
 
 
 # Trent's scratch area
