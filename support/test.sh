@@ -16,8 +16,7 @@ set -o errexit
 ulimit -n 2048
 
 ROOT=$(cd $(dirname $0)/../; pwd)
-NODE_DEV="env LD_PRELOAD_32=/usr/lib/extendedFILE.so.1 PATH=${ROOT}/deps/node-install/bin:${ROOT}/deps/riak/rel/riak/bin:$PATH node-dev"
-RIAK=$ROOT/deps/riak/rel/riak/bin/riak
+NODE_DEV="env LD_PRELOAD_32=/usr/lib/extendedFILE.so.1 PATH=${ROOT}/deps/node-install/bin:$PATH node-dev"
 WHISKEY=$ROOT/bin/whiskey
 
 
@@ -35,7 +34,6 @@ function errexit {
 }
 
 function cleanup {
-    ${RIAK} stop 2>&1 >/dev/null
 }
 
 
@@ -44,12 +42,6 @@ function cleanup {
 trap 'errexit $? $LINENO' EXIT
 
 echo "== preclean"
-r_stat=$(${RIAK} ping)
-[[ "$r_stat" == "pong" ]] && ${RIAK} stop && sleep 1 || true
-
-echo "== start riak (${ROOT}/deps/riak/rel/riak/log)"
-${RIAK} start
-while [[ `${RIAK} ping` != "pong" ]]; do sleep 1; done;
 
 files=$(find relay -name "*.test.js" | grep -v 'node_modules/')
 if [[ -n "$TEST" ]]; then
@@ -57,7 +49,7 @@ if [[ -n "$TEST" ]]; then
 fi
 if [[ -n "$files" ]]; then
     echo "== test relay"
-    (cd ${ROOT} && RIAK_PORT=8098 ${WHISKEY} --quiet --timeout 2000 \
+    (cd ${ROOT} && ${WHISKEY} --quiet --timeout 2000 \
         --concurrency 1 --tests "$(echo "$files" | xargs)")
     status=$?
     [[ "$status" != 0 ]] && exit $status
@@ -71,7 +63,7 @@ if [[ -n "$TEST" ]]; then
 fi
 if [[ -n "$files" ]]; then
     echo "== test master"
-    (cd ${ROOT} && RIAK_PORT=8098 ${WHISKEY} --quiet --timeout 2000 \
+    (cd ${ROOT} && ${WHISKEY} --quiet --timeout 2000 \
         --concurrency 1 --tests "$(echo "$files" | xargs)")
     status=$?
     [[ "$status" != 0 ]] && exit $status
