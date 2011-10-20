@@ -109,7 +109,8 @@ Workdays left: 14 days (starting at 9-Aug) - 2 days lost to no.de help (at least
   with lots of snapshots. I *presume* this is just one or two files on
   disk, but should check.
 - test: test how events are handled when redis runs out of memory
-  Might want "maxmemory" and "maxmemory-policy ..." in redis.conf
+  Might want "maxmemory" and "maxmemory-policy ..." or "vm-enabled yes" in
+  redis.conf
 
 
 # Trent's scratch area
