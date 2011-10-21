@@ -69,7 +69,7 @@ deps:	$(NODEDIR)/bin/node $(NODEDIR)/bin/npm \
 
 # Use 'Makefile' landmarks instead of the dir itself, because dir mtime
 # is that of the most recent file: results in unnecessary rebuilds.
-deps/riak/Makefile deps/node/Makefile deps/npm/Makefile:
+deps/node/Makefile deps/npm/Makefile:
 	(GIT_SSL_NO_VERIFY=1 git submodule update --init)
 
 $(NODEDIR)/bin/node: deps/node/Makefile
