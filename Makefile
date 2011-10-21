@@ -214,8 +214,8 @@ pkg_master:
 	find $(PKG_DIR)/pkg_master -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
 	find $(PKG_DIR)/pkg_master -type d | grep 'dirsum\/tst$$' | xargs rm -rf
 
-	(cd $(PKG_DIR)/pkg_master && $(TAR) czf $(TOP)/amon-master-$(STAMP).tgz *)
-	@echo "Created 'amon-master-$(STAMP).tgz'."
+	(cd $(PKG_DIR)/pkg_master && $(TAR) cjf $(TOP)/amon-master-$(STAMP).tar.bz2 *)
+	@echo "Created 'amon-master-$(STAMP).tar.bz2'."
 
 
 # The "publish" target requires that "BITS_DIR" be defined.
@@ -226,7 +226,7 @@ publish: $(BITS_DIR)
 		exit 1; \
 	fi
 	mkdir -p $(BITS_DIR)/amon
-	cp amon-master-$(STAMP).tgz amon-relay-$(STAMP).tgz amon-agent-$(STAMP).tgz \
+	cp amon-master-$(STAMP).tar.bz2 amon-relay-$(STAMP).tgz amon-agent-$(STAMP).tgz \
 		$(BITS_DIR)/amon/
 
 
