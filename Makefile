@@ -197,19 +197,18 @@ pkg_master:
 	@mkdir -p $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/deps
 
 	cp -r bin/amon-master \
-		$(PKG_DIR)/pkg_master/root/opt/smartdc/amon/bin
+		$(PKG_DIR)/pkg_master/root/opt/smartdc/amon/bin/
 
 	cp -r deps/node-install \
-		$(PKG_DIR)/pkg_master/root/opt/smartdc/amon/deps
+		$(PKG_DIR)/pkg_master/root/opt/smartdc/amon/deps/
 
-	cp -r master \
+	cp -r master common plugins \
 		$(PKG_DIR)/pkg_master/root/opt/smartdc/amon/
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
-	rm -rf \
-		$(PKG_DIR)/pkg_master/root/opt/smartdc/amon/deps/node-install/lib/node_modules/amon-common \
-		$(PKG_DIR)/pkg_master/root/opt/smartdc/amon/deps/node-install/lib/node_modules/amon-plugins
-	find $(PKG_DIR)/pkg_master -name "*.pyc" | xargs rm
+	find $(PKG_DIR)/pkg_master -name "*.pyc" | xargs rm -fv
+	find $(PKG_DIR)/pkg_master -type l -a -name jshint | xargs rm -fv
+	find $(PKG_DIR)/pkg_master -type l -a -name whiskey | xargs rm -fv
 	find $(PKG_DIR)/pkg_master -type d | grep 'node_modules\/jshint$$' | xargs rm -rf
 	find $(PKG_DIR)/pkg_master -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
 	find $(PKG_DIR)/pkg_master -type d | grep 'dirsum\/tst$$' | xargs rm -rf
