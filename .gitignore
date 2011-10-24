@@ -3,6 +3,7 @@ tmp
 node_modules
 deps/node-install
 amon-*.tgz
+amon-*.tar.bz2
 *.log
 .pkg
 common/node_modules
