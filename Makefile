@@ -273,5 +273,5 @@ clean:
 	([[ -d deps/node ]] && cd deps/node && $(MAKE) distclean || true)
 	@rm -rf $(NODEDIR) agent/node_modules relay/node_modules \
 		master/node_modules bin/amon-zwatch .pkg amon-*.tgz \
-		tmp/npm-cache
+		tmp/npm-cache amon-*.tar.bz2
 
