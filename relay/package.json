@@ -1,17 +1,9 @@
 {
   "name": "amon-relay",
   "description": "Smart DataCenter Monitoring Relay component",
-  "homepage": "https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming",
-  "version": "6.1.0",
-  "repository": {
-    "type": "git",
-    "url": "git@git.joyent.com:amon.git"
-  },
+  "version": "1.0.0",
+  "author": "Joyent (joyent.com)",
   "private": true,
-  "contributors": [
-    "Mark Cavage <mark.cavage@joyent.com> (http://www.joyent.com)",
-    "Trent Mick <trent.mick@joyent.com> (http://www.joyent.com)"
-  ],
   "dependencies": {
     "dirsum": "0.1.1",
     "httpu": "0.0.1",
@@ -22,6 +14,10 @@
     "zsock": "1.0.5",
     "zutil": "0.1.2"
   },
+  "devDependencies": {
+    "jshint": "0.2.3",
+    "whiskey": "0.4.1"
+  },
   "bin": {
     "amon-relay": "./bin/amon-relay",
     "amon-zwatch": "./bin/amon-zwatch"  
@@ -30,11 +26,7 @@
     "start": "node ./main.js",
     "pretest": "./node_modules/jshint/bin/jshint lib tst",
     "test": "./node_modules/.bin/whiskey -t tst/checks.test.js",
-    "postactivate": "./smf_scripts/postinstall.sh",
-    "predeactivate": "./smf_scripts/preuninstall.sh"
-  },
-  "devDependencies": {
-    "jshint": "0.2.3",
-    "whiskey": "0.4.1"
+    "postinstall": "./npm/postinstall.sh",
+    "preuninstall": "./npm/preuninstall.sh"
   }
 }

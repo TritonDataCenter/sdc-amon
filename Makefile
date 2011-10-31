@@ -116,7 +116,6 @@ master: $(NODEDIR)/bin/npm common plugins
 #
 
 pkg: pkg_agent pkg_relay pkg_master
-	echo "$(STAMP)" >$(PKG_DIR)/REVISION   # used by bamboo build
 
 pkg_relay:
 	@rm -fr $(PKG_DIR)/relay
@@ -136,7 +135,7 @@ pkg_relay:
 		relay/node_modules	\
 		relay/package.json	\
 		relay/smf		\
-		relay/smf_scripts	\
+		relay/npm	\
 		$(PKG_DIR)/relay
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
@@ -172,7 +171,7 @@ pkg_agent:
 		agent/node_modules	\
 		agent/package.json	\
 		agent/smf		\
-		agent/smf_scripts	\
+		agent/npm	\
 		$(PKG_DIR)/agent
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
