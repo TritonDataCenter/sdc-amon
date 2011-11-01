@@ -118,24 +118,21 @@ master: $(NODEDIR)/bin/npm common plugins
 pkg: pkg_agent pkg_relay pkg_master
 
 pkg_relay:
-	@rm -fr $(PKG_DIR)/relay
-	@mkdir -p $(PKG_DIR)/relay/bin
-	@mkdir -p $(PKG_DIR)/relay/deps
-
-	cp -r bin/amon-zwatch $(PKG_DIR)/relay/bin
-
-	cp -r 	deps/node-install	\
-		$(PKG_DIR)/relay/deps
-
-	cp -r 	relay/lib		\
+	rm -fr $(PKG_DIR)/relay
+	mkdir -p $(PKG_DIR)/relay/deps
+	cp -Pr deps/node-install $(PKG_DIR)/relay/deps
+	# '-H' to follow symlink for amon-common and amon-plugins node modules.
+	mkdir -p $(PKG_DIR)/relay/node_modules
+	ls -d relay/node_modules/* | xargs -n1 -I{} cp -Hr {} $(PKG_DIR)/relay/node_modules/
+	cp -Pr 	relay/lib		\
 		relay/main.js		\
-		relay/node_modules	\
 		relay/package.json	\
 		relay/smf		\
 		relay/npm \
 		relay/bin \
 		relay/.npmignore \
 		$(PKG_DIR)/relay
+	cp bin/amon-zwatch $(PKG_DIR)/relay/bin
 
 	# Need .npmignore in each node module to explictly keep prebuilt
 	# parts of it.
@@ -156,16 +153,14 @@ pkg_relay:
 	@echo "Created 'amon-relay-$(STAMP).tgz'."
 
 pkg_agent:
-	@rm -fr $(PKG_DIR)/agent
-	@mkdir -p $(PKG_DIR)/agent/bin
-	@mkdir -p $(PKG_DIR)/agent/deps
-
-	cp -r 	deps/node-install	\
-		$(PKG_DIR)/agent/deps
-
-	cp -r 	agent/lib		\
+	rm -fr $(PKG_DIR)/agent
+	mkdir -p $(PKG_DIR)/agent/deps
+	cp -Pr deps/node-install $(PKG_DIR)/agent/deps
+	# '-H' to follow symlink for amon-common and amon-plugins node modules.
+	mkdir -p $(PKG_DIR)/agent/node_modules
+	ls -d agent/node_modules/* | xargs -n1 -I{} cp -Hr {} $(PKG_DIR)/agent/node_modules/
+	cp -Pr 	agent/lib		\
 		agent/main.js		\
-		agent/node_modules	\
 		agent/package.json	\
 		agent/smf		\
 		agent/npm \
@@ -179,13 +174,12 @@ pkg_agent:
 		| xargs -n1 -I{} bash -c "touch {}/.npmignore; cat $(PKG_DIR)/agent/.npmignore >> {}/.npmignore"
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
-	rm -rf \
-		$(PKG_DIR)/agent/deps/node-install/lib/node_modules/amon-common \
+	rm -rf $(PKG_DIR)/agent/deps/node-install/lib/node_modules/amon-common \
 		$(PKG_DIR)/agent/deps/node-install/lib/node_modules/amon-plugins
 	find $(PKG_DIR)/agent -name "*.pyc" | xargs rm
 	find $(PKG_DIR)/agent -type d | grep 'node_modules\/jshint$$' | xargs rm -rf
 	find $(PKG_DIR)/agent -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
-	find $(PKG_DIR)/relay -type d | grep 'node_modules\/.bin\/whiskey$$' | xargs rm -rf
+	find $(PKG_DIR)/agent -type d | grep 'node_modules\/.bin\/whiskey$$' | xargs rm -rf
 	find $(PKG_DIR)/agent -type d | grep 'dirsum\/tst$$' | xargs rm -rf
 
 	(cd $(PKG_DIR) && $(TAR) zcf ../amon-agent-$(STAMP).tgz agent)
