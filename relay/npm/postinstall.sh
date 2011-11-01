@@ -7,16 +7,21 @@ if [[ $OS != "SunOS" ]]; then
   exit 0
 fi
 
+. /lib/sdc/config.sh
+load_sdc_config
+
 
 export PREFIX=$npm_config_prefix
 export VERSION=$npm_package_version
 export SMFDIR=$npm_config_smfdir
+export AMON_CLIENT_URL=$CONFIG_amon_client_url
 
 function subfile () {
   IN=$1
   OUT=$2
   sed -e "s#@@PREFIX@@#$PREFIX#g" \
       -e "s#@@VERSION@@#$VERSION#g" \
+      -e "s#@@AMON_CLIENT_URL@@#$AMON_CLIENT_URL#g" \
       $IN > $OUT
 }
 

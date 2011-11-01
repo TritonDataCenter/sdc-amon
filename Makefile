@@ -263,6 +263,11 @@ $(NODEDIR)/bin/node-dev: $(NODEDIR)/bin/npm
 devrun: tmp $(NODEDIR)/bin/node-dev
 	support/devrun.sh
 
+install_agent_pkg:
+	/opt/smartdc/agents/bin/agents-npm --no-registry install ./`ls -1 amon-agent*.tgz | tail -1`
+install_relay_pkg:
+	/opt/smartdc/agents/bin/agents-npm --no-registry install ./`ls -1 amon-relay*.tgz | tail -1`
+
 clean:
 	([[ -d deps/node ]] && cd deps/node && $(MAKE) distclean || true)
 	@rm -rf $(NODEDIR) agent/node_modules relay/node_modules \
