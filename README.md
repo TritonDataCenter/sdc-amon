@@ -59,6 +59,7 @@ And really, you should do a `pkgin install emacs-nox11` to be awesome...
 Anyway, once you've done the above, you can do:
 
     cd /opt && \
+    export GIT_SSL_NO_VERIFY=true && \
     git clone git@git.joyent.com:amon.git && \
     cd amon && \
     make && \

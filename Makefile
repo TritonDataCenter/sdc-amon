@@ -9,7 +9,7 @@ endif
 
 # Mountain Gorilla-spec'd versioning.
 # Need GNU awk for multi-char arg to "-F".
-AWK=$(shell (which gawk 2>/dev/null | grep -v "^no ") || which awk)
+AWK=$(shell (which gawk 2>/dev/null | grep -v "^no ") || (which nawk 2>/dev/null | grep -v "^no ") || which awk)
 BRANCH=$(shell git symbolic-ref HEAD | $(AWK) -F/ '{print $$3}')
 ifeq ($(TIMESTAMP),)
 	TIMESTAMP=$(shell date -u "+%Y%m%dT%H%M%SZ")
@@ -121,11 +121,8 @@ pkg_relay:
 	@rm -fr $(PKG_DIR)/relay
 	@mkdir -p $(PKG_DIR)/relay/bin
 	@mkdir -p $(PKG_DIR)/relay/deps
-	@mkdir -p $(PKG_DIR)/relay
 
-	cp -r	bin/amon-relay		\
-		bin/amon-zwatch		\
-		$(PKG_DIR)/relay/bin
+	cp -r bin/amon-zwatch $(PKG_DIR)/relay/bin
 
 	cp -r 	deps/node-install	\
 		$(PKG_DIR)/relay/deps
@@ -135,8 +132,15 @@ pkg_relay:
 		relay/node_modules	\
 		relay/package.json	\
 		relay/smf		\
-		relay/npm	\
+		relay/npm \
+		relay/bin \
+		relay/.npmignore \
 		$(PKG_DIR)/relay
+
+	# Need .npmignore in each node module to explictly keep prebuilt
+	# parts of it.
+	ls -d $(PKG_DIR)/relay/node_modules/* \
+		| xargs -n1 -I{} bash -c "touch {}/.npmignore; cat $(PKG_DIR)/relay/.npmignore >> {}/.npmignore"
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
 	rm -rf \
@@ -145,11 +149,8 @@ pkg_relay:
 	find $(PKG_DIR)/relay -name "*.pyc" | xargs rm
 	find $(PKG_DIR)/relay -type d | grep 'node_modules\/jshint$$' | xargs rm -rf
 	find $(PKG_DIR)/relay -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
+	find $(PKG_DIR)/relay -type d | grep 'node_modules\/.bin\/whiskey$$' | xargs rm -rf
 	find $(PKG_DIR)/relay -type d | grep 'dirsum\/tst$$' | xargs rm -rf
-
-	# For 'devrun' to work with a package install.
-	@mkdir $(PKG_DIR)/relay/relay
-	@(cd $(PKG_DIR)/relay/relay && ln -s ../main.js main.js)
 
 	(cd $(PKG_DIR) && $(TAR) zcf ../amon-relay-$(STAMP).tgz relay)
 	@echo "Created 'amon-relay-$(STAMP).tgz'."
@@ -158,10 +159,6 @@ pkg_agent:
 	@rm -fr $(PKG_DIR)/agent
 	@mkdir -p $(PKG_DIR)/agent/bin
 	@mkdir -p $(PKG_DIR)/agent/deps
-	@mkdir -p $(PKG_DIR)/agent
-
-	cp -r	bin/amon-agent		\
-		$(PKG_DIR)/agent/bin
 
 	cp -r 	deps/node-install	\
 		$(PKG_DIR)/agent/deps
@@ -171,8 +168,15 @@ pkg_agent:
 		agent/node_modules	\
 		agent/package.json	\
 		agent/smf		\
-		agent/npm	\
+		agent/npm \
+		agent/bin \
+		agent/.npmignore \
 		$(PKG_DIR)/agent
+
+	# Need .npmignore in each node module to explictly keep prebuilt
+	# parts of it.
+	ls -d $(PKG_DIR)/agent/node_modules/* \
+		| xargs -n1 -I{} bash -c "touch {}/.npmignore; cat $(PKG_DIR)/agent/.npmignore >> {}/.npmignore"
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
 	rm -rf \
@@ -181,11 +185,8 @@ pkg_agent:
 	find $(PKG_DIR)/agent -name "*.pyc" | xargs rm
 	find $(PKG_DIR)/agent -type d | grep 'node_modules\/jshint$$' | xargs rm -rf
 	find $(PKG_DIR)/agent -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
+	find $(PKG_DIR)/relay -type d | grep 'node_modules\/.bin\/whiskey$$' | xargs rm -rf
 	find $(PKG_DIR)/agent -type d | grep 'dirsum\/tst$$' | xargs rm -rf
-
-	# For 'devrun' to work with a package install.
-	@mkdir $(PKG_DIR)/agent/agent
-	@(cd $(PKG_DIR)/agent/agent && ln -s ../main.js main.js)
 
 	(cd $(PKG_DIR) && $(TAR) zcf ../amon-agent-$(STAMP).tgz agent)
 	@echo "Created 'amon-agent-$(STAMP).tgz'."

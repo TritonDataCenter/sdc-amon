@@ -1,15 +1,13 @@
 <?xml version="1.0"?>
 <!DOCTYPE service_bundle SYSTEM "/usr/share/lib/xml/dtd/service_bundle.dtd.1">
 <service_bundle type="manifest" name="amon-agent">
-  <service name="smartdc/amon-agent" type="service" version="6.1.0">
-
+  <service name="smartdc/amon-agent" type="service" version="@@VERSION@@">
     <create_default_instance enabled="true"/>
     <single_instance/>
 
     <dependency name="network" grouping="require_all" restart_on="error" type="service">
       <service_fmri value="svc:/milestone/network:default"/>
     </dependency>
-
     <dependency name="filesystem" grouping="require_all" restart_on="error" type="service">
       <service_fmri value="svc:/system/filesystem/local"/>
     </dependency>
@@ -17,13 +15,12 @@
     <exec_method
       type="method"
       name="start"
-      exec="@@BASEDIR@@/bin/amon-agent &amp;"
+      exec="@@PREFIX@@/bin/amon-agent &amp;"
       timeout_seconds="10">
       <method_context>
         <method_credential user="root" group="staff"/>
         <method_environment>
-          <envvar name='LD_PRELOAD_32' value='/usr/lib/extendedFILE.so.1' />
-          <envvar name='PATH' value='@@NODE_PATH@@:$PATH' />
+          <envvar name="LD_PRELOAD_32" value="/usr/lib/extendedFILE.so.1" />
         </method_environment>
       </method_context>
     </exec_method>
@@ -40,14 +37,16 @@
       </method_context>
     </exec_method>
 
-    <property_group name="startd" type="framework" />
+    <property_group name="startd" type="framework">
+      <propval name="ignore_error" type="astring" value="core,signal"/>
+    </property_group>
     <property_group name="application" type="application" />
 
     <stability value="Evolving"/>
 
     <template>
       <common_name>
-        <loctext xml:lang="C">SDC Amon Agent Daemon</loctext>
+        <loctext xml:lang="C">SDC Amon Agent</loctext>
       </common_name>
     </template>
 
