@@ -146,7 +146,6 @@ pkg_relay:
 	find $(PKG_DIR)/relay -name "*.pyc" | xargs rm
 	find $(PKG_DIR)/relay -type d | grep 'node_modules\/jshint$$' | xargs rm -rf
 	find $(PKG_DIR)/relay -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
-	find $(PKG_DIR)/relay -type d | grep 'node_modules\/.bin\/whiskey$$' | xargs rm -rf
 	find $(PKG_DIR)/relay -type d | grep 'dirsum\/tst$$' | xargs rm -rf
 
 	(cd $(PKG_DIR) && $(TAR) zcf ../amon-relay-$(STAMP).tgz relay)
@@ -179,30 +178,21 @@ pkg_agent:
 	find $(PKG_DIR)/agent -name "*.pyc" | xargs rm
 	find $(PKG_DIR)/agent -type d | grep 'node_modules\/jshint$$' | xargs rm -rf
 	find $(PKG_DIR)/agent -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
-	find $(PKG_DIR)/agent -type d | grep 'node_modules\/.bin\/whiskey$$' | xargs rm -rf
 	find $(PKG_DIR)/agent -type d | grep 'dirsum\/tst$$' | xargs rm -rf
 
 	(cd $(PKG_DIR) && $(TAR) zcf ../amon-agent-$(STAMP).tgz agent)
 	@echo "Created 'amon-agent-$(STAMP).tgz'."
 
 pkg_master:
-	@rm -fr $(PKG_DIR)/pkg_master
-	@mkdir -p $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/bin
-	@mkdir -p $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/deps
-
-	cp -r bin/amon-master \
-		$(PKG_DIR)/pkg_master/root/opt/smartdc/amon/bin/
-
-	cp -r deps/node-install \
-		$(PKG_DIR)/pkg_master/root/opt/smartdc/amon/deps/
-
-	cp -r master common plugins \
-		$(PKG_DIR)/pkg_master/root/opt/smartdc/amon/
+	rm -fr $(PKG_DIR)/pkg_master
+	mkdir -p $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/deps
+	cp -Pr deps/node-install $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/deps/
+	cp -Pr master common plugins $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
-	find $(PKG_DIR)/pkg_master -name "*.pyc" | xargs rm -fv
-	find $(PKG_DIR)/pkg_master -type l -a -name jshint | xargs rm -fv
-	find $(PKG_DIR)/pkg_master -type l -a -name whiskey | xargs rm -fv
+	find $(PKG_DIR)/pkg_master -name "*.pyc" | xargs rm -f
+	find $(PKG_DIR)/pkg_master -type l -a -name jshint | xargs rm -f
+	find $(PKG_DIR)/pkg_master -type l -a -name whiskey | xargs rm -f
 	find $(PKG_DIR)/pkg_master -type d | grep 'node_modules\/jshint$$' | xargs rm -rf
 	find $(PKG_DIR)/pkg_master -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
 	find $(PKG_DIR)/pkg_master -type d | grep 'dirsum\/tst$$' | xargs rm -rf
