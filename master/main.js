@@ -43,7 +43,7 @@ function usage(code, msg) {
     console.error('ERROR: ' + msg);
   }
   console.log('usage: ' + path.basename(process.argv[1]) +
-              ' [-hd] [-f config_file] [-p port]');
+              ' [-hd] [-f CONFIG-FILE] [-p PORT]');
   process.exit(code);
 }
 

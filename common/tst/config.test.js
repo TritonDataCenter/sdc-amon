@@ -31,7 +31,7 @@ if (os.type() !== 'SunOS') {
 }
 
 var server = restify.createServer({
-  apiVersion: '6.1.0',
+  apiVersion: '1.0.0',
   serverName: 'AmonUnitTest'
 });
 

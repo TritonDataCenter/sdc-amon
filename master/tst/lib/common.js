@@ -18,7 +18,7 @@ module.exports = {
 
     assert.equal(response.headers.server, 'Joyent');
     assert.equal(response.headers.connection, 'close');
-    assert.equal(response.headers['x-api-version'], '6.1.0');
+    assert.equal(response.headers['x-api-version'], '1.0.0');
 
     assert.equal(response.httpVersion, '1.1');
   },

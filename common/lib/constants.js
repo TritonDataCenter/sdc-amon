@@ -31,7 +31,7 @@ module.exports = {
   ],
 
   /// Misc
-  ApiVersion: '6.1.0',
+  ApiVersion: '1.0.0',
   ContentType: 'Content-Type',
   HashHeader: 'ETag',
   ServerName: 'Joyent',

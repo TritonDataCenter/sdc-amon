@@ -24,8 +24,6 @@ the SDC Cloud API
 "NYI" means not yet implemented.
 
 
-
-
 # Master API summary
 
 Public endpoints are under a "/pub" prefix to facilitate proxying to Cloud
@@ -95,19 +93,59 @@ Dev Note: "Periodically" isn't right for checks that aren't polling (e.g.
 subscribing to a particular sysevent).
 
 
+
 # Master API: Internal
 
-Amon Relays (ultimately agents calling the equivalent event
-API endpoint on their relay) sent events to the master:
-    
-    POST /events
+## Ping (GET /ping)
 
+A simple ping to check to health of the Amon server.
+
+    $ sdc-amon /ping
+    HTTP/1.1 200 OK
+    Connection: close
+    Date: Wed, 02 Nov 2011 04:40:42 GMT
+    Server: Joyent
+    X-Api-Version: 1.0.0
+    X-Request-Id: 265a6379-bbf5-4d86-bd11-5e96614035d8
+    X-Response-Time: 2
+    Content-Length: 15
+    Content-MD5: tBwJDpsyo/hcYx2xrziwrw==
+    Content-Type: application/json
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Methods: OPTIONS, GET
+    Access-Control-Allow-Headers: Accept, Content-Type, Content-Length, Date, X-Api-Version
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    
+    {
+      "ping": "pong"
+    }
+
+### Inputs
+
+None
+
+
+## AddEvents (POST /events)
+
+Amon Relays (ultimately agents calling the equivalent event
+API endpoint on their relay) send events to the master.
+    
+
+## GetAgentConfig (GET /agentconfig)
 
 Amon Relays periodically get control data (config) from the master. From
 there, agents poll their relay for this config data.
 
-    HEAD /agentconfig                # NYI
-    GET  /agentconfig                 # NYI
+
+## GetAgentConfigHead (HEAD /agentconfig)
+
+This "HEAD" form of `GetAgentConfig` allows for relays to check for
+agentconfig changes with less network overhead.
+
+
+
+
+
 
 
 # Relay API
@@ -120,7 +158,7 @@ TODO
 TODO
 
 
-# Example: Tracing a Monitor
+# Example: Tracing a New Monitor
 
 TODO
 

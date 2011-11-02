@@ -1,17 +1,9 @@
 {
   "name": "amon-plugins",
   "description": "Smart DataCenter Monitoring Plugins package",
-  "homepage": "https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming",
-  "version": "6.1.0",
-  "repository": {
-    "type": "git",
-    "url": "git@git.joyent.com:amon.git"
-  },
+  "version": "1.0.0",
+  "author": "Joyent (joyent.com)",
   "private": true,
-  "contributors": [
-    "Mark Cavage <mark.cavage@joyent.com> (http://www.joyent.com)",
-    "Trent Mick <trent.mick@joyent.com> (http://www.joyent.com)"
-  ],
   "main": "lib/index.js",
   "dependencies": {
     "dirsum": "0.1.1",

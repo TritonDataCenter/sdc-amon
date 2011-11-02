@@ -2,7 +2,7 @@
   "name": "amon-common",
   "description": "Smart DataCenter Monitoring common utilities package",
   "homepage": "https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming",
-  "version": "6.1.0",
+  "version": "1.0.0",
   "repository": {
     "type": "git",
     "url": "git@git.joyent.com:amon.git"

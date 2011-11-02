@@ -32,7 +32,7 @@ function _options(path) {
   };
   if (path) options.path += path;
   options.headers['Content-Type'] = 'application/json';
-  options.headers['x-api-version'] = '6.1.0';
+  options.headers['x-api-version'] = '1.0.0';
   return options;
 }
 

@@ -18,7 +18,7 @@ set -o pipefail
 
 
 JSON=$(which json 2>/dev/null || true)
-CURL_OPTS="-H x-api-version:6.1.0 -H Content-Type:application/json"
+CURL_OPTS="-H x-api-version:1 -H Content-Type:application/json"
 
 # Arguments.
 verbose=0

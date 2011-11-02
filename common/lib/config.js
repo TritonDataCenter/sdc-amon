@@ -324,7 +324,7 @@ Config.prototype._httpRequest = function(method, callback) {
   };
 
   options.headers.Accept = 'application/json';
-  options.headers['X-Api-Version'] = '6.1.0';
+  options.headers['X-Api-Version'] = '1';
   var req = http.request(options, callback);
   req.on('error', function(err) {
     log.warn('config: HTTP error: %o', err);
