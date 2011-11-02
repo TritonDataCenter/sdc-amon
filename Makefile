@@ -92,16 +92,16 @@ $(NODEDIR)/lib/node_modules/jshint: $(NODEDIR)/bin/npm
 #
 
 common: $(NODEDIR)/bin/npm
-	(cd common && $(NPM) install && $(NPM) link)
+	(cd common && $(NPM) update && $(NPM) link)
 
 plugins: $(NODEDIR)/bin/npm
-	(cd plugins && $(NPM) install && $(NPM) link)
+	(cd plugins && $(NPM) update && $(NPM) link)
 
 agent: $(NODEDIR)/bin/npm common plugins
-	(cd agent && $(NPM) install && $(NPM) link amon-common amon-plugins)
+	(cd agent && $(NPM) update && $(NPM) link amon-common amon-plugins)
 
 relay: $(NODEDIR)/bin/npm common plugins
-	(cd relay && $(NPM) install && $(NPM) link amon-common amon-plugins)
+	(cd relay && $(NPM) update && $(NPM) link amon-common amon-plugins)
 
 bin/amon-zwatch:
 ifeq ($(UNAME), SunOS)
@@ -109,7 +109,7 @@ ifeq ($(UNAME), SunOS)
 endif
 
 master: $(NODEDIR)/bin/npm common plugins
-	(cd master && $(NPM) install && $(NPM) link amon-common amon-plugins)
+	(cd master && $(NPM) update && $(NPM) link amon-common amon-plugins)
 
 #
 # Packaging targets
