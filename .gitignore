@@ -11,6 +11,8 @@ bin/amon-zwatch
 agent/checks
 agent/*.json
 
+/config.json
+
 # built docs (ignore for now)
 docs/media
 docs/index.html

@@ -3,4 +3,4 @@
 TOP=$(cd $(dirname $0)/../; pwd)
 NODEDIR=${TOP}/deps/node-install
 
-PATH=${NODEDIR}/bin:${PATH} node master/main.js "$@"
+PATH=${NODEDIR}/bin:${PATH} node ${TOP}/main.js "$@"
