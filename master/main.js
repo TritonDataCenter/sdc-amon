@@ -9,6 +9,7 @@
 var path = require('path');
 var nopt = require('nopt');
 var log = require('restify').log;
+var warn = console.warn;
 
 var amon_common = require('amon-common');
 var Config = amon_common.Config;
@@ -77,7 +78,9 @@ function main() {
       config: cfg.config
     });
     app.listen(function() {
-      log.info('amon-master listening on ' + port);
+      var addr = app.server.address();
+      log.info('amon-master listening on <http://%s:%s>',
+        addr.address, addr.port);
     });
   });
 }

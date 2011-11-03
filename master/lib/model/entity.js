@@ -1,7 +1,6 @@
 // Copyright 2011 Joyent, Inc.  All rights reserved.
 
 var log = require('restify').log;
-var riak = require('riak-js');
 var uuid = require('node-uuid');
 
 

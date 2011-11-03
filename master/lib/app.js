@@ -63,7 +63,6 @@ var App = function App(options) {
   var _setup = function(req, res, next) {
     req._config = self.config;
     req._log = log;
-    req._riak = self.config.riak;
     req._notificationPlugins = self.notificationPlugins;
     return next();
   };
@@ -77,7 +76,6 @@ var App = function App(options) {
 
   var server = this.server;
 
-  // Temporary debug/dev-support endpoint.
   server.get('/ping', self.before, function(req, res, next) {
     var data = {
       ping: "pong",
@@ -126,7 +124,7 @@ var App = function App(options) {
 
 
 /**
- * Gets Application up and listenting.
+ * Gets Application up and listening.
  *
  * This method creates a zsock with the zone/path you passed in to the
  * constructor.  The callback is of the form function(error), where error
