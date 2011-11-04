@@ -6,34 +6,22 @@
  * and sending notifications.
  */
 
-var path = require('path');
+var Path = require('path');
+var fs = require('fs');
+
 var nopt = require('nopt');
 var log = require('restify').log;
-var warn = console.warn;
 
 var amon_common = require('amon-common');
-var Config = amon_common.Config;
+//var Config = amon_common.Config;
 var Constants = amon_common.Constants;
-
-var App = require('./lib/app');
+var createApp = require('./lib/app').createApp;
 
 
 
 //---- globals
 
-var opts = {
-  'debug': Boolean,
-  'file': String,
-  'port': Number,
-  'help': Boolean
-};
-
-var shortOpts = {
-  'd': ['--debug'],
-  'f': ['--file'],
-  'h': ['--help'],
-  'p': ['--port']
-};
+var DEFAULT_CONFIG_PATH = "./cfg/amon-master.json";
 
 
 
@@ -43,44 +31,134 @@ function usage(code, msg) {
   if (msg) {
     console.error('ERROR: ' + msg);
   }
-  console.log('usage: ' + path.basename(process.argv[1]) +
-              ' [-hd] [-f CONFIG-FILE] [-p PORT]');
+  console.log("");
+  printHelp();
   process.exit(code);
+}
+
+function printHelp() {
+  console.log("Usage: node main.js [OPTIONS]");
+  console.log("");
+  console.log("The Amon Master server.");
+  console.log("");
+  console.log("Options:");
+  console.log("  -h, --help    print this help info and exit");
+  console.log("  -d, --debug   More verbose log output.");
+  console.log("  -f, --file CONFIG-FILE-PATH");
+  console.log("                Specify config file to load.");
+}
+
+
+/**
+ * Load config.
+ *
+ * This loads "factory-settings.json" and any given `configPath`.
+ * Note that this is synchronous.
+ *
+ * @param configPath {String} Optional. Path to JSON config file to load.
+ */
+function loadConfig(configPath) {
+  var factorySettingsPath = __dirname + '/factory-settings.json';
+  log.info("Loading default config from '" + factorySettingsPath + "'.");
+  var config = JSON.parse(fs.readFileSync(factorySettingsPath, 'utf-8'));
+  
+  if (configPath) {
+    if (! Path.existsSync(configPath)) {
+      usage("Config file not found: '" + configPath + "' does not exist. Aborting.");
+      return 1;
+    }
+    log.info("Loading additional config from '" + configPath + "'.");
+    var extraConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    for (var name in extraConfig) {
+      config[name] = extraConfig[name];
+    }
+  } else {
+    config.configPath = null;
+  }
+  
+  return config;
 }
 
 
 //---- mainline
 
 function main() {
-  // Default config.
-  var file = './cfg/amon-master.json';
-  var port = 8080;
+  // Parse argv.
+  var longOpts = {
+    'help': Boolean,
+    'debug': Boolean,
+    'file': String
+  };
+  var shortOpts = {
+    'h': ['--help'],
+    'd': ['--debug'],
+    'f': ['--file'],
+  };
+  var opts = nopt(longOpts, shortOpts, process.argv, 2);
+  if (opts.help) {
+    usage(0);
+  }
+  if (opts.debug) {
+    log.level(log.Level.Debug);
+  }
+  if (! opts.file) {
+    opts.file = DEFAULT_CONFIG_PATH;
+  }
 
-  // Parser argv.
-  var parsed = nopt(opts, shortOpts, process.argv, 2);
-  if (parsed.help) usage(0);
-  if (parsed.debug) log.level(log.Level.Debug);
-  if (parsed.port) port = parsed.port;
-  if (parsed.file) file = parsed.file;
+  var config = loadConfig(opts.file);
+  log.debug("config: %o", config);
 
-  var cfg = new Config({
-    file: file
-  });
-  cfg.log = log;
-  cfg.load(function(err) {
+  //XXX
+  //var cfg = new Config({
+  //  file: file
+  //});
+  //cfg.log = log;
+  //cfg.load(function(err) {
+  //  if (err) {
+  //    log.fatal('Unable to read config: ' + err);
+  //    process.exit(1);
+  //  }
+  //  cfg.plugins = require('amon-plugins');
+  //  var app = new App({
+  //    port: port,
+  //    config: cfg.config
+  //  });
+  //  app.listen(function() {
+  //    var addr = app.server.address();
+  //    log.info('amon-master listening on <http://%s:%s>',
+  //      addr.address, addr.port);
+  //  });
+  //});
+  
+  // Create our app and start listening.
+  var theApp;
+  createApp(config, function(err, app) {
     if (err) {
-      log.fatal('Unable to read config: ' + err);
+      log.error("Error creating app: %s", err);
       process.exit(1);
     }
-    cfg.plugins = require('amon-plugins');
-    var app = new App({
-      port: port,
-      config: cfg.config
-    });
+    theApp = app;
     app.listen(function() {
       var addr = app.server.address();
-      log.info('amon-master listening on <http://%s:%s>',
+      log.info('Amon Master listening on <http://%s:%s>.',
         addr.address, addr.port);
+    });
+  });
+
+  // Try to ensure we clean up properly on exit.
+  function closeApp(callback) {
+    if (theApp) {
+      log.info("Closing app.");
+      theApp.close(callback);
+    } else {
+      log.debug("No app to close.");
+      callback();
+    }
+  }
+  process.on("SIGINT", function() {
+    log.debug("SIGINT. Cleaning up.")
+    closeApp(function () {
+      process.exit(1);
     });
   });
 }

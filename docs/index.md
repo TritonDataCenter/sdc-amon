@@ -10,9 +10,9 @@ for SDC monitoring and alarming are part of the Cloud API documentation.)
 
 Amon is a monitoring and alarming system for SmartDataCenter (SDC).
 It has three components: a central master, a tree of relays and agents.
-**Monitors**, **checks** and **contacts** are configured on the master. This
+**Monitors**, **probes** and **contacts** are configured on the master. This
 configuration is pulled to the agents via the relays. Agents run
-configured checks and raise events (which can create or update **alarms**) up
+configured probes and raise events (which can create or update **alarms**) up
 to the master (again via the relays), resulting in notifications to customers
 and operators.
 
@@ -21,7 +21,6 @@ describes the (internal) Relay API and Agent API. Note that the master API
 is designed to facilitate the public portion being easily proxied onto
 the SDC Cloud API
 
-"NYI" means not yet implemented.
 
 
 # Master API summary
@@ -40,9 +39,9 @@ These APIs provide info on recent alarms for this customer. Closed alarms are
 only guaranteed to be persisted for a week. I.e. this is mainly about showing
 open (i.e. unresolved) alarm situations.
 
-    GET  /pub/:customer/alarms                           # NYI
-    GET  /pub/:customer/alarms/:alarm                       # NYI
-    POST /pub/:customer/alarms/:alarm?action=close          # NYI
+    GET  /pub/:customer/alarms
+    GET  /pub/:customer/alarms/:alarm
+    POST /pub/:customer/alarms/:alarm?action=close
 
 
 # Master API: Contacts
@@ -52,8 +51,8 @@ notification to some endpoint.
 
     GET    /pub/:customer/contacts
     POST   /pub/:customer/contacts
-    GET    /pub/:customer/contacts/:contact                # NYI
-    DELETE /pub/:customer/contacts/:contact                # NYI
+    GET    /pub/:customer/contacts/:contact
+    DELETE /pub/:customer/contacts/:contact
 
 Dev Note: For starters we're just notifying via email. The CAPI customer
 record already has an email. Having something separate here is silly. Not
@@ -69,28 +68,25 @@ contact and have the contact itself decide the method (e.g. email or SMS).
 
 # Master API: Monitors
 
-A monitor is a list of checks to run (e.g. check for N occurrences of "ERROR"
+A monitor is a list of probes to run (e.g. check for N occurrences of "ERROR"
 in "/var/foo/bar.log" in a minute) and a list of contacts to notify when
-any of the checks fail (i.e. an alarm).
+any of the probes fail (i.e. an alarm).
 
     GET    /pub/:customer/monitors
     POST   /pub/:customer/monitors
-    GET    /pub/:customer/monitors/:monitor                # NYI
-    DELETE /pub/:customer/monitors/:monitor                # NYI
+    GET    /pub/:customer/monitors/:monitor
+    DELETE /pub/:customer/monitors/:monitor
 
 
-# Master API: Checks
+# Master API: Probes
 
-A monitor has one or more checks. A "check" is a single thing to test
-periodically.
+A monitor has one or more probes. A "probe" is a single thing to check
+or watch for.
 
-    GET    /pub/:customer/monitors/:monitor/checks         # NYI
-    POST   /pub/:customer/monitors/:monitor/checks         # NYI
-    GET    /pub/:customer/monitors/:monitor/checks/:check   # NYI
-    DELETE /pub/:customer/monitors/:monitor/checks/:check   # NYI
-
-Dev Note: "Periodically" isn't right for checks that aren't polling (e.g.
-subscribing to a particular sysevent).
+    GET    /pub/:customer/monitors/:monitor/probes
+    POST   /pub/:customer/monitors/:monitor/probes
+    GET    /pub/:customer/monitors/:monitor/probes/:probe
+    DELETE /pub/:customer/monitors/:monitor/probes/:probe
 
 
 
@@ -131,21 +127,37 @@ Amon Relays (ultimately agents calling the equivalent event
 API endpoint on their relay) send events to the master.
     
 
-## GetAgentConfig (GET /agentconfig)
+## GetProbes (GET /probes)
 
-Amon Relays periodically get control data (config) from the master. From
-there, agents poll their relay for this config data.
-
-
-## GetAgentConfigHead (HEAD /agentconfig)
-
-This "HEAD" form of `GetAgentConfig` allows for relays to check for
-agentconfig changes with less network overhead.
+Amon Relays periodically get agent control data (probes to run on a
+particular agent) from the master. From there, agents poll their relay for
+this control data.
 
 
+## GetProbesHead (HEAD /probes)
+
+This "HEAD" form of `GetProbes` allows for relays to check for agent control
+data changes with less network overhead.
 
 
 
+
+# Master Configuration
+
+Reference docs on configuration vars to amon-master. Default values are in
+"master/factory-settings.json". Custom values are provided in a JSON file
+passed in with the "-f CONFIG-FILE-PATH" command-line option.
+
+Note that given custom values override full top-level keys in the factory
+settings. For example: if providing 'accountCache', one must provide the
+while accountCache object.
+
+||port||Port number on which to listen.||
+||ufds.url||LDAP URL to connect to UFDS.||
+||ufds.rootDn||UFDS root dn.||
+||ufds.password||UFDS root dn password.||
+||accountCache.size||The number of entries to cache.||
+||accountCache.expiry||The number of seconds for which cache entries are valid.||
 
 
 # Relay API

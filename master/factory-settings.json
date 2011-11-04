@@ -1,0 +1,7 @@
+{
+  "port": 8080,
+  "accountCache": {
+    "size": 1000,
+    "expiry": 300
+  }
+}

@@ -108,7 +108,6 @@ Now cause the logscan alarm to match:
 
 
 
-
 # MVP
 
 Roughly said:

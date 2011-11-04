@@ -11,7 +11,7 @@ bin/amon-zwatch
 agent/checks
 agent/*.json
 
-/config.json
+/master/config.json
 
 # built docs (ignore for now)
 docs/media

@@ -5,19 +5,21 @@
  */
 
 var assert = require('assert');
-var restify = require('restify');
-var Messages = require('amon-common').Messages;
+
+var ldap = require('ldapjs');
+
+//var restify = require('restify');
+//var Messages = require('amon-common').Messages;
 
 var utils = require('./utils');
-var Contact = require('./model/contact');
+//var Contact = require('./model/contact');
 
 
 
 //--- globals
 
-var log = restify.log;
-var HttpCodes = restify.HttpCodes;
-var RestCodes = restify.RestCodes;
+//var HttpCodes = restify.HttpCodes;
+//var RestCodes = restify.RestCodes;
 
 
 
@@ -25,30 +27,57 @@ var RestCodes = restify.RestCodes;
 
 var exports = module.exports;
 
-// GET /public/:customer/contacts
-exports.list = function(req, res, next) {
-  log.debug('contacts.list entered: params=%o, uriParams=%o',
+// GET /pub/:customer/contacts
+exports.list = function list(req, res, next) {
+  req._log.debug('contacts.list entered: params=%o, uriParams=%o',
             req.params, req.uriParams);
 
-  var contact = new Contact({
-    riak: req._riak
-  });
-  contact.findByCustomer(req.uriParams.customer, function(err, contacts) {
+  req._app.accountFromLogin(req.uriParams.customer, function (err, account) {
     if (err) {
-      log.warn('Error finding contacts: ' + err);
+      req._log.debug("Error getting account for login '%s': %s",
+        req.uriParams.customer, err);
       res.send(500);
-    } else {
-      log.debug('contacts.list returning %d, obj=%o', 200, contacts);
-      res.send(200, contacts);
+      return next();
     }
-    return next();
+    
+    var opts = {
+      filter: '(objectclass=amoncontact)',
+      scope: 'sub'
+    };
+    req._ufds.search(account.dn, opts, function(err, result) {
+      var contacts = [];
+      result.on('searchEntry', function(entry) {
+        contacts.push(entry.object);
+      });
+  
+      result.on('error', function(err) {
+        req._log.error('Error searching UFDS: %s (opts: %s)', err,
+          JSON.stringify(opts));
+        res.send(500);
+        return next();
+      });
+  
+      result.on('end', function(result) {
+        if (result.status !== 0) {
+          req._log.error('Non-zero status from UFDS search: %s (opts: %s)',
+            result, JSON.stringify(opts));
+          res.send(500);
+          return next();
+        }
+        req._log.debug('contacts: %o', contacts);
+        //XXX TODO: massage responses for public API.
+        res.send(200, contacts);
+        return next();
+      });
+    });
   });
+
 };
 
 
 // PUT /public/:customer/contacts/:name
 exports.put = function(req, res, next) {
-  log.debug('contacts.put entered: params=%o, uriParams=%o',
+  req._log.debug('contacts.put entered: params=%o, uriParams=%o',
             req.params, req.uriParams);
 
   var medium = req.params.medium;
