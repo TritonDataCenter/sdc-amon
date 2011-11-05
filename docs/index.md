@@ -26,10 +26,10 @@ the SDC Cloud API
 # Master API summary
 
 Public endpoints are under a "/pub" prefix to facilitate proxying to Cloud
-API. For example, the set of open alarms for a customer is:
+API. For example, the set of open alarms for an account is:
 
-    GET  /pub/:customer/alarms          # Amon Master API
-    GET  /:login/alarms                 # Cloud API
+    GET  /pub/:login/alarms          # Amon Master API
+    GET  /:login/alarms              # Cloud API
 
 
 # Master API: Alarms
@@ -39,9 +39,9 @@ These APIs provide info on recent alarms for this customer. Closed alarms are
 only guaranteed to be persisted for a week. I.e. this is mainly about showing
 open (i.e. unresolved) alarm situations.
 
-    GET  /pub/:customer/alarms
-    GET  /pub/:customer/alarms/:alarm
-    POST /pub/:customer/alarms/:alarm?action=close
+    GET  /pub/:login/alarms
+    GET  /pub/:login/alarms/:alarm
+    POST /pub/:login/alarms/:alarm?action=close
 
 
 # Master API: Contacts
@@ -49,10 +49,10 @@ open (i.e. unresolved) alarm situations.
 A "contact" contains the information required (who and what method) to send a
 notification to some endpoint.
 
-    GET    /pub/:customer/contacts
-    POST   /pub/:customer/contacts
-    GET    /pub/:customer/contacts/:contact
-    DELETE /pub/:customer/contacts/:contact
+    GET    /pub/:login/contacts
+    POST   /pub/:login/contacts
+    GET    /pub/:login/contacts/:contact
+    DELETE /pub/:login/contacts/:contact
 
 Dev Note: For starters we're just notifying via email. The CAPI customer
 record already has an email. Having something separate here is silly. Not
@@ -66,16 +66,71 @@ user/group/contact handling in CAPI, we might want this API of sending to a
 contact and have the contact itself decide the method (e.g. email or SMS).
 
 
+## ListContacts (GET /pub/:login/contacts)
+
+List all contacts for this account.
+
+### Inputs
+
+* None
+
+### Returns
+
+An array of contact objects. Keys are:
+
+||name||String||Name for this contact||
+||medium||String||The contact medium, e.g. "sms", "email"||
+||data||String||Medium-specific data providing details on how to contact via this medium||
+
+### Errors
+
+TODO
+
+### Example
+
+    $ sdc-amon /pub/hamish/contacts
+    HTTP/1.1 200 OK
+    Connection: close
+    Date: Sat, 05 Nov 2011 03:40:58 GMT
+    Server: Joyent
+    X-Api-Version: 1.0.0
+    X-Request-Id: 0a240ed4-c8b2-402c-943f-2f8a2d2d2236
+    X-Response-Time: 500
+    Content-Length: 51
+    Content-MD5: H6oXhOqJorCMKfug2HoU+A==
+    Content-Type: application/json
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Methods: OPTIONS, GET
+    Access-Control-Allow-Headers: Accept, Content-Type, Content-Length, Date, X-Api-Version
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    
+    [
+      {
+        "name": "cell",
+        "medium": "sms",
+        "data": "1234567890"
+      }
+    ]
+
+
+## GetContact (GET /pub/:login/contacts/:name)
+
+TODO
+
+
+
+
+
 # Master API: Monitors
 
 A monitor is a list of probes to run (e.g. check for N occurrences of "ERROR"
 in "/var/foo/bar.log" in a minute) and a list of contacts to notify when
 any of the probes fail (i.e. an alarm).
 
-    GET    /pub/:customer/monitors
-    POST   /pub/:customer/monitors
-    GET    /pub/:customer/monitors/:monitor
-    DELETE /pub/:customer/monitors/:monitor
+    GET    /pub/:login/monitors
+    POST   /pub/:login/monitors
+    GET    /pub/:login/monitors/:monitor
+    DELETE /pub/:login/monitors/:monitor
 
 
 # Master API: Probes
@@ -83,10 +138,10 @@ any of the probes fail (i.e. an alarm).
 A monitor has one or more probes. A "probe" is a single thing to check
 or watch for.
 
-    GET    /pub/:customer/monitors/:monitor/probes
-    POST   /pub/:customer/monitors/:monitor/probes
-    GET    /pub/:customer/monitors/:monitor/probes/:probe
-    DELETE /pub/:customer/monitors/:monitor/probes/:probe
+    GET    /pub/:login/monitors/:monitor/probes
+    POST   /pub/:login/monitors/:monitor/probes
+    GET    /pub/:login/monitors/:monitor/probes/:probe
+    DELETE /pub/:login/monitors/:monitor/probes/:probe
 
 
 

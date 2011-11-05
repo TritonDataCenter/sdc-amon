@@ -130,31 +130,31 @@ function App(config, ufds) {
   //            events.create,
   //            self.after);
 
-  //server.get('/pub/:customer/checks',
+  //server.get('/pub/:login/checks',
   //           self.before, checks.list, self.after);
-  //server.put('/pub/:customer/checks/:name',
+  //server.put('/pub/:login/checks/:name',
   //           self.before, checks.put, self.after);
-  //server.get('/pub/:customer/checks/:name',
+  //server.get('/pub/:login/checks/:name',
   //           self.before, checks.get, self.after);
-  //server.del('/pub/:customer/checks/:name',
+  //server.del('/pub/:login/checks/:name',
   //           self.before, checks.del, self.after);
 
-  server.get('/pub/:customer/contacts',
+  server.get('/pub/:login/contacts',
              self.before, contacts.list, self.after);
-  server.put('/pub/:customer/contacts/:name',
+  server.put('/pub/:login/contacts/:name',
              self.before, contacts.put, self.after);
-  server.get('/pub/:customer/contacts/:name',
+  server.get('/pub/:login/contacts/:name',
              self.before, contacts.get, self.after);
-  server.del('/pub/:customer/contacts/:name',
+  server.del('/pub/:login/contacts/:name',
              self.before, contacts.del, self.after);
 
-  //server.get('/pub/:customer/monitors',
+  //server.get('/pub/:login/monitors',
   //           self.before, monitors.list, self.after);
-  //server.put('/pub/:customer/monitors/:name',
+  //server.put('/pub/:login/monitors/:name',
   //           self.before, monitors.put, self.after);
-  //server.get('/pub/:customer/monitors/:name',
+  //server.get('/pub/:login/monitors/:name',
   //           self.before, monitors.get, self.after);
-  //server.del('/pub/:customer/monitors/:name',
+  //server.del('/pub/:login/monitors/:name',
   //           self.before, monitors.del, self.after);
 };
 
@@ -200,10 +200,9 @@ App.prototype.accountFromLogin = function(login, callback) {
     return callback(null, cached.account);
   }
 
-
   var self = this;
   function cacheAndCallback(err, account) {
-    self.accountCache.put({err: err, account: account});
+    self.accountCache.put(login, {err: err, account: account});
     return callback(err, account);
   }
 

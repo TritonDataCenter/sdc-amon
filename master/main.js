@@ -86,7 +86,7 @@ function main() {
   // Parse argv.
   var longOpts = {
     'help': Boolean,
-    'debug': Boolean,
+    'debug': [Boolean, Array],
     'file': String
   };
   var shortOpts = {
@@ -99,11 +99,12 @@ function main() {
     usage(0);
   }
   if (opts.debug) {
-    log.level(log.Level.Debug);
+    log.level(opts.debug.length > 1 ? log.Level.Trace : log.Level.Debug);
   }
   if (! opts.file) {
     opts.file = DEFAULT_CONFIG_PATH;
   }
+  log.trace("opts: %o", opts);
 
   var config = loadConfig(opts.file);
   log.debug("config: %o", config);

@@ -34,31 +34,31 @@ function Cache(size, expiry, log, name) {
   this.items = LRU(this.size);
 }
 
-Cache.prototype.get = function (key) {
+Cache.prototype.get = function get(key) {
   assert.ok(key);
   var cached = this.items.get(key);
   if (cached) {
     if (((new Date()).getTime() - cached.ctime) <= this.expiry) {
       if (this.log) {
-        this.log.trace("%s cache hit: key='%s': %o", this.name, key, cached);
+        this.log.trace("%scache hit: key='%s': %o", this.name, key, cached);
       }
-      return cached;
+      return cached.value;
     }
   }
   if (this.log) {
-    this.log.trace("%s cache miss: key='%s'", this.name, key);
+    this.log.trace("%scache miss: key='%s'", this.name, key);
   }
   return null;
 }
 
-Cache.prototype.put = function (key, value) {
+Cache.prototype.put = function put(key, value) {
   assert.ok(key);
   var item = {
     value: value,
     ctime: new Date().getTime()
   };
   if (this.log) {
-    this.log.trace("%s cache put: key='%s': %o", key, item);
+    this.log.trace("%scache put: key='%s': %o", this.name, key, item);
   }
   this.items.set(key, item);
   return item;
