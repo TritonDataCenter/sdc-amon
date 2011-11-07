@@ -30,6 +30,18 @@ var log = restify.log;
 
 
 
+//---- internal support stuff
+
+function ping(req, res, next) {
+  var data = {
+    ping: "pong",
+  };
+  res.send(200, data);
+  return next();
+}
+
+
+
 //---- exports
 
 /**
@@ -97,65 +109,74 @@ function App(config, ufds) {
   });
 
   var self = this;
-  var _setup = function(req, res, next) {
+  function setup(req, res, next) {
     req._app = self;
     req._ufds = self.ufds;
     req._log = log;
     //req._notificationPlugins = self.notificationPlugins;
-    return next();
+
+    // Handle ':login' in route: add `req._account` or respond with 404 or
+    // 500.
+    var login = req.uriParams.login;
+    if (login) {
+      self.accountFromLogin(login, function (err, account) {
+        if (err) {
+          req._log.debug("Error getting account for login '%s': %s",
+            login, err);
+          res.send(500);
+          return next();
+        } else if (! account) {
+          req._log.debug("No getting account for login '%s': %s",
+            login, err);
+          //XXX Structured error response.
+          res.send(404, "No such login, '"+login+"'.");
+        } else {
+          req._account = account;
+          return next();
+        }
+      });
+    } else {
+      return next();
+    }
   };
 
-  this.before = [
-    _setup
-  ];
-  this.after = [
-    amonCommon.w3clog
-  ];
+  var before = [setup];
+  var after = [amonCommon.w3clog];
 
-  server.get('/ping', self.before, function(req, res, next) {
-    var data = {
-      ping: "pong",
-    };
-    res.send(200, data);
-    return next();
-  }, self.after);
+  server.get('/ping', before, ping, after);
 
-  //server.head('/config', self.before, config.head, self.after);
-  //server.get('/config', self.before, config.get, self.after);
+  server.get('/pub/:login/contacts', before, contacts.list, after);
+  server.put('/pub/:login/contacts/:name', before, contacts.put, after);
+  server.get('/pub/:login/contacts/:name', before, contacts.get, after);
+  server.del('/pub/:login/contacts/:name', before, contacts.del, after);
+
+  //server.head('/config', before, config.head, after);
+  //server.get('/config', before, config.get, after);
   //
-  //server.get('/events', self.before, events.list, self.after);
+  //server.get('/events', before, events.list, after);
   //server.post('/events',
-  //            self.before,
+  //            before,
   //            amonCommon.events.event,
   //            events.create,
-  //            self.after);
+  //            after);
 
   //server.get('/pub/:login/checks',
-  //           self.before, checks.list, self.after);
+  //           before, checks.list, after);
   //server.put('/pub/:login/checks/:name',
-  //           self.before, checks.put, self.after);
+  //           before, checks.put, after);
   //server.get('/pub/:login/checks/:name',
-  //           self.before, checks.get, self.after);
+  //           before, checks.get, after);
   //server.del('/pub/:login/checks/:name',
-  //           self.before, checks.del, self.after);
-
-  server.get('/pub/:login/contacts',
-             self.before, contacts.list, self.after);
-  server.put('/pub/:login/contacts/:name',
-             self.before, contacts.put, self.after);
-  server.get('/pub/:login/contacts/:name',
-             self.before, contacts.get, self.after);
-  server.del('/pub/:login/contacts/:name',
-             self.before, contacts.del, self.after);
+  //           before, checks.del, after);
 
   //server.get('/pub/:login/monitors',
-  //           self.before, monitors.list, self.after);
+  //           before, monitors.list, after);
   //server.put('/pub/:login/monitors/:name',
-  //           self.before, monitors.put, self.after);
+  //           before, monitors.put, after);
   //server.get('/pub/:login/monitors/:name',
-  //           self.before, monitors.get, self.after);
+  //           before, monitors.get, after);
   //server.del('/pub/:login/monitors/:name',
-  //           self.before, monitors.del, self.after);
+  //           before, monitors.del, after);
 };
 
 
