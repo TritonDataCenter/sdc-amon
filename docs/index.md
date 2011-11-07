@@ -117,6 +117,14 @@ TODO
 
 TODO
 
+## CreateContact (PUT /pub/:login/contacts/:name)
+
+TODO
+
+## DeleteContact (DELETE /pub/:login/contacts/:name)
+
+TODO
+
 
 
 
