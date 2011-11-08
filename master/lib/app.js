@@ -16,11 +16,11 @@ var Constants = amonCommon.Constants;
 
 
 // Endpoint controller modules.
+var contacts = require('./contacts');
+var monitors = require('./monitors');
 //var checks = require('./checks');
 //var events = require('./events');
 //var config = require('./config');
-//var monitors = require('./monitors');
-var contacts = require('./contacts');
 
 
 
@@ -145,10 +145,15 @@ function App(config, ufds) {
 
   server.get('/ping', before, ping, after);
 
-  server.get('/pub/:login/contacts', before, contacts.list, after);
-  server.put('/pub/:login/contacts/:name', before, contacts.put, after);
-  server.get('/pub/:login/contacts/:name', before, contacts.get, after);
-  server.del('/pub/:login/contacts/:name', before, contacts.del, after);
+  server.get('/pub/:login/contacts', before, contacts.listContacts, after);
+  server.put('/pub/:login/contacts/:name', before, contacts.createContact, after);
+  server.get('/pub/:login/contacts/:name', before, contacts.getContact, after);
+  server.del('/pub/:login/contacts/:name', before, contacts.deleteContact, after);
+  
+  server.get('/pub/:login/monitors', before, monitors.listMonitors, after);
+  server.put('/pub/:login/monitors/:name', before, monitors.createMonitor, after);
+  server.get('/pub/:login/monitors/:name', before, monitors.getMonitor, after);
+  server.del('/pub/:login/monitors/:name', before, monitors.deleteMonitor, after);
 
   //server.head('/config', before, config.head, after);
   //server.get('/config', before, config.get, after);

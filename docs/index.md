@@ -78,7 +78,7 @@ List all contacts for this account.
 
 An array of contact objects. Keys are:
 
-||name||String||Name for this contact||
+||name||String||Name of this contact. This is the unique identifier for this contact. It must be 1-32 chars, begin with alpha character and include only alphanumeric '_', '.' and '-' ||
 ||medium||String||The contact medium, e.g. "sms", "email"||
 ||data||String||Medium-specific data providing details on how to contact via this medium||
 
@@ -131,14 +131,71 @@ TODO
 
 # Master API: Monitors
 
-A monitor is a list of probes to run (e.g. check for N occurrences of "ERROR"
-in "/var/foo/bar.log" in a minute) and a list of contacts to notify when
-any of the probes fail (i.e. an alarm).
+A monitor is the primary object for defining what and how to monitor and
+who should be notified on alarms. A monitor holds a reference to
+contacts to notify. A set of probes to run (e.g. check for N occurrences of
+"ERROR" in "/var/foo/bar.log" in a minute) are added to a monitor.
 
-    GET    /pub/:login/monitors
-    POST   /pub/:login/monitors
-    GET    /pub/:login/monitors/:monitor
-    DELETE /pub/:login/monitors/:monitor
+## ListMonitors (GET /pub/:login/monitors)
+
+List all monitors for this account.
+
+### Inputs
+
+* None
+
+### Returns
+
+An array of monitor objects. Keys are:
+
+||name||String||Name of this monitor. This is the unique identifier for this monitor. It must be 1-32 chars, begin with alpha character and include only alphanumeric '_', '.' and '-' ||
+||contacts||Array||Set of contact names that are to be notified when this monitor alarms.||
+
+### Errors
+
+TODO
+
+### Example
+
+    $ sdc-amon /pub/hamish/monitors
+    HTTP/1.1 200 OK
+    Connection: close
+    Date: Tue, 08 Nov 2011 00:38:54 GMT
+    Server: Joyent
+    X-Api-Version: 1.0.0
+    X-Request-Id: addcc1ab-cdd2-4961-b4f8-b44a7ab2a31a
+    X-Response-Time: 491
+    Content-Length: 42
+    Content-MD5: 3/3Q0/Mz/37AHee5JHHJ1Q==
+    Content-Type: application/json
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Methods: OPTIONS, GET
+    Access-Control-Allow-Headers: Accept, Content-Type, Content-Length, Date, X-Api-Version
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    
+    [
+      {
+        "name": "mysql",
+        "contacts": [
+          "cell"
+        ]
+      }
+    ]
+
+
+## GetMonitor (GET /pub/:login/monitors/:name)
+
+TODO
+
+## CreateMonitor (PUT /pub/:login/monitors/:name)
+
+TODO
+
+## DeleteMonitor (DELETE /pub/:login/monitors/:name)
+
+TODO
+
+
 
 
 # Master API: Probes

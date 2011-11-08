@@ -4,108 +4,85 @@
  * Amon Master controller for '/pub/:login/contacts/...' endpoints.
  */
 
+var events = require('events');
+
 var ldap = require('ldapjs');
-var utils = require('./utils');
+var restify = require('restify');
+var sprintf = require('sprintf').sprintf;
+
+var ufdsmodel = require('./ufdsmodel');
 
 
 
-//--- globals
-
-// Note: Should be in sync with "ufds/schema/amoncontact.js".
-var NAME_RE = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,31}$/;
-
-
-
-//---- Contact model/class
-// A wrapper around raw DB data for an Amon contact to provide a clean
-// versioned and managed API.
+//---- Contact model
+// Interface is as required by "ufdsmodel.js".
 
 /**
  * Create a Contact.
  *
- * @param raw {Object} The raw database data for this contact.
+ * @param raw {Object} Either the raw database data *or* a restify HTTP
+ *    request object. If the latter this will validate the request data.
+ * @throws {restify Error} if the given data is invalid.
  */
 function Contact(raw) {
-  this._raw = raw;
+  // We use `events.EventEmitter` because `http.ServerRequest` isn't exported.
+  if (raw instanceof events.EventEmitter) {
+    this.raw = {
+      amoncontactname: raw.uriParams.name,
+      medium: raw.params.medium,
+      data: raw.params.data,
+      objectclass: 'amoncontact'
+    };
+  } else {
+    this.raw = raw;
+  }
+  this.raw = this.validate(this.raw);
 
   var self = this;
   this.__defineGetter__('name', function() {
-    return self._raw.amoncontactname;
+    return self.raw.amoncontactname;
   });
   this.__defineGetter__('medium', function() {
-    return self._raw.medium;
+    return self.raw.medium;
   });
   this.__defineGetter__('data', function() {
-    return self._raw.data;
+    return self.raw.data;
   });
 }
 
-Contact.prototype.asJson = function serialize() {
-  return {
-    name: this.name,
-    medium: this.medium,
-    data: this.data
-  };
-}
+Contact._modelName = "contact";
+Contact._objectclass = "amoncontact";
+// Note: Should be in sync with "ufds/schema/amoncontact.js".
+Contact._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,31}$/;
 
-
-
-//---- controllers
-
-var exports = module.exports;
-
-// GET /pub/:login/contacts
-exports.list = function list(req, res, next) {
-  req._log.debug('contacts.list entered: params=%o, uriParams=%o',
-            req.params, req.uriParams);
-
-  var opts = {
-    filter: '(objectclass=amoncontact)',
-    scope: 'sub'
-  };
-  req._ufds.search(req._account.dn, opts, function(err, result) {
-    var contacts = [];
-    result.on('searchEntry', function(entry) {
-      contacts.push((new Contact(entry.object)).asJson());
-    });
-
-    result.on('error', function(err) {
-      req._log.error('Error searching UFDS: %s (opts: %s)', err,
-        JSON.stringify(opts));
-      res.send(500);
-      return next();
-    });
-
-    result.on('end', function(result) {
-      if (result.status !== 0) {
-        req._log.error('Non-zero status from UFDS search: %s (opts: %s)',
-          result, JSON.stringify(opts));
-        res.send(500);
-        return next();
-      }
-      req._log.debug('contacts: %o', contacts);
-      res.send(200, contacts);
-      return next();
-    });
+/**
+ * Validate the raw data and optionally massage some fields.
+ *
+ * @param raw {Object} The raw data for this object.
+ * @returns {Object} The raw data for this object, possibly massaged to
+ *    normalize field values.
+ * @throws {restify Error} if the raw data is invalid. This is an error
+ *    object that can be used to respond with `response.sendError(e)`
+ *    for a node-restify response.
+ */
+Contact.prototype.validate = function validate(raw) {
+  var requiredFields = {
+    // <raw field name>: <exported name>
+    "amoncontactname": "name",
+    "medium": "medium",
+    "data": "data",
+  }
+  Object.keys(requiredFields).forEach(function (field) {
+    if (!raw[field]) {
+      throw restify.newError({
+        httpCode: restify.HttpCodes.Conflict,
+        restCode: restify.RestCodes.MissingParameter,
+        message: sprintf("'%s' is a required parameter", requiredFields[field])
+      })
+    }
   });
-};
 
-
-// PUT /pub/:login/contacts/:name
-exports.put = function(req, res, next) {
-  req._log.debug('contacts.put entered: params=%o, uriParams=%o',
-            req.params, req.uriParams);
-
-  var medium = req.params.medium;
-  var data = req.params.data;
-  if (!medium) {
-    utils.sendMissingArgument(res, 'medium');
-    return next();
-  }
-  if (!data) {
-    utils.sendMissingArgument(res, 'data');
-    return next();
-  }
+  this.validateName(raw.amoncontactname);
 
   //XXX
   //var plugin = req._notificationPlugins[medium];
@@ -119,134 +96,49 @@ exports.put = function(req, res, next) {
   //  return next();
   //}
 
-  var name = req.uriParams.name;
-  if (! NAME_RE.test(name)) {
-    req._log.debug("Invalid contact name: '%s'", name);
-    res.send(400, "invalid contact name: '"+name+"'");
-    return next();
-  }
+  return raw;
+}
 
-  var entry = {
-    amoncontactname: name,
-    medium: medium,
-    data: data,
-    objectclass: 'amoncontact'
+/**
+ * Validate the given name.
+ *
+ * @param name {String} The object name.
+ * @throws {restify Error} if the name is invalid.
+ */
+Contact.prototype.validateName = function validateName(name) {
+  if (! Contact._nameRegex.test(name)) {
+    throw restify.newError({
+      httpCode: restify.HttpCodes.Conflict,
+      restCode: restify.RestCodes.InvalidArgument,
+      message: sprintf("%s name is invalid: '%s'", Contact._modelName, name)
+    });
+  }
+}
+
+Contact.prototype.serialize = function serialize() {
+  return {
+    name: this.name,
+    medium: this.medium,
+    data: this.data
   };
-  var dn = 'amoncontactname=' + name + ', ' + req._account.dn;
-  req._ufds.add(dn, entry, function(err) {
-    if (err) {
-      if (err instanceof ldap.EntryAlreadyExistsError) {
-        res.send(500, "XXX DN already exists. Can't nicely update "
-          + "(with LDAP modify/replace) until "
-          + "<https://github.com/mcavage/node-ldapjs/issues/31> is fixed.");
-        return next();
-        //XXX Also not sure if there is another bug in node-ldapjs if
-        //    "objectclass" is specified in here. Guessing it is same bug.
-        //var change = new ldap.Change({
-        //  operation: 'replace',
-        //  modification: entry
-        //});
-        //client.modify(dn, change, function(err) {
-        //  if (err) console.warn("client.modify err: %s", err)
-        //  client.unbind(function(err) {});
-        //});
-      } else {
-        req._log.warn('XXX err: %s, %s, %o', err.code, err.name, err);
-        req._log.warn('Error saving: %s', err);
-        res.send(500);
-        return next();
-      }
-    } else {
-      var data = (new Contact(entry)).asJson();
-      req._log.debug('contact.put returning %d, object=%o', 200, data);
-      res.send(200, data);
-      return next();
-    }
-  });
-};
+}
 
 
-// GET /pub/:login/contacts/:name
-exports.get = function(req, res, next) {
-  req._log.debug('contacts.get entered: params=%o, uriParams=%o',
-    req.params, req.uriParams);
 
-  var name = req.uriParams.name;
-  if (! NAME_RE.test(name)) {
-    req._log.debug("Invalid contact name: '%s'", name);
-    res.send(400, "invalid contact name: '"+name+"'");
-    return next();
+//---- controllers
+
+module.exports = {
+  listContacts: function listContacts(req, res, next) {
+    return ufdsmodel.ufdsModelList(req, res, next, Contact);
+  },
+  createContact: function createContact(req, res, next) {
+    return ufdsmodel.ufdsModelCreate(req, res, next, Contact);
+  },
+  getContact: function getContact(req, res, next) {
+    return ufdsmodel.ufdsModelGet(req, res, next, Contact);
+  },
+  deleteContact: function deleteContact(req, res, next) {
+    return ufdsmodel.ufdsModelDelete(req, res, next, Contact);
   }
-
-  var opts = {
-    //TODO: is this better? '(&(amoncontactname=$name)(objectclass=amoncontact))'
-    filter: '(amoncontactname=' + name + ')',
-    scope: 'sub'
-  };
-  req._ufds.search(req._account.dn, opts, function(err, result) {
-    var contacts = [];
-    result.on('searchEntry', function(entry) {
-      contacts.push((new Contact(entry.object)).asJson());
-    });
-
-    result.on('error', function(err) {
-      req._log.error('Error searching UFDS: %s (opts: %s)', err,
-        JSON.stringify(opts));
-      res.send(500);
-      return next();
-    });
-
-    result.on('end', function(result) {
-      if (result.status !== 0) {
-        req._log.error('Non-zero status from UFDS search: %s (opts: %s)',
-          result, JSON.stringify(opts));
-        res.send(500);
-        return next();
-      }
-      req._log.debug('contacts: %o', contacts);
-      switch (contacts.length) {
-      case 0:
-        res.send(404);
-        break;
-      case 1:
-        res.send(200, contacts[0]);
-        break;
-      default:
-        req._log.debug("unexpected number of contacts (%d): %s",
-          contacts.length, JSON.stringify(contacts));
-        res.send(500);
-      }
-      return next();
-    });
-  });
 };
 
-
-// DELETE /pub/:login/contacts/:name
-exports.del = function (req, res, next) {
-  req._log.debug('contacts.del entered: params=%o, uriParams=%o',
-    req.params, req.uriParams);
-
-  var name = req.uriParams.name;
-  if (! NAME_RE.test(name)) {
-    req._log.debug("Invalid contact name: '%s'", name);
-    res.send(400, "invalid contact name: '"+name+"'");
-    return next();
-  }
-
-  var dn = 'amoncontactname=' + name + ', ' + req._account.dn;
-  req._ufds.del(dn, function(err) {
-    if (err) {
-      if (err instanceof ldap.NoSuchObjectError) {
-        req._log.debug('contacts.del returning %d', 404);
-        res.send(404);
-      } else {
-        req._log.error("Error deleting '%s' from UFDS: %s", dn, err);
-        res.send(500);
-      }
-    } else {
-      req._log.debug('contacts.del returning %d', 204);
-      res.send(204);
-    }
-  });
-};

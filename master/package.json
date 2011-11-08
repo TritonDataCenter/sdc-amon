@@ -10,6 +10,7 @@
     "restify": "0.3.15",
     "retry": "0.4.0",
     "httpu": "0.0.1",
+    "sprintf": "0.1.1",
     "ldapjs": "0.2"
   },
   "devDependencies": {
