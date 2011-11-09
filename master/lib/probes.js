@@ -99,7 +99,6 @@ Probe.prototype.validate = function validate(raw) {
     "urn": "urn",
     "data": "data"
   }
-  console.warn("XXX raw:", raw)
   Object.keys(requiredFields).forEach(function (field) {
     if (!raw[field]) {
       //TODO: This error response is confusing for, e.g., a

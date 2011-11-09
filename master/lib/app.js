@@ -40,6 +40,19 @@ function ping(req, res, next) {
   return next();
 }
 
+function getAccount(req, res, next) {
+  account = req._account;
+  var data = {
+    login: account.login,
+    email: account.email,
+    id: account.uuid,
+    firstName: account.cn,
+    lastName: account.sn
+  };
+  res.send(200, data);
+  return next();
+}
+
 
 
 //---- exports
@@ -145,6 +158,8 @@ function App(config, ufds) {
 
   server.get('/ping', before, ping, after);
 
+  server.get('/pub/:login', before, getAccount, after);
+  
   server.get('/pub/:login/contacts', before, contacts.listContacts, after);
   server.put('/pub/:login/contacts/:contact', before, contacts.createContact, after);
   server.get('/pub/:login/contacts/:contact', before, contacts.getContact, after);

@@ -251,6 +251,31 @@ A simple ping to check to health of the Amon server.
 None
 
 
+## GetAccount (GET /pub/:login)
+
+Get account information for the given login. This is not an essential part of
+the API, **should NOT be exposed publicly (obviously)**, and can be removed
+if not useful.
+
+### Inputs
+
+None
+
+### Example
+
+    $ sdc-amon /pub/hamish
+    HTTP/1.1 200 OK
+    ...
+    
+    {
+      "login": "hamish",
+      "email": "trent.mick+hamish@joyent.com",
+      "id": "7b23ae63-37c9-420e-bb88-8d4bf5e30455",
+      "firstName": "Hamish",
+      "lastName": "MacHamish"
+    }
+
+
 ## AddEvents (POST /events)
 
 Amon Relays (ultimately agents calling the equivalent event
