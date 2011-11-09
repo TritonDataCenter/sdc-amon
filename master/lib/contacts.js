@@ -25,10 +25,11 @@ var ufdsmodel = require('./ufdsmodel');
  * @throws {restify Error} if the given data is invalid.
  */
 function Contact(raw) {
-  // We use `events.EventEmitter` because `http.ServerRequest` isn't exported.
   if (raw instanceof events.EventEmitter) {
+    // This is a restify Request object. We use `events.EventEmitter` because
+    // `http.ServerRequest` isn't exported.
     this.raw = {
-      amoncontactname: raw.uriParams.name,
+      amoncontactname: raw.uriParams.contact,
       medium: raw.params.medium,
       data: raw.params.data,
       objectclass: 'amoncontact'
@@ -54,6 +55,19 @@ Contact._modelName = "contact";
 Contact._objectclass = "amoncontact";
 // Note: Should be in sync with "ufds/schema/amoncontact.js".
 Contact._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,31}$/;
+
+Contact.dnFromRequest = function (req) {
+  //XXX validate :contact
+  return sprintf("amoncontactname=%s, %s",
+    req.uriParams.contact, req._account.dn);
+};
+Contact.parentDnFromRequest = function (req) {
+  return req._account.dn;
+};
+Contact.idFromRequest = function (req) {
+  //XXX validate :contact
+  return req.uriParams.contact;
+};
 
 /**
  * Validate the raw data and optionally massage some fields.

@@ -113,15 +113,15 @@ TODO
     ]
 
 
-## GetContact (GET /pub/:login/contacts/:name)
+## GetContact (GET /pub/:login/contacts/:contact)
 
 TODO
 
-## CreateContact (PUT /pub/:login/contacts/:name)
+## CreateContact (PUT /pub/:login/contacts/:contact)
 
 TODO
 
-## DeleteContact (DELETE /pub/:login/contacts/:name)
+## DeleteContact (DELETE /pub/:login/contacts/:contact)
 
 TODO
 
@@ -183,18 +183,17 @@ TODO
     ]
 
 
-## GetMonitor (GET /pub/:login/monitors/:name)
+## GetMonitor (GET /pub/:login/monitors/:monitor)
 
 TODO
 
-## CreateMonitor (PUT /pub/:login/monitors/:name)
+## CreateMonitor (PUT /pub/:login/monitors/:monitor)
 
 TODO
 
-## DeleteMonitor (DELETE /pub/:login/monitors/:name)
+## DeleteMonitor (DELETE /pub/:login/monitors/:monitor)
 
 TODO
-
 
 
 
@@ -203,10 +202,21 @@ TODO
 A monitor has one or more probes. A "probe" is a single thing to check
 or watch for.
 
-    GET    /pub/:login/monitors/:monitor/probes
-    POST   /pub/:login/monitors/:monitor/probes
-    GET    /pub/:login/monitors/:monitor/probes/:probe
-    DELETE /pub/:login/monitors/:monitor/probes/:probe
+## ListProbes (GET /pub/:login/monitors/:monitor/probes)
+
+TODO
+
+## CreateProbe (PUT /pub/:login/monitors/:monitor/probes/:probe)
+
+TODO
+
+## GetProbe (GET /pub/:login/monitors/:monitor/probes/:probe)
+
+TODO
+
+## DeleteProbe (DELETE /pub/:login/monitors/:monitor/probes/:probe)
+
+TODO
 
 
 

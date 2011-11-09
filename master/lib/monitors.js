@@ -25,10 +25,11 @@ var ufdsmodel = require('./ufdsmodel');
  * @throws {restify Error} if the given data is invalid.
  */
 function Monitor(raw) {
-  // We use `events.EventEmitter` because `http.ServerRequest` isn't exported.
   if (raw instanceof events.EventEmitter) {
+    // This is a restify Request object. We use `events.EventEmitter` because
+    // `http.ServerRequest` isn't exported.    
     this.raw = {
-      amonmonitorname: raw.uriParams.name,
+      amonmonitorname: raw.uriParams.monitor,
       contact: raw.params.contacts,
       objectclass: 'amonmonitor'
     };
@@ -50,6 +51,19 @@ Monitor._modelName = "monitor";
 Monitor._objectclass = "amonmonitor";
 // Note: Should be in sync with "ufds/schema/amonmonitor.js".
 Monitor._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,31}$/;
+
+Monitor.dnFromRequest = function (req) {
+  //XXX validate :monitor
+  return sprintf("amonmonitorname=%s, %s",
+    req.uriParams.monitor, req._account.dn);
+};
+Monitor.parentDnFromRequest = function (req) {
+  return req._account.dn;
+};
+Monitor.idFromRequest = function (req) {
+  //XXX validate :monitor
+  return req.uriParams.monitor;
+};
 
 /**
  * Validate the raw data and optionally massage some fields.

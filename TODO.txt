@@ -10,6 +10,11 @@
   - How is this exposed to end user.
 - update the schedule
 
+- tweaks:
+  - s/:login/:customer and allow uuid
+  - consider s/name/id for fields... to avoid expectation that a "name" can
+    have capitalization and spaces. Also "id" says "this is a unique identifier
+    for this thing"
 - tack on amon records to ufds/tools/genldif
 
 

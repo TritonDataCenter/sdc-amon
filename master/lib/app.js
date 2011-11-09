@@ -18,7 +18,7 @@ var Constants = amonCommon.Constants;
 // Endpoint controller modules.
 var contacts = require('./contacts');
 var monitors = require('./monitors');
-//var checks = require('./checks');
+var probes = require('./probes');
 //var events = require('./events');
 //var config = require('./config');
 
@@ -146,15 +146,20 @@ function App(config, ufds) {
   server.get('/ping', before, ping, after);
 
   server.get('/pub/:login/contacts', before, contacts.listContacts, after);
-  server.put('/pub/:login/contacts/:name', before, contacts.createContact, after);
-  server.get('/pub/:login/contacts/:name', before, contacts.getContact, after);
-  server.del('/pub/:login/contacts/:name', before, contacts.deleteContact, after);
+  server.put('/pub/:login/contacts/:contact', before, contacts.createContact, after);
+  server.get('/pub/:login/contacts/:contact', before, contacts.getContact, after);
+  server.del('/pub/:login/contacts/:contact', before, contacts.deleteContact, after);
   
   server.get('/pub/:login/monitors', before, monitors.listMonitors, after);
-  server.put('/pub/:login/monitors/:name', before, monitors.createMonitor, after);
-  server.get('/pub/:login/monitors/:name', before, monitors.getMonitor, after);
-  server.del('/pub/:login/monitors/:name', before, monitors.deleteMonitor, after);
-
+  server.put('/pub/:login/monitors/:monitor', before, monitors.createMonitor, after);
+  server.get('/pub/:login/monitors/:monitor', before, monitors.getMonitor, after);
+  server.del('/pub/:login/monitors/:monitor', before, monitors.deleteMonitor, after);
+  
+  server.get('/pub/:login/monitors/:monitor/probes', before, probes.listProbes, after);
+  server.put('/pub/:login/monitors/:monitor/probes/:probe', before, probes.createProbe, after);
+  server.get('/pub/:login/monitors/:monitor/probes/:probe', before, probes.getProbe, after);
+  server.del('/pub/:login/monitors/:monitor/probes/:probe', before, probes.deleteProbe, after);
+  
   //server.head('/config', before, config.head, after);
   //server.get('/config', before, config.get, after);
   //
@@ -165,23 +170,7 @@ function App(config, ufds) {
   //            events.create,
   //            after);
 
-  //server.get('/pub/:login/checks',
-  //           before, checks.list, after);
-  //server.put('/pub/:login/checks/:name',
-  //           before, checks.put, after);
-  //server.get('/pub/:login/checks/:name',
-  //           before, checks.get, after);
-  //server.del('/pub/:login/checks/:name',
-  //           before, checks.del, after);
 
-  //server.get('/pub/:login/monitors',
-  //           before, monitors.list, after);
-  //server.put('/pub/:login/monitors/:name',
-  //           before, monitors.put, after);
-  //server.get('/pub/:login/monitors/:name',
-  //           before, monitors.get, after);
-  //server.del('/pub/:login/monitors/:name',
-  //           before, monitors.del, after);
 };
 
 

@@ -4,9 +4,9 @@
  * Helpers for modeling data in UFDS (i.e. handling list/get/create/delete)
  * with routes like this:
  *    list:      GET /pub/:login/$modelname
- *    create:    PUT /pub/:login/$modelname/:name
- *    get:       GET /pub/:login/$modelname/:name
- *    delete: DELETE /pub/:login/$modelname/:name
+ *    create:    PUT /pub/:login/$modelname/:field
+ *    get:       GET /pub/:login/$modelname/:field
+ *    delete: DELETE /pub/:login/$modelname/:field
  *
  * In all the functions below `Model` is expected to be a model constructor
  * function with the following interface:
@@ -22,6 +22,9 @@
  *     
  *     Foo._modelName = "foo";
  *     Foo._objectclass = "amonfoo";
+ *     Foo.dnFromRequest = function (req) { ... }
+ *     Foo.parentDnFromRequest = function (req) { ... }
+ *     Foo.idFromRequest = function (req) { ... }
  *     
  *     /**
  *      * Validate the raw data and optionally massage some fields.
@@ -52,12 +55,6 @@
  *         ...
  *       };
  *     }
- *
- * These all presume the following URL routes:
- *    list:      GET /pub/:login/$modelname
- *    create:    PUT /pub/:login/$modelname/:name
- *    get:       GET /pub/:login/$modelname/:name
- *    delete: DELETE /pub/:login/$modelname/:name
  */
 
 var ldap = require('ldapjs');
@@ -74,7 +71,8 @@ function ufdsModelList(req, res, next, Model) {
     filter: '(objectclass=' + Model._objectclass + ')',
     scope: 'sub'
   };
-  req._ufds.search(req._account.dn, opts, function(err, result) {
+  var parentDn = Model.parentDnFromRequest(req);
+  req._ufds.search(parentDn, opts, function(err, result) {
     var items = [];
     result.on('searchEntry', function(entry) {
       items.push((new Model(entry.object)).serialize());
@@ -114,7 +112,7 @@ function ufdsModelCreate(req, res, next, Model) {
     return next();
   }
   
-  var dn = Model._objectclass + 'name=' + item.name + ', ' + req._account.dn;
+  var dn = Model.dnFromRequest(req)
   req._ufds.add(dn, item.raw, function(err) {
     if (err) {
       if (err instanceof ldap.EntryAlreadyExistsError) {
@@ -152,19 +150,22 @@ function ufdsModelGet(req, res, next, Model) {
   req._log.debug('<%s> get entered: params=%o, uriParams=%o',
     Model._modelName, req.params, req.uriParams);
   
-  var name = req.uriParams.name;
-  if (! Model._nameRegex.test(name)) {
-    req._log.debug("Invalid %s name: '%s'", Model._modelName, name);
-    res.send(400, "invalid " + Model._modelName + " name: '" + name + "'");
-    return next();
-  }
+  //var name = req.uriParams.name;
+  ////XXX Use Model.validateName.
+  //if (! Model._nameRegex.test(name)) {
+  //  req._log.debug("Invalid %s name: '%s'", Model._modelName, name);
+  //  res.send(400, "invalid " + Model._modelName + " name: '" + name + "'");
+  //  return next();
+  //}
 
+  var id = Model.idFromRequest(req);
   var opts = {
     //TODO: is this better? '(&(amonfooname=$name)(objectclass=amonfoo))'
-    filter: '(' + Model._objectclass + 'name=' + name + ')',
+    filter: '(' + Model._objectclass + 'name=' + id + ')',
     scope: 'sub'
   };
-  req._ufds.search(req._account.dn, opts, function(err, result) {
+  var parentDn = Model.parentDnFromRequest(req)
+  req._ufds.search(parentDn, opts, function(err, result) {
     var items = [];
     result.on('searchEntry', function(entry) {
       items.push((new Model(entry.object)).serialize());
@@ -207,14 +208,15 @@ function ufdsModelDelete(req, res, next, Model) {
   req._log.debug('<%s> delete entered: params=%o, uriParams=%o',
     req.params, req.uriParams);
 
-  var name = req.uriParams.name;
-  if (! Model._nameRegex.test(name)) {
-    req._log.debug("Invalid %s name: '%s'", Model._modelName, name);
-    res.send(400, "invalid " + Model._modelName + " name: '" + name + "'");
-    return next();
-  }
+  //var name = req.uriParams.name;
+  ////XXX Use Model.validateName.
+  //if (! Model._nameRegex.test(name)) {
+  //  req._log.debug("Invalid %s name: '%s'", Model._modelName, name);
+  //  res.send(400, "invalid " + Model._modelName + " name: '" + name + "'");
+  //  return next();
+  //}
 
-  var dn = Model._objectclass + 'name=' + name + ', ' + req._account.dn;
+  var dn = Model.dnFromRequest(req);
   req._ufds.del(dn, function(err) {
     if (err) {
       if (err instanceof ldap.NoSuchObjectError) {
