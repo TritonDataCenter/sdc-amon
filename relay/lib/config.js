@@ -40,7 +40,7 @@ module.exports = {
       algorithm = 'md5';
     }
 
-    var path = req._configRoot + '/' + req._zone;
+    var path = req._agentProbesRoot + '/' + req._zone;
 
     dirsum.digest(path, algorithm, function(err, hashes) {
       var headers = {};
@@ -73,7 +73,7 @@ module.exports = {
       algorithm = 'md5';
     }
 
-    var path = req._configRoot + '/' + req._zone;
+    var path = req._agentProbesRoot + '/' + req._zone;
 
     dirsum.digest(path, algorithm, function(err, hashes) {
       if (err) {

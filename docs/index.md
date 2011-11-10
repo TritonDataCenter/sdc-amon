@@ -31,6 +31,9 @@ API. For example, the set of open alarms for an account is:
     GET  /pub/:login/alarms          # Amon Master API
     GET  /:login/alarms              # Cloud API
 
+Warning: the bare "GET /pub/:login" should NOT be proxied because it does
+not do any authorization.
+
 
 # Master API: Alarms
 
@@ -280,18 +283,18 @@ None
 
 Amon Relays (ultimately agents calling the equivalent event
 API endpoint on their relay) send events to the master.
-    
 
-## GetProbes (GET /probes)
+
+## GetAgentProbes (GET /agentprobes)
 
 Amon Relays periodically get agent control data (probes to run on a
 particular agent) from the master. From there, agents poll their relay for
 this control data.
 
 
-## GetProbesHead (HEAD /probes)
+## HeadAgentProbes (HEAD /agentprobes)
 
-This "HEAD" form of `GetProbes` allows for relays to check for agent control
+This "HEAD" form of `GetAgentProbes` allows for relays to check for agent control
 data changes with less network overhead.
 
 

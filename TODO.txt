@@ -3,18 +3,19 @@
 - work through use cases
 - update api
 - update doc
-- revisit design. Top Qs:
-  - drop "contact" model if just using the email on customer record?
-  - Run some checks on relay? Or have an agent in the GZ? For first pass
-    we are NOT having agents running in each zone.
-  - How is this exposed to end user.
 - update the schedule
-
-- tweaks:
-  - consider s/name/id for fields... to avoid expectation that a "name" can
-    have capitalization and spaces. Also "id" says "this is a unique identifier
-    for this thing"
 - tack on amon records to ufds/tools/genldif
+
+# todo
+
+- relay main.js could really use better option names and redo config file
+  hanlding a la master
+- name fields: percent escaping
+
+# someday/maybe
+
+- JSON api summary at "GET /"
+- HTML docs at "GET /docs"
 
 
 # use case: operator wants an alert for every zone fault

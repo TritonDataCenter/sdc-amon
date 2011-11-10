@@ -19,8 +19,8 @@ var Constants = amonCommon.Constants;
 var contacts = require('./contacts');
 var monitors = require('./monitors');
 var probes = require('./probes');
+var agentprobes = require('./agentprobes');
 //var events = require('./events');
-//var config = require('./config');
 
 
 
@@ -154,7 +154,7 @@ function App(config, ufds) {
   };
 
   var before = [setup];
-  var after = [amonCommon.w3clog];
+  var after = [restify.log.w3c];
 
   server.get('/ping', before, ping, after);
 
@@ -175,8 +175,9 @@ function App(config, ufds) {
   server.get('/pub/:login/monitors/:monitor/probes/:probe', before, probes.getProbe, after);
   server.del('/pub/:login/monitors/:monitor/probes/:probe', before, probes.deleteProbe, after);
   
-  //server.head('/config', before, config.head, after);
-  //server.get('/config', before, config.get, after);
+  server.get('/agentprobes', before, agentprobes.listAgentProbes, after);
+  server.head('/agentprobes', before, agentprobes.listAgentProbes, after);
+  
   //
   //server.get('/events', before, events.list, after);
   //server.post('/events',

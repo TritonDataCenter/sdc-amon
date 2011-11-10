@@ -17,7 +17,6 @@ var Master = require('./master-client');
 
 var Constants = amon_common.Constants;
 var preEvents = amon_common.events;
-var w3clog = amon_common.w3clog;
 var log = restify.log;
 
 var __rm = '/usr/bin/rm';
@@ -37,9 +36,9 @@ if (os.type() !== 'SunOS') {
  *  - owner {String} the customer uuid for that owns said zone.
  *  - socket  {String} the socket to open/close (zsock).
  *  - localMode {Boolean} to zsock or not to zsock.
- *  - configRoot {String} root of agent configuration tree.
+ *  - agentProbesRoot {String} root of agent probes tree.
  *  - master {String} location of the amon-master.
- *  - poll {Number} config polling interval in seconds (default: 30).
+ *  - poll {Number} update polling interval in seconds (default: 30).
  *
  * @param {Object} options The usual.
  *
@@ -49,7 +48,7 @@ var App = function App(options) {
   if (!options.zone) throw TypeError('options.zone is required');
   if (!options.owner) throw TypeError('options.owner is required');
   if (!options.socket) throw TypeError('options.socket is required');
-  if (!options.configRoot) throw TypeError('options.configRoot is required');
+  if (!options.agentProbesRoot) throw TypeError('options.agentProbesRoot is required');
   if (!options.master) throw TypeError('options.master is required');
 
   var self = this;
@@ -57,12 +56,12 @@ var App = function App(options) {
   this.zone = options.zone;
   this.owner = options.owner;
   this.socket = options.socket;
-  this.configRoot = options.configRoot;
+  this.agentProbesRoot = options.agentProbesRoot;
   this.localMode = options.localMode || false;
   this._developerMode = options.developer || false;
   this.poll = options.poll || 30;
-  this._stage = this.configRoot + '/' + this.zone;
-  this._stageMD5File = this.configRoot + '/.' + this.zone + '.md5';
+  this._stage = this.agentProbesRoot + '/' + this.zone;
+  this._stageMD5File = this.agentProbesRoot + '/.' + this.zone + '.md5';
 
   this._master = new Master({
     url: options.master
@@ -78,72 +77,62 @@ var App = function App(options) {
     req._zone = self.zone;
     req._owner = self.owner;
     req._zsock = self.socket;
-    req._configRoot = self.configRoot;
+    req._agentProbesRoot = self.agentProbesRoot;
     req._master = self._master;
-
     return next();
   };
 
-  this.before = [
-    _setup
-  ];
-  this.after = [
-    w3clog
-  ];
+  var before = [_setup];
+  var after = [restify.log.w3c];
 
-  this.server.head('/config', self.before, config.checksum, self.after);
-  this.server.get('/config', self.before, config.getConfig, self.after);
+  this.server.head('/agentprobes', before, config.checksum, after);
+  this.server.get('/agentprobes', before, config.getConfig, after);
 
-  this.server.post('/events',
-                   self.before,
-                   preEvents.event,
-                   events.forward,
-                   self.after);
+  this.server.post('/events', before, preEvents.event, events.forward, after);
 
-  // Register the config watcher
-  function _getConfig() {
-    log.trace('config: Checking master for new config.');
-    self._master.configMD5(self.zone, function(err, masterMD5) {
+  // Currently this is a testing-only option to avoid the updating getting
+  // in the way.
+  if (options._noAgentProbesUpdating) return;
+  
+  // Register the agent probes watcher.
+  function _updateAgentProbes() {
+    log.debug('Checking master for new agent probes.');
+    self._master.agentProbesMD5(self.zone, function(err, masterMD5) {
       if (err) {
-        log.warn('config: Error getting master config MD5 (zone=%s): %s',
+        log.warn('Error getting master agent probes MD5 (zone=%s): %s',
                  self.zone, err);
         return;
       }
       self._getCurrMD5(function(currMD5) {
-        log.trace('config: zone "%s" config md5: "%s" (from master) '
+        log.trace('Zone "%s" agent probes md5: "%s" (from master) '
                   + 'vs "%s" (curr)', self.zone, masterMD5, currMD5);
 
         if (masterMD5 === currMD5) {
-          log.trace('config: No config update.')
+          log.trace('No agent probes update.')
           return;
         }
-        self._master.config(self.zone, function(err, config, masterMD5) {
-          if (err || !config || !masterMD5) {
-            log.warn('config: Error getting master config (zone=%s): %s',
+        self._master.agentProbes(self.zone, function(err, agentProbes, masterMD5) {
+          if (err || !agentProbes || !masterMD5) {
+            log.warn('Error getting agent probes from master (zone=%s): %s',
                      self.zone, err);
             return;
           }
-          log.trace('config: retrieved master config: %s', config);
-          self.writeConfig(config, masterMD5, function(err) {
+          log.trace('Retrieved agent probes from master (zone=%s): %s',
+            self.zone, agentProbes);
+          self.writeAgentProbes(agentProbes, masterMD5, function(err) {
             if (err) {
-              log.warn('config: Unable to save new config: ' + err);
+              log.warn('Unable to save new agent probes: ' + err);
             }
-            log.debug('config: Successfully updated config from master.');
+            log.info('Successfully updated agent probes from master '
+              + '(zone: %s, md5: %s -> %s).', self.zone, currMD5, masterMD5);
             return;
           });
         });
       });
     });
   }
-
-  // This is a little crazy, but...
-  // Basically we want the config poller to run on a set interval, but so as not
-  // to overload the master, make the _first_ instance start at some random time
-  // in the next 10s
-  if (options._noConfig) return;
-
-  self._configPollHandle = setInterval(_getConfig, this.poll * 1000);
-  return _getConfig();
+  self._updatePollHandle = setInterval(_updateAgentProbes, this.poll * 1000);
+  return _updateAgentProbes();
 };
 
 
@@ -154,8 +143,8 @@ var App = function App(options) {
  * constructor.  The callback is of the form function(error), where error
  * should be undefined.
  *
- * It additionally creates the requisite staging directory for config flowing
- * from master -> relay -> agent.
+ * It additionally creates the requisite staging directory for agent probes
+ * data flowing from master -> relay -> agent.
  *
  * @param {Function} callback callback of the form function(error).
  */
@@ -204,7 +193,9 @@ App.prototype.listen = function(callback) {
  * @param {Function} callback called when closed. Takes no arguments.
  */
 App.prototype.close = function(callback) {
-  if (this._configPollHandle) clearInterval(this._configPollHandle);
+  if (this._updatePollHandle) {
+    clearInterval(this._updatePollHandle);
+  }
   this.server.on('close', callback);
   this.server.close();
 };
@@ -215,7 +206,7 @@ App.prototype.close = function(callback) {
  *
  * Callback data is null on error, so check it.
  *
- * @param {Function} callback of the form Function(md5).
+ * @param callback {Function} `function (md5)`
  */
 App.prototype._getCurrMD5 = function(callback) {
   var self = this;
@@ -223,70 +214,73 @@ App.prototype._getCurrMD5 = function(callback) {
     if (err && err.code !== 'ENOENT') {
       log.warn('Unable to read file ' + self._stageMD5File + ': ' + err);
     }
+    if (data) {
+      // We trim whitespace to not bork if someone adds a trailing newline
+      // in an editor (which some editors will do by default on save).
+      data = data.trim();
+    }
     return callback(data);
   });
 };
 
 
-App.prototype.writeConfig = function(config, md5, callback) {
+App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
   var self = this;
 
-  if (!config || !md5 || config.length === 0) {
+  if (!agentProbes || !md5 || agentProbes.length === 0) {
     if (log.debug()) {
-      log.debug('Empty config/md5 (z-%s). No-op', self.zone);
+      log.debug('Empty agentProbes/md5 (zone %s). No-op', self.zone);
     }
     return callback();
   }
 
-  var save = self.configRoot + '/.' + uuid();
-  var tmp = self.configRoot + '/.' + uuid();
+  var save = self.agentProbesRoot + '/.' + uuid();
+  var tmp = self.agentProbesRoot + '/.' + uuid();
   fs.mkdir(tmp, '0750', function(err) {
     if (err) return callback(err);
 
-    log.debug('app.writeConfig(z=%s). Made tmp dir %s', self.zone, tmp);
+    log.debug('writeAgentProbes z=%s: Made tmp dir %s', self.zone, tmp);
 
     var finished = 0;
-    config.forEach(function(c) {
-      var _config;
+    agentProbes.forEach(function(c) {
+      var agentProbesStr;
       try {
-        _config = JSON.stringify(c, null, 2);
+        agentProbesStr = JSON.stringify(c, null, 2);
       } catch (e) {
         return callback(e);
       }
-      fs.writeFile(tmp + '/' + c.id, _config, function(err) {
+      fs.writeFile(tmp + '/' + c.id, agentProbesStr, function(err) {
         if (err) return callback(err);
+        log.debug('writeAgentProbes z=%s: Wrote agentProbes %s',
+          self.zone, agentProbesStr);
 
-        log.debug('app.writeConfig(z=%s). Wrote config %s',
-                  self.zone, _config);
-
-        if (++finished >= config.length) {
+        if (++finished >= agentProbes.length) {
           fs.rename(self._stage, save, function(err) {
             if (err) return callback(err);
-
-            log.debug('app.writeConfig(z=%s). Renamed stage to %s',
+            log.debug('writeAgentProbes z=%s: Renamed stage to %s',
                       self.zone, save);
 
             fs.rename(tmp, self._stage, function(err) {
               if (err) {
-                log.error('Unable to move new config in, attempting recovery');
+                log.error('writeAgentProbes zone=%s: Unable to move new '
+                  + 'agent probes in, attempting recovery', self.zone);
                 fs.rename(save, self._stage, function(err2) {
                   if (err2) return callback(err2);
                   return callback(err);
                 });
               }
-
-              log.debug('app.writeConfig(z=%s). Renamed %s to stage',
-                        self.zone, tmp);
+              log.debug('writeAgentProbes z=%s: Renamed %s to stage',
+                self.zone, tmp);
 
               fs.writeFile(self._stageMD5File, md5, function(err) {
                 if (err) return callback(err);
+                log.debug('writeAgentProbes z=%s: Wrote MD5.', self.zone);
 
-                log.debug('app.writeConfig(z=%s). Wrote MD5.', self.zone);
                 var rm = spawn(__rm, ['-rf', save]);
                 rm.on('exit', function(code) {
                   if (code !== 0) {
-                    log.warn('config: Unable to clean up old config in %s',
-                             save);
+                    log.warn('writeAgentProbes z=%s: Unable to clean up '
+                      + 'old agent probes in %s', self.zone, save);
                   }
                   return callback();
                 }); // rm.on('exit')
@@ -295,7 +289,7 @@ App.prototype.writeConfig = function(config, md5, callback) {
           }); // rename(stage, save)
         } // if (++finished)
       }); // writeFile(id)
-    }); // config.forEach
+    }); // agentProbes.forEach
   }); // fs.mkdir
 };
 

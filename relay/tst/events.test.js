@@ -46,13 +46,13 @@ exports.setUp = function(test, assert) {
   zone = uuid();
   root = '/tmp/.' + uuid();
   app = new App({
-    configRoot: root,
+    agentProbesRoot: root,
     localMode: true,
     master: 'http://localhost:1234', // bogus
     owner: uuid(),
     socket: socket,
     zone: uuid(),
-    _noConfig: true
+    _noAgentProbesUpdating: true
   });
   assert.ok(app);
 

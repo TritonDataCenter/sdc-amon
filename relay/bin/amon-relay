@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 OS=$(/usr/bin/uname -s)
 TOP=$(unset CDPATH; cd $(dirname $0)/../; pwd)
@@ -11,6 +11,11 @@ if [[ $OS -eq "SunOS" ]]; then
     fi
 fi
 
-cd ${TOP}
 NODEDIR=${TOP}/deps/node-install
+if [[ ! -d "${NODEDIR}" && -d "${TOP}/../deps/node-install" ]]; then
+    # Dev/repo layout.
+    NODEDIR=${TOP}/../deps/node-install
+fi
+
+cd ${TOP}
 ${NODEDIR}/bin/node main.js "$@"

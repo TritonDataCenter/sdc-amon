@@ -18,7 +18,7 @@ var AppIndex = {};
 var debug = false;
 var developer = false;
 var poll = 30;
-var configRoot = '/var/run/joyent/amon/relay/config';
+var agentProbesRoot = '/var/run/joyent/amon/relay/agent-probes';
 var socket = '/var/run/.joyent_amon.sock';
 var ZWATCH_SOCKET = '/var/run/.joyent_amon_zwatch.sock';
 
@@ -34,7 +34,7 @@ function listenInZone(zone, callback) {
       zone: zone,
       socket: socket,
       owner: attr.value,
-      configRoot: configRoot,
+      agentProbesRoot: agentProbesRoot,
       master: master,
       poll: poll
     });
@@ -120,7 +120,7 @@ var shortOpts = {
 };
 var parsed = nopt(opts, shortOpts, process.argv, 2);
 if (parsed.help) usage(0);
-if (parsed['config-repository']) configRoot = parsed['config-repository'];
+if (parsed['config-repository']) agentProbesRoot = parsed['config-repository'];
 if (parsed.debug) logLevel = restify.LogLevel.Debug;
 if (parsed.master) master = parsed.master;
 if (parsed.poll) poll = parsed.poll;
@@ -130,6 +130,7 @@ if (parsed.developer) {
 }
 
 log.level(logLevel);
+//log.level(restify.LogLevel.Trace); //XXX
 
 // Create the ZWatch Daemon
 if (!developer) {
@@ -144,7 +145,7 @@ function _createGlobalApp() {
     zone: 'global',
     socket: socket,
     owner: 'joyent',
-    configRoot: configRoot,
+    agentProbesRoot: agentProbesRoot,
     localMode: true,
     developer: developer,
     master: master,

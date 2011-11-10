@@ -10,7 +10,7 @@
     "node-uuid": "1.2.0",
     "nopt": "1.0.6",
     "request": "2.0.2",
-    "restify": "0.3.15",
+    "restify": "0.5.4",
     "zsock": "1.0.5",
     "zutil": "0.1.2"
   },

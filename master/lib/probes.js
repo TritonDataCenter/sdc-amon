@@ -164,6 +164,7 @@ Probe.prototype.serialize = function serialize() {
 //---- controllers
 
 module.exports = {
+  Probe: Probe,
   listProbes: function listProbes(req, res, next) {
     return ufdsmodel.ufdsModelList(req, res, next, Probe);
   },

@@ -1,4 +1,8 @@
-// Copyright 2011 Joyent, Inc.  All rights reserved.
+/*
+ * Copyright 2011 Joyent, Inc.  All rights reserved.
+ *
+ * Amon relay's client to the Amon master.
+ */
 
 var http = require('http');
 var https = require('https');
@@ -8,9 +12,10 @@ var restify = require('restify');
 var Constants = require('amon-common').Constants;
 
 var log = restify.log;
-var _error = restify.newError;
 var HttpCodes = restify.HttpCodes;
 var RestCodes = restify.RestCodes;
+
+
 
 /**
  * Constructor for a client to amon-master
@@ -27,18 +32,18 @@ function Master(options) {
 
 
 /**
- * Returns the current MD5 from the master for said zone.
+ * Get the MD5 of the agent probes data for the given zone from the master.
  *
  * @param {String} zone the zone you want MD5'd.
  * @param {Function} callback of the form Function(err, md5).
  */
-Master.prototype.configMD5 = function(zone, callback) {
+Master.prototype.agentProbesMD5 = function (zone, callback) {
   if (!zone) throw new TypeError('zone is required');
   if (!callback) throw new TypeError('callback is required');
 
-  this._request('HEAD', '/config?zone=' + zone, function(err, res) {
+  this._request('HEAD', '/agentprobes?zone=' + zone, function(err, res) {
     if (err) return callback(err);
-    if (res.statusCode !== 204) {
+    if (res.statusCode !== 200) {
       log.warn('Bad status code for checksum: %d', res.statusCode);
       return callback(new Error('HttpError: ' + res.statusCode));
     }
@@ -49,22 +54,21 @@ Master.prototype.configMD5 = function(zone, callback) {
 
 
 /**
- * Returns the config from the master for said zone.
+ * Get the agent probes data for the given zone from the master.
  *
- * @param {String} zone the zone you want MD5'd.
- * @param {Function} callback of the form Function(err, config, md5).
+ * @param zone {String} the zone for which to get agent probes data.
+ * @param callback {Function} of the form Function(err, agentProbes, md5).
  */
-Master.prototype.config = function(zone, callback) {
+Master.prototype.agentProbes = function (zone, callback) {
   if (!zone) throw new TypeError('zone is required');
   if (!callback) throw new TypeError('callback is required');
 
-  this._request('GET', '/config?zone=' + zone, function(err, res) {
+  this._request('GET', '/agentprobes?zone=' + zone, function(err, res) {
     if (err) return callback(err);
     if (res.statusCode !== 200) {
       log.warn('Bad status code for checksum: %d', res.statusCode);
       return callback(new Error('HttpError: ' + res.statusCode));
     }
-
     return callback(null, res.params, res.headers['content-md5']);
   }).end();
 };
@@ -93,7 +97,7 @@ Master.prototype.sendEvent = function(options, callback) {
   var _callback = function(err, res) {
     if (err) {
       log.warn('Master.sendEvent: HTTP error: ' + err);
-      return callback(_error({
+      return callback(restify.newError({
         httpCode: HttpCodes.InternalError,
         restCode: RestCodes.UnknownError
       }));
@@ -107,7 +111,7 @@ Master.prototype.sendEvent = function(options, callback) {
       res.on('end', function() {
         log.warn('Invalid status code for Master.sendEvent: %d => %s',
                  res.statusCode, res.body);
-        return callback(_error({
+        return callback(restify.newError({
           httpCode: HttpCodes.InternalError,
           restCode: RestCodes.UnknownError
         }));
@@ -187,4 +191,6 @@ Master.prototype._request = function(method, path, callback) {
 };
 
 
-module.exports = (function() { return Master; })();
+//---- exports
+
+module.exports = Master;

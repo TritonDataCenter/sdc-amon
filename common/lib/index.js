@@ -7,6 +7,5 @@ module.exports = {
   Messages: require('./messages'),
   Cache: require('./cache'),
   events: require('./events'),
-  w3clog: require('./w3clog'),
   _test: require('./test-common')
 };
