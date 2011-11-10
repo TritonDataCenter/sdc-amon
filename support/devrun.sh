@@ -74,7 +74,7 @@ if [[ `uname` == "SunOS" ]] && [[ `zonename` == "global" ]]; then
 fi
 
 echo "== start master (tmp/dev-master.log)"
-${NODE_DEV} $ROOT/master/main.js -d -f $ROOT/master/config.coal.json -p 8080 > $ROOT/tmp/dev-master.log 2>&1 &
+${NODE_DEV} $ROOT/master/main.js -v -f $ROOT/master/config.coal.json -p 8080 > $ROOT/tmp/dev-master.log 2>&1 &
 sleep 1
 
 if [[ "$USE_ZSOCK_AND_ZWATCH" == "1" ]]; then
@@ -85,8 +85,8 @@ fi
 
 echo "== start relay (tmp/dev-relay.log)"
 mkdir -p $ROOT/tmp/dev-relay
-echo "${NODE_DEV} $ROOT/relay/main.js -d -c $ROOT/tmp/dev-relay -p 10 -m http://127.0.0.1:8080 $RELAY_OPTS > $ROOT/tmp/dev-relay.log 2>&1 &"
-${NODE_DEV} $ROOT/relay/main.js -d -c $ROOT/tmp/dev-relay -p 10 -m http://127.0.0.1:8080 $RELAY_OPTS > $ROOT/tmp/dev-relay.log 2>&1 &
+echo "${NODE_DEV} $ROOT/relay/main.js -v -D $ROOT/tmp/dev-relay -p 10 -m http://127.0.0.1:8080 $RELAY_OPTS > $ROOT/tmp/dev-relay.log 2>&1 &"
+${NODE_DEV} $ROOT/relay/main.js -v -D $ROOT/tmp/dev-relay -p 10 -m http://127.0.0.1:8080 $RELAY_OPTS > $ROOT/tmp/dev-relay.log 2>&1 &
 sleep 1  # work around for MON-3
 
 echo "== start agent (tmp/dev-agent.log)"

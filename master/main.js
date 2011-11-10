@@ -42,10 +42,10 @@ function printHelp() {
   console.log("The Amon Master server.");
   console.log("");
   console.log("Options:");
-  console.log("  -h, --help    print this help info and exit");
-  console.log("  -d, --debug   More verbose log output.");
+  console.log("  -h, --help     Print this help info and exit.");
+  console.log("  -v, --verbose  Once for DEBUG log output. Twice for TRACE.");
   console.log("  -f, --file CONFIG-FILE-PATH");
-  console.log("                Specify config file to load.");
+  console.log("                 Specify config file to load.");
 }
 
 
@@ -86,20 +86,20 @@ function main() {
   // Parse argv.
   var longOpts = {
     'help': Boolean,
-    'debug': [Boolean, Array],
+    'verbose': [Boolean, Array],
     'file': String
   };
   var shortOpts = {
     'h': ['--help'],
-    'd': ['--debug'],
+    'v': ['--verbose'],
     'f': ['--file'],
   };
   var opts = nopt(longOpts, shortOpts, process.argv, 2);
   if (opts.help) {
     usage(0);
   }
-  if (opts.debug) {
-    log.level(opts.debug.length > 1 ? log.Level.Trace : log.Level.Debug);
+  if (opts.verbose) {
+    log.level(opts.verbose.length > 1 ? log.Level.Trace : log.Level.Debug);
   }
   if (! opts.file) {
     opts.file = DEFAULT_CONFIG_PATH;

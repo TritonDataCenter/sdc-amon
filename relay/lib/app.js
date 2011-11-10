@@ -49,7 +49,7 @@ var App = function App(options) {
   if (!options.owner) throw TypeError('options.owner is required');
   if (!options.socket) throw TypeError('options.socket is required');
   if (!options.agentProbesRoot) throw TypeError('options.agentProbesRoot is required');
-  if (!options.master) throw TypeError('options.master is required');
+  if (!options.masterUrl) throw TypeError('options.masterUrl is required');
 
   var self = this;
 
@@ -58,13 +58,13 @@ var App = function App(options) {
   this.socket = options.socket;
   this.agentProbesRoot = options.agentProbesRoot;
   this.localMode = options.localMode || false;
-  this._developerMode = options.developer || false;
+  this.developerMode = options.developerMode || false;
   this.poll = options.poll || 30;
   this._stage = this.agentProbesRoot + '/' + this.zone;
   this._stageMD5File = this.agentProbesRoot + '/.' + this.zone + '.md5';
 
   this._master = new Master({
-    url: options.master
+    url: options.masterUrl
   });
 
   this.server = restify.createServer({
@@ -156,18 +156,17 @@ App.prototype.listen = function(callback) {
       log.warn('unable to create staging area ' + self._stage + ': ' + err);
     }
 
-    if (self._developerMode) {
-      var sock = parseInt(self.socket, 10);
-      log.debug('In developer mode; starting socket @%d', sock);
-      return self.server.listen(sock, '127.0.0.1', callback);
+    if (self.developerMode) {
+      var port = parseInt(self.socket, 10);
+      log.debug("Starting app on port %d (developer mode)", port);
+      return self.server.listen(port, '127.0.0.1', callback);
     }
     if (self.localMode) {
-      if (log.debug()) {
-        log.debug('starting app in local mode at %s', self.socket);
-      }
+      log.debug('Starting app at socket %s (local mode).', self.socket);
       return self.server.listen(self.socket, callback);
     }
 
+    // Production mode: using a zsocket into the target zone.
     var opts = {
       zone: self.zone,
       path: self.socket
