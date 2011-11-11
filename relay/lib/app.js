@@ -137,7 +137,7 @@ var App = function App(options) {
 
 
 /**
- * Gets Application up and listenting.
+ * Gets Application up and listening.
  *
  * This method creates a zsock with the zone/path you passed in to the
  * constructor.  The callback is of the form function(error), where error
@@ -176,9 +176,7 @@ App.prototype.listen = function(callback) {
         log.fatal('Unable to open zsock in %s: %s', self.zone, error.stack);
         return callback(error);
       }
-      if (log.debug()) {
-        log.debug('Opening zsock server on FD :%d', fd);
-      }
+      log.debug('Opening zsock server on FD :%d', fd);
       self.server.listenFD(fd);
       return callback();
     });
@@ -223,69 +221,73 @@ App.prototype._getCurrMD5 = function(callback) {
 };
 
 
+/**
+ * Write out the given agent probe data (just retrieved from the master)
+ * to the relay's data dir.
+ */
 App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
   var self = this;
 
   if (!agentProbes || !md5 || agentProbes.length === 0) {
-    if (log.debug()) {
-      log.debug('Empty agentProbes/md5 (zone %s). No-op', self.zone);
-    }
+    log.debug('Empty agentProbes/md5 (zone %s). No-op', self.zone);
     return callback();
   }
 
-  var save = self.agentProbesRoot + '/.' + uuid();
-  var tmp = self.agentProbesRoot + '/.' + uuid();
-  fs.mkdir(tmp, '0750', function(err) {
+  var backupDir = self.agentProbesRoot + '/.' + uuid();
+  var tmpDir = self.agentProbesRoot + '/.' + uuid();
+  fs.mkdir(tmpDir, '0750', function(err) {
     if (err) return callback(err);
-
-    log.debug('writeAgentProbes z=%s: Made tmp dir %s', self.zone, tmp);
+    log.debug('writeAgentProbes z=%s: Made tmp dir %s', self.zone, tmpDir);
 
     var finished = 0;
-    agentProbes.forEach(function(c) {
+    agentProbes.forEach(function(probe) {
       var agentProbesStr;
       try {
-        agentProbesStr = JSON.stringify(c, null, 2);
+        agentProbesStr = JSON.stringify(probe, null, 2);
       } catch (e) {
         return callback(e);
       }
-      fs.writeFile(tmp + '/' + c.id, agentProbesStr, function(err) {
+      var probePath = tmpDir + '/' + probe.id;
+      fs.writeFile(probePath, agentProbesStr, function(err) {
         if (err) return callback(err);
-        log.debug('writeAgentProbes z=%s: Wrote agentProbes %s',
-          self.zone, agentProbesStr);
+        log.debug("writeAgentProbes z=%s: wrote agent probe to '%s'",
+          self.zone, probePath);
 
         if (++finished >= agentProbes.length) {
-          fs.rename(self._stage, save, function(err) {
+          fs.rename(self._stage, backupDir, function(err) {
             if (err) return callback(err);
-            log.debug('writeAgentProbes z=%s: Renamed stage to %s',
-                      self.zone, save);
+            log.debug("writeAgentProbes z=%s: renamed stage to '%s' (backup)",
+              self.zone, backupDir);
 
-            fs.rename(tmp, self._stage, function(err) {
+            fs.rename(tmpDir, self._stage, function(err) {
               if (err) {
                 log.error('writeAgentProbes zone=%s: Unable to move new '
                   + 'agent probes in, attempting recovery', self.zone);
-                fs.rename(save, self._stage, function(err2) {
+                fs.rename(backupDir, self._stage, function(err2) {
                   if (err2) return callback(err2);
                   return callback(err);
                 });
               }
-              log.debug('writeAgentProbes z=%s: Renamed %s to stage',
-                self.zone, tmp);
+              log.debug("writeAgentProbes z=%s: renamed tmp '%s' to stage",
+                self.zone, tmpDir);
 
               fs.writeFile(self._stageMD5File, md5, function(err) {
                 if (err) return callback(err);
-                log.debug('writeAgentProbes z=%s: Wrote MD5.', self.zone);
+                log.debug("writeAgentProbes z=%s: wrote MD5 to '%s'",
+                  self.zone, self._stageMD5File);
 
-                var rm = spawn(__rm, ['-rf', save]);
+                //XXX Use rimraf module.
+                var rm = spawn(__rm, ['-rf', backupDir]);
                 rm.on('exit', function(code) {
                   if (code !== 0) {
-                    log.warn('writeAgentProbes z=%s: Unable to clean up '
-                      + 'old agent probes in %s', self.zone, save);
+                    log.warn("writeAgentProbes z=%s: unable to clean up "
+                      + "old agent probes in '%s'", self.zone, backupDir);
                   }
                   return callback();
                 }); // rm.on('exit')
               }); // writeFile(md5)
-            }); // rename(tmp, stage)
-          }); // rename(stage, save)
+            }); // rename(tmpDir, stage)
+          }); // rename(stage, backupPath)
         } // if (++finished)
       }); // writeFile(id)
     }); // agentProbes.forEach
