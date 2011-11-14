@@ -5,12 +5,12 @@
   "author": "Joyent (joyent.com)",
   "private": true,
   "dependencies": {
-    "dirsum": "0.1.1",
     "httpu": "0.0.1",
     "node-uuid": "1.2.0",
     "nopt": "1.0.6",
     "request": "2.0.2",
     "restify": "0.5.4",
+    "sprintf": "0.1.1",
     "zsock": "1.0.5",
     "zutil": "0.1.2"
   },

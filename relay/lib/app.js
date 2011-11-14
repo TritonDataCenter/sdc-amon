@@ -2,18 +2,20 @@
 
 var fs = require('fs');
 var http = require('http');
+var pathlib = require('path');
 var os = require('os');
 var spawn = require('child_process').spawn;
 
+var sprintf = require('sprintf');
 var restify = require('restify');
 var uuid = require('node-uuid');
 var zsock = require('zsock');
 
 var amon_common = require('amon-common');
 
-var config = require('./config');
-var events = require('./events');
 var Master = require('./master-client');
+var agentprobes = require('./agentprobes');
+var events = require('./events');
 
 var Constants = amon_common.Constants;
 var preEvents = amon_common.events;
@@ -23,6 +25,32 @@ var __rm = '/usr/bin/rm';
 if (os.type() !== 'SunOS') {
   __rm = '/bin/rm';
 }
+
+
+//---- internal support stuff
+
+/**
+ * Run async `fn` on each entry in `list`. Call `cb(error)` when all done.
+ * `fn` is expected to have `fn(item, callback) -> callback(error)` signature.
+ *
+ * From Isaac's rimraf.js.
+ */
+function asyncForEach(list, fn, cb) {
+  if (!list.length) cb()
+  var c = list.length
+    , errState = null
+  list.forEach(function (item, i, list) {
+   fn(item, function (er) {
+      if (errState) return
+      if (er) return cb(errState = er)
+      if (-- c === 0) return cb()
+    })
+  })
+}
+
+
+
+//---- App
 
 /**
  * Constructor for the amon "application".
@@ -60,8 +88,11 @@ var App = function App(options) {
   this.localMode = options.localMode || false;
   this.developerMode = options.developerMode || false;
   this.poll = options.poll || 30;
-  this._stage = this.agentProbesRoot + '/' + this.zone;
-  this._stageMD5File = this.agentProbesRoot + '/.' + this.zone + '.md5';
+  
+  this._stageJsonPath = pathlib.resolve(this.agentProbesRoot,
+    this.zone + ".json");
+  this._stageMD5Path = pathlib.resolve(this.agentProbesRoot,
+    this.zone + ".json.content-md5");
 
   this._master = new Master({
     url: options.masterUrl
@@ -85,8 +116,8 @@ var App = function App(options) {
   var before = [_setup];
   var after = [restify.log.w3c];
 
-  this.server.head('/agentprobes', before, config.checksum, after);
-  this.server.get('/agentprobes', before, config.getConfig, after);
+  this.server.head('/agentprobes', before, agentprobes.headAgentProbes, after);
+  this.server.get('/agentprobes', before, agentprobes.listAgentProbes, after);
 
   this.server.post('/events', before, preEvents.event, events.forward, after);
 
@@ -143,43 +174,34 @@ var App = function App(options) {
  * constructor.  The callback is of the form function(error), where error
  * should be undefined.
  *
- * It additionally creates the requisite staging directory for agent probes
- * data flowing from master -> relay -> agent.
- *
  * @param {Function} callback callback of the form function(error).
  */
 App.prototype.listen = function(callback) {
   var self = this;
 
-  fs.mkdir(this._stage, '0750', function(err) {
-    if (err && err.code !== 'EEXIST') {
-      log.warn('unable to create staging area ' + self._stage + ': ' + err);
-    }
+  if (self.developerMode) {
+    var port = parseInt(self.socket, 10);
+    log.debug("Starting app on port %d (developer mode)", port);
+    return self.server.listen(port, '127.0.0.1', callback);
+  }
+  if (self.localMode) {
+    log.debug('Starting app at socket %s (local mode).', self.socket);
+    return self.server.listen(self.socket, callback);
+  }
 
-    if (self.developerMode) {
-      var port = parseInt(self.socket, 10);
-      log.debug("Starting app on port %d (developer mode)", port);
-      return self.server.listen(port, '127.0.0.1', callback);
+  // Production mode: using a zsocket into the target zone.
+  var opts = {
+    zone: self.zone,
+    path: self.socket
+  };
+  zsock.createZoneSocket(opts, function(error, fd) {
+    if (error) {
+      log.fatal('Unable to open zsock in %s: %s', self.zone, error.stack);
+      return callback(error);
     }
-    if (self.localMode) {
-      log.debug('Starting app at socket %s (local mode).', self.socket);
-      return self.server.listen(self.socket, callback);
-    }
-
-    // Production mode: using a zsocket into the target zone.
-    var opts = {
-      zone: self.zone,
-      path: self.socket
-    };
-    zsock.createZoneSocket(opts, function(error, fd) {
-      if (error) {
-        log.fatal('Unable to open zsock in %s: %s', self.zone, error.stack);
-        return callback(error);
-      }
-      log.debug('Opening zsock server on FD :%d', fd);
-      self.server.listenFD(fd);
-      return callback();
-    });
+    log.debug('Opening zsock server on FD :%d', fd);
+    self.server.listenFD(fd);
+    return callback();
   });
 };
 
@@ -207,9 +229,9 @@ App.prototype.close = function(callback) {
  */
 App.prototype._getCurrMD5 = function(callback) {
   var self = this;
-  fs.readFile(this._stageMD5File, 'utf8', function(err, data) {
+  fs.readFile(this._stageMD5Path, 'utf8', function(err, data) {
     if (err && err.code !== 'ENOENT') {
-      log.warn('Unable to read file ' + self._stageMD5File + ': ' + err);
+      log.warn('Unable to read file ' + self._stageMD5Path + ': ' + err);
     }
     if (data) {
       // We trim whitespace to not bork if someone adds a trailing newline
@@ -233,65 +255,67 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
     return callback();
   }
 
-  var backupDir = self.agentProbesRoot + '/.' + uuid();
-  var tmpDir = self.agentProbesRoot + '/.' + uuid();
-  fs.mkdir(tmpDir, '0750', function(err) {
-    if (err) return callback(err);
-    log.debug('writeAgentProbes z=%s: Made tmp dir %s', self.zone, tmpDir);
+  var jsonPath = this._stageJsonPath;
+  var md5Path = this._stageMD5Path;
+  
+  function backup(cb) {
+    asyncForEach([jsonPath, md5Path], function (p, cb2) {
+      pathlib.exists(p, function (exists) {
+        if (exists) {
+          log.trace("Backup '%s' to '%s'.", p, p + ".bak");
+          fs.rename(p, p + ".bak", cb2);
+        } else {
+          cb2();
+        }
+      });
+    }, cb);
+  }
+  function write(cb) {
+    var agentProbesStr = JSON.stringify(agentProbes, null, 2);
+    asyncForEach([[jsonPath, agentProbesStr], [md5Path, md5]],
+      function (item, cb2) {
+        fs.writeFile(item[0], item[1], cb2);
+      },
+      cb);
+  }
+  function restore(cb) {
+    asyncForEach([jsonPath, md5Path], function (p, cb2) {
+      log.trace("Restore backup '%s' to '%s'.", p + ".bak", p);
+      fs.rename(p + ".bak", p, cb2);
+    }, cb);
+  }
+  function cleanBackup(cb) {
+    asyncForEach([jsonPath, md5Path], function (p, cb2) {
+      log.trace("Remove backup '%s'.", p + ".bak");
+      fs.unlink(p + ".bak", cb2);
+    }, cb);
+  }
 
-    var finished = 0;
-    agentProbes.forEach(function(probe) {
-      var agentProbesStr;
-      try {
-        agentProbesStr = JSON.stringify(probe, null, 2);
-      } catch (e) {
-        return callback(e);
+  backup(function (err1, backedUp) {
+    if (err1) return callback(err1);
+    write(function (err2) {
+      if (err2) {
+        if (backedUp) {
+          return restore(function (err3) {
+            if (err3) {
+              return callback(sprintf("%s (also: %s)", err2, err3));
+            }
+            return callback(err2);
+          });
+        } else {
+          return callback(err2);
+        }
       }
-      var probePath = tmpDir + '/' + probe.id;
-      fs.writeFile(probePath, agentProbesStr, function(err) {
-        if (err) return callback(err);
-        log.debug("writeAgentProbes z=%s: wrote agent probe to '%s'",
-          self.zone, probePath);
-
-        if (++finished >= agentProbes.length) {
-          fs.rename(self._stage, backupDir, function(err) {
-            if (err) return callback(err);
-            log.debug("writeAgentProbes z=%s: renamed stage to '%s' (backup)",
-              self.zone, backupDir);
-
-            fs.rename(tmpDir, self._stage, function(err) {
-              if (err) {
-                log.error('writeAgentProbes zone=%s: Unable to move new '
-                  + 'agent probes in, attempting recovery', self.zone);
-                fs.rename(backupDir, self._stage, function(err2) {
-                  if (err2) return callback(err2);
-                  return callback(err);
-                });
-              }
-              log.debug("writeAgentProbes z=%s: renamed tmp '%s' to stage",
-                self.zone, tmpDir);
-
-              fs.writeFile(self._stageMD5File, md5, function(err) {
-                if (err) return callback(err);
-                log.debug("writeAgentProbes z=%s: wrote MD5 to '%s'",
-                  self.zone, self._stageMD5File);
-
-                //XXX Use rimraf module.
-                var rm = spawn(__rm, ['-rf', backupDir]);
-                rm.on('exit', function(code) {
-                  if (code !== 0) {
-                    log.warn("writeAgentProbes z=%s: unable to clean up "
-                      + "old agent probes in '%s'", self.zone, backupDir);
-                  }
-                  return callback();
-                }); // rm.on('exit')
-              }); // writeFile(md5)
-            }); // rename(tmpDir, stage)
-          }); // rename(stage, backupPath)
-        } // if (++finished)
-      }); // writeFile(id)
-    }); // agentProbes.forEach
-  }); // fs.mkdir
+      if (backedUp) {
+        cleanBackup(function (err4) {
+          if (err4) return callback(err4);
+          return callback();
+        });
+      } else {
+        return callback();
+      }
+    });
+  });
 };
 
 
