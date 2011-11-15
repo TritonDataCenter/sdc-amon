@@ -13,12 +13,12 @@ function _trim(s) {
   return s;
 }
 
-function _validateConfig(config) {
-  if (!config) throw new TypeError('config is required');
-  if (!config.path) throw new TypeError('config.path is required');
-  if (!config.period) throw new TypeError('config.period is required');
-  if (!config.regex) throw new TypeError('config.regex is required');
-  if (!config.threshold) throw new TypeError('config.threshold is required');
+function _validateInstanceData(data) {
+  if (!data) throw new TypeError('data is required');
+  if (!data.path) throw new TypeError('data.path is required');
+  if (!data.period) throw new TypeError('data.period is required');
+  if (!data.regex) throw new TypeError('data.regex is required');
+  if (!data.threshold) throw new TypeError('data.threshold is required');
 
 }
 
@@ -26,15 +26,21 @@ function LogScan(options) {
   events.EventEmitter.call(this);
 
   this.id = options.id;
-  this.path = options.path;
-  this.period = options.period;
-  this.regex = options.regex;
-  this.threshold = options.threshold;
+  var instanceData = options.data.data;
+  this.data = options.data;
+  this.path = instanceData.path;
+  this.period = instanceData.period;
+  this.regex = new RegExp(instanceData.regex);
+  this.threshold = instanceData.threshold;
 
   this._count = 0;
   this._running = false;
 
   var self = this;
+  this.__defineGetter__('json', function() {
+    return JSON.stringify(this.data);
+  });
+
   this.timer = setInterval(function() {
     if (!self._running) return;
 
@@ -63,7 +69,7 @@ LogScan.prototype.start = function(callback) {
     if (self.regex.test(line)) {
       if (++self._count >= self.threshold) {
         log.info('amon:logscan alarm (id=%s): %s', self.id, line);
-        self.emit('alarm', 'error', {
+        self.emit('event', 'error', {
           name: 'amon:logscan',
           type: 'Integer',
           value: self._count,
@@ -93,32 +99,24 @@ LogScan.prototype.stop = function(callback) {
   if (callback && (callback instanceof Function)) return callback();
 };
 
-LogScan.prototype.validateConfig = function(config) {
-  return _validateConfig(config);
+LogScan.prototype.validateInstanceData = function(data) {
+  return _validateInstanceData(data);
 };
+
+
+
 
 module.exports = {
 
   newInstance: function(options) {
     if (!options.id) throw new TypeError('id is required');
-    if (!options.config) throw new TypeError('config is required');
-
-    if (options._log) log = options._log;
-
-    _validateConfig(options.config);
-
-    return new LogScan({
-      id: options.id,
-      path: options.config.path,
-      period: options.config.period,
-      regex: new RegExp(options.config.regex),
-      threshold: options.config.threshold
-    });
-
+    if (!options.data) throw new TypeError('data is required');
+    _validateInstanceData(options.data.data);
+    return new LogScan(options);
   },
 
-  validateConfig: function(config) {
-    return _validateConfig(config);
+  validateInstanceData: function(data) {
+    return _validateInstanceData(data);
   }
 
 };

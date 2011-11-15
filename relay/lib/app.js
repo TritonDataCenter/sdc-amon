@@ -53,7 +53,7 @@ function asyncForEach(list, fn, cb) {
 //---- App
 
 /**
- * Constructor for the amon "application".
+ * Constructor for the amon relay "application".
  *
  * The gist is we make one of these per zone, and hand it some "cookie"
  * information.  Callers are expected to call listen() and close() on

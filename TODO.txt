@@ -8,9 +8,29 @@
 
 # todo
 
-- relay main.js could really use better option names and redo config file
-  hanlding a la master
-- name fields: percent escaping
+- agent updating config from relay
+- agent processing probes
+* * *
+- agent: ensure using cached probe data on agent restart?
+- refactor logscan.js
+- add "user" and "monitor" fields to probe data response in master
+- probe plugins: validateConfig -> validateData
+- agent sending events
+- relay -D/--data-dir and create subdir
+- relay passing on events
+- switch relay over to using relay-client instead of master-client.
+- master receiving events
+- master notification plugins working
+- rm "joyent" from relay/agent dirs and socket paths
+- disallow '/' in name fields (so can use that as sep char for a string id).
+  If this isn't acceptable then update id'ification in agent.
+  Perhaps ':' would be preferable for id'ification? Meh.
+- caching on ufds hits
+- kill amon-common/constants.js:
+    - separate ApiVersion btwn components. Because we should be able to
+      use 'x-api-version:1' on the wire to have an older agent talk to
+      a newer master.
+- name fields in Master API: percent escaping
 
 # someday/maybe
 
@@ -39,40 +59,6 @@
   Ditto for non-fma-based zone status watching? Are we going to send an
   amon event for *every* zone running state every minute? No way.
 
-
-# Old out-of-data dev schedule
-
-Remaining days. Fixed holidays, milestones and non-amon work "[in brackets]".
-Proposed target functionality/work for the other days. Note that John has
-offered to do some work on amon if feasible.
-
-- Tue,  9 Aug: Hack up watching zone start/stop and vm start/stop. Grokking Riak models and indexing.
-- Wed, 10 Aug: Test plan for zone/vm start/stop in COAL. Test cases. Clean up test suite.
-  -> Today trent moved over to help with no.de for nodeKO. Hence, amon
-     probably not making SDC 6.5.
-- Thu, 11 Aug: [Nectarine] Email notification plugin (nodemailer). Amon-master and amon-relay builds (bamboo, mountain-gorilla).
-- Fri, 12 Aug: Amon-master and amon-relay builds (bamboo, mountain-gorilla).
-- Mon, 15 Aug: amon & amonriak headnode zones (using Jerry's headnode-refactor process)
-- Tue, 16 Aug: [Trent on Lime-no.de upgrade.]
-- Wed, 17 Aug: [Lime-no.de updated. Trent on Lime-no.de upgrade.] 
-- Thu, 18 Aug: More headnode zones work. Upgrade plan. 
-- Fri, 19 Aug: Finish upgrading impl.
-- Mon, 22 Aug: [Trent DSAPI work.]
-- Tue, 23 Aug: [Trent DSAPI work.]
-- Wed, 24 Aug: [Trent vacation]
-- Thu, 25 Aug: [Olive] Retry/backoff everywhere (restify). 
-- Fri, 26 Aug: [Trent vacation]
-- Mon, 29 Aug: Amon load testing and test suite improvements. Amon db garbage collection.
-- Tue, 30 Aug:
-- Wed, 31 Aug: [Trent vacation]
-- Thu,  1 Sep: [cutoff day (morning)]
-- Fri,  2 Sep: [Trent vacation]
-- Mon,  5 Sep: [Public holiday (Labour day)]
-- Tue,  6 Sep:
-- Wed,  7 Sep:
-- Thu,  8 Sep: [Papaya, SDC 6.5 release]
-
-Workdays left: 14 days (starting at 9-Aug) - 2 days lost to no.de help (at least).
 
 
 # smartos event streams notes

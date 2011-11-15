@@ -6,7 +6,6 @@
   "private": true,
   "main": "lib/index.js",
   "dependencies": {
-    "dirsum": "0.1.1",
     "httpu": "0.0.1",
     "node-uuid": "1.2.0",
     "nopt": "1.0.6",
