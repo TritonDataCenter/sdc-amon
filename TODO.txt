@@ -8,8 +8,6 @@
 
 # todo
 
-- refactor logscan.js
-- add "user" and "monitor" fields to probe data response in master
 - probe plugins: validateConfig -> validateData
 - agent sending events
 - relay -D/--data-dir and create subdir

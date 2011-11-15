@@ -42,6 +42,10 @@ function Probe(raw) {
   }
   this.raw = this.validate(this.raw);
   
+  var parsedDN = ldap.parseDN(this.raw.dn)
+  this.monitor = parsedDN.rdns[1].amonmonitorname;
+  this.user = parsedDN.rdns[2].uuid;
+
   var self = this;
   this.__defineGetter__('name', function() {
     return self.raw.amonprobename;
@@ -153,6 +157,8 @@ Probe.prototype.validateName = function validateName(name) {
 Probe.prototype.serialize = function serialize() {
   return {
     name: this.name,
+    monitor: this.monitor,
+    user: this.user,
     zone: this.zone,
     urn: this.urn,
     data: this.data,

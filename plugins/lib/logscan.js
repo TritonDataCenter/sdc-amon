@@ -1,10 +1,20 @@
-// Copyright 2011 Joyent, Inc.  All rights reserved.
+/*
+ * Copyright 2011 Joyent, Inc.  All rights reserved.
+ *
+ * An Amon probe plugin for scanning log files: i.e. reporting events when
+ * a pattern appears in a log file.
+ */
+
 var events = require('events');
 var fs = require('fs');
 var spawn = require('child_process').spawn;
 var util = require('util');
 
 var log = require('restify').log;
+
+
+
+//---- internal support stuff
 
 function _trim(s) {
   s = s.replace(/(^\s*)|(\s*$)/gi, '');
@@ -19,13 +29,18 @@ function _validateInstanceData(data) {
   if (!data.period) throw new TypeError('data.period is required');
   if (!data.regex) throw new TypeError('data.regex is required');
   if (!data.threshold) throw new TypeError('data.threshold is required');
-
 }
+
+
+
+//---- plugin class
 
 function LogScan(options) {
   events.EventEmitter.call(this);
 
   this.id = options.id;
+  this.json = JSON.stringify(options.data);
+  
   var instanceData = options.data.data;
   this.data = options.data;
   this.path = instanceData.path;
@@ -37,10 +52,6 @@ function LogScan(options) {
   this._running = false;
 
   var self = this;
-  this.__defineGetter__('json', function() {
-    return JSON.stringify(this.data);
-  });
-
   this.timer = setInterval(function() {
     if (!self._running) return;
 
@@ -105,6 +116,7 @@ LogScan.prototype.validateInstanceData = function(data) {
 
 
 
+//---- module exports
 
 module.exports = {
 

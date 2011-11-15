@@ -58,7 +58,7 @@ function probesFromZone(ufds, zone, callback) {
           return 1;
         else
           return 0;
-      })
+      });
 
       log.trace("probes for zone '%s': %o", zone, probes);
       return callback(null, probes);
