@@ -8,11 +8,6 @@
 
 # todo
 
-- agent updating config from relay
-- agent processing probes
-* * *
-- switch relay over to using relay-client instead of master-client.
-* * *
 - relay: .bak files are not getting removed
 - master: /agentprobes is not stable order. This
   changes the content-md5 and results in spurious updates through the system

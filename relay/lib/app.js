@@ -259,16 +259,20 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
   var md5Path = this._stageMD5Path;
   
   function backup(cb) {
+    var backedUp = false;
     asyncForEach([jsonPath, md5Path], function (p, cb2) {
       pathlib.exists(p, function (exists) {
         if (exists) {
           log.trace("Backup '%s' to '%s'.", p, p + ".bak");
           fs.rename(p, p + ".bak", cb2);
+          backedUp = true;
         } else {
           cb2();
         }
       });
-    }, cb);
+    }, function (err) {
+      cb(err, backedUp);
+    });
   }
   function write(cb) {
     var agentProbesStr = JSON.stringify(agentProbes, null, 2);
