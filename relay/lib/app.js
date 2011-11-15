@@ -11,14 +11,14 @@ var restify = require('restify');
 var uuid = require('node-uuid');
 var zsock = require('zsock');
 
-var amon_common = require('amon-common');
+var amonCommon = require('amon-common');
+var Constants = amonCommon.Constants;
+var preEvents = amonCommon.events;
+var RelayClient = amonCommon.RelayClient;
 
-var Master = require('./master-client');
 var agentprobes = require('./agentprobes');
 var events = require('./events');
 
-var Constants = amon_common.Constants;
-var preEvents = amon_common.events;
 var log = restify.log;
 
 var __rm = '/usr/bin/rm';
@@ -94,7 +94,7 @@ var App = function App(options) {
   this._stageMD5Path = pathlib.resolve(this.agentProbesRoot,
     this.zone + ".json.content-md5");
 
-  this._master = new Master({
+  this._master = new RelayClient({
     url: options.masterUrl
   });
 

@@ -11,14 +11,18 @@
 - agent updating config from relay
 - agent processing probes
 * * *
-- agent: ensure using cached probe data on agent restart?
+- switch relay over to using relay-client instead of master-client.
+* * *
+- relay: .bak files are not getting removed
+- master: /agentprobes is not stable order. This
+  changes the content-md5 and results in spurious updates through the system
+  TODO: sort
 - refactor logscan.js
 - add "user" and "monitor" fields to probe data response in master
 - probe plugins: validateConfig -> validateData
 - agent sending events
 - relay -D/--data-dir and create subdir
 - relay passing on events
-- switch relay over to using relay-client instead of master-client.
 - master receiving events
 - master notification plugins working
 - rm "joyent" from relay/agent dirs and socket paths

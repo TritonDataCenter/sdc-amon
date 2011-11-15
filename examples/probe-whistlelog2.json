@@ -1,0 +1,10 @@
+{
+  "zone": "global",
+  "urn": "amon:logscan",
+  "data": {
+    "path": "/tmp/whistle2.log",
+    "regex": "tweet",
+    "threshold": 1,
+    "period": 60
+  }
+}
