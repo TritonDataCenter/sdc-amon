@@ -21,6 +21,12 @@ var log = restify.log;
 
 //---- internal support functions
 
+/**
+ * Get all the probes for the given zone.
+ *
+ * Note: Probes are sorted by name to ensure a stable order (necessary
+ * to ensure reliable Content-MD5 for HEAD and caching usage.
+ */
 function probesFromZone(ufds, zone, callback) {
   var opts = {
     filter: '(&(zone='+zone+')(objectclass=amonprobe))',
@@ -42,6 +48,18 @@ function probesFromZone(ufds, zone, callback) {
           sprintf('Non-zero status from UFDS search: %s (opts: %s)',
                   result, JSON.stringify(opts)));
       }
+
+      // To enable meaningful usage of Content-MD5 we need a stable order
+      // of results here.
+      probes.sort(function (a, b) {
+        if (a.name < b.name)
+          return -1;
+        else if (a.name > b.name)
+          return 1;
+        else
+          return 0;
+      })
+
       log.trace("probes for zone '%s': %o", zone, probes);
       return callback(null, probes);
     });

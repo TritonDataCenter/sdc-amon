@@ -8,10 +8,6 @@
 
 # todo
 
-- relay: .bak files are not getting removed
-- master: /agentprobes is not stable order. This
-  changes the content-md5 and results in spurious updates through the system
-  TODO: sort
 - refactor logscan.js
 - add "user" and "monitor" fields to probe data response in master
 - probe plugins: validateConfig -> validateData

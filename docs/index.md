@@ -291,6 +291,9 @@ Amon Relays periodically get agent control data (probes to run on a
 particular agent) from the master. From there, agents poll their relay for
 this control data.
 
+Note: The returned probes are sorted by "name" to ensure a stable order
+and hence a stable "Content-MD5" header to use for caching.
+
 
 ## HeadAgentProbes (HEAD /agentprobes)
 
