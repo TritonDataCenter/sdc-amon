@@ -135,62 +135,40 @@ RelayClient.prototype.agentProbes = function (zone, callback) {
 
 
 /**
- * Forwards an agent alarm event on to the master.
+ * Send the given event to the relay (which might be the master) for
+ * processing.
  *
- * @param {Object} options the usual with:
- *                 - check the check uuid.
- *                 - zone the zone id.
- *                 - status one of ok|error.
- *                 - customer customer uuid.
- *                 - metrics (must be an object).
+ * Dev Note: Currently the schema for this is being felt out. IOW, no
+ * validation here yet.
  *
- * @param callback {Function} Called when event request is made. Currently
- *    an error is NOT reported on failure. `function ()`.
+ * @param callback {Function} `function (err) {}` called on completion.
+ *    "err" is undefined on success, a restify error instance on failure.
  */
-RelayClient.prototype.sendEvent = function(options, callback) {
-  if (!options.check) throw new TypeError('check is required');
-  if (!options.zone) throw new TypeError('zone is required');
-  if (!options.status) throw new TypeError('status is required');
-  if (!options.customer) throw new TypeError('customer is required');
-  if (!options.metrics) throw new TypeError('metrics is required');
-  if (!callback) throw new TypeError('callback is required');
-
+RelayClient.prototype.sendEvent = function(event, callback) {
   var self = this;
-  var _callback = function(err, res) {
+  
+  function onComplete(err, res) {
     if (err) {
       self.log.warn('RelayClient.sendEvent: HTTP error: ' + err);
       return callback(restify.newError({
-        httpCode: HttpCodes.InternalError,
+        httpCode: 500,
         restCode: RestCodes.UnknownError
       }));
     }
-    if (res.statusCode !== HttpCodes.Created) {
-      res.setEncoding('utf8');
-      res.body = ''; //TODO: Just have local `var body = '';` ?
-      res.on('data', function(chunk) {
-        res.body += chunk;
-      });
-      res.on('end', function() {
-        self.log.warn('Invalid status code for RelayClient.sendEvent: %d => %s',
-          res.statusCode, res.body);
-        return callback(restify.newError({
-          httpCode: HttpCodes.InternalError,
-          restCode: RestCodes.UnknownError
-        }));
-      });
+    if (res.statusCode !== 202 /* Accepted */) {
+      self.log.warn("invalid response for RelayClient.sendEvent: statusCode=%d, body='%s'",
+        res.statusCode, res.body);
+      return callback(restify.newError({
+        httpCode: 500,
+        restCode: RestCodes.UnknownError
+      }));
+    } else {
+      return callback();
     }
-
-    return callback();
   };
 
-  var req = this._request('POST', '/events', _callback);
-  req.write(JSON.stringify({
-    status: options.status,
-    check: options.check,
-    zone: options.zone,
-    customer: options.customer,
-    metrics: options.metrics
-  }));
+  var req = this._request('POST', '/events', onComplete);
+  req.write(JSON.stringify(event));
   req.end();
 };
 
@@ -213,14 +191,15 @@ RelayClient.prototype._request = function(method, path, callback) {
   options.method = method;
   options.path = path;
 
-  var _callback = function(res) {
-    res.body = '';
+  var onResponse = function(res) {
+    var chunks = [];
     res.setEncoding('utf8');
     res.on('data', function(chunk) {
       self.log.trace('relay-client: request chunk=%s', chunk);
-      res.body += chunk;
+      chunks.push(chunk);
     });
     res.on('end', function() {
+      res.body = chunks.join('');
       if (res.body.length > 0 &&
           res.headers['content-type'] === 'application/json') {
         try {
@@ -239,10 +218,10 @@ RelayClient.prototype._request = function(method, path, callback) {
   var req;
   switch (this._requestMode) {
   case "http":
-    req = http.request(options, _callback);
+    req = http.request(options, onResponse);
     break;
   case "https":
-    req = https.request(options, _callback);
+    req = https.request(options, onResponse);
     break;
   default:
     throw new Error(sprintf("unknown request mode: '%s'", this._requestMode));

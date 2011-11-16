@@ -129,7 +129,7 @@ Probe.prototype.validate = function validate(raw) {
 
   //XXX validate data for that probe type
   //  try {
-  //    plugin.validateConfig(config);
+  //    plugin.validateInstanceData(raw.data);
   //  } catch (e) {
   //    utils.sendInvalidConfig(res, e.message);
   //    return next();

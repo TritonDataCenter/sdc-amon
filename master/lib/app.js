@@ -20,7 +20,7 @@ var contacts = require('./contacts');
 var monitors = require('./monitors');
 var probes = require('./probes');
 var agentprobes = require('./agentprobes');
-//var events = require('./events');
+var events = require('./events');
 
 
 
@@ -185,8 +185,7 @@ function App(config, ufds) {
   //            amonCommon.events.event,
   //            events.create,
   //            after);
-
-
+  server.post('/events', before, events.addEvents, after);
 };
 
 

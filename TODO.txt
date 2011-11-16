@@ -8,12 +8,14 @@
 
 # todo
 
-- probe plugins: validateConfig -> validateData
 - agent sending events
-- relay -D/--data-dir and create subdir
 - relay passing on events
 - master receiving events
 - master notification plugins working
+- update "zone" field to include CN uuid prefix
+- turn it on in COAL builds
+* * *
+- relay -D/--data-dir and create subdir
 - rm "joyent" from relay/agent dirs and socket paths
 - disallow '/' in name fields (so can use that as sep char for a string id).
   If this isn't acceptable then update id'ification in agent.
@@ -24,6 +26,7 @@
       use 'x-api-version:1' on the wire to have an older agent talk to
       a newer master.
 - name fields in Master API: percent escaping
+
 
 # someday/maybe
 

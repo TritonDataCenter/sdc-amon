@@ -13,7 +13,6 @@ var zsock = require('zsock');
 
 var amonCommon = require('amon-common');
 var Constants = amonCommon.Constants;
-var preEvents = amonCommon.events;
 var RelayClient = amonCommon.RelayClient;
 
 var agentprobes = require('./agentprobes');
@@ -119,7 +118,7 @@ var App = function App(options) {
   this.server.head('/agentprobes', before, agentprobes.headAgentProbes, after);
   this.server.get('/agentprobes', before, agentprobes.listAgentProbes, after);
 
-  this.server.post('/events', before, preEvents.event, events.forward, after);
+  this.server.post('/events', before, events.addEvents, after);
 
   // Currently this is a testing-only option to avoid the updating getting
   // in the way.

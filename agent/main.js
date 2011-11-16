@@ -19,10 +19,10 @@ var assert = require('assert');
 var nopt = require('nopt');
 var pathlib = require('path');
 var sprintf = require('sprintf').sprintf;
+var uuid = require('node-uuid');
 
 var RelayClient = require('amon-common').RelayClient;
 var plugins = require('amon-plugins');
-var Notification = require('./lib/notify');
 
 
 
@@ -37,6 +37,7 @@ var DEFAULT_DATA_DIR = '/var/run/joyent/amon-agent';
 
 var config; // Agent configuration settings. Set in `main()`.
 var probeFromId = {}; // Active probe instances. Controlled in `updateProbes`.
+var relay;  // Relay client.
 
 // A cache for `getProbeData`.
 var probeDataCache;
@@ -74,7 +75,6 @@ function asyncForEach(list, fn, cb) {
  * @param callback {Function} `function (err, probeData)`
  */
 function getProbeData(force, callback) {
-  var relay = new RelayClient({url: config.socket, log: log});
   relay.agentProbesMD5(function(err, upstreamMD5) {
     if (err) {
       log.warn("error getting agent probes MD5: %s (continuing with cache)", err);
@@ -134,23 +134,25 @@ function createProbe(id, probeData, callback) {
 
 /**
  * Called for each new started probe, to setup listeners to its event stream.
+ *
+ * @param probe {Object} The probe instance.
  */
 function onNewProbe(probe) {
-  probe.on("event", function (status, metrics) {
-    log.info("XXX probe event: %o", arguments)
-//      check._notification = new Notification({
-//        socket: config.socket,
-//        id: check.id
-//      });
-//      check.on('alarm', function(status, metrics) {
-//        check._notification.send(status, metrics, function(err) {
-//          if (err) {
-//            log.warn('Failed to send notification: ' + err);
-//            return;
-//          }
-//          log.info('Alarm notification sent for: %s', check.id);
-//        });
-//      });
+  probe.on("event", sendEvent);
+}
+
+
+
+/**
+ * Send the given event up to this agent's relay.
+ */
+function sendEvent(event) {
+  event.uuid = uuid();
+  log.info("sending event: %o", event);
+  relay.sendEvent(event, function (err) {
+    if (err) {
+      log.error("event '%s' was not sent: %s", event.uuid, err);
+    }
   });
 }
 
@@ -387,6 +389,7 @@ function main() {
   assert.ok(pathlib.existsSync(config.dataDir),
     "Data dir '"+config.dataDir+"' does not exist.");
 
+  relay = new RelayClient({url: config.socket, log: log}); // intentionally global
   loadProbeDataCacheSync();
 
   // Update probe data (from relay) every `poll` seconds. Also immediately

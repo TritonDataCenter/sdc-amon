@@ -1,59 +1,34 @@
-// Copyright 2011 Joyent, Inc.  All rights reserved.
+/* Copyright 2011 Joyent, Inc.  All rights reserved.
+ *
+ * Controller for relay "POST /events" endpoint.
+ */
+
 var assert = require('assert');
 var restify = require('restify');
-
-var amon_common = require('amon-common');
-
-var Constants = amon_common.Constants;
-var Messages = amon_common.Messages;
-var _message = Messages.message;
 var log = restify.log;
-var _error = restify.newError;
-var HttpCodes = restify.HttpCodes;
-var RestCodes = restify.RestCodes;
 
-function _sendMissingArgument(res, arg) {
-  var e = _error({httpCode: HttpCodes.Conflict,
-                  restCode: RestCodes.MissingParameter,
-                  message: _message(Messages.MissingParameter, arg)
-                 });
-  if (log.debug()) {
-    log.debug('sending error: ' + e);
-  }
-  res.sendError(e);
-}
 
-module.exports = {
-
-  forward: function forward(req, res, next) {
-    if (res._eventResultSent) return next();
-    assert.ok(req._amonEvent);
-    log.debug('events.forward: event=%o', req._amonEvent);
-
-    if (!req.params.check) {
-      _sendMissingArgument(res, 'check');
+function addEvents(req, res, next) {
+  var event = req.params;
+  
+  //XXX This is where validation would be done.
+  
+  // Add data known by the relay (this is info the master can trust more
+  // because the relay is always in the hands of the operator).
+  event.zone = req._zone;
+  
+  log.debug("relaying event: %o", event);
+  req._master.sendEvent(event, function(err) {
+    if (err) {
+      res.sendError(err);
       return next();
     }
+    res.send(202 /* Accepted */);
+    return next();
+  });
+}
 
-    var event = {
-      zone: req._zone,
-      customer: req._owner,
-      check: req.params.check,
-      status: req.params.status,
-      metrics: req._amonEvent.metrics
-    };
 
-    req._master.sendEvent(event, function(err) {
-      if (err) {
-        log.warn("error forwarding event to master: %o", err);
-        res.sendError(err);
-        return next();
-      }
-
-      log.debug('events.forward: sending %d', HttpCodes.Accepted);
-      res.send(HttpCodes.Accepted);
-      return next();
-    });
-  }
-
+module.exports = {
+  addEvents: addEvents,
 };

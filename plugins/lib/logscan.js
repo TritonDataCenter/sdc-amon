@@ -79,9 +79,10 @@ LogScan.prototype.start = function(callback) {
     }
     if (self.regex.test(line)) {
       if (++self._count >= self.threshold) {
-        log.info('amon:logscan alarm (id=%s): %s', self.id, line);
-        self.emit('event', 'error', {
-          name: 'amon:logscan',
+        log.debug('logscan event (id=%s): %s', self.id, line);
+        self.emit('event', {
+          probe: self.id,
+          probeType: 'amon:logscan',
           type: 'Integer',
           value: self._count,
           data: {
