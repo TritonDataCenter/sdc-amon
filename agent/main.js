@@ -320,9 +320,8 @@ function loadProbeDataCacheSync() {
 
 function usage(code, msg) {
   if (msg) {
-    console.error('ERROR: ' + msg);
+    console.error('ERROR: ' + msg + '\n');
   }
-  console.log("");
   printHelp();
   process.exit(code);
 }

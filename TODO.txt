@@ -9,15 +9,18 @@
 # todo
 
 - finish ufdsmodel.js refactoring
+  - test monitor creation: does 'contacts' correctly end up as 'contact' in UFDS?
 - finish plugins/lib/plugin.js base class
 - email notification plugin
 - ticket for the system error twillio message (and retire twillio). What
-  for *actual* SMS?
+  for actual SMS *text*?
 - update "zone" field to include CN uuid prefix
+- update to latest ldapjs and UFDS
 - turn it on in COAL builds
 * * *
 - spec how processEvent should work with persistent alarms
 - relay -D/--data-dir and create subdir
+- consistent `new restify.FooError(...)` usage
 - rm "joyent" from relay/agent dirs and socket paths
 - disallow '/' in name fields (so can use that as sep char for a string id).
   If this isn't acceptable then update id'ification in agent.

@@ -19,38 +19,44 @@ var log = restify.log;
 // Interface is as required by "ufdsmodel.js".
 // Presuming routes as follows: '.../monitors/:monitor/probes/:probe'.
 
-
 /**
- * Create a Probe.
+ * Create a Probe. `new Probe([name, ]data)`.
  *
- * @param raw {Object} Either the raw database data *or* a restify HTTP
- *    request object. If the latter this will validate the request data.
- * @throws {restify Error} if the given data is invalid.
+ * @param name {String} The instance name. Can be skipped if `data` includes
+ *    "amonprobename" (which a UFDS response does).
+ * @param data {Object} The instance data.
+ * @throws {restify.RESTError} if the given data is invalid.
  */
-function Probe(raw) {
-  if (raw instanceof events.EventEmitter) {
-    // This is a restify Request object. We use `events.EventEmitter` because
-    // `http.ServerRequest` isn't exported.
-    this.raw = {
-      amonprobename: raw.uriParams.probe,
-      zone: raw.params.zone,
-      urn: raw.params.urn,
-      data: JSON.stringify(raw.params.data),
+function Probe(name, data) {
+  if (data === undefined) {
+    // Usage: new Probe(data) 
+    data = name;
+    name = data.amonprobename;
+  }
+
+  Probe.validateName(name);
+  this.name = name;
+  
+  var raw; // The raw form as it goes into and comes out of UFDS.
+  if (data.objectclass === "amonprobe") { // From UFDS.
+    raw = data;
+    var parsedDN = ldap.parseDN(raw.dn)
+    this.monitor = parsedDN.rdns[1].amonmonitorname;
+    this.user = parsedDN.rdns[2].uuid;
+  } else {
+    raw = {
+      amonprobename: name,
+      zone: data.zone,
+      urn: data.urn,
+      data: JSON.stringify(data.data),
       objectclass: 'amonprobe'
     };
-  } else {
-    this.raw = raw;
+    this.monitor = data.monitor;
+    this.user = this.user;
   }
-  this.raw = this.validate(this.raw);
-  
-  var parsedDN = ldap.parseDN(this.raw.dn)
-  this.monitor = parsedDN.rdns[1].amonmonitorname;
-  this.user = parsedDN.rdns[2].uuid;
+  this.raw = Probe.validate(raw);
 
   var self = this;
-  this.__defineGetter__('name', function() {
-    return self.raw.amonprobename;
-  });
   this.__defineGetter__('zone', function() {
     return self.raw.zone;
   });
@@ -65,6 +71,7 @@ function Probe(raw) {
   });
 }
 
+//XXX Drop "_" prefix.
 Probe._modelName = "probe";
 Probe._objectclass = "amonprobe";
 // Note: Should be in sync with "ufds/schema/amonprobe.js".
@@ -80,7 +87,7 @@ Probe.parentDnFromRequest = function (req) {
   return sprintf("amonmonitorname=%s, %s", req.uriParams.monitor,
     req._account.dn);
 };
-Probe.idFromRequest = function (req) {
+Probe.nameFromRequest = function (req) {
   //XXX validate :probe
   return req.uriParams.probe;
 };
@@ -92,7 +99,7 @@ Probe.idFromRequest = function (req) {
 Probe.get = function get(ufds, name, monitorName, userUuid, callback) {
   var parentDn = sprintf("amonmonitorname=%s, uuid=%s, ou=customers, o=smartdc",
     monitorName, userUuid);
-  ufdsmodel.ufdsModelGetRaw(ufds, Probe, name, parentDn, log, callback);
+  ufdsmodel.modelGet(ufds, Probe, name, parentDn, log, callback);
 }
 
 
@@ -106,7 +113,7 @@ Probe.get = function get(ufds, name, monitorName, userUuid, callback) {
  *    object that can be used to respond with `response.sendError(e)`
  *    for a node-restify response.
  */
-Probe.prototype.validate = function validate(raw) {
+Probe.validate = function validate(raw) {
   var requiredFields = {
     // <raw field name>: <exported name>
     "amonprobename": "name",
@@ -121,15 +128,10 @@ Probe.prototype.validate = function validate(raw) {
       //      in the DB is bogus/insufficient.  Not sure best way to handle
       //      that. Would be a pain to have a separate error hierarchy here
       //      that is translated higher up.
-      throw restify.newError({
-        httpCode: restify.HttpCodes.Conflict,
-        restCode: restify.RestCodes.MissingParameter,
-        message: sprintf("'%s' is a required parameter", requiredFields[field])
-      })
+      throw new restify.MissingParameterError(
+        sprintf("'%s' is a required parameter", requiredFields[field]));
     }
   });
-
-  this.validateName(raw.amonprobename);
 
   //XXX validate the urn is an existing probe type
   //  var plugin = req._config.plugins[urn];
@@ -155,21 +157,18 @@ Probe.prototype.validate = function validate(raw) {
  * @param name {String} The object name.
  * @throws {restify Error} if the name is invalid.
  */
-Probe.prototype.validateName = function validateName(name) {
+Probe.validateName = function validateName(name) {
   if (! Probe._nameRegex.test(name)) {
-    throw restify.newError({
-      httpCode: restify.HttpCodes.Conflict,
-      restCode: restify.RestCodes.InvalidArgument,
-      message: sprintf("%s name is invalid: '%s'", Probe._modelName, name)
-    });
+    throw new restify.InvalidArgumentError(
+      sprintf("%s name is invalid: '%s'", Probe._modelName, name));
   }
 }
 
 Probe.prototype.serialize = function serialize() {
   return {
-    name: this.name,
-    monitor: this.monitor,
     user: this.user,
+    monitor: this.monitor,
+    name: this.name,
     zone: this.zone,
     urn: this.urn,
     data: this.data,
@@ -183,15 +182,15 @@ Probe.prototype.serialize = function serialize() {
 module.exports = {
   Probe: Probe,
   listProbes: function listProbes(req, res, next) {
-    return ufdsmodel.ufdsModelList(req, res, next, Probe);
+    return ufdsmodel.requestList(req, res, next, Probe);
   },
   createProbe: function createProbe(req, res, next) {
-    return ufdsmodel.ufdsModelCreate(req, res, next, Probe);
+    return ufdsmodel.requestCreate(req, res, next, Probe);
   },
   getProbe: function getProbe(req, res, next) {
-    return ufdsmodel.ufdsModelGet(req, res, next, Probe);
+    return ufdsmodel.requestGet(req, res, next, Probe);
   },
   deleteProbe: function deleteProbe(req, res, next) {
-    return ufdsmodel.ufdsModelDelete(req, res, next, Probe);
+    return ufdsmodel.requestDelete(req, res, next, Probe);
   }
 };

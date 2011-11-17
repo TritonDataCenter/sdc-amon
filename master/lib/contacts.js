@@ -19,31 +19,38 @@ var log = restify.log;
 // Interface is as required by "ufdsmodel.js".
 
 /**
- * Create a Contact.
+ * Create a Contact. `new Contact([name, ]data)`.
  *
- * @param raw {Object} Either the raw database data *or* a restify HTTP
- *    request object. If the latter this will validate the request data.
- * @throws {restify Error} if the given data is invalid.
+ * @param name {String} The instance name. Can be skipped if `data` includes
+ *    "amoncontactname" (which a UFDS response does).
+ * @param data {Object} The instance data.
+ * @throws {restify.RESTError} if the given data is invalid.
  */
-function Contact(raw) {
-  if (raw instanceof events.EventEmitter) {
-    // This is a restify Request object. We use `events.EventEmitter` because
-    // `http.ServerRequest` isn't exported.
-    this.raw = {
-      amoncontactname: raw.uriParams.contact,
-      medium: raw.params.medium,
-      data: raw.params.data,
-      objectclass: 'amoncontact'
-    };
-  } else {
-    this.raw = raw;
+function Contact(name, data) {
+  if (data === undefined) {
+    // Usage: new Contact(data) 
+    data = name;
+    name = data.amoncontactname;
   }
-  this.raw = this.validate(this.raw);
+  
+  Contact.validateName(name);
+  this.name = name;
+
+  var raw; // The raw form as it goes into and comes out of UFDS.
+  if (data.objectclass === "amoncontact") { // From UFDS.
+    raw = data;
+  } else {
+    raw = {
+      amoncontactname: name,
+      contact: data.contacts,
+      medium: data.medium,
+      data: data.data,
+      objectclass: 'amoncontact'
+    }
+  }
+  this.raw = Contact.validate(raw);
 
   var self = this;
-  this.__defineGetter__('name', function() {
-    return self.raw.amoncontactname;
-  });
   this.__defineGetter__('medium', function() {
     return self.raw.medium;
   });
@@ -65,7 +72,7 @@ Contact.dnFromRequest = function (req) {
 Contact.parentDnFromRequest = function (req) {
   return req._account.dn;
 };
-Contact.idFromRequest = function (req) {
+Contact.nameFromRequest = function (req) {
   //XXX validate :contact
   return req.uriParams.contact;
 };
@@ -75,7 +82,7 @@ Contact.idFromRequest = function (req) {
  */
 Contact.get = function get(ufds, name, userUuid, callback) {
   var parentDn = sprintf("uuid=%s, ou=customers, o=smartdc", userUuid);
-  ufdsmodel.ufdsModelGetRaw(ufds, Contact, name, parentDn, log, callback);
+  ufdsmodel.modelGet(ufds, Contact, name, parentDn, log, callback);
 }
 
 /**
@@ -88,7 +95,7 @@ Contact.get = function get(ufds, name, userUuid, callback) {
  *    object that can be used to respond with `response.sendError(e)`
  *    for a node-restify response.
  */
-Contact.prototype.validate = function validate(raw) {
+Contact.validate = function validate(raw) {
   var requiredFields = {
     // <raw field name>: <exported name>
     "amoncontactname": "name",
@@ -97,15 +104,10 @@ Contact.prototype.validate = function validate(raw) {
   }
   Object.keys(requiredFields).forEach(function (field) {
     if (!raw[field]) {
-      throw restify.newError({
-        httpCode: restify.HttpCodes.Conflict,
-        restCode: restify.RestCodes.MissingParameter,
-        message: sprintf("'%s' is a required parameter", requiredFields[field])
-      })
+      throw new restify.MissingParameterError(
+        sprintf("'%s' is a required parameter", requiredFields[field]));
     }
   });
-
-  this.validateName(raw.amoncontactname);
 
   //XXX
   //var plugin = req._notificationPlugins[medium];
@@ -128,13 +130,10 @@ Contact.prototype.validate = function validate(raw) {
  * @param name {String} The object name.
  * @throws {restify Error} if the name is invalid.
  */
-Contact.prototype.validateName = function validateName(name) {
+Contact.validateName = function validateName(name) {
   if (! Contact._nameRegex.test(name)) {
-    throw restify.newError({
-      httpCode: restify.HttpCodes.Conflict,
-      restCode: restify.RestCodes.InvalidArgument,
-      message: sprintf("%s name is invalid: '%s'", Contact._modelName, name)
-    });
+    throw new restify.InvalidArgumentError(
+      sprintf("%s name is invalid: '%s'", Contact._modelName, name));
   }
 }
 
@@ -153,16 +152,16 @@ Contact.prototype.serialize = function serialize() {
 module.exports = {
   Contact: Contact,
   listContacts: function listContacts(req, res, next) {
-    return ufdsmodel.ufdsModelList(req, res, next, Contact);
+    return ufdsmodel.requestList(req, res, next, Contact);
   },
   createContact: function createContact(req, res, next) {
-    return ufdsmodel.ufdsModelCreate(req, res, next, Contact);
+    return ufdsmodel.requestCreate(req, res, next, Contact);
   },
   getContact: function getContact(req, res, next) {
-    return ufdsmodel.ufdsModelGet(req, res, next, Contact);
+    return ufdsmodel.requestGet(req, res, next, Contact);
   },
   deleteContact: function deleteContact(req, res, next) {
-    return ufdsmodel.ufdsModelDelete(req, res, next, Contact);
+    return ufdsmodel.requestDelete(req, res, next, Contact);
   }
 };
 
