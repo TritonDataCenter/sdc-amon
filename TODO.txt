@@ -8,10 +8,15 @@
 
 # todo
 
-- master notification plugins working
+- finish ufdsmodel.js refactoring
+- finish plugins/lib/plugin.js base class
+- email notification plugin
+- ticket for the system error twillio message (and retire twillio). What
+  for *actual* SMS?
 - update "zone" field to include CN uuid prefix
 - turn it on in COAL builds
 * * *
+- spec how processEvent should work with persistent alarms
 - relay -D/--data-dir and create subdir
 - rm "joyent" from relay/agent dirs and socket paths
 - disallow '/' in name fields (so can use that as sep char for a string id).

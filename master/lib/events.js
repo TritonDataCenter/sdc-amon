@@ -5,7 +5,10 @@
  */
 
 var assert = require('assert');
+var ufdsmodel = require('./ufdsmodel');
 var restify = require('restify');
+var RestCodes = restify.RestCodes;
+var Monitor = require('./monitors').Monitor;
 
 
 //---- globals
@@ -14,39 +17,75 @@ var log = restify.log;
 
 
 
+//---- internal support routines
+
+/**
+ * Run async `fn` on each entry in `list`. Call `cb(error)` when all done.
+ * `fn` is expected to have `fn(item, callback) -> callback(error)` signature.
+ *
+ * From Isaac's rimraf.js.
+ */
+function asyncForEach(list, fn, cb) {
+  if (!list.length) cb()
+  var c = list.length
+    , errState = null
+  list.forEach(function (item, i, list) {
+   fn(item, function (er) {
+      if (errState) return
+      if (er) return cb(errState = er)
+      if (-- c === 0) return cb()
+    })
+  })
+}
+
+
+
 //---- controllers
 
+/**
+ * Process the given events. This accepts either a single event (an object)
+ * or an array of events. Each event is treated independently such that
+ * one event may have validation errors, but other events in the array will
+ * still get processed.
+ *
+ * TODO: Improve the error story here. Everything is a 500, even for invalid
+ *    event fields. That is lame.
+ */
 function addEvents(req, res, next) {
-  log.info("XXX event: %o", req.params)
+  var events;
+  if (Array.isArray(req.params)) {
+    events = req.params;
+  } else {
+    events = [req.params];
+  }
+  log.info("addEvents: events=%o", events);
   
-//        monitor.loadContactsByCheckId(check.id, function(err, contacts) {
-//          if (!err && contacts) {
-//            log.debug('events.create(%s): contacts=%o', check.id, contacts);
-//
-//            contacts.forEach(function(contact) {
-//              var plugin = req._notificationPlugins[contact.medium];
-//              if (!plugin) {
-//                log.error('events.create: notification plugin %s not found',
-//                          contact.medium);
-//                return;
-//              }
-//
-//              plugin.notify(check.name,
-//                            contact.data,
-//                            req._amonEvent.message,
-//                            _notifyCb);
-//            });
-//          } else {
-//            // TODO - load up email from CAPI
-//          }
+  // Collect errors so first failure doesn't abort the others.
+  var errs = [];
+  function validateAndProcess(event, cb) {
+    //XXX event validation would go here
+
+    req._app.processEvent(event, function (err) {
+      if (err) errs.push(err);
+      cb();
+    });
+  }
   
-  
-  res.send(202 /* Accepted */);
-  next();
+  asyncForEach(events, validateAndProcess, function (err) {
+    if (errs.length > 0) {
+      res.sendError(restify.newError({
+        httpCode: 500,
+        restCode: RestCodes.InternalError,
+        message: errs.join(", ")
+      }));
+    } else {
+      res.send(202 /* Accepted */);
+    }
+    next();
+  });
 }
 
 
 module.exports = {
   addEvents: addEvents
 };
-

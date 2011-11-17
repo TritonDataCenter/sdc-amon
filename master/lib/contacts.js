@@ -9,8 +9,9 @@ var events = require('events');
 var ldap = require('ldapjs');
 var restify = require('restify');
 var sprintf = require('sprintf').sprintf;
-
 var ufdsmodel = require('./ufdsmodel');
+
+var log = restify.log;
 
 
 
@@ -68,6 +69,14 @@ Contact.idFromRequest = function (req) {
   //XXX validate :contact
   return req.uriParams.contact;
 };
+
+/**
+ * Get a contact.
+ */
+Contact.get = function get(ufds, name, userUuid, callback) {
+  var parentDn = sprintf("uuid=%s, ou=customers, o=smartdc", userUuid);
+  ufdsmodel.ufdsModelGetRaw(ufds, Contact, name, parentDn, log, callback);
+}
 
 /**
  * Validate the raw data and optionally massage some fields.
@@ -142,6 +151,7 @@ Contact.prototype.serialize = function serialize() {
 //---- controllers
 
 module.exports = {
+  Contact: Contact,
   listContacts: function listContacts(req, res, next) {
     return ufdsmodel.ufdsModelList(req, res, next, Contact);
   },

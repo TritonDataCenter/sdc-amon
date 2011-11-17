@@ -9,8 +9,9 @@ var events = require('events');
 var ldap = require('ldapjs');
 var restify = require('restify');
 var sprintf = require('sprintf').sprintf;
-
 var ufdsmodel = require('./ufdsmodel');
+
+var log = restify.log;
 
 
 
@@ -83,6 +84,16 @@ Probe.idFromRequest = function (req) {
   //XXX validate :probe
   return req.uriParams.probe;
 };
+
+
+/**
+ * Get a probe.
+ */
+Probe.get = function get(ufds, name, monitorName, userUuid, callback) {
+  var parentDn = sprintf("amonmonitorname=%s, uuid=%s, ou=customers, o=smartdc",
+    monitorName, userUuid);
+  ufdsmodel.ufdsModelGetRaw(ufds, Probe, name, parentDn, log, callback);
+}
 
 
 /**

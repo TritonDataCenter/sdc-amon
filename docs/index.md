@@ -319,6 +319,9 @@ while accountCache object.
 ||ufds.password||UFDS root dn password.||
 ||accountCache.size||The number of entries to cache.||
 ||accountCache.expiry||The number of seconds for which cache entries are valid.||
+||notificationPlugins||An object defining all notification mechanisms. This is a mapping of plugin name, e.g. "email" or "sms", to plugin data.||
+||notificationPlugins.NAME.path||A node `require()` path from which the Amon master can load the plugin module, e.g. "./lib/twillio".||
+||notificationPlugins.NAME.config||An object with instance data for the plugin.||
 
 
 # Relay API

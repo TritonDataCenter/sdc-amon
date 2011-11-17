@@ -58,6 +58,8 @@
  */
 
 var ldap = require('ldapjs');
+var restify = require('restify');
+var RestCodes = restify.RestCodes;
 
 
 
@@ -142,6 +144,60 @@ function ufdsModelCreate(req, res, next, Model) {
       res.send(200, data);
       return next();
     }
+  });
+}
+
+
+function ufdsModelGetRaw(ufds, Model, id, parentDn, log, callback) {
+  var opts = {
+    //TODO: is this better? '(&(amonfooname=$name)(objectclass=amonfoo))'
+    filter: '(' + Model._objectclass + 'name=' + id + ')',
+    scope: 'sub'
+  };
+  ufds.search(parentDn, opts, function(err, result) {
+    var items = [];
+    result.on('searchEntry', function(entry) {
+      items.push((new Model(entry.object)).serialize());
+    });
+
+    result.on('error', function(err) {
+      return callback({
+        httpCode: 500,
+        restCode: RestCodes.InternalError,
+        message: sprintf("Error searching UFDS: %s (opts: %s)",
+          err, JSON.stringify(opts))
+      });
+    });
+
+    result.on('end', function(result) {
+      if (result.status !== 0) {
+        return callback({
+          httpCode: 500,
+          restCode: RestCodes.InternalError,
+          message: sprintf("Non-zero status from UFDS search: %s (opts: %s)",
+            result, JSON.stringify(opts))
+        });
+      }
+      log.debug('%s items: %o', Model._modelName, items);
+      switch (items.length) {
+      case 0:
+        return callback({
+          httpCode: 404,
+          restCode: RestCodes.ResourceNotFound
+        });
+        break;
+      case 1:
+        return callback(null, items[0]);
+        break;
+      default:
+        return callback({
+          httpCode: 500,
+          restCode: RestCodes.InternalError,
+          message: sprintf("unexpected number of %s (%d): %s",
+            Model._modelName, items.length, JSON.stringify(items))
+        });
+      }
+    });
   });
 }
 
@@ -238,3 +294,6 @@ module.exports.ufdsModelList = ufdsModelList;
 module.exports.ufdsModelCreate = ufdsModelCreate;
 module.exports.ufdsModelGet = ufdsModelGet;
 module.exports.ufdsModelDelete = ufdsModelDelete;
+
+//XXX
+module.exports.ufdsModelGetRaw = ufdsModelGetRaw;

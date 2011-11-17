@@ -1,7 +1,8 @@
 {
-  "riak": {
-    "host": "localhost",
-    "port": 8098
+  "ufds": {
+    "url": "ldaps://10.88.88.50:636",
+    "rootDn": "cn=root",
+    "password": "secret"
   },
   "notificationPlugins": {
     "sms": {

@@ -21,7 +21,9 @@ var pathlib = require('path');
 var sprintf = require('sprintf').sprintf;
 var uuid = require('node-uuid');
 
-var RelayClient = require('amon-common').RelayClient;
+var amonCommon = require('amon-common');
+var RelayClient = amonCommon.RelayClient;
+var Constants = amonCommon.Constants;
 var plugins = require('amon-plugins');
 
 
@@ -142,12 +144,13 @@ function onNewProbe(probe) {
 }
 
 
-
 /**
  * Send the given event up to this agent's relay.
  */
 function sendEvent(event) {
   event.uuid = uuid();
+  event.version = Constants.ApiVersion;
+  
   log.info("sending event: %o", event);
   relay.sendEvent(event, function (err) {
     if (err) {
@@ -183,7 +186,7 @@ function updateProbes(force) {
     });
 
     // 3. Gather list of changes (updates/adds/removes) of probes to do.
-    var todos = []; // [<action>, <data>]
+    var todos = []; // [<action>, <probe-id>]
     Object.keys(probeFromId).forEach(function (id) {
       if (! probeDataFromId[id]) {
         todos.push(["delete", id]); // Delete this probe.

@@ -40,6 +40,12 @@ function LogScan(options) {
 
   this.id = options.id;
   this.json = JSON.stringify(options.data);
+  this.idObject = { //XXX move this to base Plugin class
+    user: options.data.user,
+    monitor: options.data.monitor,
+    name: options.data.name,
+    type: "amon:logscan"
+  };
   
   var instanceData = options.data.data;
   this.data = options.data;
@@ -51,13 +57,12 @@ function LogScan(options) {
   this._count = 0;
   this._running = false;
 
+  //XXX Move this setInterval to `.start()` to avoid race.
   var self = this;
   this.timer = setInterval(function() {
-    if (!self._running) return;
-
-    if (log.debug()) {
-      log.debug('Clearing logscan counter for %s', self.id);
-    }
+    if (!self._running)
+      return;
+    log.debug('Clearing logscan counter for %s', self.id);
     self._count = 0;
   }, this.period * 1000);
 
@@ -73,16 +78,13 @@ LogScan.prototype.start = function(callback) {
     if (!self._running) return;
 
     var line = _trim('' + data);
-    if (log.debug()) {
-      log.debug('logscan tail.stdout (id=%s, threshold=%d, count=%d): %s',
-                self.id, self.threshold, self._count, line);
-    }
+    log.debug('logscan tail.stdout (id=%s, threshold=%d, count=%d): %s',
+      self.id, self.threshold, self._count, line);
     if (self.regex.test(line)) {
       if (++self._count >= self.threshold) {
         log.debug('logscan event (id=%s): %s', self.id, line);
         self.emit('event', {
-          probe: self.id,
-          probeType: 'amon:logscan',
+          probe: self.idObject,
           type: 'Integer',
           value: self._count,
           data: {

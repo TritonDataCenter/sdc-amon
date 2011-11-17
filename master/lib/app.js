@@ -14,10 +14,11 @@ var amonCommon = require('amon-common');
 var Cache = amonCommon.Cache;
 var Constants = amonCommon.Constants;
 
-
 // Endpoint controller modules.
 var contacts = require('./contacts');
+var Contact = contacts.Contact;
 var monitors = require('./monitors');
+var Monitor = monitors.Monitor;
 var probes = require('./probes');
 var agentprobes = require('./agentprobes');
 var events = require('./events');
@@ -51,6 +52,26 @@ function getAccount(req, res, next) {
   };
   res.send(200, data);
   return next();
+}
+
+
+/**
+ * Run async `fn` on each entry in `list`. Call `cb(error)` when all done.
+ * `fn` is expected to have `fn(item, callback) -> callback(error)` signature.
+ *
+ * From Isaac's rimraf.js.
+ */
+function asyncForEach(list, fn, cb) {
+  if (!list.length) cb()
+  var c = list.length
+    , errState = null
+  list.forEach(function (item, i, list) {
+   fn(item, function (er) {
+      if (errState) return
+      if (er) return cb(errState = er)
+      if (-- c === 0) return cb()
+    })
+  })
 }
 
 
@@ -92,25 +113,22 @@ function createApp(config, callback) {
  * @param ufds {ldapjs.Client} LDAP client to UFDS.
  */
 function App(config, ufds) {
+  var self = this;
+
   if (!config) throw TypeError('config is required');
   if (!config.port) throw TypeError('config.port is required');
   if (!ufds) throw TypeError('ufds is required');
   this.config = config;
   this.ufds = ufds;
-  
-  //this.notificationPlugins = {};
-  //var plugins = options.config.notificationPlugins;
-  //for (var k in plugins) {
-  //  if (plugins.hasOwnProperty(k)) {
-  //    try {
-  //      this.notificationPlugins[k] =
-  //        require(plugins[k].path).newInstance(plugins[k].config);
-  //    } catch (e) {
-  //      log.error('Unable to load notification plugin %s: %s', k, e.stack);
-  //    }
-  //  }
-  //}
-  //log.debug('Loaded notification plugins: %o', this.notificationPlugins);
+
+  this.notificationPlugins = {};
+  if (config.notificationPlugins) {
+    Object.keys(config.notificationPlugins || {}).forEach(function (name) {
+      var plugin = config.notificationPlugins[name];
+      log.info("Loading '%s' notification plugin.", name);
+      self.notificationPlugins[name] = require(plugin.path).newInstance(plugin.config);
+    });
+  }
 
   // Cache of login (aka username) -> full account record.
   this.accountCache = new Cache(config.accountCache.size,
@@ -121,7 +139,6 @@ function App(config, ufds) {
     serverName: Constants.ServerName
   });
 
-  var self = this;
   function setup(req, res, next) {
     req._app = self;
     req._ufds = self.ufds;
@@ -178,13 +195,6 @@ function App(config, ufds) {
   server.get('/agentprobes', before, agentprobes.listAgentProbes, after);
   server.head('/agentprobes', before, agentprobes.listAgentProbes, after);
   
-  //
-  //server.get('/events', before, events.list, after);
-  //server.post('/events',
-  //            before,
-  //            amonCommon.events.event,
-  //            events.create,
-  //            after);
   server.post('/events', before, events.addEvents, after);
 };
 
@@ -272,6 +282,77 @@ App.prototype.accountFromLogin = function(login, callback) {
   });
   
 };
+
+
+/**
+ * Handle an incoming event.
+ *
+ * @param ufds {ldapjs client} UFDS client.
+ * @param event {Object} The event object.
+ * @param callback {Function} `function (err) {}` called on completion.
+ *    "err" is undefined (success) or an error message (failure).
+ *
+ * An example monitor (beware this being out of date):
+{
+  "probe": {
+    "user": "7b23ae63-37c9-420e-bb88-8d4bf5e30455",
+    "monitor": "whistle",
+    "name": "whistlelog2",
+    "type": "amon:logscan"
+  },
+  "type": "Integer",
+  "value": 1,
+  "data": {
+    "match": "tweet tweet"
+  },
+  "uuid": "3ab1336e-5453-45f9-be10-8686ba70e419",
+  "version": "1.0.0"
+}
+ */
+App.prototype.processEvent = function (event, callback) {
+  var self = this;
+  log.debug("App.processEvent: %o", event);
+  
+  // 1. Get the monitor for this probe, to get its list of contacts.
+  var userUuid = event.probe.user;
+  Monitor.get(this.ufds, event.probe.monitor, userUuid, function (err, monitor) {
+    if (err) return callback(err);
+    // 2. Notify each contact.
+    function getAndNotifyContact(contactName, cb) {
+      log.debug("App.processEvent: notify contact '%s'", contactName);
+      Contact.get(self.ufds, contactName, userUuid, function (err, contact) {
+        if (err) {
+          log.warn("could not get contact '%s' (user '%s'): %s",
+            contactName, userUuid, err)
+          return cb();
+        }
+        self.notifyContact(userUuid, monitor, contact, event, function (err) {
+          if (err) {
+            log.warn("could not notify contact: %s", err);
+          }
+          return cb();
+        });
+      });
+    }
+    asyncForEach(monitor.contacts, getAndNotifyContact, function (err) {
+      callback();
+    });
+  });
+};
+
+/**
+ * XXX clarify error handling
+ *
+ * ...
+ * @param callback {Function} `function (err) {}`.
+ */
+App.prototype.notifyContact = function (user, monitor, contact, event, callback) {
+  var plugin = this.notificationPlugins[contact.medium];
+  if (!plugin) {
+    return callback("notification plugin '%s' not found", contact.medium);
+  }
+  plugin.notify(event.probe.name, contact.data, "XXX message", callback);
+}
 
 
 /**

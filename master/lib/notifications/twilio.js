@@ -105,10 +105,8 @@ Twilio.prototype.notify = function(event, handle, message, callback) {
         }
       });
 
-      if (log.debug()) {
-        log.debug('Twilio(%s) HTTP=%s, headers=%o',
-                  event, res.statusCode, res.headers);
-      }
+      log.debug('Twilio(%s) HTTP=%s, headers=%o',
+                event, res.statusCode, res.headers);
     });
 
     req.on('error', function(err) {

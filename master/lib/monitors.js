@@ -9,8 +9,9 @@ var events = require('events');
 var ldap = require('ldapjs');
 var restify = require('restify');
 var sprintf = require('sprintf').sprintf;
-
 var ufdsmodel = require('./ufdsmodel');
+
+var log = restify.log;
 
 
 
@@ -64,6 +65,15 @@ Monitor.idFromRequest = function (req) {
   //XXX validate :monitor
   return req.uriParams.monitor;
 };
+
+
+/**
+ * Get a monitor.
+ */
+Monitor.get = function get(ufds, name, userUuid, callback) {
+  var parentDn = sprintf("uuid=%s, ou=customers, o=smartdc", userUuid);
+  ufdsmodel.ufdsModelGetRaw(ufds, Monitor, name, parentDn, log, callback);
+}
 
 /**
  * Validate the raw data and optionally massage some fields.
@@ -130,6 +140,7 @@ Monitor.prototype.serialize = function serialize() {
 //---- controllers
 
 module.exports = {
+  Monitor: Monitor,
   listMonitors: function listMonitors(req, res, next) {
     return ufdsmodel.ufdsModelList(req, res, next, Monitor);
   },

@@ -107,29 +107,8 @@ function main() {
   log.trace("opts: %o", opts);
 
   var config = loadConfig(opts.file);
+  //XXX:TODO mask out notificationPlugins.*.config to mask passwords, etc.
   log.debug("config: %o", config);
-
-  //XXX
-  //var cfg = new Config({
-  //  file: file
-  //});
-  //cfg.log = log;
-  //cfg.load(function(err) {
-  //  if (err) {
-  //    log.fatal('Unable to read config: ' + err);
-  //    process.exit(1);
-  //  }
-  //  cfg.plugins = require('amon-plugins');
-  //  var app = new App({
-  //    port: port,
-  //    config: cfg.config
-  //  });
-  //  app.listen(function() {
-  //    var addr = app.server.address();
-  //    log.info('amon-master listening on <http://%s:%s>',
-  //      addr.address, addr.port);
-  //  });
-  //});
   
   // Create our app and start listening.
   var theApp;
