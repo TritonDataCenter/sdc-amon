@@ -126,7 +126,8 @@ function App(config, ufds) {
     Object.keys(config.notificationPlugins || {}).forEach(function (name) {
       var plugin = config.notificationPlugins[name];
       log.info("Loading '%s' notification plugin.", name);
-      self.notificationPlugins[name] = require(plugin.path).newInstance(plugin.config);
+      var NotificationType = require(plugin.path)
+      self.notificationPlugins[name] = new NotificationType(plugin.config);
     });
   }
 

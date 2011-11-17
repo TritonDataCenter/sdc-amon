@@ -122,10 +122,4 @@ Twilio.prototype.notify = function(event, handle, message, callback) {
 
 
 
-module.exports = {
-
-  newInstance: function(options) {
-    return new Twilio(options);
-  }
-
-};
+module.exports = Twilio;
