@@ -11,6 +11,7 @@ var spawn = require('child_process').spawn;
 var util = require('util');
 
 var log = require('restify').log;
+var Plugin = require('./plugin');
 
 
 
@@ -23,54 +24,44 @@ function _trim(s) {
   return s;
 }
 
-function _validateInstanceData(data) {
+
+
+//---- plugin class
+
+function LogScan(id, data) {
+  Plugin.call(this, id, data, LogScan.type);
+  LogScan.validateInstanceData(this.instanceData);
+  
+  this.path = this.instanceData.path;
+  this.period = this.instanceData.period;
+  this.regex = new RegExp(this.instanceData.regex);
+  this.threshold = this.instanceData.threshold;
+
+  this._count = 0;
+  this._running = false;
+}
+util.inherits(LogScan, Plugin);
+
+LogScan.type = "amon:logscan";
+
+LogScan.validateInstanceData = function(data) {
   if (!data) throw new TypeError('data is required');
   if (!data.path) throw new TypeError('data.path is required');
   if (!data.period) throw new TypeError('data.period is required');
   if (!data.regex) throw new TypeError('data.regex is required');
   if (!data.threshold) throw new TypeError('data.threshold is required');
-}
+};
 
 
-
-//---- plugin class
-
-function LogScan(options) {
-  events.EventEmitter.call(this);
-
-  this.id = options.id;
-  this.json = JSON.stringify(options.data);
-  this.idObject = { //XXX move this to base Plugin class
-    user: options.data.user,
-    monitor: options.data.monitor,
-    name: options.data.name,
-    type: "amon:logscan"
-  };
-  
-  var instanceData = options.data.data;
-  this.data = options.data;
-  this.path = instanceData.path;
-  this.period = instanceData.period;
-  this.regex = new RegExp(instanceData.regex);
-  this.threshold = instanceData.threshold;
-
-  this._count = 0;
-  this._running = false;
-
-  //XXX Move this setInterval to `.start()` to avoid race.
+LogScan.prototype.start = function(callback) {
   var self = this;
+
   this.timer = setInterval(function() {
     if (!self._running)
       return;
     log.debug('Clearing logscan counter for %s', self.id);
     self._count = 0;
   }, this.period * 1000);
-
-}
-util.inherits(LogScan, events.EventEmitter);
-
-LogScan.prototype.start = function(callback) {
-  var self = this;
 
   this._running = true;
   this.tail = spawn('/usr/bin/tail', ['-1cF', this.path]);
@@ -82,7 +73,7 @@ LogScan.prototype.start = function(callback) {
       self.id, self.threshold, self._count, line);
     if (self.regex.test(line)) {
       if (++self._count >= self.threshold) {
-        log.debug('logscan event (id=%s): %s', self.id, line);
+        log.debug('amon:logscan event (id=%s): %s', self.id, line);
         self.emit('event', {
           probe: self.idObject,
           type: 'Integer',
@@ -113,25 +104,6 @@ LogScan.prototype.stop = function(callback) {
   if (callback && (callback instanceof Function)) return callback();
 };
 
-LogScan.prototype.validateInstanceData = function(data) {
-  return _validateInstanceData(data);
-};
 
 
-
-//---- module exports
-
-module.exports = {
-
-  newInstance: function(options) {
-    if (!options.id) throw new TypeError('id is required');
-    if (!options.data) throw new TypeError('data is required');
-    _validateInstanceData(options.data.data);
-    return new LogScan(options);
-  },
-
-  validateInstanceData: function(data) {
-    return _validateInstanceData(data);
-  }
-
-};
+module.exports = LogScan;

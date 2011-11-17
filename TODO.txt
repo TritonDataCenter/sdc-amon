@@ -8,9 +8,6 @@
 
 # todo
 
-- finish ufdsmodel.js refactoring
-  - test monitor creation: does 'contacts' correctly end up as 'contact' in UFDS?
-- finish plugins/lib/plugin.js base class
 - email notification plugin
 - ticket for the system error twillio message (and retire twillio). What
   for actual SMS *text*?
@@ -18,6 +15,10 @@
 - update to latest ldapjs and UFDS
 - turn it on in COAL builds
 * * *
+- <probe>.idObject details on probe events from agent is *wrong*. Insecure.
+  The userUuid value must come from relay (and should be the zone owner-uuid
+  cfg var). Relay should probably also add the "zone" from which the event
+  came?
 - spec how processEvent should work with persistent alarms
 - relay -D/--data-dir and create subdir
 - consistent `new restify.FooError(...)` usage
