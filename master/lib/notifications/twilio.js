@@ -1,4 +1,9 @@
-// Copyright 2011 Joyent, Inc.  All rights reserved.
+/*
+ * Copyright 2011 Joyent, Inc.  All rights reserved.
+ *
+ * Amon 'twilio' notification plugin. Sometimes this is configured as the
+ * 'sms' plugin.
+ */
 
 var https = require('https');
 var querystring = require('querystring');
@@ -8,35 +13,36 @@ var log = require('restify').log;
 
 
 
-function Twilio(options) {
-  if (!options || typeof(options) !== 'object')
-    throw new TypeError('options must be an object');
-  if (!options.accountSid)
-    throw new TypeError('options.accountSid is required');
-  if (!options.authToken)
-    throw new TypeError('options.authToken is required');
-  if (!options.from)
-    throw new TypeError('options.from is required');
+function Twilio(config) {
+  if (!config || typeof(config) !== 'object')
+    throw new TypeError('config must be an object');
+  if (!config.accountSid)
+    throw new TypeError('config.accountSid is required');
+  if (!config.authToken)
+    throw new TypeError('config.authToken is required');
+  if (!config.from)
+    throw new TypeError('config.from is required');
 
-  this.accountSid = options.accountSid;
-  this.authToken = options.authToken;
-  this.from = options.from;
-  this.url = options.url;
+  this.accountSid = config.accountSid;
+  this.authToken = config.authToken;
+  this.from = config.from;
+  this.url = config.url;
 }
 
 
-Twilio.prototype.sanitize = function(handle) {
-  if (!handle || typeof(handle) !== 'string') {
-    log.debug('Twilio.validateHandle: handle %s is not a string', handle);
+//XXX Change this API to throw error with details if invalid.
+Twilio.prototype.sanitizeData = function(data) {
+  if (!data || typeof(data) !== 'string') {
+    log.debug('Twilio.sanitizeData: data %s is not a string', data);
     return false;
   }
-  var stripped = handle.replace(/[\(\)\.\-\ ]/g, '');
+  var stripped = data.replace(/[\(\)\.\-\ ]/g, '');
   if (isNaN(parseInt(stripped, 10))) {
-    log.debug('Twilio.validateHandle: handle %s is not a phone number', handle);
+    log.debug('Twilio.sanitizeData: data %s is not a phone number', data);
     return false;
   }
   if (stripped.length !== 10) {
-    log.debug('Twilio.validateHandle: handle %s > 10 digits', handle);
+    log.debug('Twilio.sanitizeData: data %s > 10 digits', data);
     return false;
   }
   return '+1' + stripped;

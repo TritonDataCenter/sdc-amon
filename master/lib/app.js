@@ -126,7 +126,7 @@ function App(config, ufds) {
     Object.keys(config.notificationPlugins || {}).forEach(function (name) {
       var plugin = config.notificationPlugins[name];
       log.info("Loading '%s' notification plugin.", name);
-      var NotificationType = require(plugin.path)
+      var NotificationType = require(plugin.path);
       self.notificationPlugins[name] = new NotificationType(plugin.config);
     });
   }
@@ -144,7 +144,6 @@ function App(config, ufds) {
     req._app = self;
     req._ufds = self.ufds;
     req._log = log;
-    //req._notificationPlugins = self.notificationPlugins;
 
     // Handle ':login' in route: add `req._account` or respond with 404 or
     // 500.
@@ -293,22 +292,22 @@ App.prototype.accountFromLogin = function(login, callback) {
  * @param callback {Function} `function (err) {}` called on completion.
  *    "err" is undefined (success) or an error message (failure).
  *
- * An example monitor (beware this being out of date):
-{
-  "probe": {
-    "user": "7b23ae63-37c9-420e-bb88-8d4bf5e30455",
-    "monitor": "whistle",
-    "name": "whistlelog2",
-    "type": "amon:logscan"
-  },
-  "type": "Integer",
-  "value": 1,
-  "data": {
-    "match": "tweet tweet"
-  },
-  "uuid": "3ab1336e-5453-45f9-be10-8686ba70e419",
-  "version": "1.0.0"
-}
+ * An example event (beware this being out of date):
+ *    {
+ *      "probe": {
+ *        "user": "7b23ae63-37c9-420e-bb88-8d4bf5e30455",
+ *        "monitor": "whistle",
+ *        "name": "whistlelog2",
+ *        "type": "amon:logscan"
+ *      },
+ *      "type": "Integer",
+ *      "value": 1,
+ *      "data": {
+ *        "match": "tweet tweet"
+ *      },
+ *      "uuid": "3ab1336e-5453-45f9-be10-8686ba70e419",
+ *      "version": "1.0.0"
+ *    }
  */
 App.prototype.processEvent = function (event, callback) {
   var self = this;
@@ -316,12 +315,12 @@ App.prototype.processEvent = function (event, callback) {
   
   // 1. Get the monitor for this probe, to get its list of contacts.
   var userUuid = event.probe.user;
-  Monitor.get(this.ufds, event.probe.monitor, userUuid, function (err, monitor) {
+  Monitor.get(this, event.probe.monitor, userUuid, function (err, monitor) {
     if (err) return callback(err);
     // 2. Notify each contact.
     function getAndNotifyContact(contactName, cb) {
       log.debug("App.processEvent: notify contact '%s'", contactName);
-      Contact.get(self.ufds, contactName, userUuid, function (err, contact) {
+      Contact.get(self, contactName, userUuid, function (err, contact) {
         if (err) {
           log.warn("could not get contact '%s' (user '%s'): %s",
             contactName, userUuid, err)
@@ -330,6 +329,8 @@ App.prototype.processEvent = function (event, callback) {
         self.notifyContact(userUuid, monitor, contact, event, function (err) {
           if (err) {
             log.warn("could not notify contact: %s", err);
+          } else {
+            log.debug("App.processEvent: contact '%s' notified", contactName);
           }
           return cb();
         });
@@ -347,12 +348,14 @@ App.prototype.processEvent = function (event, callback) {
  * ...
  * @param callback {Function} `function (err) {}`.
  */
-App.prototype.notifyContact = function (user, monitor, contact, event, callback) {
+App.prototype.notifyContact = function (userUuid, monitor, contact, event, callback) {
   var plugin = this.notificationPlugins[contact.medium];
   if (!plugin) {
     return callback("notification plugin '%s' not found", contact.medium);
   }
-  plugin.notify(event.probe.name, contact.data, "XXX message", callback);
+  plugin.notify(event.probe.name, contact.data,
+    JSON.stringify(event.data,null,2), //XXX obviously lame "message" to send
+    callback);
 }
 
 

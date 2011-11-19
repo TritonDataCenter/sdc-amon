@@ -4,6 +4,7 @@
  * Amon Master controller for '/pub/:login/monitors/...' endpoints.
  */
 
+var assert = require('assert');
 var events = require('events');
 
 var ldap = require('ldapjs');
@@ -19,14 +20,17 @@ var log = restify.log;
 // Interface is as required by "ufdsmodel.js".
 
 /**
- * Create a Monitor. `new Monitor([name, ]data)`.
+ * Create a Monitor. `new Monitor(app, [name, ]data)`.
  *
+ * @param app
  * @param name {String} The instance name. Can be skipped if `data` includes
  *    "amonmonitorname" (which a UFDS response does).
  * @param data {Object} The instance data.
  * @throws {restify.RESTError} if the given data is invalid.
  */
-function Monitor(name, data) {
+function Monitor(app, name, data) {
+  assert.ok(app);
+  assert.ok(name);
   if (data === undefined) {
     // Usage: new Monitor(data) 
     data = name;
@@ -46,7 +50,7 @@ function Monitor(name, data) {
       objectclass: 'amonmonitor'
     }
   }
-  this.raw = Monitor.validate(raw);
+  this.raw = Monitor.validate(app, raw);
 
   var self = this;
   this.__defineGetter__('contacts', function() {
@@ -77,15 +81,16 @@ Monitor.nameFromRequest = function (req) {
 /**
  * Get a monitor.
  */
-Monitor.get = function get(ufds, name, userUuid, callback) {
+Monitor.get = function get(app, name, userUuid, callback) {
   var parentDn = sprintf("uuid=%s, ou=customers, o=smartdc", userUuid);
-  ufdsmodel.modelGet(ufds, Monitor, name, parentDn, log, callback);
+  ufdsmodel.modelGet(app, Monitor, name, parentDn, log, callback);
 }
 
 
 /**
  * Validate the raw data and optionally massage some fields.
  *
+ * @param app {App} The amon-master app.
  * @param raw {Object} The raw data for this object.
  * @returns {Object} The raw data for this object, possibly massaged to
  *    normalize field values.
@@ -93,7 +98,7 @@ Monitor.get = function get(ufds, name, userUuid, callback) {
  *    object that can be used to respond with `response.sendError(e)`
  *    for a node-restify response.
  */
-Monitor.validate = function validate(raw) {
+Monitor.validate = function validate(app, raw) {
   var requiredFields = {
     // <raw field name>: <exported name>
     "amonmonitorname": "name",

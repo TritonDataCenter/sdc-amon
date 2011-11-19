@@ -5,6 +5,7 @@
  */
 
 var events = require('events');
+var assert = require('assert');
 
 var ldap = require('ldapjs');
 var restify = require('restify');
@@ -20,14 +21,17 @@ var log = restify.log;
 // Presuming routes as follows: '.../monitors/:monitor/probes/:probe'.
 
 /**
- * Create a Probe. `new Probe([name, ]data)`.
+ * Create a Probe. `new Probe(app, [name, ]data)`.
  *
+ * @param app
  * @param name {String} The instance name. Can be skipped if `data` includes
  *    "amonprobename" (which a UFDS response does).
  * @param data {Object} The instance data.
  * @throws {restify.RESTError} if the given data is invalid.
  */
-function Probe(name, data) {
+function Probe(app, name, data) {
+  assert.ok(app);
+  assert.ok(name);
   if (data === undefined) {
     // Usage: new Probe(data) 
     data = name;
@@ -54,7 +58,7 @@ function Probe(name, data) {
     this.monitor = data.monitor;
     this.user = this.user;
   }
-  this.raw = Probe.validate(raw);
+  this.raw = Probe.validate(app, raw);
 
   var self = this;
   this.__defineGetter__('zone', function() {
@@ -96,16 +100,17 @@ Probe.nameFromRequest = function (req) {
 /**
  * Get a probe.
  */
-Probe.get = function get(ufds, name, monitorName, userUuid, callback) {
+Probe.get = function get(app, name, monitorName, userUuid, callback) {
   var parentDn = sprintf("amonmonitorname=%s, uuid=%s, ou=customers, o=smartdc",
     monitorName, userUuid);
-  ufdsmodel.modelGet(ufds, Probe, name, parentDn, log, callback);
+  ufdsmodel.modelGet(app, Probe, name, parentDn, log, callback);
 }
 
 
 /**
  * Validate the raw data and optionally massage some fields.
  *
+ * @param app {App} The amon-master app.
  * @param raw {Object} The raw data for this object.
  * @returns {Object} The raw data for this object, possibly massaged to
  *    normalize field values.
@@ -113,7 +118,7 @@ Probe.get = function get(ufds, name, monitorName, userUuid, callback) {
  *    object that can be used to respond with `response.sendError(e)`
  *    for a node-restify response.
  */
-Probe.validate = function validate(raw) {
+Probe.validate = function validate(app, raw) {
   var requiredFields = {
     // <raw field name>: <exported name>
     "amonprobename": "name",

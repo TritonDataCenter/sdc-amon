@@ -4,6 +4,7 @@
  * Amon Master controller for '/pub/:login/contacts/...' endpoints.
  */
 
+var assert = require('assert');
 var events = require('events');
 
 var ldap = require('ldapjs');
@@ -19,14 +20,17 @@ var log = restify.log;
 // Interface is as required by "ufdsmodel.js".
 
 /**
- * Create a Contact. `new Contact([name, ]data)`.
+ * Create a Contact. `new Contact(app, [name, ]data)`.
  *
+ * @param app
  * @param name {String} The instance name. Can be skipped if `data` includes
  *    "amoncontactname" (which a UFDS response does).
  * @param data {Object} The instance data.
  * @throws {restify.RESTError} if the given data is invalid.
  */
-function Contact(name, data) {
+function Contact(app, name, data) {
+  assert.ok(app);
+  assert.ok(name);
   if (data === undefined) {
     // Usage: new Contact(data) 
     data = name;
@@ -42,13 +46,12 @@ function Contact(name, data) {
   } else {
     raw = {
       amoncontactname: name,
-      contact: data.contacts,
       medium: data.medium,
       data: data.data,
       objectclass: 'amoncontact'
     }
   }
-  this.raw = Contact.validate(raw);
+  this.raw = Contact.validate(app, raw);
 
   var self = this;
   this.__defineGetter__('medium', function() {
@@ -80,14 +83,15 @@ Contact.nameFromRequest = function (req) {
 /**
  * Get a contact.
  */
-Contact.get = function get(ufds, name, userUuid, callback) {
+Contact.get = function get(app, name, userUuid, callback) {
   var parentDn = sprintf("uuid=%s, ou=customers, o=smartdc", userUuid);
-  ufdsmodel.modelGet(ufds, Contact, name, parentDn, log, callback);
+  ufdsmodel.modelGet(app, Contact, name, parentDn, log, callback);
 }
 
 /**
  * Validate the raw data and optionally massage some fields.
  *
+ * @param app {App} The amon-master app.
  * @param raw {Object} The raw data for this object.
  * @returns {Object} The raw data for this object, possibly massaged to
  *    normalize field values.
@@ -95,7 +99,7 @@ Contact.get = function get(ufds, name, userUuid, callback) {
  *    object that can be used to respond with `response.sendError(e)`
  *    for a node-restify response.
  */
-Contact.validate = function validate(raw) {
+Contact.validate = function validate(app, raw) {
   var requiredFields = {
     // <raw field name>: <exported name>
     "amoncontactname": "name",
@@ -109,17 +113,18 @@ Contact.validate = function validate(raw) {
     }
   });
 
-  //XXX
-  //var plugin = req._notificationPlugins[medium];
-  //if (!plugin) {
-  //  utils.sendNoMedium(res, medium);
-  //  return next();
-  //}
-  //var handle = plugin.sanitize(data);
-  //if (!handle) {
-  //  utils.sendInvalidContactData(res, data);
-  //  return next();
-  //}
+  var plugin = app.notificationPlugins[raw.medium];
+  if (!plugin) {
+    throw new restify.InvalidArgumentError(
+      sprintf("'%s' is not a registered notification plugin", medium));
+  }
+  var sanitizedData = plugin.sanitizeData(raw.data);
+  if (!sanitizedData) {
+    throw new restify.InvalidArgumentError(
+      sprintf("contact '%s' data could not be sanitized: %s",
+        raw.amoncontactname, JSON.stringify(raw.data)));
+  }
+  raw.data = sanitizedData;
 
   return raw;
 }

@@ -27,15 +27,15 @@ var log = restify.log;
  * Note: Probes are sorted by name to ensure a stable order (necessary
  * to ensure reliable Content-MD5 for HEAD and caching usage.
  */
-function probesFromZone(ufds, zone, callback) {
+function probesFromZone(app, zone, callback) {
   var opts = {
     filter: '(&(zone='+zone+')(objectclass=amonprobe))',
     scope: 'sub'
   };
-  ufds.search("ou=customers, o=smartdc", opts, function(err, result) {
+  app.ufds.search("ou=customers, o=smartdc", opts, function(err, result) {
     var probes = [];
     result.on('searchEntry', function(entry) {
-      probes.push((new Probe(entry.object)).serialize());
+      probes.push((new Probe(app, entry.object)).serialize());
     });
 
     result.on('error', function(err) {
@@ -87,7 +87,7 @@ function listAgentProbes(req, res, next) {
     return next();
   }
   
-  probesFromZone(req._ufds, zone, function (err, probes) {
+  probesFromZone(req._app, zone, function (err, probes) {
     if (err) {
       log.error("error getting probes for zone '%s'", zone);
       res.send(500);

@@ -15,6 +15,18 @@
 - update to latest ldapjs and UFDS
 - turn it on in COAL builds
 * * *
+- notification templating:
+  - config.notificationsPlugins -> config.notifications.plugins
+  - add config.notifications.templatesDir, there is a factory templates dir
+    with defaults
+  - mustache (handlerbars? is whitespace handled properly?)
+  - params for a template: notification type (e.g. email), probe type (e.g.
+    logscan). So could have msg-email.html and msg-email.txt for fallback
+    for 'email' notifications. Override for 'logscan' probes with
+    'body-email-logscan.html' and 'body-email-logscan.txt'.
+  - What about subject?  'subject-email.txt'
+- 'sdc-amon /pub/hamish/monitors/whistle -X DELETE' fails
+    ERROR: Error deleting 'amonmonitorname=whistle, uuid=7b23ae63-37c9-420e-bb88-8d4bf5e30455, ou=customers, o=smartdc' from UFDS: NotAllowedOnNonLeafError:...
 - <probe>.idObject details on probe events from agent is *wrong*. Insecure.
   The userUuid value must come from relay (and should be the zone owner-uuid
   cfg var). Relay should probably also add the "zone" from which the event
@@ -23,6 +35,7 @@
 - relay -D/--data-dir and create subdir
 - consistent `new restify.FooError(...)` usage
 - rm "joyent" from relay/agent dirs and socket paths
+- perhaps a "POST /pub/:login/contacts/:contact/test" for test notification?
 - disallow '/' in name fields (so can use that as sep char for a string id).
   If this isn't acceptable then update id'ification in agent.
   Perhaps ':' would be preferable for id'ification? Meh.
@@ -32,6 +45,9 @@
       use 'x-api-version:1' on the wire to have an older agent talk to
       a newer master.
 - name fields in Master API: percent escaping
+- suppression facility: global, per monitor, per customer? "per customer"
+  could be implemented client side: portal/adminui just sets it for all
+  that customer's monitors (looses mixed suppression states).
 
 
 # someday/maybe

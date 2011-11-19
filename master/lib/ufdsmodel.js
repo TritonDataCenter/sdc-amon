@@ -39,15 +39,25 @@ var RestCodes = restify.RestCodes;
  * @param callback {Function} `function (err, items)` where err is a
  *    restify.RESTError instance on error.
  */
-function modelList(ufds, Model, parentDn, log, callback) {
+function modelList(app, Model, parentDn, log, callback) {
   var opts = {
     filter: '(objectclass=' + Model._objectclass + ')',
     scope: 'sub'
   };
-  ufds.search(parentDn, opts, function(err, result) {
+  app.ufds.search(parentDn, opts, function(err, result) {
     var items = [];
     result.on('searchEntry', function(entry) {
-      items.push((new Model(entry.object)).serialize());
+      try {
+        items.push((new Model(app, entry.object)).serialize());
+      } catch(err2) {
+        if (err2 instanceof restify.RESTError) {
+          log.warn("Ignoring invalid %s (dn='%s'): %s", Model._modelName,
+            entry.object.dn, err2)
+        } else {
+          log.error("Unknown error with %s entry: %s %o\n%s", Model._modelName,
+            err2, entry.object, err2.stack)
+        }
+      }
     });
     result.on('error', function(err) {
       return callback(new restify.InternalError(
@@ -67,15 +77,16 @@ function modelList(ufds, Model, parentDn, log, callback) {
 }
 
 
-function modelCreate(ufds, Model, dn, name, data, log, callback) {
+function modelCreate(app, Model, dn, name, data, log, callback) {
   var item;
   try {
-    item = new Model(name, data);
+    item = new Model(app, name, data);
   } catch (e) {
     return callback(e);
   }
   
-  ufds.add(dn, item.raw, function(err) {
+  console.log("XXX item.raw:", item.raw)
+  app.ufds.add(dn, item.raw, function(err) {
     if (err) {
       if (err instanceof ldap.EntryAlreadyExistsError) {
         return callback(new restify.InternalError(
@@ -113,7 +124,7 @@ function modelCreate(ufds, Model, dn, name, data, log, callback) {
  * @param callback {Function} `function (err, item)` where err is a
  *    restify.RESTError instance on error.
  */
-function modelGet(ufds, Model, name, parentDn, log, callback) {
+function modelGet(app, Model, name, parentDn, log, callback) {
   try {
     Model.validateName(name);
   } catch (err) {
@@ -125,10 +136,20 @@ function modelGet(ufds, Model, name, parentDn, log, callback) {
     filter: '(' + Model._objectclass + 'name=' + name + ')',
     scope: 'sub'
   };
-  ufds.search(parentDn, opts, function(err, result) {
+  app.ufds.search(parentDn, opts, function(err, result) {
     var items = [];
     result.on('searchEntry', function(entry) {
-      items.push((new Model(entry.object)).serialize());
+      try {
+        items.push((new Model(app, entry.object)).serialize());
+      } catch(err2) {
+        if (err2 instanceof restify.RESTError) {
+          log.warn("Ignoring invalid %s (dn='%s'): %s", Model._modelName,
+            entry.object.dn, err2)
+        } else {
+          log.error("Unknown error with %s entry: %s %o\n%s", Model._modelName,
+            err2, entry.object, err2.stack)
+        }
+      }
     });
 
     result.on('error', function(err) {
@@ -161,9 +182,9 @@ function modelGet(ufds, Model, name, parentDn, log, callback) {
 }
 
 
-function modelDelete(ufds, Model, dn, log, callback) {
+function modelDelete(app, Model, dn, log, callback) {
   //TODO: could validate the 'dn'
-  ufds.del(dn, function(err) {
+  app.ufds.del(dn, function(err) {
     if (err) {
       if (err instanceof ldap.NoSuchObjectError) {
         return callback(new restify.ResourceNotFoundError());
@@ -185,7 +206,7 @@ function requestList(req, res, next, Model) {
   req._log.debug('<%s> list entered: params=%o, uriParams=%o',
     Model.name, req.params, req.uriParams);
   var parentDn = Model.parentDnFromRequest(req)
-  modelList(req._ufds, Model, parentDn, req._log, function (err, items) {
+  modelList(req._app, Model, parentDn, req._log, function (err, items) {
     if (err) {
       res.sendError(err);
     } else {
@@ -196,13 +217,12 @@ function requestList(req, res, next, Model) {
 }
 
 
-
 function requestCreate(req, res, next, Model) {
   req._log.debug('<%s> create entered: params=%o, uriParams=%o',
     Model._modelName, req.params, req.uriParams);
   var dn = Model.dnFromRequest(req);
   var name = Model.nameFromRequest(req);
-  modelCreate(req._ufds, Model, dn, name, req.params, req._log, function(err, item) {
+  modelCreate(req._app, Model, dn, name, req.params, req._log, function(err, item) {
     if (err) {
       res.sendError(err);
     } else {
@@ -215,10 +235,10 @@ function requestCreate(req, res, next, Model) {
 
 function requestGet(req, res, next, Model) {
   req._log.debug('<%s> get entered: params=%o, uriParams=%o',
-    Model._modelName, req.params, req.uriParams);
+    Model.name, req.params, req.uriParams);
   var name = Model.nameFromRequest(req);
   var parentDn = Model.parentDnFromRequest(req)
-  modelGet(req._ufds, Model, name, parentDn, req._log, function (err, item) {
+  modelGet(req._app, Model, name, parentDn, req._log, function (err, item) {
     if (err) {
       res.sendError(err);
     } else {
@@ -233,7 +253,7 @@ function requestDelete(req, res, next, Model) {
   req._log.debug('<%s> delete entered: params=%o, uriParams=%o',
     req.params, req.uriParams);
   var dn = Model.dnFromRequest(req);
-  modelDelete(req._ufds, Model, dn, req._log, function(err) {
+  modelDelete(req._app, Model, dn, req._log, function(err) {
     if (err) {
       res.sendError(err);
     } else {
