@@ -16,6 +16,7 @@
   ambiguous with multiple servers (e.g. the headnode and a CN). Also
   should talk with Josh about whether this should use zone *name* or
   zone *uuid*. They can differ.
+- "sdc-amon /pub/trent.mick" messes up on '.' in username
 - [Trent] master/config.json.in and use that in usb-headnode/zones/amon/setup
 - notification templating:
   - config.notificationsPlugins -> config.notifications.plugins

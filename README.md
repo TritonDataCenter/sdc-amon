@@ -158,9 +158,10 @@ In a separate shell run an amon-agent:
 
 ## Adding some data
 
-Get 'sdc-amon' wrapper setup and on your PATH. It may already be there.
+Get 'sdc-amon' wrapper setup and on your PATH ('sdc-ldap' too). It may
+already be there.
 
-    export AMON_URL=http://localhost:8000
+    export AMON_URL=http://localhost:8080
     export PATH=.../operator-toolkit/bin:$PATH
 
 In a separate terminal, call the Amon Master API to add some data.
@@ -168,31 +169,120 @@ First we need a user to use. I use ldap to directly add this user to UFDS
 because that allows us to specify the UUID used, which can be handy.
 
     sdc-ldap -v modify -f examples/user-yunong.ldif
-    sdc-ldap -v modify -f examples/user-trent.mick.ldif
+    sdc-ldap -v modify -f examples/user-trent.ldif
 
-We should now have 
+Amon should now see those users:
+
+    sdc-amon /pub/yunong
+    sdc-amon /pub/trent
+
+Add a contact:
+
+    sdc-amon /pub/trent/contacts/email -X PUT -d @examples/contact-trentemail.json
+    sdc-amon /pub/trent/contacts    # list contacts
+    sdc-amon /pub/trent/contacts/email
+
+Add a monitor. We'll call this one "whistle", and just have one contact for
+it. A monitor can have any number of contacts (e.g. you might want the
+while ops team to know about a particular failure):
+
+    $ cat examples/monitor-whistle.json 
+    {
+        "contacts": ["email"]
+    }
+    $ sdc-amon /pub/trent/monitors/whistle -X PUT -d @examples/monitor-whistle.json
+    HTTP/1.1 200 OK
+    ...
+    {
+      "name": "whistle",
+      "contacts": [
+        "email"
+      ]
+    }
+
+Add a couple probes to this monitor:
+
+    $ sdc-amon /pub/trent/monitors/whistle/probes/whistlelog -X PUT -d @examples/probe-whistlelog.json
+    HTTP/1.1 200 OK
+    ...
+    {
+      "name": "whistlelog",
+      "zone": "global",
+      "urn": "amon:logscan",
+      "data": {
+        "path": "/tmp/whistle.log",
+        "regex": "tweet",
+        "threshold": 2,
+        "period": 60
+      }
+    }
+    $ sdc-amon /pub/trent/monitors/whistle/probes/whistlelog2 -X PUT -d @examples/probe-whistlelog2.json
+    HTTP/1.1 200 OK
+    ...
+    {
+      "name": "whistlelog",
+      "zone": "global",
+      "urn": "amon:logscan",
+      "data": {
+        "path": "/tmp/whistle.log",
+        "regex": "tweet",
+        "threshold": 2,
+        "period": 60
+      }
+    }
+
+And list probes:
+
+    $ sdc-amon /pub/trent/monitors/whistle/probes
+    HTTP/1.1 200 OK
+    ...
+    [
+      {
+        "user": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        "monitor": "whistle",
+        "name": "whistlelog2",
+    ...
+    ]
 
 
+## Tickle a probe, get an email
 
+If you have every thing right you should be able to tickle one of those
+probes.
 
+    echo "`date`: tweet" > /tmp/whistle.log     # once
+    echo "`date`: tweet" > /tmp/whistle.log     # and twice b/c "threshold=2"
 
-    touch /tmp/whistle.log /tmp/whistle2.log  # workaround for MON-2
+What should happen now:
 
-    # Add some contacts for the 'joyent' user (our demo user).
-    amon-api /pub/joyent/contacts/trent -X PUT -d @examples/contact-trent-sms.json
-    amon-api /pub/joyent/contacts/mark -X PUT -d @examples/contact-mark-sms.json
+1. The agent should generate an event for the "whistlelog" probe and send
+   to the master:
+    
+        2011-11-22 23:50:19Z INFO: sending event: { probe: 
+            { user: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            monitor: 'whistle',
+            name: 'whistlelog',
+            type: 'amon:logscan' },
+         type: 'Integer',
+         value: 2,
+         data: { match: 'Tue Nov 22 15:50:19 PST 2011: tweet' },
+         uuid: '4eb28122-db69-42d6-b20a-e83bf6883b8b',
+         version: '1.0.0' }
 
-    # Add a check (check for 'tweet' occurrences in /tmp/whistle.log).
-    # We'll name it the 'whistle' check.
-    amon-api /pub/joyent/checks/whistle -X PUT -d @examples/check-whistle.json
+2. The relay should pass this on up to the master:
 
-    # Add a monitor.
-    amon-api /pub/joyent/monitors/whistle -X PUT -d @examples/monitor-joyent-whistle.json
+        2011-11-22 23:50:19Z DEBUG: relaying event: { probe:
+        ...
 
-Now cause the logscan alarm to match:
-
-    echo tweet >> /tmp/whistle.log
-
+3. The master should send a notification for the event. (Eventually this
+   should create or update an "alarm" instance and *possibly* notify.)
+   
+        2011-11-22 23:50:19Z DEBUG: App.processEvent: { probe: 
+        ...
+        2011-11-22 23:50:21Z DEBUG: App.processEvent: notify contact 'email'
+        2011-11-22 23:50:22Z DEBUG: App.processEvent: contact 'email' notified
+        127.0.0.1 - anonymous [22/11/2011:23:50:22 GMT] "POST /events HTTP/1.1" 202 0 2628
+    
 
 
 # MVP
