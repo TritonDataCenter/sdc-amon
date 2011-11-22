@@ -5,46 +5,35 @@ markdown2extras: wiki-tables
 
 # Amon
 
-(This document is intended for an SDC operator or developer. End-user docs
-for SDC monitoring and alarming are part of the Cloud API documentation.)
+*Note: This document is intended for an SDC operator or developer. End-user
+docs for SDC monitoring and alarming are part of the Cloud API
+documentation.*
 
 Amon is a monitoring and alarming system for SmartDataCenter (SDC).
 It has three components: a central master, a tree of relays and agents.
-**Monitors**, **probes** and **contacts** are configured on the master. This
-configuration is pulled to the agents via the relays. Agents run
-configured probes and raise events (which can create or update **alarms**) up
-to the master (again via the relays), resulting in notifications to customers
-and operators.
+**Monitors** (grouping of probes and contacts), **probes** (things to check
+and alarm on) and **contacts** (who and how to contact when there is an
+alarm) are configured on the master (i.e. on the "Amon Master API"). Probe
+data is passed from the master, via the relays to the appropriate agent where
+the probe is run. When a probe fails/trips it raises and event, which passes
+through the relays up to the master. The master handles events
+by creating or updating **alarms** and sending notifications to the
+configured contacts, if appropriate (suppression and de-duplication rules can
+mean a notification is not always sent).
 
-Mostly it is the Amon Master API that is relevant, but this document also
-describes the (internal) Relay API and Agent API. Note that the master API
-is designed to facilitate the public portion being easily proxied onto
-the SDC Cloud API
+For external users (i.e. anyone other than an Amon developer), it is the Amon
+Master API (or "Amon API" for short) that is most relevant. This document
+also describes the (internal) Relay API.
 
-
-
-# Master API summary
-
-Public endpoints are under a "/pub" prefix to facilitate proxying to Cloud
-API. For example, the set of open alarms for an account is:
+Public endpoints of the Amon Master API are under a "/pub" prefix to
+facilitate proxying to Cloud API. For example, the set of open alarms for an
+account is:
 
     GET  /pub/:login/alarms          # Amon Master API
     GET  /:login/alarms              # Cloud API
 
-Warning: the bare "GET /pub/:login" should NOT be proxied because it does
-not do any authorization.
-
-
-# Master API: Alarms
-
-An alarm is a occurence of a monitor having identified a problem situation.
-These APIs provide info on recent alarms for this customer. Closed alarms are
-only guaranteed to be persisted for a week. I.e. this is mainly about showing
-open (i.e. unresolved) alarm situations.
-
-    GET  /pub/:login/alarms
-    GET  /pub/:login/alarms/:alarm
-    POST /pub/:login/alarms/:alarm?action=close
+Warning: Amon does no authorization (or authentication), that's up to Cloud
+API.
 
 
 # Master API: Contacts
@@ -58,15 +47,10 @@ notification to some endpoint.
     DELETE /pub/:login/contacts/:contact
 
 Dev Note: For starters we're just notifying via email. The CAPI customer
-record already has an email. Having something separate here is silly. Not
+record already has an email. Having something separate here seems silly. Not
 sure how to resolve that when adding other notification mediums (e.g. sms,
 webhook, etc.). For starters we'll *not* include "contacts" and just use
 an implicit "email using the customer record's email address" contact.
-
-Dev Note: The name "contacts" isn't exactly right. A single contact can have
-multiple ways to be contacted. Eventually, with re-factored
-user/group/contact handling in CAPI, we might want this API of sending to a
-contact and have the contact itself decide the method (e.g. email or SMS).
 
 
 ## ListContacts (GET /pub/:login/contacts)
@@ -209,6 +193,54 @@ or watch for.
 
 TODO
 
+### Example
+
+    $ sdc-amon /pub/hamish/monitors/whistle/probes
+    HTTP/1.1 200 OK
+    Connection: close
+    Date: Tue, 22 Nov 2011 17:59:22 GMT
+    Server: Joyent
+    X-Api-Version: 1.0.0
+    X-Request-Id: c92e87c6-8da1-4f67-b85e-f4458340642b
+    X-Response-Time: 760
+    Content-Length: 407
+    Content-MD5: 5EdOGXW+sKRtRajFf+ajkw==
+    Content-Type: application/json
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Methods: OPTIONS, GET
+    Access-Control-Allow-Headers: Accept, Content-Type, Content-Length, Date, X-Api-Version
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    
+    [
+      {
+        "name": "whistlelog",
+        "user": "7b23ae63-37c9-420e-bb88-8d4bf5e30455",
+        "monitor": "whistle",
+        "zone": "global",
+        "urn": "amon:logscan",
+        "data": {
+          "path": "/tmp/whistle.log",
+          "regex": "tweet",
+          "threshold": 2,
+          "period": 60
+        }
+      },
+      {
+        "name": "whistlelog2",
+        "user": "7b23ae63-37c9-420e-bb88-8d4bf5e30455",
+        "monitor": "whistle",
+        "zone": "global",
+        "urn": "amon:logscan",
+        "data": {
+          "path": "/tmp/whistle2.log",
+          "regex": "tweet",
+          "threshold": 1,
+          "period": 60
+        }
+      }
+    ]
+
+
 ## CreateProbe (PUT /pub/:login/monitors/:monitor/probes/:probe)
 
 TODO
@@ -223,7 +255,30 @@ TODO
 
 
 
-# Master API: Internal
+# Master API: Alarms
+
+**Dev Note: Not implemented yet. Currently the Master just sends a notification
+for every event that comes in from an agent.**
+
+An alarm is a occurence of a monitor having identified a problem situation.
+These APIs provide info on recent alarms for this customer. Closed alarms are
+only guaranteed to be persisted for a week. I.e. this is mainly about showing
+open (i.e. unresolved) alarm situations.
+
+    GET  /pub/:login/alarms
+    GET  /pub/:login/alarms/:alarm
+    POST /pub/:login/alarms/:alarm?action=close
+
+The point of an "alarm" object is (a) to have a persistent object to show
+current open alarms (e.g. for Cloud API, Operator Portal and Customer Portal)
+to show; (b) for the master to handle de-duplication, i.e. avoid a flood
+of duplicate notifications for a stream of events relating to the same
+problem; and (c) to support the user suppressing notifications for this
+alarm ("Yah, I know it is a problem, but I can't deal with it right now.").
+
+
+
+# Master API: Miscellaneous
 
 ## Ping (GET /ping)
 
@@ -279,10 +334,26 @@ None
     }
 
 
+
+# Relay API
+
+Amon employs a tree of relay servers for (a) ferrying agent probe data
+from the master to the agents and (b) ferrying events from agents back to
+the master. This is done via the Relay API. The Amon Master also implements
+this API.
+
+Dev Note: The module "common/lib/relay-client.js" is used by both amon-relay
+and amon-agent to speak the Relay API. In production usage the relays
+speak to the master over a network socket and agents speak to their relay
+over a Unix domain socket.
+
+
 ## AddEvents (POST /events)
 
-Amon Relays (ultimately agents calling the equivalent event
-API endpoint on their relay) send events to the master.
+Sends one or more events up to a relay (or the Amon master). Agents run
+the given probes and send an event when a probe test trips/fails.
+
+TODO
 
 
 ## GetAgentProbes (GET /agentprobes)
@@ -294,11 +365,15 @@ this control data.
 Note: The returned probes are sorted by "name" to ensure a stable order
 and hence a stable "Content-MD5" header to use for caching.
 
+TODO
+
 
 ## HeadAgentProbes (HEAD /agentprobes)
 
-This "HEAD" form of `GetAgentProbes` allows for relays to check for agent control
-data changes with less network overhead.
+This "HEAD" form of `GetAgentProbes` allows for relays and agents to check
+for agent control data changes with less network overhead.
+
+TODO
 
 
 
@@ -324,21 +399,3 @@ while accountCache object.
 ||notificationPlugins.NAME.config||An object with instance data for the plugin.||
 
 
-# Relay API
-
-TODO
-
-
-# Agent API
-
-TODO
-
-
-# Example: Tracing a New Monitor
-
-TODO
-
-
-# Example: Tracing an Alarm
-
-TODO
