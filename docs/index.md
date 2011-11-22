@@ -3,7 +3,7 @@ title: Amon (SDC Monitoring and Alarming)
 markdown2extras: wiki-tables
 ---
 
-# Amon
+# Amon (SDC Monitoring and Alarming)
 
 *Note: This document is intended for an SDC operator or developer. End-user
 docs for SDC monitoring and alarming are part of the Cloud API
@@ -32,7 +32,7 @@ account is:
     GET  /pub/:login/alarms          # Amon Master API
     GET  /:login/alarms              # Cloud API
 
-Warning: Amon does no authorization (or authentication), that's up to Cloud
+Warning: Amon does no authorization (or authentication). That's up to Cloud
 API.
 
 

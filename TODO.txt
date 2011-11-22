@@ -1,19 +1,18 @@
-# restart
+# immediate priorities
 
-- work through use cases
-- update api
-- update doc
-- update the schedule
-- tack on amon records to ufds/tools/genldif
+- get yunong up and running
+- get this working in COAL
+- a plan and schedule for January SDC.next release with Amon
 
 # todo
 
-- ticket for the system error twillio message (and retire twillio). What
-  for actual SMS *text*?
-- update "zone" field to include CN uuid prefix
-- update to latest ldapjs and UFDS
-- turn it on in COAL builds
-* * *
+- [Trent] clean up TODO.txt and README.md (they are too out of date)
+- [Trent] get working in COAL: Currently dealing with a problem of relay
+  in coal not being able to connect to master running on my Mac.
+- update "zone" field to include CN uuid prefix: Because "global" is
+  ambiguous with multiple servers (e.g. the headnode and a CN). Also
+  should talk with Josh about whether this should use zone *name* or
+  zone *uuid*. They can differ.
 - notification templating:
   - config.notificationsPlugins -> config.notifications.plugins
   - add config.notifications.templatesDir, there is a factory templates dir
@@ -30,6 +29,8 @@
   The userUuid value must come from relay (and should be the zone owner-uuid
   cfg var). Relay should probably also add the "zone" from which the event
   came?
+- ticket for the system error twillio message (and retire twillio). What
+  for actual SMS *text*?
 - spec how processEvent should work with persistent alarms
 - relay -D/--data-dir and create subdir
 - consistent `new restify.FooError(...)` usage
@@ -47,6 +48,12 @@
 - suppression facility: global, per monitor, per customer? "per customer"
   could be implemented client side: portal/adminui just sets it for all
   that customer's monitors (looses mixed suppression states).
+- tack on amon records to ufds/tools/genldif
+- upgrade plan: What if UFDS schema needs to change? How do we rev the Master
+  with older agents in the wild.
+- watch for node version differences: The amon-agent and amon-relay running
+  in the GZ get /usr/bin/node which currently is node v0.4.9. Typically in
+  dev we have more recent version. How to guard against that?
 
 
 # someday/maybe
@@ -65,7 +72,10 @@
 - HTML docs at "GET /docs"
 
 
-# use case: operator wants an alert for every zone fault
+
+# Notes (possibly out of date)
+
+## use case: operator wants an alert for every zone fault
 
 - FMA-based check in amon-agent in all CN GZs
   Q: Ask rm how to trigger that FMA event.
@@ -76,9 +86,7 @@
   Ditto for non-fma-based zone status watching? Are we going to send an
   amon event for *every* zone running state every minute? No way.
 
-
-
-# smartos event streams notes
+## smartos event streams notes
 
 - sysevent: core element, syseventadm
   https://mo.joyent.com/source/xref/illumos-joyent/usr/src/lib/libsysevent/libsysevent.c#2653
@@ -94,9 +102,9 @@
   http://download.oracle.com/docs/cd/E19082-01/819-3196/6n5ed4h40/index.html#indexterm-289
   fminject to test
   
+## old TODOs for MVP
 
-
-# TODOs for MVP
+Trent needs to filter this into the above TODOs.
 
 - Build/install (usb-headnode, bamboo, mountain-gorilla):
   - riak: discuss with others if separate riak clusters for separate apps
@@ -105,7 +113,6 @@
   - relay (SMF packaging done; bamboo started)
   - agent
   - package.json: get specific about included versions
-- Email Notification Plugin
 - Retry/backoff everywhere: Restify-client supports everything needed here?
 - event on zone/vm transitions: use zwatch
   - what does it mean to design to have events coming NOT from amon-agent
@@ -131,7 +138,7 @@
   redis.conf
 
 
-# Trent's scratch area
+## Trent's scratch area
 
 - upgrade deps/node and deps/npm versions to latest
 - faking an event (calling Relay API):
@@ -180,7 +187,9 @@
   
 
 
-# Post-6.5 TODOs and RFEs
+## Mark's old old TODOs/RFEs
+
+Trent to filter this into above lists.
 
 - CA Agent Plugin
 - HTTP Agent Plugin
