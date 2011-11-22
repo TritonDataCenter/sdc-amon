@@ -85,7 +85,6 @@ function modelCreate(app, Model, dn, name, data, log, callback) {
     return callback(e);
   }
   
-  console.log("XXX item.raw:", item.raw)
   app.ufds.add(dn, item.raw, function(err) {
     if (err) {
       if (err instanceof ldap.EntryAlreadyExistsError) {

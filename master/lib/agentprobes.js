@@ -32,7 +32,7 @@ function probesFromZone(app, zone, callback) {
     filter: '(&(zone='+zone+')(objectclass=amonprobe))',
     scope: 'sub'
   };
-  app.ufds.search("ou=customers, o=smartdc", opts, function(err, result) {
+  app.ufds.search("ou=users, o=smartdc", opts, function(err, result) {
     var probes = [];
     result.on('searchEntry', function(entry) {
       probes.push((new Probe(app, entry.object)).serialize());

@@ -101,7 +101,7 @@ Probe.nameFromRequest = function (req) {
  * Get a probe.
  */
 Probe.get = function get(app, name, monitorName, userUuid, callback) {
-  var parentDn = sprintf("amonmonitorname=%s, uuid=%s, ou=customers, o=smartdc",
+  var parentDn = sprintf("amonmonitorname=%s, uuid=%s, ou=users, o=smartdc",
     monitorName, userUuid);
   ufdsmodel.modelGet(app, Probe, name, parentDn, log, callback);
 }

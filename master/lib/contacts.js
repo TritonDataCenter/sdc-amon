@@ -84,7 +84,7 @@ Contact.nameFromRequest = function (req) {
  * Get a contact.
  */
 Contact.get = function get(app, name, userUuid, callback) {
-  var parentDn = sprintf("uuid=%s, ou=customers, o=smartdc", userUuid);
+  var parentDn = sprintf("uuid=%s, ou=users, o=smartdc", userUuid);
   ufdsmodel.modelGet(app, Contact, name, parentDn, log, callback);
 }
 

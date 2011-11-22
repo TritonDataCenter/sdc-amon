@@ -50,7 +50,7 @@ You need:
     /usbkey/scripts/mount-usb.sh; \
     /usbkey/devtools/devmode.sh; \
     pkgin -y install gmake scmgit gcc-compiler-4.5.2 gcc-runtime-4.5.2 \
-          binutils python26 grep pkg_alternatives erlang-14.1.1 patch mtail; \
+          binutils python26 grep pkg_alternatives patch mtail; \
     ln -sf /opt/local/bin/python2.6 /opt/local/bin/python; \
     export PATH=/opt/local/bin:$PATH && \
     export CC=gcc
