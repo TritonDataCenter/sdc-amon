@@ -68,7 +68,7 @@ Current status:
 - "make devrun" is likely broken.
 
 
-## Mac
+## Mac Setup
 
 To be able to run `make lint` you'll need to install "gjslint" yourself
 manually. See:
@@ -87,8 +87,42 @@ Config and run the amon-master:
     # Tweak config.json if you like.
     # See: <https://head.no.de/docs/amon/#master-configuration>
     
-    ../node_modules/node-dev/node-dev main.js -v -f config.json
+    ../bin/node-dev main.js -v -f config.json
+
+Note that "node-dev" (https://github.com/fgnass/node-dev) is a tool for
+running a node server and watching its source files. It'll restart the
+server whenever a used source file changes. You can just use "../bin/node"
+directly if you like.
+
+
+In a separate shell run an amon-relay:
+
+    cd .../amon/relay
+    mkdir -p tmp/db   # a location for caching probe data
     
+    # Here we are:
+    # - connecting to the master at "localhost:8080"
+    # - running in developer mode (-d) and listening on port 8081 (-s)
+    #   (rather than using a Unix domain socket, as is done in production)
+    # - polling the master every 90 seconds (-p 90)
+    #
+    # `../bin/node main.js -h` for details on options.
+    #
+    ../bin/node-dev main.js -v -D tmp/db -d -s 8081 -m http://localhost:8080 -p 90
+
+
+In a separate shell run an amon-agent:
+    
+    cd .../amon/agent
+    mkdir -p tmp/db   # a location for caching probe data
+    
+    # Here we are:
+    # - connecting to the relay at "localhost:8081"
+    # - polling the relay every 90 seconds (-p 90)
+    #
+    # `../bin/node main.js -h` for details on options.
+    #
+    ../bin/node-dev main.js -v -D tmp/db -d -s http://localhost:8081 -p 90
     
     
 
