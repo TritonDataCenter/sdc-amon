@@ -36,6 +36,33 @@ Warning: Amon does no authorization (or authentication). That's up to Cloud
 API.
 
 
+### Error Responses
+
+If you get back any error code in the 4xx range, you will receive a formatted
+error message of the scheme:
+
+    {
+      "code": "CODE",
+      "message": "human readable string"
+    }
+
+Where the code element is one of:
+
+* InvalidArgument
+* InvalidHeader
+* MissingParameter
+* NotAuthorized
+* RequestTooLarge
+* ResourceNotFound
+* UnknownError
+
+Clients are expected to check HTTP status code first, and if in the 4xx range,
+they can leverage the codes above.
+
+*(TODO: verify this is the correct set of codes. Give example.)*
+
+
+
 # Master API: Contacts
 
 A "contact" contains the information required (who and what method) to send a

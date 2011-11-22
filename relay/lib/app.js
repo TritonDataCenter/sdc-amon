@@ -20,10 +20,6 @@ var events = require('./events');
 
 var log = restify.log;
 
-var __rm = '/usr/bin/rm';
-if (os.type() !== 'SunOS') {
-  __rm = '/bin/rm';
-}
 
 
 //---- internal support stuff

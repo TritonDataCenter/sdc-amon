@@ -1,47 +1,97 @@
-# Amon is a monitor
+# Amon (SDC Monitoring and Alarming)
 
-Amon is a monitoring and alarming system for Smart Data Center. If you go for
-these things:
+Where: <git@git.joyent.com:amon.git>, <https://mo.joyent.com/amon>
+Who: Trent Mick, Mark Cavage, Yunong Xiao
+Pitch: <https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming>
+API Docs: <https://head.no.de/docs/amon>
+XMPP/Jabber: <monitoring@groupchat.joyent.com>
+Tickets/bugs: <https://devhub.joyent.com/jira/browse/MON>
+CI builds: <https://jenkins.joyent.us/job/amon>, <https://stuff.joyent.us/stuff/builds/amon/>
 
-    Amun, ... (also spelled Amon ...), was a god in Egyptian mythology who ...
-    represented the essential and hidden, whilst in Ra he represented revealed
-    divinity.
 
-    -- <http://en.wikipedia.org/wiki/Amun>
+Amon is a monitoring and alarming system for SmartDataCenter (SDC). It has
+three components: a central master, a tree of relays and agents. Monitors
+(grouping of probes and contacts), probes (things to check and alarm on) and
+contacts (who and how to contact when there is an alarm) are configured on
+the master (i.e. on the "Amon Master API"). Probe data is passed from the
+master, via the relays to the appropriate agent where the probe is run. When
+a probe fails/trips it raises and event, which passes through the relays up
+to the master. The master handles events by creating or updating alarms and
+sending notifications to the configured contacts, if appropriate (suppression
+and de-duplication rules can mean a notification is not always sent).
 
-That's cool. The project lives at <git@git.joyent.com:amon.git>. Mark Cavage
-and Trent Mick are the main contributors so far. The primary user and pitch
-docs current live here:
-<https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming>.
-XMPP discussion at <monitoring@groupchat.joyent.com>. Tickets/bugs to
-<https://devhub.joyent.com/jira/browse/MON>.
 
+# Design Overview
+
+There is an "Amon Master" HTTP server that runs in the amon smartdc zone.
+This is the endpoint for the "Amon Master API". The Amon Master stores
+long-lived Amon system data (monitors, contacts, probes) in UFDS and
+shorter-lived data (alarms and events) in redis (a separate "redis" smartdc
+zone).
+
+There is an "Amon Relay" (which could be a tree of Amon Relays if necessary)
+running on each node global zone to ferry (1) probe/monitor configuration
+down to Amon Agents where probes are run; and (2) events up from agents
+to the master for handling. This is installed with the agents shar (which
+includes all SDC agents) on each node.
+
+There is an "Amon Agent" running at each location where the supported probes
+need to run. For starters we only require an agent in each node global zone.
+This is installed with the agents shar (which includes all SDC agents) on
+each node. Eventually we may include an agent inside zones (communicating out
+via a zsocket) and VMs (not sure how communicating out, HTTP?) to support
+probes that must run inside.
 
 
 # Code Layout
 
-TODO: code tree overview
+TODO: update
 
-    agent/          Amon agent. One in each zone. Runs checks and alarms on failures.
+    agent/          Amon agent. One in each zone. Runs probes and alarms on failures.
     relay/          Amon relay. Run in GZ to relay data btwn agent and master.
     zwatch/         Zoneconfig watcher daemon used by relay.
     master/         Amon master. Central server for config and notifications.
     common/
+    plugins/
 
     support/        General support stuff for development of amon.
 
 
-# Development Setup
 
-**Out of date. TODO: update this section.**
+# Development
+
+Current status:
+- Not quite yet running in COAL. For dev: use UFDS in coal and run
+  amon master, relay and agent on your Mac.
+- Tests suite is pre-ufds and doesn't work at all.
+- Haven't run lint in a long while.
+- "make devrun" is likely broken.
+
 
 ## Mac
 
-You need:
+To be able to run `make lint` you'll need to install "gjslint" yourself
+manually. See:
+<http://code.google.com/closure/utilities/docs/linter_howto.html>.
 
-* restdown
-* gjslint (http://code.google.com/closure/utilities/docs/linter_howto.html)
-* erlang (brew install erlang)
+Get the source and build:
+
+    git clone git@git.joyent.com:amon.git
+    cd amon
+    make all
+
+Config and run the amon-master:
+
+    cd master
+    cp config.mac.json config.json
+    # Tweak config.json if you like.
+    # See: <https://head.no.de/docs/amon/#master-configuration>
+    
+    ../node_modules/node-dev/node-dev main.js -v -f config.json
+    
+    
+    
+
 
 ## COAL
 
@@ -72,15 +122,10 @@ And start running (see next section).
 
 **Out of date. TODO: update this section.**
 
-COAL Note: Important (if you don't do this, and ask markc why mysterious
-problems occur, there is an excellent chance he will go postal on you):
-
-    export LD_PRELOAD_32=/usr/lib/extendedFILE.so.1
-
 
 ## Mac
 
-    # Start all the services: riak, master, relay, agent.
+    # Start all the services: master, relay, agent.
     make devrun
 
 This will start multitail (you installed that above) on the master, relay
@@ -146,10 +191,10 @@ More detail:
 - A "monitor" is a the main conceptual object that is configured by operators
   and customers using Amon. It includes the details for what checks to
   run and, when a check trips, who and how to notify ("contacts").
-- A "check" is a single thing to check (the atom of physical monitoring
+- A "probe" is a single thing to check (the atom of physical monitoring
   done by the Amon agents). E.g. "Check the running state of zone X." "Check
   for 3 occurrences of 'ERROR' in 'foo.log' in zone X within 1 minute." A
-  monitor includes one or more checks.
+  monitor includes one or more probes.
 - An "event" is a message sent from an Amon agent up to the Amon master that
   might create or update an alarm.
 - An open or active "alarm" is the state of a failing monitor. An alarm is
@@ -180,7 +225,5 @@ need to run. For starters we only require an agent in each node global zone.
 Eventually we may include an agent inside zones (communicating out via a
 zsocket) and VMs (not sure how communicating out) to support checks that
 must run inside.
-
-...
 
 

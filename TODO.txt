@@ -7,17 +7,21 @@
 # todo
 
 - [Trent] clean up TODO.txt and README.md (they are too out of date)
+    update README
+- [Trent] :login -> :uuid
+- [Trent] update https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming
 - [Trent] get working in COAL: Currently dealing with a problem of relay
   in coal not being able to connect to master running on my Mac.
 - update "zone" field to include CN uuid prefix: Because "global" is
   ambiguous with multiple servers (e.g. the headnode and a CN). Also
   should talk with Josh about whether this should use zone *name* or
   zone *uuid*. They can differ.
+- [Trent] master/config.json.in and use that in usb-headnode/zones/amon/setup
 - notification templating:
   - config.notificationsPlugins -> config.notifications.plugins
   - add config.notifications.templatesDir, there is a factory templates dir
     with defaults
-  - mustache (handlerbars? is whitespace handled properly?)
+  - handlerbars: is whitespace handled properly?
   - params for a template: notification type (e.g. email), probe type (e.g.
     logscan). So could have msg-email.html and msg-email.txt for fallback
     for 'email' notifications. Override for 'logscan' probes with
@@ -28,7 +32,8 @@
 - <probe>.idObject details on probe events from agent is *wrong*. Insecure.
   The userUuid value must come from relay (and should be the zone owner-uuid
   cfg var). Relay should probably also add the "zone" from which the event
-  came?
+  came? Relay should also validate that given event is for a probe that
+  *exists* for that zone, if not then drop it.
 - ticket for the system error twillio message (and retire twillio). What
   for actual SMS *text*?
 - spec how processEvent should work with persistent alarms
@@ -54,6 +59,28 @@
 - watch for node version differences: The amon-agent and amon-relay running
   in the GZ get /usr/bin/node which currently is node v0.4.9. Typically in
   dev we have more recent version. How to guard against that?
+- restore this original sorta-schema for events from Mark?
+      The (sort of) schema for sending a status update:
+      
+          {
+            "status": "<STATUS>",
+            "message": "Free Form String.",
+            "metrics": [{
+              "name": "<URN>",
+              "type": <TYPE>",
+              "value": <VALUE>
+            }];
+          }
+      
+      Where:
+      
+      * <STATUS>: A string, that must be one of `"ok", "warn", "error"`.
+      * <URN>: The name of the check (note this will be validated against :check).
+        An example is something like `urn:cpu:load`.
+      * <TYPE>: One of `"String", "Integer", "Boolean", "Float"`
+      * <VALUE>: Value for this metric.  Must correspond to `type`.
+      
+      If not obvious, you can send multiple metrics per check.
 
 
 # someday/maybe

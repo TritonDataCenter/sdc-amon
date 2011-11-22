@@ -1,0 +1,25 @@
+{
+  "ufds": {
+    "url": "ldaps://10.88.88.50:636",
+    "rootDn": "cn=root",
+    "password": "secret"
+  },
+  "notificationPlugins": {
+    "sms": {
+      "path": "./notifications/twilio",
+      "config": {
+        "accountSid": "TODO",
+        "authToken": "TODO",
+        "from": "+15555555555",
+        "url": "https://todo.local/todo"
+      }
+    },
+    "email": {
+      "path": "./notifications/email",
+      "config": {
+        "sendmail": "/usr/sbin/sendmail -i",
+        "from": "\"Amon Dev (no reply)\" <no-reply@joyent.com>"
+      }
+    }
+  }
+}

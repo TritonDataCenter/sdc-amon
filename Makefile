@@ -40,15 +40,15 @@ ifeq ($(UNAME), SunOS)
 	LIBS = -lpthread -lzonecfg -L/lib -lnsl -lsocket
 endif
 
-DOC_CMD = restdown
 HAVE_GJSLINT := $(shell which gjslint >/dev/null && echo yes || echo no)
 NODE := $(NODEDIR)/bin/node
 NODE_WAF := $(NODEDIR)/bin/node-waf
 NPM_ENV := npm_config_cache=$(shell echo $(TOP)/tmp/npm-cache) npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH
 NPM := $(NPM_ENV) $(NODEDIR)/bin/npm
-NODE_DEV := PATH=$(NODEDIR)/bin:$$PATH node-dev
 PKG_DIR := .pkg
-WHISKEY = deps/node-install/bin/whiskey
+WHISKEY := deps/node-install/bin/whiskey
+RESTDOWN := python2.6 $(TOP)/deps/restdown/bin/restdown
+NODE_DEV := $(NODEDIR)/lib/bin/node-dev
 
 
 #
@@ -65,11 +65,11 @@ all:: common plugins agent relay bin/amon-zwatch master
 #
 
 deps:	$(NODEDIR)/bin/node $(NODEDIR)/bin/npm \
-	$(NODEDIR)/lib/node_modules/whiskey $(NODEDIR)/lib/node_modules/jshint
+	$(NODEDIR)/lib/node_modules/whiskey $(NODEDIR)/lib/node_modules/jshint $(NODE_DEV)
 
 # Use 'Makefile' landmarks instead of the dir itself, because dir mtime
 # is that of the most recent file: results in unnecessary rebuilds.
-deps/node/Makefile deps/npm/Makefile:
+deps/node/Makefile deps/npm/Makefile deps/restdown/bin/restdown:
 	(GIT_SSL_NO_VERIFY=1 git submodule update --init)
 
 $(NODEDIR)/bin/node: deps/node/Makefile
@@ -85,6 +85,8 @@ $(WHISKEY): $(NODEDIR)/bin/npm
 	$(NPM) install -g whiskey
 $(NODEDIR)/lib/node_modules/jshint: $(NODEDIR)/bin/npm
 	$(NPM) install -g jshint
+$(NODE_DEV): $(NODEDIR)/bin/npm
+	$(NPM) install -g node-dev
 
 
 #
@@ -216,6 +218,8 @@ publish: $(BITS_DIR)
 # Lint, test and miscellaneous targets
 #
 
+
+
 jshint: deps
 	bin/node $(NODEDIR)/lib/node_modules/jshint/bin/jshint common/lib plugins/lib master/main.js master/lib relay/main.js relay/lib agent/main.js agent/lib
 
@@ -232,11 +236,10 @@ lint: jshint
 	@echo "* * *"
 endif
 
-#TODO(trent): add deps/restdown submodule
 doc:
-	restdown -v -m docs docs/index.md
+	$(RESTDOWN) -v -m docs docs/index.md
 apisummary:
-	@grep '^\(# \| *\(POST\|GET\|DELETE\|HEAD\|PUT\)\)' docs/index.md
+	@grep '^\(## \)' docs/index.md
 
 tmp:
 	mkdir -p tmp
