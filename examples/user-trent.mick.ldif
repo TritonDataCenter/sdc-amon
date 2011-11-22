@@ -1,0 +1,11 @@
+version: 1
+
+dn: uuid=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa,ou=users,o=smartdc
+changetype: add
+login: trent.mick
+uuid: aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+userpassword: 123123
+email: trent.mick@joyent.com
+cn: Trent
+sn: Mick
+objectclass: sdcperson

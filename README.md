@@ -80,6 +80,37 @@ Get the source and build:
     cd amon
     make all
 
+And start running (see section below).
+
+
+## COAL Setup
+
+Setup and install the necessary dev tools in the global zone:
+
+    /usbkey/scripts/mount-usb.sh; \
+    /usbkey/devtools/devmode.sh; \
+    pkgin -y install gmake scmgit gcc-compiler-4.5.2 gcc-runtime-4.5.2 \
+          binutils python26 grep pkg_alternatives patch mtail; \
+    ln -sf /opt/local/bin/python2.6 /opt/local/bin/python; \
+    export PATH=/opt/local/bin:$PATH && \
+    export CC=gcc
+
+And if you swing MarkC's way, you can do a `pkgin install emacs-nox11` to be
+"awesome".
+
+Then get the Amon code to work with:
+
+    cd /opt && \
+    export GIT_SSL_NO_VERIFY=true && \
+    git clone git@git.joyent.com:amon.git && \
+    cd amon && \
+    make all
+
+And start running (see next section).
+
+
+## Running
+
 Config and run the amon-master:
 
     cd master
@@ -122,53 +153,30 @@ In a separate shell run an amon-agent:
     #
     # `../bin/node main.js -h` for details on options.
     #
-    ../bin/node-dev main.js -v -D tmp/db -d -s http://localhost:8081 -p 90
-    
-    
+    ../bin/node-dev main.js -v -D tmp/db -s http://localhost:8081 -p 90
 
 
-## COAL
+## Adding some data
 
-### GZ
+Get 'sdc-amon' wrapper setup and on your PATH. It may already be there.
 
-    /usbkey/scripts/mount-usb.sh; \
-    /usbkey/devtools/devmode.sh; \
-    pkgin -y install gmake scmgit gcc-compiler-4.5.2 gcc-runtime-4.5.2 \
-          binutils python26 grep pkg_alternatives patch mtail; \
-    ln -sf /opt/local/bin/python2.6 /opt/local/bin/python; \
-    export PATH=/opt/local/bin:$PATH && \
-    export CC=gcc
+    export AMON_URL=http://localhost:8000
+    export PATH=.../operator-toolkit/bin:$PATH
 
-And really, you should do a `pkgin install emacs-nox11` to be awesome...
-Anyway, once you've done the above, you can do:
+In a separate terminal, call the Amon Master API to add some data.
+First we need a user to use. I use ldap to directly add this user to UFDS
+because that allows us to specify the UUID used, which can be handy.
 
-    cd /opt && \
-    export GIT_SSL_NO_VERIFY=true && \
-    git clone git@git.joyent.com:amon.git && \
-    cd amon && \
-    make && \
-    source env.sh
+    sdc-ldap -v modify -f examples/user-yunong.ldif
+    sdc-ldap -v modify -f examples/user-trent.mick.ldif
 
-And start running (see next section).
+We should now have 
 
 
-# Running
-
-**Out of date. TODO: update this section.**
 
 
-## Mac
 
-    # Start all the services: master, relay, agent.
-    make devrun
-
-This will start multitail (you installed that above) on the master, relay
-and agent logs.
-
-In a separate terminal, call the Amon Master API to add some data:
-
-    source env.sh
-    touch /tmp/whistle.log   # workaround for MON-2
+    touch /tmp/whistle.log /tmp/whistle2.log  # workaround for MON-2
 
     # Add some contacts for the 'joyent' user (our demo user).
     amon-api /pub/joyent/contacts/trent -X PUT -d @examples/contact-trent-sms.json
