@@ -34,13 +34,17 @@ mkdir -p /var/run/smartdc/amon-relay/agentprobes
 svccfg import $SMFDIR/amon-relay.xml
 svccfg import $SMFDIR/amon-zwatch.xml
 
-# Gracefully restart the agent if it is online.
-SL_STATUS=`svcs -H amon-relay | awk '{ print $1 }'`
-echo "amon-relay status was $SL_STATUS"
-if [ "$SL_STATUS" = 'online' ]; then
-  svcadm restart amon-relay
-  svcadm restart amon-zwatch
-else
-  svcadm enable amon-relay
-  svcadm enable amon-zwatch
-fi
+## Gracefully restart the agent if it is online.
+#SL_STATUS=`svcs -H amon-relay | awk '{ print $1 }'`
+#echo "amon-relay status was $SL_STATUS"
+#if [ "$SL_STATUS" = 'online' ]; then
+#  svcadm restart amon-relay
+#  svcadm restart amon-zwatch
+#else
+#  svcadm enable amon-relay
+#  svcadm enable amon-zwatch
+#fi
+
+# Disabled by default until ready for prime time (MON-12).
+svcadm disable amon-relay
+svcadm disable amon-zwatch

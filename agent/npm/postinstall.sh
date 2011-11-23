@@ -27,11 +27,14 @@ mkdir -p /var/run/smartdc/amon-agent
 
 svccfg import $SMFDIR/amon-agent.xml
 
-# Gracefully restart the agent if it is online.
-SL_STATUS=`svcs -H amon-agent | awk '{ print $1 }'`
-echo "amon-agent status was $SL_STATUS"
-if [ "$SL_STATUS" = 'online' ]; then
-  svcadm restart amon-agent
-else
-  svcadm enable amon-agent
-fi
+## Gracefully restart the agent if it is online.
+#SL_STATUS=`svcs -H amon-agent | awk '{ print $1 }'`
+#echo "amon-agent status was $SL_STATUS"
+#if [ "$SL_STATUS" = 'online' ]; then
+#  svcadm restart amon-agent
+#else
+#  svcadm enable amon-agent
+#fi
+
+# Disabled by default until ready for prime time (MON-12).
+svcadm disable amon-agent
