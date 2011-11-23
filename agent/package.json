@@ -3,10 +3,10 @@
   "description": "Smart DataCenter Monitoring Agent component",
   "version": "1.0.0",
   "private": true,
-	"author": "Joyent (joyent.com)",
+  "author": "Joyent (joyent.com)",
   "dependencies": {
     "dirsum": "0.1.1",
-    "httpu": "0.0.1",
+    "httpu": "1.0.0",
     "nopt": "1.0.6",
     "node-uuid": "1.2.0",
     "sprintf": "0.1.1",

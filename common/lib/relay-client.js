@@ -9,6 +9,7 @@
 
 var http = require('http');
 var https = require('https');
+var httpu = require('httpu');
 var url = require('url');
 var restify = require('restify');
 var sprintf = require('sprintf');
@@ -63,7 +64,7 @@ function RelayClient(options) {
   } else {
     assert.equal(options.url, parsed.pathname);
     this._baseRequestOpts.socketPath = parsed.pathname;
-    this._requestMode = "http";
+    this._requestMode = "httpu";
   }
 }
 
@@ -222,6 +223,9 @@ RelayClient.prototype._request = function(method, path, callback) {
     break;
   case "https":
     req = https.request(options, onResponse);
+    break;
+  case "httpu":
+    req = httpu.request(options, onResponse);
     break;
   default:
     throw new Error(sprintf("unknown request mode: '%s'", this._requestMode));

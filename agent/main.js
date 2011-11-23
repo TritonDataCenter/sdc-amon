@@ -35,7 +35,7 @@ var log = require('restify').log;
 var DEFAULT_POLL = 45;
 // TODO: no "joyent".
 var DEFAULT_SOCKET = '/var/run/.joyent_amon.sock';
-var DEFAULT_DATA_DIR = '/var/run/joyent/amon-agent';
+var DEFAULT_DATA_DIR = '/var/run/smartdc/amon-agent';
 
 var config; // Agent configuration settings. Set in `main()`.
 var probeFromId = {}; // Active probe instances. Controlled in `updateProbes`.

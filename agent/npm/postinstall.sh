@@ -23,9 +23,7 @@ subfile () {
 
 subfile "$DIR/../smf/amon-agent.smf.in" "$SMFDIR/amon-agent.xml"
 
-#TODO: no "joyent"
-mkdir -p /var/run/joyent/amon/agent/config
-mkdir -p /var/run/joyent/amon/agent/tmp
+mkdir -p /var/run/smartdc/amon-agent
 
 svccfg import $SMFDIR/amon-agent.xml
 
