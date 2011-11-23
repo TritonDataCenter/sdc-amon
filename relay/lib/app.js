@@ -246,8 +246,9 @@ App.prototype._getCurrMD5 = function(callback) {
 App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
   var self = this;
 
-  if (!agentProbes || !md5 || agentProbes.length === 0) {
-    log.debug('Empty agentProbes/md5 (zone %s). No-op', self.zone);
+  if (!agentProbes || !md5) {
+    log.debug('No agentProbes (%s) or md5 (%s) given (zone=%s). No-op',
+      agentProbes, md5, self.zone);
     return callback();
   }
 
