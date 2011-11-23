@@ -15,7 +15,7 @@
     <exec_method
       type="method"
       name="start"
-      exec="@@PREFIX@@/bin/amon-agent &amp;"
+      exec="@@PREFIX@@/bin/amon-agent -v &amp;"
       timeout_seconds="10">
       <method_context>
         <method_credential user="root" group="staff"/>

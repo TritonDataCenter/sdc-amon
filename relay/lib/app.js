@@ -123,7 +123,7 @@ var App = function App(options) {
   
   // Register the agent probes watcher.
   function _updateAgentProbes() {
-    log.debug('Checking master for new agent probes.');
+    log.debug("Checking for agent probe updates (zone=%s).", self.zone);
     self._master.agentProbesMD5(self.zone, function(err, masterMD5) {
       if (err) {
         log.warn('Error getting master agent probes MD5 (zone=%s): %s',

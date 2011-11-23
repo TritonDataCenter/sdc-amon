@@ -41,6 +41,12 @@
 - relay -D/--data-dir and create subdir
 - consistent `new restify.FooError(...)` usage
 - rm "joyent" from relay/agent dirs and socket paths
+- [Trent] master: improve this log line to include user context:
+    2011-11-23 21:36:37Z DEBUG: App.processEvent: contact 'email' notified
+- relay: improve this log line to know which zone/zsock this request came
+  from. Perhaps the "unknown" could be the zone name. Also perhaps "anonymous"
+  could be the owner uuid (only if no cost to that).
+    unknown - anonymous [23/11/2011:21:38:26 GMT] "HEAD /agentprobes HTTP/1.1" 200 0 1
 - perhaps a "POST /pub/:login/contacts/:contact/test" for test notification?
 - disallow '/' in name fields (so can use that as sep char for a string id).
   If this isn't acceptable then update id'ification in agent.
