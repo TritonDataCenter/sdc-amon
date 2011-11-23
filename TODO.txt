@@ -57,9 +57,6 @@
 - tack on amon records to ufds/tools/genldif
 - upgrade plan: What if UFDS schema needs to change? How do we rev the Master
   with older agents in the wild.
-- watch for node version differences: The amon-agent and amon-relay running
-  in the GZ get /usr/bin/node which currently is node v0.4.9. Typically in
-  dev we have more recent version. How to guard against that?
 - restore this original sorta-schema for events from Mark?
       The (sort of) schema for sending a status update:
       

@@ -90,7 +90,8 @@ var App = function App(options) {
     this.zone + ".json.content-md5");
 
   this._master = new RelayClient({
-    url: options.masterUrl
+    url: options.masterUrl,
+    log: log
   });
 
   this.server = restify.createServer({

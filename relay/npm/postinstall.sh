@@ -29,8 +29,7 @@ function subfile () {
 subfile "$DIR/../smf/amon-relay.smf.in" "$SMFDIR/amon-relay.xml"
 subfile "$DIR/../smf/amon-zwatch.smf.in" "$SMFDIR/amon-zwatch.xml"
 
-#TODO: no "joyent"
-mkdir -p /var/run/joyent/amon/relay/config
+mkdir -p /var/run/smartdc/amon-relay/agentprobes
 
 svccfg import $SMFDIR/amon-relay.xml
 svccfg import $SMFDIR/amon-zwatch.xml

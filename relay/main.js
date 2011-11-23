@@ -27,8 +27,8 @@ var log = restify.log;
 
 // Config defaults.
 var DEFAULT_POLL = 30;
-var DEFAULT_AGENTS_PROBES_DIR = '/var/run/smartdc/amon-relay/agent-probes';
-var DEFAULT_MASTE_URL = 'http://localhost:8080'; // TODO default to COAL ip...
+var DEFAULT_AGENTS_PROBES_DIR = '/var/run/smartdc/amon-relay/agentprobes';
+var DEFAULT_MASTER_URL = 'http://localhost:8080'; // TODO default to COAL ip...
 //XXX s/joyent/smartdc
 var DEFAULT_SOCKET = '/var/run/.joyent_amon.sock';
 var ZWATCH_SOCKET = '/var/run/.joyent_amon_zwatch.sock';
@@ -226,7 +226,7 @@ function main() {
     socket: rawOpts.socket || DEFAULT_SOCKET,
     developerMode: rawOpts.developer || false
   };
-  log.trace("config: %o", config);
+  log.debug("config: %o", config);
 
   // Create the ZWatch Daemon
   if (!config.developerMode) {
