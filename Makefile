@@ -122,11 +122,11 @@ pkg: pkg_agent pkg_relay pkg_master
 pkg_relay:
 	rm -fr $(PKG_DIR)/relay
 	mkdir -p $(PKG_DIR)/relay/deps
-	cp -Pr deps/node-install $(PKG_DIR)/relay/deps
+	cp -PR deps/node-install $(PKG_DIR)/relay/deps
 	# '-H' to follow symlink for amon-common and amon-plugins node modules.
 	mkdir -p $(PKG_DIR)/relay/node_modules
-	ls -d relay/node_modules/* | xargs -n1 -I{} cp -Hr {} $(PKG_DIR)/relay/node_modules/
-	cp -Pr 	relay/lib		\
+	ls -d relay/node_modules/* | xargs -n1 -I{} cp -HR {} $(PKG_DIR)/relay/node_modules/
+	cp -PR relay/lib		\
 		relay/main.js		\
 		relay/package.json	\
 		relay/smf		\
@@ -156,11 +156,11 @@ pkg_relay:
 pkg_agent:
 	rm -fr $(PKG_DIR)/agent
 	mkdir -p $(PKG_DIR)/agent/deps
-	cp -Pr deps/node-install $(PKG_DIR)/agent/deps
+	cp -PR deps/node-install $(PKG_DIR)/agent/deps
 	# '-H' to follow symlink for amon-common and amon-plugins node modules.
 	mkdir -p $(PKG_DIR)/agent/node_modules
-	ls -d agent/node_modules/* | xargs -n1 -I{} cp -Hr {} $(PKG_DIR)/agent/node_modules/
-	cp -Pr agent/main.js \
+	ls -d agent/node_modules/* | xargs -n1 -I{} cp -HR {} $(PKG_DIR)/agent/node_modules/
+	cp -PR agent/main.js \
 		agent/package.json	\
 		agent/smf		\
 		agent/npm \
@@ -187,8 +187,8 @@ pkg_agent:
 pkg_master:
 	rm -fr $(PKG_DIR)/pkg_master
 	mkdir -p $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/deps
-	cp -Pr deps/node-install $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/deps/
-	cp -Pr master common plugins $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/
+	cp -PR deps/node-install $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/deps/
+	cp -PR master common plugins $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
 	find $(PKG_DIR)/pkg_master -name "*.pyc" | xargs rm -f
