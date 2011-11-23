@@ -52,9 +52,11 @@ function probesFromZone(app, zone, callback) {
       // To enable meaningful usage of Content-MD5 we need a stable order
       // of results here.
       probes.sort(function (a, b) {
-        if (a.name < b.name)
+        aId = [a.user, a.monitor, a.name].join('/');
+        bId = [b.user, b.monitor, b.name].join('/');
+        if (aId < bId)
           return -1;
-        else if (a.name > b.name)
+        else if (aId > bId)
           return 1;
         else
           return 0;
