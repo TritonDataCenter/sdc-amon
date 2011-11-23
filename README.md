@@ -45,17 +45,27 @@ probes that must run inside.
 
 # Code Layout
 
-TODO: update
-
-    agent/          Amon agent. One in each zone. Runs probes and alarms on failures.
-    relay/          Amon relay. Run in GZ to relay data btwn agent and master.
-    zwatch/         Zoneconfig watcher daemon used by relay.
-    master/         Amon master. Central server for config and notifications.
-    common/
-    plugins/
-
+    master/         Amon master (node.js package)
+    relay/          Amon relay (node.js package)
+    agent/          Amon agent (node.js package)
+    plugins/        "amon-plugins" node.js package that holds probe type
+                    plugins (e.g. "logscan.js" implements the "amon:logscan"
+                    probe type).
+    common/         Node.js module to share code between the above packages.
+    zwatch/         Zonecfg watcher daemon. Intended to be used by relay to
+                    setup watch zone state transitions to setup/teardown
+                    zsockets to agents running on zones. However, the first
+                    Amon release will only have agents in the GZ so the relay
+                    won't need this yet. May be used by *agent* to have a
+                    "zone state" probe type.
+    
+    bin/            Some convenience scripts to run local builds of node, etc.
+    docs/           The API doc file. Uses <https://github.com/trentm/restdown>.
+                    Dev builds served here: <https://head.no.de/docs/amon>.
+    deps/           Git submodule deps.
+    examples/       Example data for loading into your dev Amon.
     support/        General support stuff for development of amon.
-
+    sandbox/        Play area. Go crazy.
 
 
 # Development
@@ -245,6 +255,7 @@ And list probes:
     ]
 
 
+
 ## Tickle a probe, get an email
 
 If you have every thing right you should be able to tickle one of those
@@ -318,7 +329,7 @@ More detail:
 - Upgradable amon system.
 
 
-# Terminology
+# Glossary
 
 - A "monitor" is a the main conceptual object that is configured by operators
   and customers using Amon. It includes the details for what checks to
@@ -338,24 +349,5 @@ More detail:
 - A "notification" is a message sent for an alarm to one or more contacts
   associated with that monitor. An alarm may result in many notifications
   through its lifetime.
-
-
-# Design Overview
-
-There is an "Amon Master" HTTP server that runs in the "amon" headnode
-special zone. This is the endpoint for the "Amon API". The Amon Master
-stores long-lived Amon system data (monitors, contacts, checks) in UFDS
-and shorter-lived data in a local redis.
-
-There is an "Amon Relay" (which could be a tree of Amon Relays if necessary)
-running on each node global zone to ferry (1) check/monitor configuration
-down to end Amon Agents where checks are run; and (2) events up from agents
-to the master for handling.
-
-There is an "Amon Agent" running at each location where the support checks
-need to run. For starters we only require an agent in each node global zone.
-Eventually we may include an agent inside zones (communicating out via a
-zsocket) and VMs (not sure how communicating out) to support checks that
-must run inside.
 
 
