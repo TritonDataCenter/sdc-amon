@@ -47,7 +47,7 @@ function RelayClient(options) {
     },
   };
   if (parsed.hostname && parsed.protocol) {
-    this._baseRequestOpts.hostname = parsed.hostname;
+    this._baseRequestOpts.host = parsed.hostname;
     this._baseRequestOpts.port = parsed.port;
     switch (parsed.protocol) {
     case "http:":
