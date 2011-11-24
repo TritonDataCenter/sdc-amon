@@ -348,7 +348,7 @@ function printHelp() {
   console.log("       Path to a directory to use for working data storage.");
   console.log("       This is all cache data, i.e. can be restored. Typically ");
   console.log("       this is somewhere under '/var/run'.");
-  console.log("       Default: " + DEFAULT_DATA_DIR)
+  console.log("       Default: " + DEFAULT_DATA_DIR);
   console.log("  -p SECONDS, --poll SECONDS");
   console.log("       The frequency to poll the relay for probe data updates.");
   console.log("       Default is " + DEFAULT_POLL + " seconds.");

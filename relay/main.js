@@ -27,7 +27,7 @@ var log = restify.log;
 
 // Config defaults.
 var DEFAULT_POLL = 30;
-var DEFAULT_AGENTS_PROBES_DIR = '/var/run/smartdc/amon-relay/agentprobes';
+var DEFAULT_DATA_DIR = '/var/run/smartdc/amon-relay';
 var DEFAULT_MASTER_URL = 'http://localhost:8080'; // TODO default to COAL ip...
 var DEFAULT_SOCKET = '/var/run/.smartdc-amon.sock';
 var ZWATCH_SOCKET = '/var/run/.smartdc-amon-zwatch.sock';
@@ -45,7 +45,7 @@ function listenInGlobalZoneSync() {
     zone: 'global',
     socket: config.socket,
     owner: owner,
-    agentProbesRoot: config.agentProbesRoot,
+    dataDir: config.dataDir,
     localMode: true,
     developerMode: config.developerMode,
     masterUrl: config.masterUrl,
@@ -85,7 +85,7 @@ function listenInZone(zone, callback) {
       zone: zone,
       socket: config.socket,
       owner: attr.value,
-      agentProbesRoot: config.agentProbesRoot,
+      dataDir: config.dataDir,
       masterUrl: config.masterUrl,
       poll: config.poll
     });
@@ -168,9 +168,11 @@ function printHelp() {
   console.log("");
   console.log("  -m MASTER-URL, --master-url MASTER-URL");
   console.log("       The Amon Master API base url.")
-  console.log("  -D DIR, --agent-probes-dir DIR");
-  console.log("       Path to a directory to use for agent probes storage.");
-  console.log("       Default: " + DEFAULT_AGENTS_PROBES_DIR)
+  console.log("  -D DIR, --data-dir DIR");
+  console.log("       Path to a directory to use for working data storage.");
+  console.log("       This is all cache data, i.e. can be restored. Typically ");
+  console.log("       this is somewhere under '/var/run'.");
+  console.log("       Default: " + DEFAULT_DATA_DIR);
   console.log("  -p SECONDS, --poll SECONDS");
   console.log("       The frequency to poll the master for agent probes update.");
   console.log("       Default is " + DEFAULT_POLL + " seconds.");
@@ -194,7 +196,7 @@ function main() {
   var longOpts = {
     'help': Boolean,
     'verbose': [Boolean, Array],
-    'agent-probes-dir': String,
+    'data-dir': String,
     'developer': Boolean,
     'master-url': String,
     'poll': Number,
@@ -203,7 +205,7 @@ function main() {
   var shortOpts = {
     'h': ['--help'],
     'v': ['--verbose'],
-    'D': ['--agent-probes-dir'],
+    'D': ['--data-dir'],
     'm': ['--master-url'],
     'n': ['--developer'],
     'p': ['--poll'],
@@ -219,7 +221,7 @@ function main() {
   
   // Build the config (intentionally global).
   config = {
-    agentProbesRoot: rawOpts["agent-probes-dir"] || DEFAULT_AGENTS_PROBES_DIR,
+    dataDir: rawOpts["data-dir"] || DEFAULT_AGENTS_PROBES_DIR,
     masterUrl: rawOpts["master-url"] || DEFAULT_MASTER_URL,
     poll: rawOpts.poll || DEFAULT_POLL,
     socket: rawOpts.socket || DEFAULT_SOCKET,

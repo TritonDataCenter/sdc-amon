@@ -59,7 +59,7 @@ function asyncForEach(list, fn, cb) {
  *  - owner {String} the customer uuid for that owns said zone.
  *  - socket  {String} the socket to open/close (zsock).
  *  - localMode {Boolean} to zsock or not to zsock.
- *  - agentProbesRoot {String} root of agent probes tree.
+ *  - dataDir {String} root of agent probes tree.
  *  - master {String} location of the amon-master.
  *  - poll {Number} update polling interval in seconds (default: 30).
  *
@@ -71,7 +71,7 @@ var App = function App(options) {
   if (!options.zone) throw TypeError('options.zone is required');
   if (!options.owner) throw TypeError('options.owner is required');
   if (!options.socket) throw TypeError('options.socket is required');
-  if (!options.agentProbesRoot) throw TypeError('options.agentProbesRoot is required');
+  if (!options.dataDir) throw TypeError('options.dataDir is required');
   if (!options.masterUrl) throw TypeError('options.masterUrl is required');
 
   var self = this;
@@ -79,15 +79,13 @@ var App = function App(options) {
   this.zone = options.zone;
   this.owner = options.owner;
   this.socket = options.socket;
-  this.agentProbesRoot = options.agentProbesRoot;
+  this.dataDir = options.dataDir;
   this.localMode = options.localMode || false;
   this.developerMode = options.developerMode || false;
   this.poll = options.poll || 30;
   
-  this._stageJsonPath = pathlib.resolve(this.agentProbesRoot,
-    this.zone + ".json");
-  this._stageMD5Path = pathlib.resolve(this.agentProbesRoot,
-    this.zone + ".json.content-md5");
+  this._stageJsonPath = pathlib.resolve(this.dataDir, this.zone + ".json");
+  this._stageMD5Path = pathlib.resolve(this.dataDir, this.zone + ".json.content-md5");
 
   this._master = new RelayClient({
     url: options.masterUrl,
@@ -104,7 +102,7 @@ var App = function App(options) {
     req._zone = self.zone;
     req._owner = self.owner;
     req._zsock = self.socket;
-    req._agentProbesRoot = self.agentProbesRoot;
+    req._dataDir = self.dataDir;
     req._master = self._master;
     return next();
   };
