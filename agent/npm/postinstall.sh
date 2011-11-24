@@ -38,3 +38,6 @@ svccfg import $SMFDIR/amon-agent.xml
 
 # Disabled by default until ready for prime time (MON-12).
 svcadm disable amon-agent
+
+# Ensure zero-exit value to not abort the npm install.
+exit 0

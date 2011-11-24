@@ -51,3 +51,6 @@ svccfg import $SMFDIR/amon-relay.xml
 # Disabled by default until ready for prime time (MON-12).
 svcadm disable amon-relay
 [[ -n "${ZWATCH_ENABLED}" ]] && svcadm disable amon-zwatch
+
+# Ensure zero-exit value to not abort the npm install.
+exit 0
