@@ -23,7 +23,7 @@ function subfile () {
   IN=$1
   OUT=$2
   sed -e "s#@@PREFIX@@#$PREFIX#g" \
-      -e "s#@@VERSION@@#$VERSION#g"
+      -e "s#@@VERSION@@#$VERSION#g" \
       $IN > $OUT
 }
 
