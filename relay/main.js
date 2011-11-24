@@ -29,9 +29,8 @@ var log = restify.log;
 var DEFAULT_POLL = 30;
 var DEFAULT_AGENTS_PROBES_DIR = '/var/run/smartdc/amon-relay/agentprobes';
 var DEFAULT_MASTER_URL = 'http://localhost:8080'; // TODO default to COAL ip...
-//XXX s/joyent/smartdc
-var DEFAULT_SOCKET = '/var/run/.joyent_amon.sock';
-var ZWATCH_SOCKET = '/var/run/.joyent_amon_zwatch.sock';
+var DEFAULT_SOCKET = '/var/run/.smartdc-amon.sock';
+var ZWATCH_SOCKET = '/var/run/.smartdc-amon-zwatch.sock';
 
 var config; // set in `main()`
 var appIndex = {};

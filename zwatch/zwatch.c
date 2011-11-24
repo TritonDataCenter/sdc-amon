@@ -12,7 +12,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 
-#define DEFAULT_SOCKET_PATH "/var/run/.joyent_amon_zwatch.sock"
+#define DEFAULT_SOCKET_PATH "/var/run/.smartdc-amon-zwatch.sock"
 #define MAX_ATTEMPTS 2
 #define WAIT_PERIOD 1
 #define LOG_BUF_SZ 27
