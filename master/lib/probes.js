@@ -84,12 +84,12 @@ Probe._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,31}$/;
 Probe.dnFromRequest = function (req) {
   //XXX validate :probe and :monitor
   return sprintf("amonprobename=%s, amonmonitorname=%s, %s",
-    req.uriParams.probe, req.uriParams.monitor, req._account.dn);
+    req.uriParams.probe, req.uriParams.monitor, req._user.dn);
 };
 Probe.parentDnFromRequest = function (req) {
   //XXX validate :monitor
   return sprintf("amonmonitorname=%s, %s", req.uriParams.monitor,
-    req._account.dn);
+    req._user.dn);
 };
 Probe.nameFromRequest = function (req) {
   //XXX validate :probe

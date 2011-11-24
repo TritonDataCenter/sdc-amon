@@ -42,14 +42,14 @@ function ping(req, res, next) {
   return next();
 }
 
-function getAccount(req, res, next) {
-  account = req._account;
+function getUser(req, res, next) {
+  user = req._user;
   var data = {
-    login: account.login,
-    email: account.email,
-    id: account.uuid,
-    firstName: account.cn,
-    lastName: account.sn
+    login: user.login,
+    email: user.email,
+    id: user.uuid,
+    firstName: user.cn,
+    lastName: user.sn
   };
   res.send(200, data);
   return next();
@@ -132,9 +132,9 @@ function App(config, ufds) {
     });
   }
 
-  // Cache of login (aka username) -> full account record.
-  this.accountCache = new Cache(config.accountCache.size,
-    config.accountCache.expiry, log, "account");
+  // Cache of login (aka username) -> full user record.
+  this.userCache = new Cache(config.userCache.size,
+    config.userCache.expiry, log, "user");
 
   var server = this.server = restify.createServer({
     apiVersion: Constants.ApiVersion,
@@ -146,18 +146,18 @@ function App(config, ufds) {
     req._ufds = self.ufds;
     req._log = log;
 
-    // Handle ':login' in route: add `req._account` or respond with
+    // Handle ':user' in route: add `req._user` or respond with
     // appropriate error.
-    var login = req.uriParams.login;
+    var login = req.uriParams.user;
     if (login) {
-      self.accountFromLogin(login, function (err, account) {
+      self.userFromLogin(login, function (err, user) {
         if (err) {
           res.sendError(err); //TODO: does this work with an LDAPError?
-        } else if (! account) {
+        } else if (! user) {
           res.sendError(new restify.ResourceNotFoundError(
             sprintf("no such login: '%s'", login)));
         } else {
-          req._account = account;
+          req._user = user;
         }
         return next();
       });
@@ -171,22 +171,22 @@ function App(config, ufds) {
 
   server.get('/ping', before, ping, after);
 
-  server.get('/pub/:user', before, getAccount, after);
+  server.get('/pub/:user', before, getUser, after);
   
-  server.get('/pub/:login/contacts', before, contacts.listContacts, after);
-  server.put('/pub/:login/contacts/:contact', before, contacts.createContact, after);
-  server.get('/pub/:login/contacts/:contact', before, contacts.getContact, after);
-  server.del('/pub/:login/contacts/:contact', before, contacts.deleteContact, after);
+  server.get('/pub/:user/contacts', before, contacts.listContacts, after);
+  server.put('/pub/:user/contacts/:contact', before, contacts.createContact, after);
+  server.get('/pub/:user/contacts/:contact', before, contacts.getContact, after);
+  server.del('/pub/:user/contacts/:contact', before, contacts.deleteContact, after);
   
-  server.get('/pub/:login/monitors', before, monitors.listMonitors, after);
-  server.put('/pub/:login/monitors/:monitor', before, monitors.createMonitor, after);
-  server.get('/pub/:login/monitors/:monitor', before, monitors.getMonitor, after);
-  server.del('/pub/:login/monitors/:monitor', before, monitors.deleteMonitor, after);
+  server.get('/pub/:user/monitors', before, monitors.listMonitors, after);
+  server.put('/pub/:user/monitors/:monitor', before, monitors.createMonitor, after);
+  server.get('/pub/:user/monitors/:monitor', before, monitors.getMonitor, after);
+  server.del('/pub/:user/monitors/:monitor', before, monitors.deleteMonitor, after);
   
-  server.get('/pub/:login/monitors/:monitor/probes', before, probes.listProbes, after);
-  server.put('/pub/:login/monitors/:monitor/probes/:probe', before, probes.createProbe, after);
-  server.get('/pub/:login/monitors/:monitor/probes/:probe', before, probes.getProbe, after);
-  server.del('/pub/:login/monitors/:monitor/probes/:probe', before, probes.deleteProbe, after);
+  server.get('/pub/:user/monitors/:monitor/probes', before, probes.listProbes, after);
+  server.put('/pub/:user/monitors/:monitor/probes/:probe', before, probes.createProbe, after);
+  server.get('/pub/:user/monitors/:monitor/probes/:probe', before, probes.getProbe, after);
+  server.del('/pub/:user/monitors/:monitor/probes/:probe', before, probes.deleteProbe, after);
   
   server.get('/agentprobes', before, agentprobes.listAgentProbes, after);
   server.head('/agentprobes', before, agentprobes.listAgentProbes, after);
@@ -210,17 +210,17 @@ App.prototype.listen = function(callback) {
 
 
 /**
- * Facilitate getting account info (and caching it) from a login/username.
+ * Facilitate getting user info (and caching it) from a login/username.
  *
- * @param login {String} Login (aka username) of the account to get.
- * @param callback {Function} `function (err, account)`. "err" is a restify
- *    RESTError instance if there is a problem. "account" is null if no
+ * @param login {String} Login (aka username) of the user to get.
+ * @param callback {Function} `function (err, user)`. "err" is a restify
+ *    RESTError instance if there is a problem. "user" is null if no
  *    error, but no such user was found.
  */
-App.prototype.accountFromLogin = function(login, callback) {
+App.prototype.userFromLogin = function(login, callback) {
   // Validate args.
   if (!login) {
-    log.error("accountFromLogin: 'login' is required");
+    log.error("userFromLogin: 'login' is required");
     return callback(new restify.InternalError());
   }
   // Ensure "login" doesn't have LDAP search meta chars.
@@ -232,23 +232,23 @@ App.prototype.accountFromLogin = function(login, callback) {
       sprintf("invalid characters in login: '%s'", login)));
   }
   if (!callback || typeof(callback) !== 'function') {
-    log.error("accountFromLogin: 'callback' must be a function: %s",
+    log.error("userFromLogin: 'callback' must be a function: %s",
       typeof(callback));
     return callback(new restify.InternalError());
   }
   
-  // Check cache. "cached" is `{err: <error>, account: <account>}`.
-  var cached = this.accountCache.get(login);
+  // Check cache. "cached" is `{err: <error>, user: <user>}`.
+  var cached = this.userCache.get(login);
   if (cached) {
     if (cached.err)
       return callback(cached.err);
-    return callback(null, cached.account);
+    return callback(null, cached.user);
   }
 
   var self = this;
-  function cacheAndCallback(err, account) {
-    self.accountCache.put(login, {err: err, account: account});
-    return callback(err, account);
+  function cacheAndCallback(err, user) {
+    self.userCache.put(login, {err: err, user: user});
+    return callback(err, user);
   }
 
   // Look up the login, cache the result and return.
@@ -259,9 +259,9 @@ App.prototype.accountFromLogin = function(login, callback) {
   this.ufds.search("o=smartdc", opts, function(err, result) {
     if (err) return cacheAndCallback(err);
 
-    var accounts = [];
+    var users = [];
     result.on('searchEntry', function(entry) {
-      accounts.push(entry.object);
+      users.push(entry.object);
     });
 
     result.on('error', function(err) {
@@ -275,19 +275,19 @@ App.prototype.accountFromLogin = function(login, callback) {
       if (result.status !== 0) {
         return cacheAndCallback("non-zero status from LDAP search: "+result);
       }
-      switch (accounts.length) {
+      switch (users.length) {
       case 0:
         return cacheAndCallback(null, null);
         break;
       case 1:
-        return cacheAndCallback(null, accounts[0]);
+        return cacheAndCallback(null, users[0]);
         break;
       default:
-        log.error("unexpected number of accounts (%d) matching login '%s': "
-          + "search opts=%o  accounts=%o", accounts.length, login, opts,
-          accounts);
+        log.error("unexpected number of users (%d) matching login '%s': "
+          + "search opts=%o  users=%o", users.length, login, opts,
+          users);
         return cacheAndCallback(new restify.InternalError(
-          sprintf("error determining account for '%s'", login)));
+          sprintf("error determining user for '%s'", login)));
       }
     });
   });

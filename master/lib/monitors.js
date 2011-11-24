@@ -67,10 +67,10 @@ Monitor._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,31}$/;
 Monitor.dnFromRequest = function (req) {
   //XXX validate :monitor
   return sprintf("amonmonitorname=%s, %s",
-    req.uriParams.monitor, req._account.dn);
+    req.uriParams.monitor, req._user.dn);
 };
 Monitor.parentDnFromRequest = function (req) {
-  return req._account.dn;
+  return req._user.dn;
 };
 Monitor.nameFromRequest = function (req) {
   //XXX validate :monitor

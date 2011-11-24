@@ -70,10 +70,10 @@ Contact._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,31}$/;
 Contact.dnFromRequest = function (req) {
   //XXX validate :contact
   return sprintf("amoncontactname=%s, %s",
-    req.uriParams.contact, req._account.dn);
+    req.uriParams.contact, req._user.dn);
 };
 Contact.parentDnFromRequest = function (req) {
-  return req._account.dn;
+  return req._user.dn;
 };
 Contact.nameFromRequest = function (req) {
   //XXX validate :contact

@@ -1,6 +1,6 @@
 {
   "port": 8080,
-  "accountCache": {
+  "userCache": {
     "size": 1000,
     "expiry": 300
   }

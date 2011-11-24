@@ -27,13 +27,16 @@ also describes the (internal) Relay API.
 
 Public endpoints of the Amon Master API are under a "/pub" prefix to
 facilitate proxying to Cloud API. For example, the set of open alarms for an
-account is:
+user is:
 
-    GET  /pub/:login/alarms          # Amon Master API
+    GET  /pub/:user/alarms           # Amon Master API
     GET  /:login/alarms              # Cloud API
 
-Warning: Amon does no authorization (or authentication). That's up to Cloud
-API.
+Where ":user" is typically a user UUID. However, for convenience in
+development, ":user" may also be a user's login string.
+
+**Warning: Amon does no authorization (or authentication). That's up to Cloud
+API.**
 
 
 ### Error Responses
@@ -68,10 +71,10 @@ they can leverage the codes above.
 A "contact" contains the information required (who and what method) to send a
 notification to some endpoint.
 
-    GET    /pub/:login/contacts
-    POST   /pub/:login/contacts
-    GET    /pub/:login/contacts/:contact
-    DELETE /pub/:login/contacts/:contact
+    GET    /pub/:user/contacts
+    POST   /pub/:user/contacts
+    GET    /pub/:user/contacts/:contact
+    DELETE /pub/:user/contacts/:contact
 
 Dev Note: For starters we're just notifying via email. The CAPI customer
 record already has an email. Having something separate here seems silly. Not
@@ -80,9 +83,9 @@ webhook, etc.). For starters we'll *not* include "contacts" and just use
 an implicit "email using the customer record's email address" contact.
 
 
-## ListContacts (GET /pub/:login/contacts)
+## ListContacts (GET /pub/:user/contacts)
 
-List all contacts for this account.
+List all contacts for this user.
 
 ### Inputs
 
@@ -127,15 +130,15 @@ TODO
     ]
 
 
-## GetContact (GET /pub/:login/contacts/:contact)
+## GetContact (GET /pub/:user/contacts/:contact)
 
 TODO
 
-## CreateContact (PUT /pub/:login/contacts/:contact)
+## CreateContact (PUT /pub/:user/contacts/:contact)
 
 TODO
 
-## DeleteContact (DELETE /pub/:login/contacts/:contact)
+## DeleteContact (DELETE /pub/:user/contacts/:contact)
 
 TODO
 
@@ -150,9 +153,9 @@ who should be notified on alarms. A monitor holds a reference to
 contacts to notify. A set of probes to run (e.g. check for N occurrences of
 "ERROR" in "/var/foo/bar.log" in a minute) are added to a monitor.
 
-## ListMonitors (GET /pub/:login/monitors)
+## ListMonitors (GET /pub/:user/monitors)
 
-List all monitors for this account.
+List all monitors for this user.
 
 ### Inputs
 
@@ -197,15 +200,15 @@ TODO
     ]
 
 
-## GetMonitor (GET /pub/:login/monitors/:monitor)
+## GetMonitor (GET /pub/:user/monitors/:monitor)
 
 TODO
 
-## CreateMonitor (PUT /pub/:login/monitors/:monitor)
+## CreateMonitor (PUT /pub/:user/monitors/:monitor)
 
 TODO
 
-## DeleteMonitor (DELETE /pub/:login/monitors/:monitor)
+## DeleteMonitor (DELETE /pub/:user/monitors/:monitor)
 
 TODO
 
@@ -216,7 +219,7 @@ TODO
 A monitor has one or more probes. A "probe" is a single thing to check
 or watch for.
 
-## ListProbes (GET /pub/:login/monitors/:monitor/probes)
+## ListProbes (GET /pub/:user/monitors/:monitor/probes)
 
 TODO
 
@@ -268,15 +271,15 @@ TODO
     ]
 
 
-## CreateProbe (PUT /pub/:login/monitors/:monitor/probes/:probe)
+## CreateProbe (PUT /pub/:user/monitors/:monitor/probes/:probe)
 
 TODO
 
-## GetProbe (GET /pub/:login/monitors/:monitor/probes/:probe)
+## GetProbe (GET /pub/:user/monitors/:monitor/probes/:probe)
 
 TODO
 
-## DeleteProbe (DELETE /pub/:login/monitors/:monitor/probes/:probe)
+## DeleteProbe (DELETE /pub/:user/monitors/:monitor/probes/:probe)
 
 TODO
 
@@ -292,9 +295,9 @@ These APIs provide info on recent alarms for this customer. Closed alarms are
 only guaranteed to be persisted for a week. I.e. this is mainly about showing
 open (i.e. unresolved) alarm situations.
 
-    GET  /pub/:login/alarms
-    GET  /pub/:login/alarms/:alarm
-    POST /pub/:login/alarms/:alarm?action=close
+    GET  /pub/:user/alarms
+    GET  /pub/:user/alarms/:alarm
+    POST /pub/:user/alarms/:alarm?action=close
 
 The point of an "alarm" object is (a) to have a persistent object to show
 current open alarms (e.g. for Cloud API, Operator Portal and Customer Portal)
@@ -336,25 +339,25 @@ A simple ping to check to health of the Amon server.
 None
 
 
-## GetAccount (GET /pub/:login)
+## GetUser (GET /pub/:user)
 
-Get account information for the given login. This is not an essential part of
+Get information for the given user. This is not an essential part of
 the API, **should NOT be exposed publicly (obviously)**, and can be removed
 if not useful.
 
 ### Inputs
 
-None
+||user (in URL)||String||The user UUID or login||
 
 ### Example
 
-    $ sdc-amon /pub/hamish
+    $ sdc-amon /pub/7b23ae63-37c9-420e-bb88-8d4bf5e30455
     HTTP/1.1 200 OK
     ...
     
     {
       "login": "hamish",
-      "email": "trent.mick+hamish@joyent.com",
+      "email": "hamish@joyent.com",
       "id": "7b23ae63-37c9-420e-bb88-8d4bf5e30455",
       "firstName": "Hamish",
       "lastName": "MacHamish"
@@ -412,15 +415,15 @@ Reference docs on configuration vars to amon-master. Default values are in
 passed in with the "-f CONFIG-FILE-PATH" command-line option.
 
 Note that given custom values override full top-level keys in the factory
-settings. For example: if providing 'accountCache', one must provide the
-while accountCache object.
+settings. For example: if providing 'userCache', one must provide the
+whole userCache object.
 
 ||port||Port number on which to listen.||
 ||ufds.url||LDAP URL to connect to UFDS.||
 ||ufds.rootDn||UFDS root dn.||
 ||ufds.password||UFDS root dn password.||
-||accountCache.size||The number of entries to cache.||
-||accountCache.expiry||The number of seconds for which cache entries are valid.||
+||userCache.size||The number of entries to cache.||
+||userCache.expiry||The number of seconds for which cache entries are valid.||
 ||notificationPlugins||An object defining all notification mechanisms. This is a mapping of plugin name, e.g. "email" or "sms", to plugin data.||
 ||notificationPlugins.NAME.path||A node `require()` path from which the Amon master can load the plugin module, e.g. "./lib/twillio".||
 ||notificationPlugins.NAME.config||An object with instance data for the plugin.||
