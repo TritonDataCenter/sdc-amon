@@ -18,19 +18,12 @@ load_sdc_config
 export PREFIX=$npm_config_prefix
 export VERSION=$npm_package_version
 export SMFDIR=$npm_config_smfdir
-export AMON_CLIENT_URL=$CONFIG_amon_client_url
-
-if [ -z "$CONFIG_amon_client_url" ]; then
-  echo "ERROR: 'amon_client_url' was not found in the node configuration." >&2
-  exit 1
-fi
 
 function subfile () {
   IN=$1
   OUT=$2
   sed -e "s#@@PREFIX@@#$PREFIX#g" \
-      -e "s#@@VERSION@@#$VERSION#g" \
-      -e "s#@@AMON_CLIENT_URL@@#$AMON_CLIENT_URL#g" \
+      -e "s#@@VERSION@@#$VERSION#g"
       $IN > $OUT
 }
 
