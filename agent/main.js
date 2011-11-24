@@ -364,7 +364,7 @@ function main() {
     'help': Boolean,
     'verbose': [Boolean, Array],
     'data-dir': String,
-    'socket': String,
+    'socket': [Number, String],
     'poll': Number
   };
   var shortOpts = {

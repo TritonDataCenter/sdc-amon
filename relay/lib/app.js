@@ -60,7 +60,7 @@ function asyncForEach(list, fn, cb) {
  *  - socket  {String} the socket to open/close (zsock).
  *  - localMode {Boolean} to zsock or not to zsock.
  *  - dataDir {String} root of agent probes tree.
- *  - master {String} location of the amon-master.
+ *  - masterUrl {String} location of the amon-master.
  *  - poll {Number} update polling interval in seconds (default: 30).
  *
  * @param {Object} options The usual.
@@ -81,7 +81,6 @@ var App = function App(options) {
   this.socket = options.socket;
   this.dataDir = options.dataDir;
   this.localMode = options.localMode || false;
-  this.developerMode = options.developerMode || false;
   this.poll = options.poll || 30;
   
   this._stageJsonPath = pathlib.resolve(this.dataDir, this.zone + ".json");
@@ -173,10 +172,10 @@ var App = function App(options) {
 App.prototype.listen = function(callback) {
   var self = this;
 
-  if (self.developerMode) {
-    var port = parseInt(self.socket, 10);
-    log.debug("Starting app on port %d (developer mode)", port);
-    return self.server.listen(port, '127.0.0.1', callback);
+  if (typeof(self.socket) === 'number') {
+    log.debug("Starting app on <http://127.0.0.1:%d> (developer mode)",
+      self.socket);
+    return self.server.listen(self.socket, '127.0.0.1', callback);
   }
   if (self.localMode) {
     log.debug('Starting app at socket %s (local mode).', self.socket);

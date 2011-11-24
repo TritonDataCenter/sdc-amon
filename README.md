@@ -143,13 +143,13 @@ In a separate shell run an amon-relay:
     
     # Here we are:
     # - connecting to the master at "localhost:8080"
-    # - running in developer mode (-d) and listening on port 8081 (-s)
+    # - listening on port 8081 (-s 8081)
     #   (rather than using a Unix domain socket, as is done in production)
     # - polling the master every 90 seconds (-p 90)
     #
     # `../bin/node main.js -h` for details on options.
     #
-    ../bin/node-dev main.js -v -D tmp/db -d -s 8081 -m http://localhost:8080 -p 90
+    ../bin/node-dev main.js -v -D tmp/db -m http://localhost:8080 -s 8081 -p 90
 
 
 In a separate shell run an amon-agent:

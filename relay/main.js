@@ -40,14 +40,13 @@ var appIndex = {};
 //---- internal support functions
 
 function listenInGlobalZoneSync() {
-  owner = 'joyent'; //XXX can we use null here instead of "joyent"?
+  owner = 'joyent'; //XXX can we use null here instead of "joyent", or the admin user?
   appIndex.global = new App({
     zone: 'global',
     socket: config.socket,
     owner: owner,
     dataDir: config.dataDir,
-    localMode: true,
-    developerMode: config.developerMode,
+    localMode: true,  // use a local socket, not a zsock
     masterUrl: config.masterUrl,
     poll: config.poll
   });
@@ -85,6 +84,7 @@ function listenInZone(zone, callback) {
       zone: zone,
       socket: config.socket,
       owner: attr.value,
+      localMode: false,  // use a zsock, this isn't the current zone
       dataDir: config.dataDir,
       masterUrl: config.masterUrl,
       poll: config.poll
@@ -179,12 +179,13 @@ function printHelp() {
   console.log("  -s PATH, --socket PATH");
   console.log("       The socket path on which to listen. In normal operation this");
   console.log("       is the path inside the target zone at which the zone will");
-  console.log("       listen on a 'zone socket'. Default: " + DEFAULT_SOCKET);
-  console.log("       See '-d' for using a port number.");
-  console.log("  -d, --developer");
-  console.log("       Developer mode (use with '-s PORT'): listen on a port");
-  console.log("       instead of a socket and only create one 'App' for the");
-  console.log("       current zone (presumed to be the global).")
+  console.log("       listen on a 'zsock'. Default: " + DEFAULT_SOCKET);
+  console.log("       For development this may be a port *number* to facilitate");
+  console.log("       using curl and using off of SmartOS.")
+  console.log("  -Z, --all-zones");
+  console.log("       Setup socket in all zones. By default we only listen");
+  console.log("       in the current zone (presumed to be the global).");
+  console.log("       This is incompatible with a port number of '-s'.");
 }
 
 
@@ -197,19 +198,19 @@ function main() {
     'help': Boolean,
     'verbose': [Boolean, Array],
     'data-dir': String,
-    'developer': Boolean,
     'master-url': String,
     'poll': Number,
-    'socket': String
+    'socket': [Number, String],
+    'all-zones': Boolean
   };
   var shortOpts = {
     'h': ['--help'],
     'v': ['--verbose'],
     'D': ['--data-dir'],
     'm': ['--master-url'],
-    'n': ['--developer'],
     'p': ['--poll'],
-    's': ['--socket']
+    's': ['--socket'],
+    'Z': ['--all-zones']
   };
   var rawOpts = nopt(longOpts, shortOpts, process.argv, 2);
   if (rawOpts.help) {
@@ -225,21 +226,24 @@ function main() {
     masterUrl: rawOpts["master-url"] || DEFAULT_MASTER_URL,
     poll: rawOpts.poll || DEFAULT_POLL,
     socket: rawOpts.socket || DEFAULT_SOCKET,
-    developerMode: rawOpts.developer || false
+    allZones: rawOpts["all-zones"] || false
   };
+  if (config.allZones && typeof(config.socket) === 'number') {
+    usage(1, "cannot use '-Z' and a port number to '-s'");
+  }
   log.debug("config: %o", config);
 
-  // Create the ZWatch Daemon
-  if (!config.developerMode) {
+  // Create the ZWatch Daemon.
+  if (config.allZones) {
     net.createServer(zwatchHandler).listen(ZWATCH_SOCKET, function() {
       log.info('amon-relay listening to zwatch on %s', ZWATCH_SOCKET);
     });
   }
 
-  // Now create an app per zone.
-  if (config.developerMode) {
-    // Just listen locally for developer mode (presuming local is the global
-    // zone).
+  // Now create the app(s).
+  if (!config.allZones) {
+    // Presuming local is the global zone (as it is in current production
+    // usage).
     listenInGlobalZoneSync();
   } else {
     zutil.listZones().forEach(function(z) {
