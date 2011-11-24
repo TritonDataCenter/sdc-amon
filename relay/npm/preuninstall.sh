@@ -22,4 +22,4 @@ fi
 rm -f "$SMFDIR/amon-relay.xml"
 rm -f "$SMFDIR/amon-zwatch.xml"
 
-rm -fr /var/run/joyent/amon/relay
+rm -fr /var/run/smartdc/amon-relay

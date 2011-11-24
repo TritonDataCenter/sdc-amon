@@ -16,4 +16,4 @@ fi
 
 rm -f "$SMFDIR/amon-agent.xml"
 
-rm -fr /var/run/joyent/amon/agent
+rm -fr /var/run/smartdc/amon-agent
