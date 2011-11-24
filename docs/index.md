@@ -51,15 +51,15 @@ Where the code element is one of:
 * InvalidArgument
 * InvalidHeader
 * MissingParameter
-* NotAuthorized
 * RequestTooLarge
 * ResourceNotFound
 * UnknownError
+* any of the errors from <http://ldapjs.org/errors.html>
 
 Clients are expected to check HTTP status code first, and if in the 4xx range,
 they can leverage the codes above.
 
-*(TODO: verify this is the correct set of codes. Give example.)*
+<!-- TODO: complete the error list above, show some examples -->
 
 
 

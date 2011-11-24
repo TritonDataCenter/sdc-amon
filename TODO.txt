@@ -12,6 +12,8 @@
 - [Trent] update https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming
 - [Trent] get working in COAL: Currently dealing with a problem of relay
   in coal not being able to connect to master running on my Mac.
+- Idea: have amon-master create event/alarm to operator if it cannot connect/work
+  with UFDS.
 - update "zone" field to include CN uuid prefix: Because "global" is
   ambiguous with multiple servers (e.g. the headnode and a CN). Also
   should talk with Josh about whether this should use zone *name* or

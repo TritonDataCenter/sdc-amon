@@ -9,6 +9,7 @@ var assert = require('assert');
 
 var ldap = require('ldapjs');
 var restify = require('restify');
+var sprintf = require('sprintf').sprintf;
 
 var amonCommon = require('amon-common');
 var Cache = amonCommon.Cache;
@@ -145,25 +146,20 @@ function App(config, ufds) {
     req._ufds = self.ufds;
     req._log = log;
 
-    // Handle ':login' in route: add `req._account` or respond with 404 or
-    // 500.
+    // Handle ':login' in route: add `req._account` or respond with
+    // appropriate error.
     var login = req.uriParams.login;
     if (login) {
       self.accountFromLogin(login, function (err, account) {
         if (err) {
-          req._log.debug("Error getting account for login '%s': %s",
-            login, err);
-          res.send(500);
-          return next();
+          res.sendError(err); //TODO: does this work with an LDAPError?
         } else if (! account) {
-          req._log.debug("No getting account for login '%s': %s",
-            login, err);
-          //XXX Structured error response.
-          res.send(404, "No such login, '"+login+"'.");
+          res.sendError(new restify.ResourceNotFoundError(
+            sprintf("no such login: '%s'", login)));
         } else {
           req._account = account;
-          return next();
         }
+        return next();
       });
     } else {
       return next();
@@ -175,7 +171,7 @@ function App(config, ufds) {
 
   server.get('/ping', before, ping, after);
 
-  server.get('/pub/:login', before, getAccount, after);
+  server.get('/pub/:user', before, getAccount, after);
   
   server.get('/pub/:login/contacts', before, contacts.listContacts, after);
   server.put('/pub/:login/contacts/:contact', before, contacts.createContact, after);
@@ -217,20 +213,29 @@ App.prototype.listen = function(callback) {
  * Facilitate getting account info (and caching it) from a login/username.
  *
  * @param login {String} Login (aka username) of the account to get.
- * @param callback {Function} `function (err, account)`. Currently "err"
- *    isn't well standardized. If the given username is not found this
- *    will call `callback(null, null)`.
+ * @param callback {Function} `function (err, account)`. "err" is a restify
+ *    RESTError instance if there is a problem. "account" is null if no
+ *    error, but no such user was found.
  */
 App.prototype.accountFromLogin = function(login, callback) {
   // Validate args.
-  if (!login) throw new TypeError('login is required');
+  if (!login) {
+    log.error("accountFromLogin: 'login' is required");
+    return callback(new restify.InternalError());
+  }
   // Ensure "login" doesn't have LDAP search meta chars.
+  // Note: this regex should conform to `LOGIN_RE` in
+  // <https://mo.joyent.com/ufds/blob/master/schema/sdcperson.js>.
   var VALID_LOGIN_CHARS = /^[a-zA-Z][a-zA-Z0-9_\.@]+$/;
   if (! VALID_LOGIN_CHARS.test(login)) {
-    throw new Error("invalid characters in login: '"+login+"'");
+    return callback(new restify.InvalidArgumentError(
+      sprintf("invalid characters in login: '%s'", login)));
   }
-  if (!callback || typeof(callback) !== 'function')
-    throw new TypeError('callback is required (function)');
+  if (!callback || typeof(callback) !== 'function') {
+    log.error("accountFromLogin: 'callback' must be a function: %s",
+      typeof(callback));
+    return callback(new restify.InternalError());
+  }
   
   // Check cache. "cached" is `{err: <error>, account: <account>}`.
   var cached = this.accountCache.get(login);
@@ -252,12 +257,17 @@ App.prototype.accountFromLogin = function(login, callback) {
     scope: 'sub'
   };
   this.ufds.search("o=smartdc", opts, function(err, result) {
+    if (err) return cacheAndCallback(err);
+
     var accounts = [];
     result.on('searchEntry', function(entry) {
       accounts.push(entry.object);
     });
 
     result.on('error', function(err) {
+      // `err` is an ldapjs error (<http://ldapjs.org/errors.html>) which is
+      // currently compatible enough so that we don't bother wrapping it in
+      // a `restify.RESTError`. (TODO: verify that)
       return cacheAndCallback(err);
     });
 
@@ -265,7 +275,6 @@ App.prototype.accountFromLogin = function(login, callback) {
       if (result.status !== 0) {
         return cacheAndCallback("non-zero status from LDAP search: "+result);
       }
-      log.debug('accounts: %o', accounts);
       switch (accounts.length) {
       case 0:
         return cacheAndCallback(null, null);
@@ -274,9 +283,11 @@ App.prototype.accountFromLogin = function(login, callback) {
         return cacheAndCallback(null, accounts[0]);
         break;
       default:
-        return cacheAndCallback("unexpected number of accounts ("
-          + accounts.length + ") matching login='" + login + "': "
-          + JSON.stringify(accounts));
+        log.error("unexpected number of accounts (%d) matching login '%s': "
+          + "search opts=%o  accounts=%o", accounts.length, login, opts,
+          accounts);
+        return cacheAndCallback(new restify.InternalError(
+          sprintf("error determining account for '%s'", login)));
       }
     });
   });
