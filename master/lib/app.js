@@ -6,6 +6,7 @@
 
 var http = require('http');
 var assert = require('assert');
+var debug = console.warn;
 
 var ldap = require('ldapjs');
 var restify = require('restify');
@@ -29,6 +30,12 @@ var events = require('./events');
 //---- globals
 
 var log = restify.log;
+
+var UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+// Ensure login doesn't have LDAP search meta chars.
+// Note: this regex should conform to `LOGIN_RE` in
+// <https://mo.joyent.com/ufds/blob/master/schema/sdcperson.js>.
+var VALID_LOGIN_CHARS = /^[a-zA-Z][a-zA-Z0-9_\.@]+$/;
 
 
 
@@ -132,7 +139,7 @@ function App(config, ufds) {
     });
   }
 
-  // Cache of login (aka username) -> full user record.
+  // Cache of login/uuid (aka username) -> full user record.
   this.userCache = new Cache(config.userCache.size,
     config.userCache.expiry, log, "user");
 
@@ -148,14 +155,14 @@ function App(config, ufds) {
 
     // Handle ':user' in route: add `req._user` or respond with
     // appropriate error.
-    var login = req.uriParams.user;
-    if (login) {
-      self.userFromLogin(login, function (err, user) {
+    var userId = req.uriParams.user;
+    if (userId) {
+      self.userFromId(userId, function (err, user) {
         if (err) {
           res.sendError(err); //TODO: does this work with an LDAPError?
         } else if (! user) {
           res.sendError(new restify.ResourceNotFoundError(
-            sprintf("no such login: '%s'", login)));
+            sprintf("no such user: '%s'", userId)));
         } else {
           req._user = user;
         }
@@ -212,51 +219,63 @@ App.prototype.listen = function(callback) {
 /**
  * Facilitate getting user info (and caching it) from a login/username.
  *
- * @param login {String} Login (aka username) of the user to get.
+ * @param userId {String} UUID or login (aka username) of the user to get.
  * @param callback {Function} `function (err, user)`. "err" is a restify
  *    RESTError instance if there is a problem. "user" is null if no
  *    error, but no such user was found.
  */
-App.prototype.userFromLogin = function(login, callback) {
+App.prototype.userFromId = function(userId, callback) {
   // Validate args.
-  if (!login) {
-    log.error("userFromLogin: 'login' is required");
+  if (!userId) {
+    log.error("userFromId: 'userId' is required");
     return callback(new restify.InternalError());
   }
-  // Ensure "login" doesn't have LDAP search meta chars.
-  // Note: this regex should conform to `LOGIN_RE` in
-  // <https://mo.joyent.com/ufds/blob/master/schema/sdcperson.js>.
-  var VALID_LOGIN_CHARS = /^[a-zA-Z][a-zA-Z0-9_\.@]+$/;
-  if (! VALID_LOGIN_CHARS.test(login)) {
-    return callback(new restify.InvalidArgumentError(
-      sprintf("invalid characters in login: '%s'", login)));
-  }
   if (!callback || typeof(callback) !== 'function') {
-    log.error("userFromLogin: 'callback' must be a function: %s",
+    log.error("userFromId: 'callback' must be a function: %s",
       typeof(callback));
     return callback(new restify.InternalError());
   }
   
   // Check cache. "cached" is `{err: <error>, user: <user>}`.
-  var cached = this.userCache.get(login);
+  var cached = this.userCache.get(userId);
   if (cached) {
     if (cached.err)
       return callback(cached.err);
     return callback(null, cached.user);
   }
+  
+  // UUID or login?
+  var uuid = null, login = null;
+  if (UUID_REGEX.test(userId)) {
+    uuid = userId;
+  } else if (VALID_LOGIN_CHARS.test(login)) {
+    login = userId;
+  } else {
+    return callback(new restify.InvalidArgumentError(
+      sprintf("user id is not a valid UUID or login: '%s'", userId)));
+  }
 
   var self = this;
   function cacheAndCallback(err, user) {
-    self.userCache.put(login, {err: err, user: user});
+    var obj = {err: err, user: user};
+    if (user) {
+      // On success, cache for both the UUID and login.
+      self.userCache.put(user.uuid, obj);
+      self.userCache.put(user.login, obj);
+    } else {
+      self.userCache.put(userId, obj);
+    }
     return callback(err, user);
   }
 
   // Look up the login, cache the result and return.
-  var opts = {
-    filter: '(&(login=' + login + ')(objectclass=sdcperson))',
-    scope: 'sub'
+  var searchOpts = {
+    filter: (uuid
+      ? '(&(uuid=' + uuid + ')(objectclass=sdcperson))'
+      : '(&(login=' + login + ')(objectclass=sdcperson))'),
+    scope: 'one'
   };
-  this.ufds.search("o=smartdc", opts, function(err, result) {
+  this.ufds.search("ou=users, o=smartdc", searchOpts, function(err, result) {
     if (err) return cacheAndCallback(err);
 
     var users = [];
@@ -283,11 +302,11 @@ App.prototype.userFromLogin = function(login, callback) {
         return cacheAndCallback(null, users[0]);
         break;
       default:
-        log.error("unexpected number of users (%d) matching login '%s': "
-          + "search opts=%o  users=%o", users.length, login, opts,
+        log.error("unexpected number of users (%d) matching user id '%s': "
+          + "searchOpts=%o  users=%o", users.length, userId, searchOpts,
           users);
         return cacheAndCallback(new restify.InternalError(
-          sprintf("error determining user for '%s'", login)));
+          sprintf("error determining user for '%s'", userId)));
       }
     });
   });
