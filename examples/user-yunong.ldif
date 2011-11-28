@@ -1,7 +1,6 @@
 version: 1
 
 dn: uuid=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb,ou=users,o=smartdc
-changetype: add
 login: yunong
 uuid: bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
 userpassword: 123123

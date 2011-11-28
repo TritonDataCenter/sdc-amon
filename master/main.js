@@ -8,6 +8,7 @@
 
 var Path = require('path');
 var fs = require('fs');
+var debug = console.warn;
 
 var nopt = require('nopt');
 var log = require('restify').log;

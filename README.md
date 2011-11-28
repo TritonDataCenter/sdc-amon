@@ -178,8 +178,8 @@ In a separate terminal, call the Amon Master API to add some data.
 First we need a user to use. I use ldap to directly add this user to UFDS
 because that allows us to specify the UUID used, which can be handy.
 
-    sdc-ldap -v modify -f examples/user-yunong.ldif
-    sdc-ldap -v modify -f examples/user-trent.ldif
+    sdc-ldap -v add -f examples/user-yunong.ldif
+    sdc-ldap -v add -f examples/user-trent.ldif
 
 Amon should now see those users:
 
@@ -188,8 +188,9 @@ Amon should now see those users:
 
 Add a contact:
 
+    sdc-amon /pub/yunong/contacts/email -X PUT -d @examples/contact-yunongemail.json
     sdc-amon /pub/trent/contacts/email -X PUT -d @examples/contact-trentemail.json
-    sdc-amon /pub/trent/contacts    # list contacts
+    sdc-amon /pub/trent/contacts            # list contacts
     sdc-amon /pub/trent/contacts/email
 
 Add a monitor. We'll call this one "whistle", and just have one contact for

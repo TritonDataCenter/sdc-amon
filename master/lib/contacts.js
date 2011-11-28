@@ -6,11 +6,16 @@
 
 var assert = require('assert');
 var events = require('events');
+var debug = console.warn;
 
 var ldap = require('ldapjs');
 var restify = require('restify');
 var sprintf = require('sprintf').sprintf;
 var ufdsmodel = require('./ufdsmodel');
+
+
+
+//---- globals
 
 var log = restify.log;
 
@@ -43,13 +48,16 @@ function Contact(app, name, data) {
   var raw; // The raw form as it goes into and comes out of UFDS.
   if (data.objectclass === "amoncontact") { // From UFDS.
     raw = data;
+    this.dn = raw.dn;
   } else {
     raw = {
       amoncontactname: name,
       medium: data.medium,
       data: data.data,
       objectclass: 'amoncontact'
-    }
+    };
+    this.dn = sprintf("amoncontactname=%s, uuid=%s, ou=users, o=smartdc",
+      name, this.user);
   }
   this.raw = Contact.validate(app, raw);
 
@@ -68,24 +76,26 @@ Contact._objectclass = "amoncontact";
 Contact._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,31}$/;
 
 Contact.dnFromRequest = function (req) {
-  //XXX validate :contact
   return sprintf("amoncontactname=%s, %s",
-    req.uriParams.contact, req._user.dn);
+    Contact.nameFromRequest(req), req._user.dn);
 };
 Contact.parentDnFromRequest = function (req) {
   return req._user.dn;
 };
 Contact.nameFromRequest = function (req) {
-  //XXX validate :contact
-  return req.uriParams.contact;
+  var name = req.uriParams.contact;
+  Contact.validateName(name);
+  return name;
 };
 
 /**
  * Get a contact.
  */
 Contact.get = function get(app, name, userUuid, callback) {
-  var parentDn = sprintf("uuid=%s, ou=users, o=smartdc", userUuid);
-  ufdsmodel.modelGet(app, Contact, name, parentDn, log, callback);
+  //TODO: Should this validate 'name'?
+  var dn = sprintf("amoncontactname=%s, uuid=%s, ou=users, o=smartdc",
+    name, userUuid);
+  ufdsmodel.modelGet(app, Contact, dn, log, callback);
 }
 
 /**

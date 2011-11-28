@@ -49,6 +49,17 @@ function ping(req, res, next) {
   return next();
 }
 
+// Debugging.
+//function listCaches(req, res, next) {
+//  var data = req._app._cacheFromScope;
+//  var data = {};
+//  Object.keys(req._app._cacheFromScope).forEach(function(k) {
+//    data[k] = req._app._cacheFromScope[k].getAll()
+//  });
+//  res.send(200, data);
+//  return next();
+//}
+
 function getUser(req, res, next) {
   user = req._user;
   var data = {
@@ -128,6 +139,8 @@ function App(config, ufds) {
   if (!ufds) throw TypeError('ufds is required');
   this.config = config;
   this.ufds = ufds;
+  // TODO: add test suite for UFDS caching and default this to true.
+  this._ufdsCaching = (ufds.caching === undefined ? false : ufds.caching);
 
   this.notificationPlugins = {};
   if (config.notificationPlugins) {
@@ -142,6 +155,20 @@ function App(config, ufds) {
   // Cache of login/uuid (aka username) -> full user record.
   this.userCache = new Cache(config.userCache.size,
     config.userCache.expiry, log, "user");
+  
+  // Caches for server response caching. This is centralized on the app
+  // because it allows the interdependant cache-invalidation to be
+  // centralized.
+  this._cacheFromScope = {
+    // This is unbounded in size because (a) the data stored is small and (b)
+    // we expect `headAgentProbes` calls for *all* zones (the key) regularly
+    // so an LRU-cache is pointless.
+    headAgentProbes: new Cache(0, 300, log, "headAgentProbes"),
+    contactGet: new Cache(100, 300, log, "contactGet"),
+    contactList: new Cache(100, 300, log, "contactList"),
+    probeGet: new Cache(100, 300, log, "probeGet"),
+    probeList: new Cache(100, 300, log, "probeList"),
+  };
 
   var server = this.server = restify.createServer({
     apiVersion: Constants.ApiVersion,
@@ -177,6 +204,8 @@ function App(config, ufds) {
   var after = [restify.log.w3c];
 
   server.get('/ping', before, ping, after);
+  // Debugging:
+  //server.get('/caches', before, listCaches, after);
 
   server.get('/pub/:user', before, getUser, after);
   
@@ -196,7 +225,7 @@ function App(config, ufds) {
   server.del('/pub/:user/monitors/:monitor/probes/:probe', before, probes.deleteProbe, after);
   
   server.get('/agentprobes', before, agentprobes.listAgentProbes, after);
-  server.head('/agentprobes', before, agentprobes.listAgentProbes, after);
+  server.head('/agentprobes', before, agentprobes.headAgentProbes, after);
   
   server.post('/events', before, events.addEvents, after);
 };
@@ -212,9 +241,107 @@ function App(config, ufds) {
  * @param {Function} callback callback of the form function(error).
  */
 App.prototype.listen = function(callback) {
-  this.server.listen(this.config.port, callback);
+  this.server.listen(this.config.port, '0.0.0.0', callback);
 };
 
+
+App.prototype.cacheGet = function(scope, key) {
+  if (! this._ufdsCaching) return;
+  switch (scope) {
+  case "contactGet":
+    // cache: <parentDn>:<name> -> {err: <error>, item: <item>}
+    return this._cacheFromScope.contactGet.get(key);
+  case "contactList":
+    // cache: <parentDn>:<name> -> {err: <error>, items: <items>}
+    return this._cacheFromScope.contactList.get(key);
+  case "probeGet":
+    // cache: <parentDn>:<name> -> {err: <error>, item: <item>}
+    return this._cacheFromScope.probeGet.get(key);
+  case "probeList":
+    // cache: <parentDn>:<name> -> {err: <error>, items: <items>}
+    return this._cacheFromScope.probeList.get(key);
+  case "headAgentProbes":
+    // cache: <zone> -> <Content-MD5 of agent probes for this zone>
+    var zone = key;
+    return this._cacheFromScope.headAgentProbes.get(zone);
+  default:
+    log.warn("unknown cache scope: '%s'", scope)
+    return undefined;
+  }
+}
+App.prototype.cacheSet = function(scope, key, value) {
+  if (! this._ufdsCaching) return;
+  switch (scope) {
+  case "contactList":
+    this._cacheFromScope.contactList.set(key, value);
+    break;
+  case "contactGet":
+    this._cacheFromScope.contactGet.set(key, value);
+    break;
+  case "probeList":
+    this._cacheFromScope.probeList.set(key, value);
+    break;
+  case "probeGet":
+    this._cacheFromScope.probeGet.set(key, value);
+    break;
+  case "headAgentProbes":
+    var zone = key;
+    this._cacheFromScope.headAgentProbes.set(zone, value);
+    break;
+  default:
+    log.warn("unknown cache scope: '%s'", scope)
+  }
+}
+
+/**
+ * Invalidate caches as appropriate for the given DB object create.
+ */
+App.prototype.cacheInvalidateCreate = function(modelName, item) {
+  if (! this._ufdsCaching) return;
+
+  // Reset the "${modelName}List" cache.
+  // Note: This could be improved by only invalidating the item for this
+  // specific user. We are being lazy for starters here.
+  var scope = modelName + "List"
+  this._cacheFromScope[scope].reset();
+  
+  // Delete the "${modelName}Get" cache item with this dn (possible because
+  // we cache error responses).
+  this._cacheFromScope[modelName + "Get"].del(item.dn);
+  
+  // Furthermore, if this is a probe, then need to invalidate the
+  // `headAgentProbes` for this probe's zone.
+  if (modelName === "probe") {
+    this._cacheFromScope.headAgentProbes.del(item.zone);
+  }
+}
+
+/**
+ * Invalidate caches as appropriate for the given DB object delete.
+ */
+App.prototype.cacheInvalidateDelete = function(modelName, item) {
+  if (! this._ufdsCaching) return;
+
+  // Reset the "${modelName}List" cache.
+  // Note: This could be improved by only invalidating the item for this
+  // specific user. We are being lazy for starters here.
+  //XXX This isn't working!!
+try {
+  var scope = modelName + "List";
+  this._cacheFromScope[scope].reset();
+  
+  // Delete the "${modelName}Get" cache item with this dn.
+  this._cacheFromScope[modelName + "Get"].del(item.dn);
+  
+  // Furthermore, if this is a probe, then need to invalidate the
+  // `headAgentProbes` for this probe's zone.
+  if (modelName === "probe") {
+    this._cacheFromScope.headAgentProbes.del(item.zone);
+  }
+} catch(e) {
+  debug("XXX cacheInvalidateDelete: fail:", e, e.stack, item, item.raw)
+}
+}
 
 /**
  * Facilitate getting user info (and caching it) from a login/username.
@@ -260,10 +387,10 @@ App.prototype.userFromId = function(userId, callback) {
     var obj = {err: err, user: user};
     if (user) {
       // On success, cache for both the UUID and login.
-      self.userCache.put(user.uuid, obj);
-      self.userCache.put(user.login, obj);
+      self.userCache.set(user.uuid, obj);
+      self.userCache.set(user.login, obj);
     } else {
-      self.userCache.put(userId, obj);
+      self.userCache.set(userId, obj);
     }
     return callback(err, user);
   }

@@ -4,6 +4,7 @@
  * Amon Master controller for '/agentprobes' endpoints.
  */
 
+var crypto = require('crypto');
 var sprintf = require('sprintf').sprintf;
 var restify = require('restify');
 var HttpCodes = restify.HttpCodes;
@@ -70,24 +71,26 @@ function probesFromZone(app, zone, callback) {
 
 
 
-
 //---- controllers
 
+/**
+ * List all agent probes for the given zone.
+ *
+ * Note: We don't bother caching this endpoint. The "HEAD" version (below)
+ * is cached and clients (amon-relay's) typically won't call this list
+ * unless the HEAD Content-MD5 changes.
+ */
 function listAgentProbes(req, res, next) {
-  log.trace('ListAgentProbes (%o): params=%o', req, req.params);
+  req._log.trace('listAgentProbes entered: params=%o, uriParams=%o',
+    req.params, req.uriParams);
   var zone = req.params.zone;
-  
-  //XXX validate zone
-  
   if (!zone) {
-    var e = restify.newError({
-      httpCode: HttpCodes.Conflict,
-      restCode: RestCodes.MissingParameter,
-      message: "'zone' is a required parameter"
-    });
-    res.sendError(e)
+    res.sendError(new restify.MissingParameterError(
+      "'zone' is a required parameter"));
     return next();
   }
+  
+  //XXX validate zone
   
   probesFromZone(req._app, zone, function (err, probes) {
     if (err) {
@@ -100,8 +103,62 @@ function listAgentProbes(req, res, next) {
   });
 }
 
-//TODO:XXX add a separate headAgentProbes for HEAD call that does actual
-//  caching on the content-md5.
+
+/**
+ * Return the HEAD (just for the Content-MD5) of agent probes for this zone.
+ *
+ * Amon-relay's call this to check for changes to their local copy of the
+ * agent probes.
+ */
+function headAgentProbes(req, res, next) {
+  req._log.trace('headAgentProbes entered: params=%o, uriParams=%o',
+    req.params, req.uriParams);
+  var zone = req.params.zone;
+  if (!zone) {
+    res.sendError(new restify.MissingParameterError(
+      "'zone' is a required parameter"));
+    return next();
+  }
+
+  //XXX validate zone
+
+  function respond(contentMD5) {
+    res.send({
+      code: 200,
+      headers: {
+        "Content-MD5": contentMD5,
+        "Content-Type": "application/json"
+      },
+      // Note: This'll give false Content-Length. If we care, then we
+      // could cache content-length as well.
+      body: ""
+    });
+    return next();
+  }
+
+  // Check cache.
+  var contentMD5 = req._app.cacheGet("headAgentProbes", zone);
+  if (contentMD5) {
+    return respond(contentMD5);
+  }
+
+  probesFromZone(req._app, zone, function (err, probes) {
+    if (err) {
+      log.error("error getting probes for zone '%s'", zone);
+      res.sendError(new restify.InternalError());
+      return next();
+    } else {
+      var data = JSON.stringify(probes);
+      var hash = crypto.createHash('md5');
+      hash.update(data);
+      var contentMD5 = hash.digest('base64');
+      req._app.cacheSet("headAgentProbes", zone, contentMD5);
+      return respond(contentMD5);
+    }
+  });
+}
+
 module.exports = {
-  listAgentProbes: listAgentProbes
+  listAgentProbes: listAgentProbes,
+  headAgentProbes: headAgentProbes
 };

@@ -11,6 +11,7 @@ var ldap = require('ldapjs');
 var restify = require('restify');
 var sprintf = require('sprintf').sprintf;
 var ufdsmodel = require('./ufdsmodel');
+var Monitor = require('./monitors').Monitor;
 
 var log = restify.log;
 
@@ -44,6 +45,7 @@ function Probe(app, name, data) {
   var raw; // The raw form as it goes into and comes out of UFDS.
   if (data.objectclass === "amonprobe") { // From UFDS.
     raw = data;
+    this.dn = raw.dn;
     var parsedDN = ldap.parseDN(raw.dn)
     this.monitor = parsedDN.rdns[1].amonmonitorname;
     this.user = parsedDN.rdns[2].uuid;
@@ -57,6 +59,9 @@ function Probe(app, name, data) {
     };
     this.monitor = data.monitor;
     this.user = this.user;
+    this.dn = sprintf(
+      "amonprobename=%s, amonmonitorname=%s, uuid=%s, ou=users, o=smartdc",
+      name, this.monitor, this.user);
   }
   this.raw = Probe.validate(app, raw);
 
@@ -75,25 +80,23 @@ function Probe(app, name, data) {
   });
 }
 
-//XXX Drop "_" prefix.
 Probe._modelName = "probe";
 Probe._objectclass = "amonprobe";
 // Note: Should be in sync with "ufds/schema/amonprobe.js".
 Probe._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,31}$/;
 
 Probe.dnFromRequest = function (req) {
-  //XXX validate :probe and :monitor
   return sprintf("amonprobename=%s, amonmonitorname=%s, %s",
-    req.uriParams.probe, req.uriParams.monitor, req._user.dn);
+    Probe.nameFromRequest(req), Monitor.nameFromRequest(req), req._user.dn);
 };
 Probe.parentDnFromRequest = function (req) {
-  //XXX validate :monitor
-  return sprintf("amonmonitorname=%s, %s", req.uriParams.monitor,
+  return sprintf("amonmonitorname=%s, %s", Monitor.nameFromRequest(req),
     req._user.dn);
 };
 Probe.nameFromRequest = function (req) {
-  //XXX validate :probe
-  return req.uriParams.probe;
+  var name = req.uriParams.probe;
+  Probe.validateName(name);
+  return name;
 };
 
 
@@ -101,9 +104,10 @@ Probe.nameFromRequest = function (req) {
  * Get a probe.
  */
 Probe.get = function get(app, name, monitorName, userUuid, callback) {
-  var parentDn = sprintf("amonmonitorname=%s, uuid=%s, ou=users, o=smartdc",
-    monitorName, userUuid);
-  ufdsmodel.modelGet(app, Probe, name, parentDn, log, callback);
+  //TODO: Should this validate 'name'?
+  var dn = sprintf("amonprobename=%s, amonmonitorname=%s, uuid=%s, ou=users, o=smartdc",
+    name, monitorName, userUuid);
+  ufdsmodel.modelGet(app, Probe, dn, log, callback);
 }
 
 

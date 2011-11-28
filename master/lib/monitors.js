@@ -43,12 +43,15 @@ function Monitor(app, name, data) {
   var raw; // The raw form as it goes into and comes out of UFDS.
   if (data.objectclass === "amonmonitor") { // From UFDS.
     raw = data;
+    this.dn = raw.dn;
   } else {
     raw = {
       amonmonitorname: name,
       contact: data.contacts,
       objectclass: 'amonmonitor'
-    }
+    };
+    this.dn = sprintf("amonmonitorname=%s, uuid=%s, ou=users, o=smartdc",
+      name, this.user);
   }
   this.raw = Monitor.validate(app, raw);
 
@@ -58,23 +61,22 @@ function Monitor(app, name, data) {
   });
 }
 
-//XXX Drop "_" prefix.
 Monitor._modelName = "monitor";
 Monitor._objectclass = "amonmonitor";
 // Note: Should be in sync with "ufds/schema/amonmonitor.js".
 Monitor._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,31}$/;
 
 Monitor.dnFromRequest = function (req) {
-  //XXX validate :monitor
   return sprintf("amonmonitorname=%s, %s",
-    req.uriParams.monitor, req._user.dn);
+    Monitor.nameFromRequest(req), req._user.dn);
 };
 Monitor.parentDnFromRequest = function (req) {
   return req._user.dn;
 };
 Monitor.nameFromRequest = function (req) {
-  //XXX validate :monitor
-  return req.uriParams.monitor;
+  var name = req.uriParams.monitor;
+  Monitor.validateName(name);
+  return name;
 };
 
 
@@ -82,8 +84,10 @@ Monitor.nameFromRequest = function (req) {
  * Get a monitor.
  */
 Monitor.get = function get(app, name, userUuid, callback) {
-  var parentDn = sprintf("uuid=%s, ou=users, o=smartdc", userUuid);
-  ufdsmodel.modelGet(app, Monitor, name, parentDn, log, callback);
+  //TODO: Should this validate 'name'?
+  var dn = sprintf("amonmonitorname=%s, uuid=%s, ou=users, o=smartdc",
+    name, userUuid);
+  ufdsmodel.modelGet(app, Monitor, dn, log, callback);
 }
 
 

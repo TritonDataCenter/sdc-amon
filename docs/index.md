@@ -422,6 +422,7 @@ whole userCache object.
 ||ufds.url||LDAP URL to connect to UFDS.||
 ||ufds.rootDn||UFDS root dn.||
 ||ufds.password||UFDS root dn password.||
+||ufds.caching||Boolean indicating if UFDS caching should be enabled. Default false until confident in it.||
 ||userCache.size||The number of entries to cache.||
 ||userCache.expiry||The number of seconds for which cache entries are valid.||
 ||notificationPlugins||An object defining all notification mechanisms. This is a mapping of plugin name, e.g. "email" or "sms", to plugin data.||

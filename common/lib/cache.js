@@ -5,12 +5,14 @@
  *
  * Usage:
  *     var Cache = require("amon-common").Cache;
- *     this.accountCache = new Cache(100, 300, log, "account");
- *     this.accountCache.put("hamish", {...});
+ *                                // size, expiry, log,  name
+ *     this.accountCache = new Cache( 100,    300, log, "account");
+ *     this.accountCache.set("hamish", {...});
  *     ...
  *     this.accountCache.get("hamish")    // -> {...}
  */
 
+var debug = console.warn;
 var assert = require('assert');
 var LRU = require('lru-cache');
 
@@ -25,8 +27,8 @@ var LRU = require('lru-cache');
  * @param name {string} Optional name for this cache. Just used for logging.
  */
 function Cache(size, expiry, log, name) {
-  assert.ok(size);
-  assert.ok(expiry);
+  assert.ok(size !== undefined);
+  assert.ok(expiry !== undefined);
   this.size = size;
   this.expiry = expiry * 1000;
   this.log = log;
@@ -34,8 +36,23 @@ function Cache(size, expiry, log, name) {
   this.items = LRU(this.size);
 }
 
+// Debugging stuff: .getAll isn't in official lru-cache
+//Cache.prototype.getAll = function getAll() {
+//  return this.items.getAll();
+//}
+
+Cache.prototype.reset = function reset() {
+  if (this.log) {
+    this.log.trace("%scache reset", this.name);
+  }
+  // Note: Want `LRU.reset()`. For now hack it.
+  var maxLength = this.items.maxLength;
+  this.items.maxLength = 0;   // side-effect of dumping any current entries
+  this.items.maxLength = maxLength;
+}
+
 Cache.prototype.get = function get(key) {
-  assert.ok(key);
+  assert.ok(key !== undefined);
   var cached = this.items.get(key);
   if (cached) {
     if (((new Date()).getTime() - cached.ctime) <= this.expiry) {
@@ -51,17 +68,24 @@ Cache.prototype.get = function get(key) {
   return null;
 }
 
-Cache.prototype.put = function put(key, value) {
-  assert.ok(key);
+Cache.prototype.set = function set(key, value) {
+  assert.ok(key !== undefined);
   var item = {
     value: value,
     ctime: new Date().getTime()
   };
   if (this.log) {
-    this.log.trace("%scache put: key='%s': %o", this.name, key, item);
+    this.log.trace("%scache set: key='%s': %o", this.name, key, item);
   }
   this.items.set(key, item);
   return item;
+}
+
+Cache.prototype.del = function del(key) {
+  if (this.log) {
+    this.log.trace("%scache del: key='%s'", this.name, key);
+  }
+  this.items.del(key);
 }
 
 
