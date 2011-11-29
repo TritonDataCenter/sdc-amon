@@ -1,7 +1,11 @@
 # immediate priorities
 
 - get yunong up and running
-- get this working in COAL
+- get this working in COAL:
+  - test suite
+  - relay discovery
+  - ufds caching
+  - zone -> $server_uuid:$zonename
 - a plan and schedule for January SDC.next release with Amon
 
 # todo
@@ -42,7 +46,6 @@
 - spec how processEvent should work with persistent alarms
 - relay -D/--data-dir and create subdir
 - consistent `new restify.FooError(...)` usage
-- rm "joyent" from relay/agent dirs and socket paths
 - [Trent] master: improve this log line to include user context:
     2011-11-23 21:36:37Z DEBUG: App.processEvent: contact 'email' notified
 - relay: improve this log line to know which zone/zsock this request came
@@ -53,7 +56,6 @@
 - disallow '/' in name fields (so can use that as sep char for a string id).
   If this isn't acceptable then update id'ification in agent.
   Perhaps ':' would be preferable for id'ification? Meh.
-- caching on ufds hits
 - kill amon-common/constants.js:
     - separate ApiVersion btwn components. Because we should be able to
       use 'x-api-version:1' on the wire to have an older agent talk to

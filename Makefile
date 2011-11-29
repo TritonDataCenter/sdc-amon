@@ -48,7 +48,8 @@ NPM := $(NPM_ENV) $(NODEDIR)/bin/npm
 PKG_DIR := .pkg
 WHISKEY := deps/node-install/bin/whiskey
 RESTDOWN := python2.6 $(TOP)/deps/restdown/bin/restdown
-NODE_DEV := $(NODEDIR)/lib/bin/node-dev
+NODE_DEV := $(NODEDIR)/bin/node-dev
+TAP := $(NODEDIR)/bin/tap
 
 
 #
@@ -65,7 +66,7 @@ all:: common plugins agent relay bin/amon-zwatch master
 #
 
 deps:	$(NODEDIR)/bin/node $(NODEDIR)/bin/npm \
-	$(NODEDIR)/lib/node_modules/whiskey $(NODEDIR)/lib/node_modules/jshint $(NODE_DEV)
+	$(NODEDIR)/lib/node_modules/whiskey $(NODEDIR)/lib/node_modules/jshint $(NODE_DEV) $(TAP)
 
 # Use 'Makefile' landmarks instead of the dir itself, because dir mtime
 # is that of the most recent file: results in unnecessary rebuilds.
@@ -87,6 +88,8 @@ $(NODEDIR)/lib/node_modules/jshint: $(NODEDIR)/bin/npm
 	$(NPM) install -g jshint
 $(NODE_DEV): $(NODEDIR)/bin/npm
 	$(NPM) install -g node-dev
+$(TAP): $(NODEDIR)/bin/npm
+	$(NPM) install -g tap
 
 
 #
@@ -244,13 +247,8 @@ apisummary:
 tmp:
 	mkdir -p tmp
 
-# Use "TEST=foo make test" to limit to test files matching 'foo'.
-test: tmp $(WHISKEY)
-	support/test.sh
-
-# A supervisor for restarting node processes when relevant files change.
-$(NODEDIR)/bin/node-dev: $(NODEDIR)/bin/npm
-	$(NPM) install -g node-dev
+test: $(TAP)
+	@$(TAP) tst/*.test.js
 
 devrun: tmp $(NODEDIR)/bin/node-dev
 	support/devrun.sh

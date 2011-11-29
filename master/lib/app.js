@@ -6,7 +6,7 @@
 
 var http = require('http');
 var assert = require('assert');
-var debug = console.warn;
+var debug = console.log;
 
 var ldap = require('ldapjs');
 var restify = require('restify');
@@ -44,6 +44,7 @@ var VALID_LOGIN_CHARS = /^[a-zA-Z][a-zA-Z0-9_\.@]+$/;
 function ping(req, res, next) {
   var data = {
     ping: "pong",
+    pid: process.pid  // used by test suite
   };
   res.send(200, data);
   return next();
@@ -113,12 +114,15 @@ function createApp(config, callback) {
     filter: '(login=*)',
     scope: 'sub'
   };
-  
   ufds.bind('cn=root', 'secret', function(err) {
     if (err) {
       return callback(err);
     }
-    var app = new App(config, ufds);
+    try {
+      var app = new App(config, ufds);
+    } catch(err) {
+      return callback(err);
+    }
     return callback(null, app);
   });
 }

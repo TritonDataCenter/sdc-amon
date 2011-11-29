@@ -1,0 +1,19 @@
+{
+  "name": "amon",
+  "description": "Amon development package (see '*/package.json' for the actual code)",
+  "version": "1.0.0",
+  "author": "Joyent (joyent.com)",
+  "private": true,
+  "devDependencies": {
+    "jshint": "0.2.3",
+    "log4js": "0.4",
+    "ldapjs": "0.3",
+    "restify": "0.5",
+    "sprintf": "0.1",
+    "tap": "0.0"
+  },
+  "scripts": {
+    "// pretest": "./node_modules/jshint/bin/jshint lib tst main.js",
+    "test": "./node_modules/.bin/tap ./tst/*.test.js"
+  }
+}
