@@ -294,7 +294,25 @@ What should happen now:
         2011-11-22 23:50:21Z DEBUG: App.processEvent: notify contact 'email'
         2011-11-22 23:50:22Z DEBUG: App.processEvent: contact 'email' notified
         127.0.0.1 - anonymous [22/11/2011:23:50:22 GMT] "POST /events HTTP/1.1" 202 0 2628
-    
+
+
+## Testing
+
+The test suite is in the 'tst' directory. First you'll need to create
+an appropriate "tst/config.json" for configuring the master. If you've
+setup for running as above, then you can use that one:
+
+    cd tst
+    ln -s ../master/config.json config.json
+
+Now run the test suite:
+
+    make test
+
+You can run individual test files to get more detailed output, for example:
+
+    cd tst
+    ../bin/node master.test.js
 
 
 # MVP
