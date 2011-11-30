@@ -19,7 +19,7 @@ dn='uuid=11111111-1111-1111-1111-111111111111, ou=users, o=smartdc'
 # - Stupid 'sleep N' is to try to give riak replication the time it needs
 #   to actually delete -- so don't get "Operation not allowed on non-leaf"
 #   on subsequent delete of parent.
-dns=$(ldapsearch -LLL $opts -b "$dn" '(objectclass=amonprobe \
+dns=$(ldapsearch -LLL $opts -b "$dn" '(objectclass=amonprobe)' \
     | sed -n '1 {h; $ !d;}; $ {H; g; s/\n //g; p; q;}; /^ / {H; d;}; /^ /! {x; s/\n //g; p;}' \
     | grep '^dn:' \
     | sed "s/^dn: /\'/" | sed "s/$/'/")
