@@ -19,16 +19,22 @@ dn='uuid=11111111-1111-1111-1111-111111111111, ou=users, o=smartdc'
 # - Stupid 'sleep N' is to try to give riak replication the time it needs
 #   to actually delete -- so don't get "Operation not allowed on non-leaf"
 #   on subsequent delete of parent.
-ldapsearch -LLL $opts -b "$dn" '(objectclass=amonprobe)' \
+dns=$(ldapsearch -LLL $opts -b "$dn" '(objectclass=amonprobe \
     | sed -n '1 {h; $ !d;}; $ {H; g; s/\n //g; p; q;}; /^ / {H; d;}; /^ /! {x; s/\n //g; p;}' \
     | grep '^dn:' \
-    | sed "s/^dn: /\'/" | sed "s/$/'/" \
-    | xargs -n1 -I{} bash -c "echo '# {}'; ldapdelete $opts '{}'; sleep 5"
-ldapsearch -LLL $opts -b "$dn" '(objectclass=amon*)' \
+    | sed "s/^dn: /\'/" | sed "s/$/'/")
+echo "$dns" | xargs -n1 echo '#'
+echo "$dns" | xargs -n1 -I{} ldapdelete $opts {}
+[ -n "$dns" ] && sleep 5
+
+dns=$(ldapsearch -LLL $opts -b "$dn" '(objectclass=amon*)' \
     | sed -n '1 {h; $ !d;}; $ {H; g; s/\n //g; p; q;}; /^ / {H; d;}; /^ /! {x; s/\n //g; p;}' \
     | grep '^dn:' \
-    | sed "s/^dn: /\'/" | sed "s/$/'/" \
-    | xargs -n1 -I{} bash -c "echo '# {}'; ldapdelete $opts '{}'; sleep 5"
+    | sed "s/^dn: /\'/" | sed "s/$/'/")
+echo "$dns" | xargs -n1 echo '#'
+echo "$dns" | xargs -n1 -I{} ldapdelete $opts {}
+[ -n "$dns" ] && sleep 5
+    
 echo "# $dn"
 ldapdelete $opts "$dn"
 

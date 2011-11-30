@@ -314,6 +314,13 @@ You can run individual test files to get more detailed output, for example:
     cd tst
     ../bin/node master.test.js
 
+If you are getting spurious errors, it may be that a previous test run
+has left crud data in UFDS. Clean it out by running:
+
+    ./tst/clean-test-data.sh
+
+then re-run `make test`.
+
 
 # MVP
 
