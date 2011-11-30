@@ -23,18 +23,28 @@ dns=$(ldapsearch -LLL $opts -b "$dn" '(objectclass=amonprobe)' \
     | sed -n '1 {h; $ !d;}; $ {H; g; s/\n //g; p; q;}; /^ / {H; d;}; /^ /! {x; s/\n //g; p;}' \
     | grep '^dn:' \
     | sed "s/^dn: /\'/" | sed "s/$/'/")
-echo "$dns" | xargs -n1 echo '#'
-echo "$dns" | xargs -n1 -I{} ldapdelete $opts {}
-[ -n "$dns" ] && sleep 5
+if [[ -n "$dns" ]]; then
+    echo "$dns" | xargs -n1 echo '#'
+    echo "$dns" | xargs -n1 -I{} ldapdelete $opts {}
+    sleep 5
+fi
 
 dns=$(ldapsearch -LLL $opts -b "$dn" '(objectclass=amon*)' \
     | sed -n '1 {h; $ !d;}; $ {H; g; s/\n //g; p; q;}; /^ / {H; d;}; /^ /! {x; s/\n //g; p;}' \
     | grep '^dn:' \
     | sed "s/^dn: /\'/" | sed "s/$/'/")
-echo "$dns" | xargs -n1 echo '#'
-echo "$dns" | xargs -n1 -I{} ldapdelete $opts {}
-[ -n "$dns" ] && sleep 5
+if [[ -n "$dns" ]]; then
+    echo "$dns" | xargs -n1 echo '#'
+    echo "$dns" | xargs -n1 -I{} ldapdelete $opts {}
+    sleep 5
+fi
     
-echo "# $dn"
-ldapdelete $opts "$dn"
-
+dns=$(ldapsearch -LLL $opts -b "$dn" -s base '(objectclass=sdcperson)' \
+    | sed -n '1 {h; $ !d;}; $ {H; g; s/\n //g; p; q;}; /^ / {H; d;}; /^ /! {x; s/\n //g; p;}' \
+    | grep '^dn:' \
+    | sed "s/^dn: /\'/" | sed "s/$/'/")
+if [[ -n "$dns" ]]; then
+    echo "$dns" | xargs -n1 echo '#'
+    echo "$dns" | xargs -n1 -I{} ldapdelete $opts {}
+    sleep 3
+fi
