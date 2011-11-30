@@ -3,8 +3,12 @@
 - get yunong up and running
 - get this working in COAL:
   - test suite
-  - relay discovery
+  - relay discovery: add mapi creds to node.config and get relay to
+    query MAPI (polling if necessary) for amon zone info
   - ufds caching
+  - move over to LFDS: i.e. isntead of "ou=users, o=smartdc" we'll hang
+    off of "ou=amon, o=smartdc" and we'll have to create shadow
+    "uuid=:user-uuid" rdn's.
   - zone -> $server_uuid:$zonename
 - a plan and schedule for January SDC.next release with Amon
 
