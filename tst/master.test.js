@@ -38,9 +38,21 @@ var FIXTURES = {
     },
     monitors: {
       whistle: {
-        contacts: ['email']
+        contacts: ['email'],
+        probes: {
+          whistlelog: {
+            "zone": "global",
+            "urn": "amon:logscan",
+            "data": {
+              "path": "/tmp/whistle.log",
+              "regex": "tweet",
+              "threshold": 1,
+              "period": 60
+            }
+          }
+        }
       }
-    }
+    },
   }
 };
 
@@ -70,6 +82,19 @@ function asyncForEach(list, fn, cb) {
       if (-- c === 0) return cb()
     })
   })
+}
+
+/**
+ * Return a copy of the given object (keys are copied over).
+ *
+ * Warning: This is *not* a deep copy.
+ */
+function objCopy(obj) {
+  var copy = {};
+  Object.keys(obj).forEach(function (k) {
+    copy[k] = obj[k];
+  });
+  return copy;
 }
 
 
@@ -247,7 +272,7 @@ test('contacts: get 404', function(t) {
 
 
 
-//---- test: monitors & probes
+//---- test: monitors
 
 test('monitors: list empty', function(t) {
   masterClient.get("/pub/sulkybob/monitors", function(err, body, headers) {
@@ -260,7 +285,8 @@ test('monitors: list empty', function(t) {
 
 test('monitors: create', function(t) {
   asyncForEach(Object.keys(FIXTURES.sulkybob.monitors), function(name, next) {
-    var data = FIXTURES.sulkybob.monitors[name];
+    var data = objCopy(FIXTURES.sulkybob.monitors[name]);
+    delete data["probes"]; // 'probes' key holds probe objects to add (later)
     masterClient.put({
         path: "/pub/sulkybob/monitors/"+name,
         body: data
@@ -311,16 +337,125 @@ test('monitors: get 404', function(t) {
 });
 
 
+//---- test: probes
+
+test('probes: list empty', function(t) {
+  var monitors = FIXTURES.sulkybob.monitors;
+  asyncForEach(Object.keys(monitors), function(monitorName, next) {
+    var probes = monitors[monitorName].probes;
+    masterClient.get(sprintf("/pub/sulkybob/monitors/%s/probes", monitorName),
+      function (err, body, headers) {
+        t.ifError(err);
+        t.ok(Array.isArray(body));
+        t.equal(body.length, 0);
+        next();
+      });
+  }, function (err) {
+    t.end();
+  });
+});
+
+test('probes: create', function(t) {
+  var monitors = FIXTURES.sulkybob.monitors;
+  asyncForEach(Object.keys(monitors), function(monitorName, nextMonitor) {
+    var probes = monitors[monitorName].probes;
+    asyncForEach(Object.keys(probes), function(probeName, nextProbe) {
+      var probe = probes[probeName];
+      masterClient.put({
+          path: sprintf("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName),
+          body: probe
+        }, function (err, body, headers) {
+          t.ifError(err);
+          t.equal(body.name, probeName)
+          t.equal(body.zone, probe.zone)
+          t.equal(body.urn, probe.urn)
+          Object.keys(body.data).forEach(function(k) {
+            t.equal(body.data[k], probe.data[k])
+          })
+          nextProbe();
+        }
+      );
+    }, function (err) {
+      nextMonitor();
+    });
+  }, function (err) {
+    t.end();
+  });
+});
+
+
+test('probes: list', function(t) {
+  var monitors = FIXTURES.sulkybob.monitors;
+  asyncForEach(Object.keys(monitors), function(monitorName, next) {
+    var probes = monitors[monitorName].probes;
+    masterClient.get(sprintf("/pub/sulkybob/monitors/%s/probes", monitorName),
+      function (err, body, headers) {
+        t.ifError(err);
+        t.ok(Array.isArray(body), "listProbes response is an array");
+        t.equal(body.length, Object.keys(probes).length);
+        next();
+      }
+    );
+  }, function (err) {
+    t.end();
+  });
+});
+
+test('probes: get', function(t) {
+  var monitors = FIXTURES.sulkybob.monitors;
+  asyncForEach(Object.keys(monitors), function(monitorName, nextMonitor) {
+    var probes = monitors[monitorName].probes;
+    asyncForEach(Object.keys(probes), function(probeName, nextProbe) {
+      var probe = probes[probeName];
+      masterClient.get(sprintf("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName),
+        function (err, body, headers) {
+          t.ifError(err);
+          t.equal(body.name, probeName)
+          t.equal(body.zone, probe.zone)
+          t.equal(body.urn, probe.urn)
+          Object.keys(body.data).forEach(function(k) {
+            t.equal(body.data[k], probe.data[k])
+          })
+          nextProbe();
+        }
+      );
+    }, function (err) {
+      nextMonitor();
+    });
+  }, function (err) {
+    t.end();
+  });
+});
+
+test('probes: get 404', function(t) {
+  var monitorName = Object.keys(FIXTURES.sulkybob.monitors)[0];
+  masterClient.get(sprintf("/pub/sulkybob/monitors/%s/probes/bogus", monitorName),
+    function (err, body, headers, res) {
+      t.equal(err.httpCode, 404);
+      t.equal(err.restCode, "ResourceNotFound");
+      t.end();
+    }
+  );
+});
+
 
 //---- test deletes (and clean up test data)
 
-test('contacts: delete', function(t) {
-  asyncForEach(Object.keys(FIXTURES.sulkybob.contacts), function(name, next) {
-    var data = FIXTURES.sulkybob.contacts[name];
-    masterClient.del("/pub/sulkybob/contacts/"+name, function (err, headers, res) {
-      t.ifError(err);
-      t.equal(res.statusCode, 204)
-      next();
+test('probes: delete', function(t) {
+  var monitors = FIXTURES.sulkybob.monitors;
+  asyncForEach(Object.keys(monitors), function(monitorName, nextMonitor) {
+    var probes = monitors[monitorName].probes;
+    asyncForEach(Object.keys(probes), function(probeName, nextProbe) {
+      var probe = probes[probeName];
+      masterClient.del(sprintf("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName),
+        function (err, headers, res) {
+          t.ifError(err);
+          t.equal(res.statusCode, 204)
+          nextProbe();
+        }
+      );
+    }, function (err) {
+      nextMonitor();
     });
   }, function (err) {
     t.end();
@@ -340,6 +475,20 @@ test('monitors: delete', function(t) {
   });
 });
 
+test('contacts: delete', function(t) {
+  asyncForEach(Object.keys(FIXTURES.sulkybob.contacts), function(name, next) {
+    var data = FIXTURES.sulkybob.contacts[name];
+    masterClient.del("/pub/sulkybob/contacts/"+name, function (err, headers, res) {
+      t.ifError(err);
+      t.equal(res.statusCode, 204)
+      next();
+    });
+  }, function (err) {
+    t.end();
+  });
+});
+
+
 
 //---- teardown
 
@@ -350,8 +499,9 @@ test('teardown master', function(t) {
   t.end();
 });
 
-process.on('uncaughtException', function () {
+process.on('uncaughtException', function (err) {
   if (master) {
     master.kill();
   }
+  console.log("* * *\n" + err.stack + "\n* * *\n");
 });
