@@ -15,15 +15,17 @@ ZWATCH_ENABLED=
 . /lib/sdc/config.sh
 load_sdc_config
 
-export PREFIX=$npm_config_prefix
-export VERSION=$npm_package_version
 export SMFDIR=$npm_config_smfdir
 
 function subfile () {
   IN=$1
   OUT=$2
-  sed -e "s#@@PREFIX@@#$PREFIX#g" \
-      -e "s#@@VERSION@@#$VERSION#g" \
+  sed -e "s#@@PREFIX@@#$npm_config_prefix#g" \
+      -e "s#@@VERSION@@#$npm_package_version#g" \
+      -e "s#@@MAPI_CLIENT_URL@@#$CONFIG_mapi_client_url#g" \
+      -e "s#@@MAPI_HTTP_ADMIN_USER@@#$CONFIG_mapi_http_admin_user#g" \
+      -e "s#@@MAPI_HTTP_ADMIN_PW@@#$CONFIG_mapi_http_admin_pw#g" \
+      -e "s#@@UFDS_ADMIN_UUID@@#$CONFIG_ufds_admin_uuid#g" \
       $IN > $OUT
 }
 

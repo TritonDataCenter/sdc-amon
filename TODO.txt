@@ -1,21 +1,15 @@
 # immediate priorities
 
 - get this working in COAL:
-  - test suite
   - relay discovery: add mapi creds to node.config and get relay to
     query MAPI (polling if necessary) for amon zone info
   - ufds caching
-  - move over to LFDS: i.e. isntead of "ou=users, o=smartdc" we'll hang
-    off of "ou=amon, o=smartdc" and we'll have to create shadow
-    "uuid=:user-uuid" rdn's. Or should this be a shared shadow user's
-    tree because, e.g. firewall API, will want this local as well,
-    so "ou=users" as well... but with a "uuid=:uuid" objectclass=sdcpersonref
-    or something.
   - zone -> $server_uuid:$zonename
 - a plan and schedule for January SDC.next release with Amon
 
 # todo
 
+- [Trent] contacts -> UFDS sdcperson attributes
 - [Trent] clean up TODO.txt and README.md (they are too out of date)
     update README
 - [Trent] :login -> :uuid
@@ -24,6 +18,7 @@
   in coal not being able to connect to master running on my Mac.
 - Idea: have amon-master create event/alarm to operator if it cannot connect/work
   with UFDS.
+- [Trent] test suite for relay and agent
 - update "zone" field to include CN uuid prefix: Because "global" is
   ambiguous with multiple servers (e.g. the headnode and a CN). Also
   should talk with Josh about whether this should use zone *name* or

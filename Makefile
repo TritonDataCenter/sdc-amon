@@ -70,7 +70,7 @@ deps:	$(NODEDIR)/bin/node $(NODEDIR)/bin/npm \
 
 # Use 'Makefile' landmarks instead of the dir itself, because dir mtime
 # is that of the most recent file: results in unnecessary rebuilds.
-deps/node/Makefile deps/npm/Makefile deps/restdown/bin/restdown:
+deps/node/Makefile deps/npm/Makefile deps/restdown/bin/restdown deps/node-sdc-clients/package.json:
 	(GIT_SSL_NO_VERIFY=1 git submodule update --init)
 
 $(NODEDIR)/bin/node: deps/node/Makefile
@@ -105,8 +105,8 @@ plugins: $(NODEDIR)/bin/npm
 agent: $(NODEDIR)/bin/npm common plugins
 	(cd agent && $(NPM) update && $(NPM) link amon-common amon-plugins)
 
-relay: $(NODEDIR)/bin/npm common plugins
-	(cd relay && $(NPM) update && $(NPM) link amon-common amon-plugins)
+relay: $(NODEDIR)/bin/npm deps/node-sdc-clients/package.json common plugins
+	(cd relay && $(NPM) update && $(NPM) install ../deps/node-sdc-clients && $(NPM) link amon-common amon-plugins)
 
 bin/amon-zwatch:
 ifeq ($(UNAME), SunOS)

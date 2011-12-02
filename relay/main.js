@@ -15,6 +15,7 @@ var nopt = require('nopt');
 var path = require('path');
 var zutil = require('zutil');
 
+var asyncForEach = require('./lib/utils').asyncForEach;
 var App = require('./lib/app');
 var Constants = require('amon-common').Constants;
 
@@ -28,7 +29,6 @@ var log = restify.log;
 // Config defaults.
 var DEFAULT_POLL = 30;
 var DEFAULT_DATA_DIR = '/var/run/smartdc/amon-relay';
-var DEFAULT_MASTER_URL = 'http://localhost:8080'; // TODO default to COAL ip...
 var DEFAULT_SOCKET = '/var/run/.smartdc-amon.sock';
 var ZWATCH_SOCKET = '/var/run/.smartdc-amon-zwatch.sock';
 
@@ -148,6 +148,115 @@ function zwatchHandler(sock) {
 }
 
 
+/**
+ * Get the URL for the amon master from MAPI.
+ * The necessary connection details for MAPI are expected to be in the
+ * environment.
+ *
+ * If the amon zone isn't yet in MAPI, this will sit in a polling loop
+ * waiting for an amon master.
+ *
+ * @param poll {Integer} Number of seconds polling interval.
+ * @param callback {Function} `function (err, masterUrl)`
+ */
+function getMasterUrl(poll, callback) {
+  var pollInterval = poll * 1000;  // seconds -> ms
+  
+  var missing = [];
+  ["MAPI_CLIENT_URL", "MAPI_HTTP_ADMIN_USER",
+   "MAPI_HTTP_ADMIN_PW", "UFDS_ADMIN_UUID"].forEach(function (name) {
+    if (!process.env[name]) {
+      missing.push(name);
+    }
+  });
+  if (missing.length > 0) {
+    return callback("missing environment variables: '"
+      + missing.join("', '") + "'");
+  }
+
+  var clients = require('sdc-clients');
+  //clients.setLogLevel("trace");
+  var mapi = new clients.MAPI({
+    url: process.env.MAPI_CLIENT_URL,
+    username: process.env.MAPI_HTTP_ADMIN_USER,
+    password: process.env.MAPI_HTTP_ADMIN_PW
+  });
+  var notAmonZoneUuids = []; // Ones with a `smartdc_role!=amon`.
+  
+  function areYouTheAmonZone(zone, cb) {
+    if (notAmonZoneUuids.indexOf(zone.name) !== -1) {
+      return cb();
+    }
+    log.trace("get 'smartdc_role' tag for admin zone '%s'", zone.name)
+    mapi.getZoneTag(process.env.UFDS_ADMIN_UUID, zone.name, "smartdc_role",
+      function (err, tag) {
+        log.trace("'smartdc_role' tag for admin zone '%s': %s", zone.name,
+          (tag ? JSON.stringify(tag) : "(none)"));
+        if (!tag) {
+          // pass through
+        } else if (tag.value === 'amon') {
+          return cb(zone);
+        } else {
+          // Remember this one to not bother getting it tags the next
+          // time we ping MAPI.
+          notAmonZoneUuids.push(zone.name);
+        }
+        return cb();
+      }
+    );
+  }
+  
+  function pollMapi() {
+    log.info("Poll MAPI for Amon zone (admin uuid '%s').",
+      process.env.UFDS_ADMIN_UUID);
+    mapi.listZones(process.env.UFDS_ADMIN_UUID, function (err, zones, headers) {
+      if (err) {
+        //TODO: We should recover from some errors talking to MAPI, e.g. if
+        //  it is temporarily down the relay shouldn't just die. Perhaps should
+        //  always retry.
+        return callback(err);
+      }
+      asyncForEach(zones, areYouTheAmonZone, function(amonZone) {
+        if (amonZone) {
+          //TODO: guards on not having an IP, i.e. not setup correctly
+          log.debug("Found amon zone: %s", amonZone.name);
+          callback(null, 'http://' + amonZone.ips[0].address)
+        } else {
+          setTimeout(pollMapi, pollInterval);
+        }
+      });
+    });
+  }
+  
+  pollMapi();
+}
+
+
+function startServers() {
+  // Create the ZWatch Daemon.
+  if (config.allZones) {
+    net.createServer(zwatchHandler).listen(ZWATCH_SOCKET, function() {
+      log.info('amon-relay listening to zwatch on %s', ZWATCH_SOCKET);
+    });
+  }
+
+  // Now create the app(s).
+  if (!config.allZones) {
+    // Presuming local is the global zone (as it is in current production
+    // usage).
+    listenInGlobalZoneSync();
+  } else {
+    zutil.listZones().forEach(function(z) {
+      if (z.name === 'global') {
+        listenInGlobalZoneSync();
+      } else {
+        listenInZone(z.name);
+      }
+    });
+  }
+}
+
+
 function usage(code, msg) {
   if (msg) {
     console.error('ERROR: ' + msg + '\n');
@@ -223,7 +332,7 @@ function main() {
   // Build the config (intentionally global).
   config = {
     dataDir: rawOpts["data-dir"] || DEFAULT_AGENTS_PROBES_DIR,
-    masterUrl: rawOpts["master-url"] || DEFAULT_MASTER_URL,
+    masterUrl: rawOpts["master-url"],
     poll: rawOpts.poll || DEFAULT_POLL,
     socket: rawOpts.socket || DEFAULT_SOCKET,
     allZones: rawOpts["all-zones"] || false
@@ -233,26 +342,23 @@ function main() {
   }
   log.debug("config: %o", config);
 
-  // Create the ZWatch Daemon.
-  if (config.allZones) {
-    net.createServer(zwatchHandler).listen(ZWATCH_SOCKET, function() {
-      log.info('amon-relay listening to zwatch on %s', ZWATCH_SOCKET);
-    });
-  }
-
-  // Now create the app(s).
-  if (!config.allZones) {
-    // Presuming local is the global zone (as it is in current production
-    // usage).
-    listenInGlobalZoneSync();
-  } else {
-    zutil.listZones().forEach(function(z) {
-      if (z.name === 'global') {
-        listenInGlobalZoneSync();
-      } else {
-        listenInZone(z.name);
+  
+  // Determine the master URL.
+  // Either 'config.masterUrl' is set (from '-m' option), or we get it
+  // from MAPI (with MAPI passed in on env: MAPI_CLIENT_URL, ...).
+  if (!config.masterUrl) {
+    log.info("Getting master URL from MAPI.");
+    getMasterUrl(config.poll, function (err, masterUrl) {
+      if (err) {
+        log.error("Error getting Amon master URL from MAPI: %s", err)
+        process.exit(2);
       }
+      log.info("Got master URL (from MAPI): %s", masterUrl);
+      config.masterUrl = masterUrl;
+      startServers();
     });
+  } else {
+    startServers();
   }
 }
 
