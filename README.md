@@ -151,6 +151,14 @@ In a separate shell run an amon-relay:
     #
     ../bin/node-dev main.js -v -D tmp/db -m http://localhost:8080 -s 8081 -p 90
 
+    # In production the amon-relay is run as follows, without a '-m' argument
+    # so that it has to find the Amon zone in MAPI:
+    UFDS_ADMIN_UUID=930896af-bf8c-48d4-885c-6573a94b1853 \
+        MAPI_CLIENT_URL=http://10.99.99.8 \
+        MAPI_HTTP_ADMIN_USER=admin \
+        MAPI_HTTP_ADMIN_PW=xxx \
+        ../bin/node-dev main.js -v -D tmp/db -s 8081 -p 90
+
 
 In a separate shell run an amon-agent:
     
