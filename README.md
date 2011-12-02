@@ -299,11 +299,16 @@ What should happen now:
 ## Testing
 
 The test suite is in the 'tst' directory. First you'll need to create
-an appropriate "tst/config.json" for configuring the master. If you've
-setup for running as above, then you can use that one:
+an appropriate "tst/config.json" for configuring the master.
 
     cd tst
-    ln -s ../master/config.json config.json
+    cp config.json.in config.json
+    # - This includes the required 'email' notification plugin using the
+    #   'testy' module.
+    # - This uses port 7000 to intentionally differ from the master
+    #   default of 8080, which you might already be using for a dev server.
+    # - You ccan edit the "ufds.url" to point to whereever you have a
+    #   working UFDS.
 
 Now run the test suite:
 
