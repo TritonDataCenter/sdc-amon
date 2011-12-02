@@ -7,7 +7,7 @@
   "dependencies": {
     "node-uuid": "1.2.0",
     "nopt": "1.0.6",
-    "restify": "0.5.4",
+    "restify": "0.5.x",
     "retry": "0.5.0",
     "httpu": "0.0.1",
     "sprintf": "0.1.1",

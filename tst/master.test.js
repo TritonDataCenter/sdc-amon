@@ -41,7 +41,7 @@ var FIXTURES = {
         contacts: ['email'],
         probes: {
           whistlelog: {
-            "zone": "global",
+            "zone": "river-saskatchewan",
             "urn": "amon:logscan",
             "data": {
               "path": "/tmp/whistle.log",
@@ -160,7 +160,7 @@ test('setup ufds', function(t) {
 test('setup master', function (t) {
   // Start master.
   master = spawn(process.execPath,
-    ['../master/main.js', '-f', 'config.json'],
+    ['../master/main.js', '-v', '-f', 'config.json'],
     {cwd: __dirname});
   var masterOut = fs.createWriteStream(__dirname + '/master.stdout.log');
   master.stdout.pipe(masterOut);
@@ -439,6 +439,73 @@ test('probes: get 404', function(t) {
 });
 
 
+//---- test relay api
+
+var riverSaskatchewanContentMD5;
+
+test('relay api: GetAgentProbes', function(t) {
+  var probe = FIXTURES.sulkybob.monitors.whistle.probes.whistlelog;
+  masterClient.get("/agentprobes?zone=river-saskatchewan",
+    function (err, body, headers, res) {
+      t.ifError(err);
+      riverSaskatchewanContentMD5 = headers["content-md5"];
+      t.ok(Array.isArray(body), "GetAgentProbes response is an array");
+      t.equal(body.length, 1);
+      t.equal(body[0].monitor, "whistle")
+      t.equal(body[0].name, "whistlelog")
+      t.equal(body[0].zone, probe.zone)
+      t.equal(body[0].urn, probe.urn)
+      t.end();
+    }
+  );
+});
+
+test('relay api: HeadAgentProbes', function(t) {
+  var probe = FIXTURES.sulkybob.monitors.whistle.probes.whistlelog;
+  masterClient.head("/agentprobes?zone=river-saskatchewan",
+    function (err, headers, res) {
+      t.ifError(err);
+      t.equal(headers['content-md5'], riverSaskatchewanContentMD5)
+      t.end();
+    }
+  );
+});
+
+test('relay api: AddEvents', function(t) {
+  var testyLogPath = config.notificationPlugins.email.config.logPath;
+  var sulkybob = FIXTURES.users['uuid=11111111-1111-1111-1111-111111111111, ou=users, o=smartdc'];
+  var contact = FIXTURES.sulkybob.contacts.email;
+  var message = 'hi mom!'
+  var event = { probe: 
+    { user: sulkybob.uuid,
+      monitor: 'whistle',
+      name: 'whistlelog',
+      type: 'amon:logscan' },
+    type: 'Integer',
+    value: 1,
+    data: { match: message },
+    uuid: '4eb28122-db69-42d6-b20a-e83bf6883b8b',
+    version: '1.0.0' }
+
+  masterClient.post({
+      path: "/events",
+      body: event,
+      expect: [202]
+    }, function (err, body, headers, res) {
+      t.ifError(err);
+      fs.readFile(testyLogPath, 'utf8', function (err, content) {
+        t.ifError(err);
+        var sent = JSON.parse(content);
+        t.equal(sent.length, 1)
+        t.equal(sent[0].contactData, contact.data)
+        t.ok(sent[0].message.indexOf(message) !== -1)
+        t.end();
+      });
+    }
+  );
+});
+
+
 //---- test deletes (and clean up test data)
 
 test('probes: delete', function(t) {
@@ -458,7 +525,9 @@ test('probes: delete', function(t) {
       nextMonitor();
     });
   }, function (err) {
-    t.end();
+    // Give riak some time to delete this so don't get 'UFDS:
+    // NotAllowedOnNonLeafError' error deleting the parent monitor below.
+    setTimeout(function () { t.end() }, 3000);
   });
 });
 

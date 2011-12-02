@@ -288,7 +288,8 @@ function requestGet(req, res, next, Model) {
   }
   modelGet(req._app, Model, dn, req._log, function (err, item) {
     if (err) {
-      res.sendError(err);
+      // Don't log "ERROR" for a 404.
+      res.sendError(err, err instanceof restify.ResourceNotFoundError);
     } else {
       res.send(200, item);
     }

@@ -1,6 +1,5 @@
 # immediate priorities
 
-- get yunong up and running
 - get this working in COAL:
   - test suite
   - relay discovery: add mapi creds to node.config and get relay to
@@ -8,7 +7,10 @@
   - ufds caching
   - move over to LFDS: i.e. isntead of "ou=users, o=smartdc" we'll hang
     off of "ou=amon, o=smartdc" and we'll have to create shadow
-    "uuid=:user-uuid" rdn's.
+    "uuid=:user-uuid" rdn's. Or should this be a shared shadow user's
+    tree because, e.g. firewall API, will want this local as well,
+    so "ou=users" as well... but with a "uuid=:uuid" objectclass=sdcpersonref
+    or something.
   - zone -> $server_uuid:$zonename
 - a plan and schedule for January SDC.next release with Amon
 
@@ -26,7 +28,7 @@
   ambiguous with multiple servers (e.g. the headnode and a CN). Also
   should talk with Josh about whether this should use zone *name* or
   zone *uuid*. They can differ.
-- "sdc-amon /pub/trent.mick" messes up on '.' in username
+- "sdc-amon /pub/trent.mick" messes up on '.' in username -> restify upgrade
 - [Trent] master/config.json.in and use that in usb-headnode/zones/amon/setup
 - notification templating:
   - config.notificationsPlugins -> config.notifications.plugins
