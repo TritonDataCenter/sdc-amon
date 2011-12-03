@@ -331,7 +331,7 @@ function main() {
   
   // Build the config (intentionally global).
   config = {
-    dataDir: rawOpts["data-dir"] || DEFAULT_AGENTS_PROBES_DIR,
+    dataDir: rawOpts["data-dir"] || DEFAULT_DATA_DIR,
     masterUrl: rawOpts["master-url"],
     poll: rawOpts.poll || DEFAULT_POLL,
     socket: rawOpts.socket || DEFAULT_SOCKET,
