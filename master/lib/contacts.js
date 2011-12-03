@@ -169,8 +169,8 @@ module.exports = {
   listContacts: function listContacts(req, res, next) {
     return ufdsmodel.requestList(req, res, next, Contact);
   },
-  createContact: function createContact(req, res, next) {
-    return ufdsmodel.requestCreate(req, res, next, Contact);
+  putContact: function putContact(req, res, next) {
+    return ufdsmodel.requestPut(req, res, next, Contact);
   },
   getContact: function getContact(req, res, next) {
     return ufdsmodel.requestGet(req, res, next, Contact);

@@ -134,7 +134,7 @@ TODO
 
 TODO
 
-## CreateContact (PUT /pub/:user/contacts/:contact)
+## PutContact (PUT /pub/:user/contacts/:contact)
 
 TODO
 
@@ -204,7 +204,7 @@ TODO
 
 TODO
 
-## CreateMonitor (PUT /pub/:user/monitors/:monitor)
+## PutMonitor (PUT /pub/:user/monitors/:monitor)
 
 TODO
 
@@ -271,7 +271,7 @@ TODO
     ]
 
 
-## CreateProbe (PUT /pub/:user/monitors/:monitor/probes/:probe)
+## PutProbe (PUT /pub/:user/monitors/:monitor/probes/:probe)
 
 TODO
 

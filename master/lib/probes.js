@@ -193,8 +193,8 @@ module.exports = {
   listProbes: function listProbes(req, res, next) {
     return ufdsmodel.requestList(req, res, next, Probe);
   },
-  createProbe: function createProbe(req, res, next) {
-    return ufdsmodel.requestCreate(req, res, next, Probe);
+  putProbe: function putProbe(req, res, next) {
+    return ufdsmodel.requestPut(req, res, next, Probe);
   },
   getProbe: function getProbe(req, res, next) {
     return ufdsmodel.requestGet(req, res, next, Probe);

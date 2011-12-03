@@ -154,8 +154,8 @@ module.exports = {
   listMonitors: function listMonitors(req, res, next) {
     return ufdsmodel.requestList(req, res, next, Monitor);
   },
-  createMonitor: function createMonitor(req, res, next) {
-    return ufdsmodel.requestCreate(req, res, next, Monitor);
+  putMonitor: function putMonitor(req, res, next) {
+    return ufdsmodel.requestPut(req, res, next, Monitor);
   },
   getMonitor: function getMonitor(req, res, next) {
     return ufdsmodel.requestGet(req, res, next, Monitor);

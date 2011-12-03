@@ -97,7 +97,7 @@ function modelList(app, Model, parentDn, log, callback) {
 }
 
 
-function modelCreate(app, Model, dn, name, data, log, callback) {
+function modelPut(app, Model, dn, name, data, log, callback) {
   var item;
   try {
     item = new Model(app, name, data);
@@ -261,12 +261,12 @@ function requestList(req, res, next, Model) {
 }
 
 
-function requestCreate(req, res, next, Model) {
+function requestPut(req, res, next, Model) {
   req._log.trace('<%s> create entered: params=%o, uriParams=%o',
     Model._modelName, req.params, req.uriParams);
   var dn = Model.dnFromRequest(req);
   var name = Model.nameFromRequest(req);
-  modelCreate(req._app, Model, dn, name, req.params, req._log, function(err, item) {
+  modelPut(req._app, Model, dn, name, req.params, req._log, function(err, item) {
     if (err) {
       res.sendError(err);
     } else {
@@ -318,11 +318,11 @@ function requestDelete(req, res, next, Model) {
 
 module.exports = {
   modelList: modelList,
-  modelCreate: modelCreate,
+  modelPut: modelPut,
   modelGet: modelGet,
   modelDelete: modelDelete,
   requestList: requestList,
-  requestCreate: requestCreate,
+  requestPut: requestPut,
   requestGet: requestGet,
   requestDelete: requestDelete
 };

@@ -214,17 +214,17 @@ function App(config, ufds) {
   server.get('/pub/:user', before, getUser, after);
   
   server.get('/pub/:user/contacts', before, contacts.listContacts, after);
-  server.put('/pub/:user/contacts/:contact', before, contacts.createContact, after);
+  server.put('/pub/:user/contacts/:contact', before, contacts.putContact, after);
   server.get('/pub/:user/contacts/:contact', before, contacts.getContact, after);
   server.del('/pub/:user/contacts/:contact', before, contacts.deleteContact, after);
   
   server.get('/pub/:user/monitors', before, monitors.listMonitors, after);
-  server.put('/pub/:user/monitors/:monitor', before, monitors.createMonitor, after);
+  server.put('/pub/:user/monitors/:monitor', before, monitors.putMonitor, after);
   server.get('/pub/:user/monitors/:monitor', before, monitors.getMonitor, after);
   server.del('/pub/:user/monitors/:monitor', before, monitors.deleteMonitor, after);
   
   server.get('/pub/:user/monitors/:monitor/probes', before, probes.listProbes, after);
-  server.put('/pub/:user/monitors/:monitor/probes/:probe', before, probes.createProbe, after);
+  server.put('/pub/:user/monitors/:monitor/probes/:probe', before, probes.putProbe, after);
   server.get('/pub/:user/monitors/:monitor/probes/:probe', before, probes.getProbe, after);
   server.del('/pub/:user/monitors/:monitor/probes/:probe', before, probes.deleteProbe, after);
   
