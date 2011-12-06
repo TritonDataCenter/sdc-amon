@@ -109,7 +109,7 @@ TODO
     HTTP/1.1 200 OK
     Connection: close
     Date: Sat, 05 Nov 2011 03:40:58 GMT
-    Server: Joyent
+    Server: Amon Master/1.0.0
     X-Api-Version: 1.0.0
     X-Request-Id: 0a240ed4-c8b2-402c-943f-2f8a2d2d2236
     X-Response-Time: 500
@@ -178,7 +178,7 @@ TODO
     HTTP/1.1 200 OK
     Connection: close
     Date: Tue, 08 Nov 2011 00:38:54 GMT
-    Server: Joyent
+    Server: Amon Master/1.0.0
     X-Api-Version: 1.0.0
     X-Request-Id: addcc1ab-cdd2-4961-b4f8-b44a7ab2a31a
     X-Response-Time: 491
@@ -229,7 +229,7 @@ TODO
     HTTP/1.1 200 OK
     Connection: close
     Date: Tue, 22 Nov 2011 17:59:22 GMT
-    Server: Joyent
+    Server: Amon Master/1.0.0
     X-Api-Version: 1.0.0
     X-Request-Id: c92e87c6-8da1-4f67-b85e-f4458340642b
     X-Response-Time: 760
@@ -312,13 +312,14 @@ alarm ("Yah, I know it is a problem, but I can't deal with it right now.").
 
 ## Ping (GET /ping)
 
-A simple ping to check to health of the Amon server.
+A simple ping to check to health of the Amon server. Here "pid" is the PID of
+the Amon master server process. This is helpful for the test suite.
 
     $ sdc-amon /ping
     HTTP/1.1 200 OK
     Connection: close
     Date: Wed, 02 Nov 2011 04:40:42 GMT
-    Server: Joyent
+    Server: Amon Master/1.0.0
     X-Api-Version: 1.0.0
     X-Request-Id: 265a6379-bbf5-4d86-bd11-5e96614035d8
     X-Response-Time: 2
@@ -332,7 +333,32 @@ A simple ping to check to health of the Amon server.
     
     {
       "ping": "pong"
+      "pid": 1234
     }
+
+Ping can also be used to simulate error responses from Amon master:
+
+    $ sdc-amon /ping?error=ResourceNotFound
+    HTTP/1.1 404 Not Found
+    Connection: close
+    Date: Tue, 06 Dec 2011 23:43:03 GMT
+    Server: Amon Master/1.0.0
+    X-Api-Version: 1.0.0
+    X-Request-Id: 849950cf-e9de-452b-9640-6f4c7da053e2
+    X-Response-Time: 2
+    Content-Length: 44
+    Content-MD5: /vxoedHxPf+L11uaQ8bkJQ==
+    Content-Type: application/json
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Methods: OPTIONS, GET
+    Access-Control-Allow-Headers: Accept, Content-Type, Content-Length, Date, X-Api-Version
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    
+    {
+      "code": "ResourceNotFound",
+      "message": "pong"
+    }
+
 
 ### Inputs
 

@@ -41,11 +41,20 @@ var VALID_LOGIN_CHARS = /^[a-zA-Z][a-zA-Z0-9_\.@]+$/;
 //---- internal support stuff
 
 function ping(req, res, next) {
-  var data = {
-    ping: "pong",
-    pid: process.pid  // used by test suite
-  };
-  res.send(200, data);
+  if (req.params.error !== undefined) {
+    var restCode = req.params.error || "InternalError";
+    if (restCode.slice(-5) !== "Error") {
+      restCode += "Error"
+    }
+    var err = new restify[restCode]("pong");
+    res.sendError(err, err instanceof restify.ResourceNotFoundError);
+  } else {
+    var data = {
+      ping: "pong",
+      pid: process.pid  // used by test suite
+    };
+    res.send(200, data);
+  }
   return next();
 }
 
@@ -175,7 +184,7 @@ function App(config, ufds) {
 
   var server = this.server = restify.createServer({
     apiVersion: Constants.ApiVersion,
-    serverName: Constants.ServerName
+    serverName: "Amon Master/" + Constants.ApiVersion
   });
 
   function setup(req, res, next) {

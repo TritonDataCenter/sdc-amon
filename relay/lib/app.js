@@ -71,7 +71,7 @@ var App = function App(options) {
 
   this.server = restify.createServer({
     apiVersion: Constants.ApiVersion,
-    serverName: Constants.ServerName
+    serverName: "Amon Relay/" + Constants.ApiVersion
   });
 
   var _setup = function(req, res, next) {

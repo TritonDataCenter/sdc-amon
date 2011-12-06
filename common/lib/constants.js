@@ -34,7 +34,6 @@ module.exports = {
   ApiVersion: '1.0.0',
   ContentType: 'Content-Type',
   HashHeader: 'ETag',
-  ServerName: 'Joyent',
   JsonContentType: 'application/json',
   TarContentType: 'application/x-tar'
 };
