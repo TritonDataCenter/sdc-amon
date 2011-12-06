@@ -16,15 +16,20 @@ function Testy(config) {
   this.notifications = [];
 }
 
-Testy.prototype.sanitizeData = function(data) {
+Testy.prototype.acceptsMedium = function(medium) {
+  var mediumLower = medium.toLowerCase();
+  return (mediumLower.slice(-5) === "email");
+}
+
+Testy.prototype.sanitizeAddress = function(data) {
   return data;
 };
 
-Testy.prototype.notify = function(event, contactData, message, callback) {
-  log.debug("Test.notify: event='%s', contactData='%s', message='%s'",
-    event, contactData, message);
+Testy.prototype.notify = function(event, contactAddress, message, callback) {
+  log.debug("Test.notify: event='%s', contactAddress='%s', message='%s'",
+    event, contactAddress, message);
   this.notifications.push({
-    contactData: contactData,
+    contactAddress: contactAddress,
     message: message
   });
   fs.writeFileSync(this.logPath,

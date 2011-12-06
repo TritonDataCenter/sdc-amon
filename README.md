@@ -194,13 +194,6 @@ Amon should now see those users:
     sdc-amon /pub/yunong
     sdc-amon /pub/trent
 
-Add a contact:
-
-    sdc-amon /pub/yunong/contacts/email -X PUT -d @examples/contact-yunongemail.json
-    sdc-amon /pub/trent/contacts/email -X PUT -d @examples/contact-trentemail.json
-    sdc-amon /pub/trent/contacts            # list contacts
-    sdc-amon /pub/trent/contacts/email
-
 Add a monitor. We'll call this one "whistle", and just have one contact for
 it. A monitor can have any number of contacts (e.g. you might want the
 while ops team to know about a particular failure):

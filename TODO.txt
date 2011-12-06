@@ -14,8 +14,7 @@
     update README
 - [Trent] :login -> :uuid
 - [Trent] update https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming
-- [Trent] get working in COAL: Currently dealing with a problem of relay
-  in coal not being able to connect to master running on my Mac.
+- [Trent] turn on in COAL
 - Idea: have amon-master create event/alarm to operator if it cannot connect/work
   with UFDS.
 - [Trent] test suite for relay and agent
@@ -94,6 +93,9 @@
 
 # someday/maybe
 
+- modcloth request to have alerts when in CPU bursting range, i.e. they
+  are hitting OS caps. In Modcloth's case, they were hitting caps and didn't
+  know it.
 - amon-relay just fails mostly silently if given agents-probes-dir doesn't exist:
       [15:40:37 trentm@banana:~/joy/amon/relay (ufds)]
       $ ../deps/node-install/bin/node main.js -v -d -D tmp/db -m http://127.0.0.1:8080 -s 8081 -p 90
@@ -106,6 +108,10 @@
       2011-11-10 23:40:43Z INFO: Successfully updated agent probes from master (zone: global, md5: undefined -> UaTV7YW3MTyNMX+uguZZZw==).
 - JSON api summary at "GET /"
 - HTML docs at "GET /docs"
+- SNMP traps (per Mark).
+  http://tools.ietf.org/html/rfc3877  Alarm MIB
+  http://tools.ietf.org/html/rfc3014  Notification Log MIB
+- docs: move contact URN spec from master/lib/contact.js to the docs
 
 
 
@@ -237,10 +243,11 @@ Trent to filter this into above lists.
 - client SDK
 - s/joyent/sdc/ in various runtime files and dirs
 - Admin UI
-- amon client: just integrate into node-smartdc?
-- snmp (MarkC: "snmp traps". Me: What's that?)
-- Interesting services for hooking into. Messaging services that might be useful:
+- Interesting services for hooking into, messaging services that might be useful,
+  or just general related/competing services:
     - http://aws.amazon.com/cloudwatch/
     - https://www.cloudkick.com/
     - http://www.splunk.com/
     - http://www.pagerduty.com/
+    - http://www.opennms.org/ (modcloth using this I think)
+

@@ -23,19 +23,13 @@ var FIXTURES = {
       login: 'sulkybob',
       uuid: '11111111-1111-1111-1111-111111111111',
       userpassword: '123123',
-      email: 'nobody@joyent.com',
+      email: 'nobody+sulkybob@joyent.com',
       cn: 'Sulky',
       sn: 'Bob',
       objectclass: 'sdcPerson'
     }
   },
   sulkybob: {
-    contacts: {
-      email: {
-        medium: 'email',
-        data: 'nobody+sulkybob@joyent.com'
-      }
-    },
     monitors: {
       whistle: {
         contacts: ['email'],
@@ -205,71 +199,6 @@ test('ping', function(t) {
     t.end();
   });
 });
-
-
-//---- test: contacts
-
-test('contacts: list empty', function(t) {
-  masterClient.get("/pub/sulkybob/contacts", function(err, body, headers) {
-    t.ifError(err);
-    t.ok(Array.isArray(body));
-    t.equal(body.length, 0);
-    t.end();
-  });
-});
-
-test('contacts: create', function(t) {
-  asyncForEach(Object.keys(FIXTURES.sulkybob.contacts), function(name, next) {
-    var data = FIXTURES.sulkybob.contacts[name];
-    masterClient.put({
-        path: "/pub/sulkybob/contacts/"+name,
-        body: data
-      }, function (err, body, headers) {
-        t.ifError(err);
-        t.equal(body.name, name);
-        t.equal(body.medium, data.medium)
-        t.equal(body.data, data.data)
-        next();
-      });
-  }, function (err) {
-    t.end();
-  });
-});
-
-test('contacts: list', function(t) {
-  var contacts = FIXTURES.sulkybob.contacts;
-  masterClient.get("/pub/sulkybob/contacts", function(err, body, headers) {
-    t.ifError(err);
-    t.ok(Array.isArray(body));
-    t.equal(body.length, Object.keys(contacts).length);
-    t.end();
-  });
-});
-
-test('contacts: get', function(t) {
-  asyncForEach(Object.keys(FIXTURES.sulkybob.contacts), function(name, next) {
-    var data = FIXTURES.sulkybob.contacts[name];
-    masterClient.get("/pub/sulkybob/contacts/"+name, function (err, body, headers) {
-      t.ifError(err);
-      t.equal(body.name, name)
-      t.equal(body.medium, data.medium)
-      t.equal(body.data, data.data)
-      next();
-    })
-  }, function (err) {
-    t.end();
-  });
-});
-
-test('contacts: get 404', function(t) {
-  masterClient.get("/pub/sulkybob/contacts/bogus", function (err, body, headers, res) {
-    t.equal(err.httpCode, 404);
-    t.equal(err.restCode, "ResourceNotFound");
-    t.end();
-  })
-});
-
-
 
 
 //---- test: monitors
@@ -474,7 +403,6 @@ test('relay api: HeadAgentProbes', function(t) {
 test('relay api: AddEvents', function(t) {
   var testyLogPath = config.notificationPlugins.email.config.logPath;
   var sulkybob = FIXTURES.users['uuid=11111111-1111-1111-1111-111111111111, ou=users, o=smartdc'];
-  var contact = FIXTURES.sulkybob.contacts.email;
   var message = 'hi mom!'
   var event = { probe: 
     { user: sulkybob.uuid,
@@ -497,7 +425,7 @@ test('relay api: AddEvents', function(t) {
         t.ifError(err);
         var sent = JSON.parse(content);
         t.equal(sent.length, 1)
-        t.equal(sent[0].contactData, contact.data)
+        t.equal(sent[0].contactAddress, sulkybob.email)
         t.ok(sent[0].message.indexOf(message) !== -1)
         t.end();
       });
@@ -535,19 +463,6 @@ test('monitors: delete', function(t) {
   asyncForEach(Object.keys(FIXTURES.sulkybob.monitors), function(name, next) {
     var data = FIXTURES.sulkybob.monitors[name];
     masterClient.del("/pub/sulkybob/monitors/"+name, function (err, headers, res) {
-      t.ifError(err);
-      t.equal(res.statusCode, 204)
-      next();
-    });
-  }, function (err) {
-    t.end();
-  });
-});
-
-test('contacts: delete', function(t) {
-  asyncForEach(Object.keys(FIXTURES.sulkybob.contacts), function(name, next) {
-    var data = FIXTURES.sulkybob.contacts[name];
-    masterClient.del("/pub/sulkybob/contacts/"+name, function (err, headers, res) {
       t.ifError(err);
       t.equal(res.statusCode, 204)
       next();

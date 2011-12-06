@@ -109,7 +109,7 @@ function modelPut(app, Model, dn, name, data, log, callback) {
     if (err) {
       if (err instanceof ldap.EntryAlreadyExistsError) {
         return callback(new restify.InternalError(
-          "XXX DN already exists. Can't nicely update "
+          "XXX DN '"+dn+"' already exists. Can't nicely update "
           + "(with LDAP modify/replace) until "
           + "<https://github.com/mcavage/node-ldapjs/issues/31> is fixed."));
         //XXX Also not sure if there is another bug in node-ldapjs if

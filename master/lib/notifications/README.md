@@ -2,19 +2,23 @@
 
 Each of the notification type modules here should export the following interface:
 
-    var FooNotificationType = require('./lib/foo')
 
-/**
- * Sanitize the given email contact data.
- *
- * Example contact:
- *    {
- *     "name": "trentemail",
- *     "medium": "email",
- *     "data": "\"Trent Mick\" <trent.mick+amon@joyent.com>"
- *    }
- * This method is called with that "data" value.
- *
- * @param data {String} Email address.
- * @returns {String} A sanitized email address.
- */
+    function FooNotificationType(config) { ... }
+
+    /**
+     * Sanitize the given contact address
+     *
+     * @param address {String} address
+     * @returns {String} A sanitized address
+     */
+    FooNotificationType.prototype.sanitizeAddress = function(data) { ... };
+
+    /**
+     * Return true/false whether the given medium string (e.g. "homePhone",
+     * "email", "workEmail") is one that this notifier handles.
+     */
+    FooNotificationType.prototype.acceptsMedium = function (medium) { ... };
+
+    FooNotificationType.prototype.notify = function(event, contactAddress, message, callback) { ... };
+
+    module.exports = FooNotificationType;

@@ -15,10 +15,9 @@ var sprintf = require('sprintf').sprintf;
 var amonCommon = require('amon-common');
 var Cache = amonCommon.Cache;
 var Constants = amonCommon.Constants;
+var Contact = require('./contact');
 
 // Endpoint controller modules.
-var contacts = require('./contacts');
-var Contact = contacts.Contact;
 var monitors = require('./monitors');
 var Monitor = monitors.Monitor;
 var probes = require('./probes');
@@ -212,11 +211,6 @@ function App(config, ufds) {
   //server.get('/caches', before, listCaches, after);
 
   server.get('/pub/:user', before, getUser, after);
-  
-  server.get('/pub/:user/contacts', before, contacts.listContacts, after);
-  server.put('/pub/:user/contacts/:contact', before, contacts.putContact, after);
-  server.get('/pub/:user/contacts/:contact', before, contacts.getContact, after);
-  server.del('/pub/:user/contacts/:contact', before, contacts.deleteContact, after);
   
   server.get('/pub/:user/monitors', before, monitors.listMonitors, after);
   server.put('/pub/:user/monitors/:monitor', before, monitors.putMonitor, after);
@@ -469,6 +463,9 @@ App.prototype.userFromId = function(userId, callback) {
  *      "uuid": "3ab1336e-5453-45f9-be10-8686ba70e419",
  *      "version": "1.0.0"
  *    }
+ *
+ * TODO: inability to send a notification should result in an alarm for
+ *   the owner of the monitor.
  */
 App.prototype.processEvent = function (event, callback) {
   var self = this;
@@ -479,19 +476,19 @@ App.prototype.processEvent = function (event, callback) {
   Monitor.get(this, event.probe.monitor, userUuid, function (err, monitor) {
     if (err) return callback(err);
     // 2. Notify each contact.
-    function getAndNotifyContact(contactName, cb) {
-      log.debug("App.processEvent: notify contact '%s'", contactName);
-      Contact.get(self, contactName, userUuid, function (err, contact) {
+    function getAndNotifyContact(contactUrn, cb) {
+      log.debug("App.processEvent: notify contact '%s'", contactUrn);
+      Contact.get(self, contactUrn, userUuid, function (err, contact) {
         if (err) {
-          log.warn("could not get contact '%s' (user '%s'): %s",
-            contactName, userUuid, err)
+          log.warn("could not resolve contact '%s' (user '%s'): %s",
+            contactUrn, userUuid, err)
           return cb();
         }
         self.notifyContact(userUuid, monitor, contact, event, function (err) {
           if (err) {
             log.warn("could not notify contact: %s", err);
           } else {
-            log.debug("App.processEvent: contact '%s' notified", contactName);
+            log.debug("App.processEvent: contact '%s' notified", contactUrn);
           }
           return cb();
         });
@@ -503,18 +500,50 @@ App.prototype.processEvent = function (event, callback) {
   });
 };
 
+
+/**
+ * Determine the appropriate notification type (email, sms, etc.) from
+ * the given contact medium.
+ *
+ * Because we are using the simple mechanism of
+ * an LDAP field name/value pair on a user (objectClass=sdcPerson in UFDS)
+ * for a contact, we need conventions on the field *name* to map to a
+ * particular plugin for handling the notification. E.g. both "email"
+ * and "secondaryEmail" will map to the "email" notification type.
+ *
+ * @throws {restify.RESTError} if the no appropriate notification plugin could
+ *    be determined.
+ */
+App.prototype.notificationTypeFromMedium = function(medium) {
+  var self = this;
+  var types = Object.keys(this.notificationPlugins);
+  for (var i = 0; i < types.length; i++) {
+    var type = types[i];
+    var plugin = self.notificationPlugins[type];
+    if (plugin.acceptsMedium(medium)) {
+      return type;
+    }
+  }
+  throw new restify.InvalidArgumentError(
+    sprintf('Could not determine an appropriate notification plugin '
+            + 'for "%s" medium.', medium));
+}
+
+
 /**
  * XXX clarify error handling
+ * TODO:XXX Get this to take the full account object to allow improving the
+ *    recipient, e.g. 'joe@example.com' -> '"Joe Smith" <joe@example.com>'
  *
  * ...
  * @param callback {Function} `function (err) {}`.
  */
 App.prototype.notifyContact = function (userUuid, monitor, contact, event, callback) {
-  var plugin = this.notificationPlugins[contact.medium];
+  var plugin = this.notificationPlugins[contact.notificationType];
   if (!plugin) {
-    return callback("notification plugin '%s' not found", contact.medium);
+    return callback("notification plugin '%s' not found", contact.notificationType);
   }
-  plugin.notify(event.probe.name, contact.data,
+  plugin.notify(event.probe.name, contact.address,
     JSON.stringify(event.data,null,2), //XXX obviously lame "message" to send
     callback);
 }

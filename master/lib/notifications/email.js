@@ -1,7 +1,7 @@
 /*
  * Copyright 2011 Joyent, Inc.  All rights reserved.
  *
- * Amon 'email' notification plugin.
+ * Amon 'email' notification plugin. See interface spec in "./README.md".
  */
 
 var nodemailer = require('nodemailer');
@@ -27,30 +27,40 @@ function Email(config) {
 
 
 /**
- * Sanitize the given email contact data.
+ * This notification plugin will handle any contact fields named "email"
+ * or "*Email" (e.g. "fooEmail", "workEmail", "bffEmail").
+ */
+Email.prototype.acceptsMedium = function(medium) {
+  var mediumLower = medium.toLowerCase();
+  return (mediumLower.slice(-5) === "email");
+}
+
+/**
+ * Sanitize the given email contact address.
  *
- * Example contact:
- *    {
- *     "name": "trentemail",
- *     "medium": "email",
- *     "data": "\"Trent Mick\" <trent.mick+amon@joyent.com>"
- *    }
- * This method is called with that "data" value.
- *
- * @param data {String} Email address.
+ * @param address {String} Email address.
  * @returns {String} A sanitized email address.
  */
-Email.prototype.sanitizeData = function(data) {
-  return data;
+Email.prototype.sanitizeAddress = function(address) {
+  return address;
 };
 
 
-Email.prototype.notify = function(event, contactData, message, callback) {
+Email.prototype.notify = function(event, contactAddress, message, callback) {
   // TODO: add retries (retry module)
+  var data = {
+      sender: this.from,
+      to: contactAddress,
+      // TODO: templating of these values
+      subject: 'Monitoring alert',
+      //html: '...',
+      body: message
+    }
+  console.error("XXX email data: ", JSON.stringify(data, null, 2))
   nodemailer.send_mail(
     {
       sender: this.from,
-      to: contactData,
+      to: contactAddress,
       // TODO: templating of these values
       subject: 'Monitoring alert',
       //html: '...',

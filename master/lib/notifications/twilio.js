@@ -29,31 +29,40 @@ function Twilio(config) {
   this.url = config.url;
 }
 
+/**
+ * This notification plugin will handle any contact fields named "phone"
+ * or "*Phone" (e.g. "fooPhone", "workPhone", "bffPhone").
+ */
+Twilio.prototype.acceptsMedium = function(medium) {
+  var mediumLower = medium.toLowerCase();
+  return (mediumLower.slice(-5) === "phone");
+}
+
 
 //XXX Change this API to throw error with details if invalid.
-Twilio.prototype.sanitizeData = function(data) {
+Twilio.prototype.sanitizeAddress = function(data) {
   if (!data || typeof(data) !== 'string') {
-    log.debug('Twilio.sanitizeData: data %s is not a string', data);
+    log.debug('Twilio.sanitizeAddress: data %s is not a string', data);
     return false;
   }
   var stripped = data.replace(/[\(\)\.\-\ ]/g, '');
   if (isNaN(parseInt(stripped, 10))) {
-    log.debug('Twilio.sanitizeData: data %s is not a phone number', data);
+    log.debug('Twilio.sanitizeAddress: data %s is not a phone number', data);
     return false;
   }
   if (stripped.length !== 10) {
-    log.debug('Twilio.sanitizeData: data %s > 10 digits', data);
+    log.debug('Twilio.sanitizeAddress: data %s > 10 digits', data);
     return false;
   }
   return '+1' + stripped;
 };
 
 
-Twilio.prototype.notify = function(event, handle, message, callback) {
+Twilio.prototype.notify = function(event, contactAddress, message, callback) {
   if (!event || typeof(event) !== 'string')
     throw new TypeError('event must be a string');
-  if (!handle || typeof(handle) !== 'string')
-    throw new TypeError('handle must be a phone number');
+  if (!contactAddress || typeof(contactAddress) !== 'string')
+    throw new TypeError('contactAddress must be a phone number');
   if (typeof(message) !== 'string')
     throw new TypeError('message must be a string');
   if (!callback || typeof(callback) !== 'function')
@@ -64,7 +73,7 @@ Twilio.prototype.notify = function(event, handle, message, callback) {
     new Buffer(self.accountSid + ':' + self.authToken).toString('base64');
   var path = '/2008-08-01/Accounts/' + self.accountSid + '/Calls';
   var body = 'Caller=' + querystring.escape(self.from) +
-    '&Called=' + querystring.escape(handle) +
+    '&Called=' + querystring.escape(contactAddress) +
     '&Method=GET&Url=' + querystring.escape(self.url);
 
   var options = {

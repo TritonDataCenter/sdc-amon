@@ -11,6 +11,7 @@ var ldap = require('ldapjs');
 var restify = require('restify');
 var sprintf = require('sprintf').sprintf;
 var ufdsmodel = require('./ufdsmodel');
+var Contact = require('./contact');
 
 var log = restify.log;
 
@@ -118,8 +119,9 @@ Monitor.validate = function validate(app, raw) {
   if (!(raw.contact instanceof Array)) {
     raw.contact = [raw.contact];
   }
-
-  //TODO: consider validating that contacts exist
+  raw.contact.forEach(function (c) {
+    Contact.parseUrn(app, c);
+  });
 
   return raw;
 }
