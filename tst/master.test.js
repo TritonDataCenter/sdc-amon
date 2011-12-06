@@ -30,6 +30,9 @@ var FIXTURES = {
     }
   },
   sulkybob: {
+    bogusmonitor: {
+      contacts: ['smokesignal'],
+    },
     monitors: {
       whistle: {
         contacts: ['email'],
@@ -230,6 +233,22 @@ test('monitors: create', function(t) {
   }, function (err) {
     t.end();
   });
+});
+
+test('monitors: create with bogus contact', function(t) {
+  var name = "bogusmonitor";
+  var monitor = FIXTURES.sulkybob[name];
+  masterClient.put({
+      path: "/pub/sulkybob/monitors/"+name,
+      body: monitor
+    }, function (err, body, headers) {
+      t.ok(err)
+      t.equal(err.httpCode, 409)
+      t.equal(err.restCode, "InvalidArgument")
+      t.ok(err.message.indexOf("smokesignal") !== -1)
+      t.end();
+    }
+  );
 });
 
 test('monitors: list', function(t) {

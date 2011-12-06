@@ -525,9 +525,10 @@ App.prototype.notificationTypeFromMedium = function(medium) {
       return type;
     }
   }
+  log.warn('Could not determine an appropriate notification plugin '
+    + 'for "%s" medium.', medium);
   throw new restify.InvalidArgumentError(
-    sprintf('Could not determine an appropriate notification plugin '
-            + 'for "%s" medium.', medium));
+    sprintf('Invalid or unsupported contact medium "%s".', medium));
 }
 
 
