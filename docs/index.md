@@ -29,8 +29,8 @@ Public endpoints of the Amon Master API are under a "/pub" prefix to
 facilitate proxying to Cloud API. For example, the set of open alarms for an
 user is:
 
-    GET  /pub/:user/alarms           # Amon Master API
-    GET  /:login/alarms              # Cloud API
+    GET  /pub/:user/monitors           # Amon Master API
+    GET  /:login/monitors              # Cloud API
 
 Where ":user" is typically a user UUID. However, for convenience in
 development, ":user" may also be a user's login string.
@@ -63,86 +63,6 @@ Clients are expected to check HTTP status code first, and if in the 4xx range,
 they can leverage the codes above.
 
 <!-- TODO: complete the error list above, show some examples -->
-
-
-
-# Master API: Contacts
-
-A "contact" contains the information required (who and what method) to send a
-notification to some endpoint.
-
-    GET    /pub/:user/contacts
-    POST   /pub/:user/contacts
-    GET    /pub/:user/contacts/:contact
-    DELETE /pub/:user/contacts/:contact
-
-Dev Note: For starters we're just notifying via email. The CAPI customer
-record already has an email. Having something separate here seems silly. Not
-sure how to resolve that when adding other notification mediums (e.g. sms,
-webhook, etc.). For starters we'll *not* include "contacts" and just use
-an implicit "email using the customer record's email address" contact.
-
-
-## ListContacts (GET /pub/:user/contacts)
-
-List all contacts for this user.
-
-### Inputs
-
-* None
-
-### Returns
-
-An array of contact objects. Keys are:
-
-||name||String||Name of this contact. This is the unique identifier for this contact. It must be 1-32 chars, begin with alpha character and include only alphanumeric '_', '.' and '-' ||
-||medium||String||The contact medium, e.g. "sms", "email"||
-||data||String||Medium-specific data providing details on how to contact via this medium||
-
-### Errors
-
-TODO
-
-### Example
-
-    $ sdc-amon /pub/hamish/contacts
-    HTTP/1.1 200 OK
-    Connection: close
-    Date: Sat, 05 Nov 2011 03:40:58 GMT
-    Server: Amon Master/1.0.0
-    X-Api-Version: 1.0.0
-    X-Request-Id: 0a240ed4-c8b2-402c-943f-2f8a2d2d2236
-    X-Response-Time: 500
-    Content-Length: 51
-    Content-MD5: H6oXhOqJorCMKfug2HoU+A==
-    Content-Type: application/json
-    Access-Control-Allow-Origin: *
-    Access-Control-Allow-Methods: OPTIONS, GET
-    Access-Control-Allow-Headers: Accept, Content-Type, Content-Length, Date, X-Api-Version
-    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
-    
-    [
-      {
-        "name": "cell",
-        "medium": "sms",
-        "data": "1234567890"
-      }
-    ]
-
-
-## GetContact (GET /pub/:user/contacts/:contact)
-
-TODO
-
-## PutContact (PUT /pub/:user/contacts/:contact)
-
-TODO
-
-## DeleteContact (DELETE /pub/:user/contacts/:contact)
-
-TODO
-
-
 
 
 
@@ -194,7 +114,7 @@ TODO
       {
         "name": "mysql",
         "contacts": [
-          "cell"
+          "cellPhone"
         ]
       }
     ]
