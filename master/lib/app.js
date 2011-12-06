@@ -189,10 +189,11 @@ function App(config, ufds) {
     if (userId) {
       self.userFromId(userId, function (err, user) {
         if (err) {
-          res.sendError(err); //TODO: does this work with an LDAPError?
+          //TODO: does this work with an LDAPError?
+          res.sendError(err, err instanceof restify.ResourceNotFoundError);
         } else if (! user) {
           res.sendError(new restify.ResourceNotFoundError(
-            sprintf("no such user: '%s'", userId)));
+            sprintf("no such user: '%s'", userId)), true);
         } else {
           req._user = user;
         }
