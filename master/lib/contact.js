@@ -83,18 +83,16 @@ Contact.parseUrn = function (app, urn) {
 
 /**
  * Get a contact.
+ *
+ * Note: It is possible that `contact.address` is null/undefined on return.
+ * E.g., for a contact field "fooEmail" on an sdcPerson with no such
+ * attribute. It is up to the caller to handle this.
  */
 Contact.get = function (app, urn, userUuid, callback) {
   var bits = Contact.parseUrn(app, urn);
   var user = app.userFromId(userUuid, function (err, user) {
     if (err) return callback(err);
     var address = user[bits.medium];
-    if (!address) {
-      // TODO: how to handle the contact field not existing? How to handle that
-      // if a subset of users in a group don't have a field for the given
-      // medium.
-      XXX
-    }
     var contact = new Contact(bits.scope, bits.medium, bits.notificationType,
       address);
     callback(null, contact)

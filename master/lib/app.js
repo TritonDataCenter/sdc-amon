@@ -474,25 +474,41 @@ App.prototype.processEvent = function (event, callback) {
   
   // 1. Get the monitor for this probe, to get its list of contacts.
   var userUuid = event.probe.user;
-  Monitor.get(this, event.probe.monitor, userUuid, function (err, monitor) {
+  var monitorName = event.probe.monitor;
+  Monitor.get(this, monitorName, userUuid, function (err, monitor) {
     if (err) return callback(err);
     // 2. Notify each contact.
     function getAndNotifyContact(contactUrn, cb) {
-      log.debug("App.processEvent: notify contact '%s'", contactUrn);
+      log.debug("App.processEvent: notify contact '%s' (userUuid='%s', "
+        + "monitor='%s')", contactUrn, userUuid, monitorName);
       Contact.get(self, contactUrn, userUuid, function (err, contact) {
         if (err) {
           log.warn("could not resolve contact '%s' (user '%s'): %s",
             contactUrn, userUuid, err)
           return cb();
         }
-        self.notifyContact(userUuid, monitor, contact, event, function (err) {
-          if (err) {
-            log.warn("could not notify contact: %s", err);
-          } else {
-            log.debug("App.processEvent: contact '%s' notified", contactUrn);
-          }
-          return cb();
-        });
+        if (!contact.address) {
+          log.info("no contact address (contactUrn='%s' monitor='%s' "
+            + "userUuid='%s'), alerting monitor owner", contactUrn,
+            monitorName, userUuid);
+          var msg = "XXX"; // TODO
+          self.alarmConfig(monitor.user, msg, function (err) {
+            if (err) {
+              log.error("could not alert monitor owner: %s", err);
+            }
+            return cb();
+          });
+        } else {
+          self.notifyContact(userUuid, monitor, contact, event, function (err) {
+            if (err) {
+              log.warn("could not notify contact: %s", err);
+            } else {
+              log.debug("App.processEvent: contact '%s' notified (userUuid='%s', "
+                + "monitor='%s')", contactUrn, userUuid, monitorName);
+            }
+            return cb();
+          });
+        }
       });
     }
     asyncForEach(monitor.contacts, getAndNotifyContact, function (err) {
@@ -529,6 +545,24 @@ App.prototype.notificationTypeFromMedium = function(medium) {
     + 'for "%s" medium.', medium);
   throw new restify.InvalidArgumentError(
     sprintf('Invalid or unsupported contact medium "%s".', medium));
+}
+
+
+/**
+ * Alert the given user about an Amon configuration issue.
+ *
+ * Currently this will just send an email notification. Eventually this will
+ * create a separate alarm instance and notify the given user via the
+ * usual alarm handling mechanisms.
+ *
+ * @param userId {String} UUID or login of user to notify.
+ * @param msg {String} Message to send. TODO: spec this out.
+ * @param callback {Function} `function (err)`.
+ *    TODO: return alarm or alarm id.
+ */
+App.prototype.alarmConfig = function (userId, msg, callback) {
+  log.error("TODO: implement App.alarmConfig")
+  callback();
 }
 
 

@@ -48,6 +48,21 @@ var FIXTURES = {
             }
           }
         }
+      },
+      sanscontactfield: {
+        contacts: ['secondaryEmail'],
+        probes: {
+          whistlelog: {
+            "zone": "global",
+            "urn": "amon:logscan",
+            "data": {
+              "path": "/tmp/whistle.log",
+              "regex": "tweet",
+              "threshold": 1,
+              "period": 60
+            }
+          }
+        }
       }
     },
   }
@@ -451,6 +466,28 @@ test('relay api: AddEvents', function(t) {
     }
   );
 });
+
+// Test the handling of app.alarmConfig(). This is a notification
+// (eventually creation of an alarm) that is sent to a monitor owner when
+// there is a config problem that results in a notification not being able
+// to be sent. An example where this is used:
+// 
+// A notification is to be sent to a contact for a monitor, but the contact
+// field, e.g. "fooEmail", doesn't exist on that particular user.
+//
+// In this case we expect Amon to send a warning email -- using the
+// (presumably) reliable "email" field -- to the owner of the
+// monitor. When/if UFDS supports user mgmt the "owner of the monitor" might
+// be a different person (UFDS objectClass=sdcPerson) than the intended
+// contact here.
+//
+// TODO: implement this. FIXTURES.sulkybob.monitors.sanscontactfield is
+//    intended for this.
+//test('app.alarmConfig', function (t) {
+//  t.end()
+//});
+
+
 
 
 //---- test deletes (and clean up test data)
