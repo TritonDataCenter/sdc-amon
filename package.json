@@ -10,7 +10,7 @@
     "ldapjs": "0.3",
     "restify": "0.5",
     "sprintf": "0.1",
-    "tap": "0.0"
+    "tap": "0.1"
   },
   "scripts": {
     "// pretest": "./node_modules/jshint/bin/jshint lib tst main.js",
