@@ -1,9 +1,6 @@
 # immediate priorities
 
 - get this working in COAL:
-  - relay discovery: add mapi creds to node.config and get relay to
-    query MAPI (polling if necessary) for amon zone info
-  - ufds caching
   - zone -> $server_uuid:$zonename
 - a plan and schedule for January SDC.next release with Amon
 
