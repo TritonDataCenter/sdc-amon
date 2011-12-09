@@ -1,7 +1,7 @@
 /*
  * Copyright 2011 Joyent, Inc.  All rights reserved.
  *
- * Amon Master controller for '/pub/:login/monitors/:monitor/probes/...' endpoints.
+ * Amon Master controller for '/pub/:user/monitors/:monitor/probes/...' endpoints.
  */
 
 var events = require('events');
@@ -13,7 +13,12 @@ var sprintf = require('sprintf').sprintf;
 var ufdsmodel = require('./ufdsmodel');
 var Monitor = require('./monitors').Monitor;
 
+
+
+//---- globals
+
 var log = restify.log;
+var UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 
 
@@ -22,50 +27,58 @@ var log = restify.log;
 // Presuming routes as follows: '.../monitors/:monitor/probes/:probe'.
 
 /**
- * Create a Probe. `new Probe(app, [name, ]data)`.
+ * Create a Probe. `new Probe(app, data)`.
  *
  * @param app
  * @param name {String} The instance name. Can be skipped if `data` includes
  *    "amonprobename" (which a UFDS response does).
- * @param data {Object} The instance data.
+ * @param data {Object} The instance data. This can either be the public
+ *    representation (augmented with 'name', 'monitor' and 'user'), e.g.:
+ *      { name: 'whistlelog',
+ *        monitor: 'serverHealth',
+ *        user: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+ *        ...
+ *    or the raw response from UFDS, e.g.:
+ *      { dn: 'amonprobename=whistlelog, amonmonitorname=serverHealth, uuid=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa, ou=users, o=smartdc',
+ *        amonprobename: 'whistlelog',
+ *        ...
+ *        objectclass: 'amonprobe' }
  * @throws {restify.RESTError} if the given data is invalid.
  */
-function Probe(app, name, data) {
+function Probe(app, data) {
   assert.ok(app);
-  assert.ok(name);
-  if (data === undefined) {
-    // Usage: new Probe(data) 
-    data = name;
-    name = data.amonprobename;
-  }
+  assert.ok(data);
 
-  Probe.validateName(name);
-  this.name = name;
-  
-  var raw; // The raw form as it goes into and comes out of UFDS.
-  if (data.objectclass === "amonprobe") { // From UFDS.
+  var raw;
+  if (data.objectclass) {  // from UFDS
+    assert.equal(data.objectclass, Probe.objectclass);
     raw = data;
-    this.dn = raw.dn;
-    var parsedDN = ldap.parseDN(raw.dn)
-    this.monitor = parsedDN.rdns[1].amonmonitorname;
-    this.user = parsedDN.rdns[2].uuid;
+    var parsed = Probe.parseDn(data.dn)
+    this.user = parsed.user;
+    this.monitor = parsed.monitor;
   } else {
+    assert.ok(data.name)
+    assert.ok(data.monitor)
+    assert.ok(data.user)
     raw = {
-      amonprobename: name,
+      dn: Probe.dn(data.user, data.monitor, data.name),
+      amonprobename: data.name,
       zone: data.zone,
       urn: data.urn,
       data: JSON.stringify(data.data),
-      objectclass: 'amonprobe'
+      objectclass: Probe.objectclass
     };
+    this.user = data.user;
     this.monitor = data.monitor;
-    this.user = this.user;
-    this.dn = sprintf(
-      "amonprobename=%s, amonmonitorname=%s, uuid=%s, ou=users, o=smartdc",
-      name, this.monitor, this.user);
   }
+
+  Probe.validateName(raw.amonprobename);
   this.raw = Probe.validate(app, raw);
 
   var self = this;
+  this.__defineGetter__('name', function() {
+    return self.raw.amonprobename;
+  });
   this.__defineGetter__('zone', function() {
     return self.raw.zone;
   });
@@ -80,33 +93,67 @@ function Probe(app, name, data) {
   });
 }
 
-Probe._modelName = "probe";
-Probe._objectclass = "amonprobe";
-// Note: Should be in sync with "ufds/schema/amonprobe.js".
-Probe._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,31}$/;
+Probe.objectclass = "amonprobe";
 
+Probe.parseDn = function (dn) {
+  var parsed = ldap.parseDN(dn);
+  return {
+    user: parsed.rdns[2].uuid,
+    monitor: parsed.rdns[1].amonmonitorname,
+    name: parsed.rdns[0].amonprobename
+  };
+}
+Probe.dn = function (user, monitor, name) {
+  return sprintf(
+    "amonprobename=%s, amonmonitorname=%s, uuid=%s, ou=users, o=smartdc",
+    name, monitor, user);
+}
 Probe.dnFromRequest = function (req) {
-  return sprintf("amonprobename=%s, amonmonitorname=%s, %s",
-    Probe.nameFromRequest(req), Monitor.nameFromRequest(req), req._user.dn);
+  var monitorName = req.uriParams.monitor;
+  Monitor.validateName(monitorName);
+  var name = req.uriParams.name;
+  Probe.validateName(name);
+  return Probe.dn(req._user.uuid, monitorName, name);
 };
 Probe.parentDnFromRequest = function (req) {
-  return sprintf("amonmonitorname=%s, %s", Monitor.nameFromRequest(req),
-    req._user.dn);
-};
-Probe.nameFromRequest = function (req) {
-  var name = req.uriParams.probe;
-  Probe.validateName(name);
-  return name;
+  var monitorName = req.uriParams.monitor;
+  Monitor.validateName(monitorName);
+  return sprintf("amonmonitorname=%s, %s", monitorName, req._user.dn);
 };
 
 
 /**
- * Get a probe.
+ * Return the public API view of this Probe's data.
  */
-Probe.get = function get(app, name, monitorName, userUuid, callback) {
-  //TODO: Should this validate 'name'?
-  var dn = sprintf("amonprobename=%s, amonmonitorname=%s, uuid=%s, ou=users, o=smartdc",
-    name, monitorName, userUuid);
+Probe.prototype.serialize = function serialize() {
+  return {
+    user: this.user,
+    monitor: this.monitor,
+    name: this.name,
+    zone: this.zone,
+    urn: this.urn,
+    data: this.data,
+  };
+}
+
+
+/**
+ * Get a probe.
+ *
+ * @param app {App} The Amon Master App.
+ * @param user {String} The probe owner user UUID.
+ * @param monitor {String} The monitor name.
+ * @param name {String} The probe name.
+ * @param callback {Function} `function (err, probe)`
+ */
+Probe.get = function get(app, user, monitor, name, callback) {
+  if (! UUID_REGEX.test(user)) {
+    throw new restify.InvalidArgumentError(
+      sprintf("invalid user UUID: '%s'", user));
+  }
+  Probe.validateName(name);
+  Monitor.validateName(monitor);
+  var dn = Probe.dn(user, monitor, name);
   ufdsmodel.modelGet(app, Probe, dn, log, callback);
 }
 
@@ -133,7 +180,7 @@ Probe.validate = function validate(app, raw) {
   Object.keys(requiredFields).forEach(function (field) {
     if (!raw[field]) {
       //TODO: This error response is confusing for, e.g., a
-      //      "GET /pub/:login/contacts/:contact" where the contact info
+      //      "GET /pub/:user/contacts/:contact" where the contact info
       //      in the DB is bogus/insufficient.  Not sure best way to handle
       //      that. Would be a pain to have a separate error hierarchy here
       //      that is translated higher up.
@@ -169,20 +216,12 @@ Probe.validate = function validate(app, raw) {
 Probe.validateName = function validateName(name) {
   if (! Probe._nameRegex.test(name)) {
     throw new restify.InvalidArgumentError(
-      sprintf("%s name is invalid: '%s'", Probe._modelName, name));
+      sprintf("%s name is invalid: '%s'", Probe.name, name));
   }
 }
 
-Probe.prototype.serialize = function serialize() {
-  return {
-    user: this.user,
-    monitor: this.monitor,
-    name: this.name,
-    zone: this.zone,
-    urn: this.urn,
-    data: this.data,
-  };
-}
+// Note: Should be in sync with "ufds/schema/amonprobe.js".
+Probe._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,31}$/;
 
 
 

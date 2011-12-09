@@ -84,13 +84,18 @@ Contact.parseUrn = function (app, urn) {
 /**
  * Get a contact.
  *
- * Note: It is possible that `contact.address` is null/undefined on return.
- * E.g., for a contact field "fooEmail" on an sdcPerson with no such
+ * Note: It is possible that `contact.address` is null/undefined on return,
+ * e.g., for a contact field "fooEmail" on an sdcPerson with no such
  * attribute. It is up to the caller to handle this.
+ *
+ * @param app {App} The Amon Master App.
+ * @param userUuid {String} The monitor owner user UUID.
+ * @param urn {String} The contact URN.
+ * @param callback {Function} `function (err, contact)`
  */
-Contact.get = function (app, urn, userUuid, callback) {
+Contact.get = function (app, userUuid, urn, callback) {
   var bits = Contact.parseUrn(app, urn);
-  var user = app.userFromId(userUuid, function (err, user) {
+  app.userFromId(userUuid, function (err, user) {
     if (err) return callback(err);
     var address = user[bits.medium];
     var contact = new Contact(bits.scope, bits.medium, bits.notificationType,

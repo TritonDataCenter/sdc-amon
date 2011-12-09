@@ -151,8 +151,8 @@ function App(config, ufds) {
   if (!ufds) throw TypeError('ufds is required');
   this.config = config;
   this.ufds = ufds;
-  // TODO: add test suite for UFDS caching and default this to true.
-  this._ufdsCaching = (ufds.caching === undefined ? false : ufds.caching);
+  this._ufdsCaching = (config.ufds.caching === undefined
+    ? true : config.ufds.caching);
 
   this.notificationPlugins = {};
   if (config.notificationPlugins) {
@@ -172,14 +172,14 @@ function App(config, ufds) {
   // because it allows the interdependant cache-invalidation to be
   // centralized.
   this._cacheFromScope = {
+    MonitorGet: new Cache(100, 300, log, "MonitorGet"),
+    MonitorList: new Cache(100, 300, log, "MonitorList"),
+    ProbeGet: new Cache(100, 300, log, "ProbeGet"),
+    ProbeList: new Cache(100, 300, log, "ProbeList"),
     // This is unbounded in size because (a) the data stored is small and (b)
     // we expect `headAgentProbes` calls for *all* zones (the key) regularly
     // so an LRU-cache is pointless.
     headAgentProbes: new Cache(0, 300, log, "headAgentProbes"),
-    contactGet: new Cache(100, 300, log, "contactGet"),
-    contactList: new Cache(100, 300, log, "contactList"),
-    probeGet: new Cache(100, 300, log, "probeGet"),
-    probeList: new Cache(100, 300, log, "probeList"),
   };
 
   var server = this.server = restify.createServer({
@@ -223,14 +223,14 @@ function App(config, ufds) {
   server.get('/pub/:user', before, getUser, after);
   
   server.get('/pub/:user/monitors', before, monitors.listMonitors, after);
-  server.put('/pub/:user/monitors/:monitor', before, monitors.putMonitor, after);
-  server.get('/pub/:user/monitors/:monitor', before, monitors.getMonitor, after);
-  server.del('/pub/:user/monitors/:monitor', before, monitors.deleteMonitor, after);
+  server.put('/pub/:user/monitors/:name', before, monitors.putMonitor, after);
+  server.get('/pub/:user/monitors/:name', before, monitors.getMonitor, after);
+  server.del('/pub/:user/monitors/:name', before, monitors.deleteMonitor, after);
   
   server.get('/pub/:user/monitors/:monitor/probes', before, probes.listProbes, after);
-  server.put('/pub/:user/monitors/:monitor/probes/:probe', before, probes.putProbe, after);
-  server.get('/pub/:user/monitors/:monitor/probes/:probe', before, probes.getProbe, after);
-  server.del('/pub/:user/monitors/:monitor/probes/:probe', before, probes.deleteProbe, after);
+  server.put('/pub/:user/monitors/:monitor/probes/:name', before, probes.putProbe, after);
+  server.get('/pub/:user/monitors/:monitor/probes/:name', before, probes.getProbe, after);
+  server.del('/pub/:user/monitors/:monitor/probes/:name', before, probes.deleteProbe, after);
   
   server.get('/agentprobes', before, agentprobes.listAgentProbes, after);
   server.head('/agentprobes', before, agentprobes.headAgentProbes, after);
@@ -255,57 +255,26 @@ App.prototype.listen = function(callback) {
 
 App.prototype.cacheGet = function(scope, key) {
   if (! this._ufdsCaching) return;
-  switch (scope) {
-  case "contactGet":
-    // cache: <parentDn>:<name> -> {err: <error>, item: <item>}
-    return this._cacheFromScope.contactGet.get(key);
-  case "contactList":
-    // cache: <parentDn>:<name> -> {err: <error>, items: <items>}
-    return this._cacheFromScope.contactList.get(key);
-  case "probeGet":
-    // cache: <parentDn>:<name> -> {err: <error>, item: <item>}
-    return this._cacheFromScope.probeGet.get(key);
-  case "probeList":
-    // cache: <parentDn>:<name> -> {err: <error>, items: <items>}
-    return this._cacheFromScope.probeList.get(key);
-  case "headAgentProbes":
-    // cache: <zone> -> <Content-MD5 of agent probes for this zone>
-    var zone = key;
-    return this._cacheFromScope.headAgentProbes.get(zone);
-  default:
-    log.warn("unknown cache scope: '%s'", scope)
-    return undefined;
-  }
+  var hit = this._cacheFromScope[scope].get(key);
+  //log.trace("App.cacheGet scope='%s' key='%s': %s", scope, key,
+  //  (hit ? "hit" : "miss"));
+  return hit
 }
 App.prototype.cacheSet = function(scope, key, value) {
   if (! this._ufdsCaching) return;
-  switch (scope) {
-  case "contactList":
-    this._cacheFromScope.contactList.set(key, value);
-    break;
-  case "contactGet":
-    this._cacheFromScope.contactGet.set(key, value);
-    break;
-  case "probeList":
-    this._cacheFromScope.probeList.set(key, value);
-    break;
-  case "probeGet":
-    this._cacheFromScope.probeGet.set(key, value);
-    break;
-  case "headAgentProbes":
-    var zone = key;
-    this._cacheFromScope.headAgentProbes.set(zone, value);
-    break;
-  default:
-    log.warn("unknown cache scope: '%s'", scope)
-  }
+  //log.trace("App.cacheSet scope='%s' key='%s'", scope, key);
+  this._cacheFromScope[scope].set(key, value);
 }
 
 /**
- * Invalidate caches as appropriate for the given DB object create.
+ * Invalidate caches as appropriate for the given DB object create/update.
  */
-App.prototype.cacheInvalidateCreate = function(modelName, item) {
+App.prototype.cacheInvalidatePut = function(modelName, item) {
   if (! this._ufdsCaching) return;
+  var dn = item.raw.dn;
+  assert.ok(dn);
+  log.trace("App.cacheInvalidatePut modelName='%s' dn='%s' zone=%s",
+    modelName, dn, (modelName === "Probe" ? item.zone : "(N/A)"));
 
   // Reset the "${modelName}List" cache.
   // Note: This could be improved by only invalidating the item for this
@@ -315,11 +284,11 @@ App.prototype.cacheInvalidateCreate = function(modelName, item) {
   
   // Delete the "${modelName}Get" cache item with this dn (possible because
   // we cache error responses).
-  this._cacheFromScope[modelName + "Get"].del(item.dn);
+  this._cacheFromScope[modelName + "Get"].del(dn);
   
   // Furthermore, if this is a probe, then need to invalidate the
   // `headAgentProbes` for this probe's zone.
-  if (modelName === "probe") {
+  if (modelName === "Probe") {
     this._cacheFromScope.headAgentProbes.del(item.zone);
   }
 }
@@ -329,26 +298,25 @@ App.prototype.cacheInvalidateCreate = function(modelName, item) {
  */
 App.prototype.cacheInvalidateDelete = function(modelName, item) {
   if (! this._ufdsCaching) return;
+  var dn = item.raw.dn;
+  assert.ok(dn);
+  log.trace("App.cacheInvalidateDelete modelName='%s' dn='%s' zone=%s",
+    modelName, dn, (modelName === "Probe" ? item.zone : "(N/A)"));
 
   // Reset the "${modelName}List" cache.
   // Note: This could be improved by only invalidating the item for this
   // specific user. We are being lazy for starters here.
-  //XXX This isn't working!!
-try {
   var scope = modelName + "List";
   this._cacheFromScope[scope].reset();
   
   // Delete the "${modelName}Get" cache item with this dn.
-  this._cacheFromScope[modelName + "Get"].del(item.dn);
+  this._cacheFromScope[modelName + "Get"].del(dn);
   
   // Furthermore, if this is a probe, then need to invalidate the
   // `headAgentProbes` for this probe's zone.
-  if (modelName === "probe") {
+  if (modelName === "Probe") {
     this._cacheFromScope.headAgentProbes.del(item.zone);
   }
-} catch(e) {
-  debug("XXX cacheInvalidateDelete: fail:", e, e.stack, item, item.raw)
-}
 }
 
 /**
@@ -484,13 +452,13 @@ App.prototype.processEvent = function (event, callback) {
   // 1. Get the monitor for this probe, to get its list of contacts.
   var userUuid = event.probe.user;
   var monitorName = event.probe.monitor;
-  Monitor.get(this, monitorName, userUuid, function (err, monitor) {
+  Monitor.get(this, userUuid, monitorName, function (err, monitor) {
     if (err) return callback(err);
     // 2. Notify each contact.
     function getAndNotifyContact(contactUrn, cb) {
       log.debug("App.processEvent: notify contact '%s' (userUuid='%s', "
         + "monitor='%s')", contactUrn, userUuid, monitorName);
-      Contact.get(self, contactUrn, userUuid, function (err, contact) {
+      Contact.get(self, userUuid, contactUrn, function (err, contact) {
         if (err) {
           log.warn("could not resolve contact '%s' (user '%s'): %s",
             contactUrn, userUuid, err)

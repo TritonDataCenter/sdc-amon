@@ -45,10 +45,7 @@ Cache.prototype.reset = function reset() {
   if (this.log) {
     this.log.trace("%scache reset", this.name);
   }
-  // Note: Want `LRU.reset()`. For now hack it.
-  var maxLength = this.items.maxLength;
-  this.items.maxLength = 0;   // side-effect of dumping any current entries
-  this.items.maxLength = maxLength;
+  this.items.reset();
 }
 
 Cache.prototype.get = function get(key) {

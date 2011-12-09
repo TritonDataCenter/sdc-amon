@@ -114,8 +114,8 @@ function objCopy(obj) {
 //---- setup
 
 test('setup config', function(t) {
-  fs.readFile(__dirname + '/config.json', 'utf8', function(err, content) {
-    t.notOk(err, err || '"config.json" loaded');
+  fs.readFile(__dirname + '/config-master.json', 'utf8', function(err, content) {
+    t.notOk(err, err || '"config-master.json" loaded');
     config = JSON.parse(content);
     t.ok(config, "config parsed");
 
@@ -172,12 +172,11 @@ test('setup ufds', function(t) {
 test('setup master', function (t) {
   // Start master.
   master = spawn(process.execPath,
-    ['../master/main.js', '-v', '-f', 'config.json'],
+    ['../master/main.js', '-vv', '-f', 'config-master.json'],
     {cwd: __dirname});
-  var masterOut = fs.createWriteStream(__dirname + '/master.stdout.log');
-  master.stdout.pipe(masterOut);
-  var masterErr = fs.createWriteStream(__dirname + '/master.stderr.log');
-  master.stderr.pipe(masterErr);
+  var masterLog = fs.createWriteStream(__dirname + '/master.log');
+  master.stdout.pipe(masterLog);
+  master.stderr.pipe(masterLog);
   t.ok(master, "master created");
 
   // Wait until it is running.

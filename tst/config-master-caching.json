@@ -1,4 +1,5 @@
 {
+  "port": 7000,
   "ufds": {
     "url": "ldaps://10.88.88.50:636",
     "rootDn": "cn=root",
@@ -7,10 +8,11 @@
   },
   "notificationPlugins": {
     "email": {
-      "path": "./notifications/email",
+      "path": "./notifications/testy",
       "config": {
-        "sendmail": "/opt/local/sbin/sendmail -i",
-        "from": "\"Amon (no reply)\" <no-reply@joyent.com>"
+        "logPath": "/var/tmp/testy.json",
+        "sendmail": "/usr/sbin/sendmail -i",
+        "from": "\"Amon\" <no-reply@joyent.com>"
       }
     }
   }

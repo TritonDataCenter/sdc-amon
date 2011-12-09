@@ -1,27 +1,21 @@
 /*
  * Copyright 2011 Joyent, Inc.  All rights reserved.
  *
- * Helpers for modeling data in UFDS (i.e. handling list/get/create/delete)
- * with routes something like this:
- *    list:      GET /pub/:login/$modelname
- *    create:    PUT /pub/:login/$modelname/:field
- *    get:       GET /pub/:login/$modelname/:field
- *    delete: DELETE /pub/:login/$modelname/:field
+ * Helpers for modeling data in UFDS (i.e. handling list/get/create/delete).
  *
  * In all the functions below `Model` is expected to be a model constructor
  * function with the following interface (see comments in the model
  * implementations for details):
  *
  *     function Foo(name, data) {...}
- *     Foo.raw   # the raw data that is put in the UFDS database
- *     Foo._modelName = "foo";
- *     Foo._objectclass = "amonfoo";
+ *     Foo.objectclass = "amonfoo";
  *     Foo.validateName = function (name) {...}
  *     Foo.validate = function (raw) {...}
  *     Foo.dnFromRequest = function (req) {...}
  *     Foo.parentDnFromRequest = function (req) {...}
- *     Foo.nameFromRequest = function (req) {...}
  *     Foo.prototype.serialize = function serialize() {...}  # output for API responses
+ *     <instance>.raw     # the raw UFDS data
+ *     <instance>.raw.dn  # the UFDS DN for this object
  */
 
 var debug = console.warn;
@@ -31,6 +25,18 @@ var sprintf = require('sprintf').sprintf;
 var restify = require('restify');
 var RestCodes = restify.RestCodes;
 var Cache = require("amon-common").Cache;
+
+
+
+//---- internal support stuff
+
+function objCopy(obj) {
+  var copy = {};
+  Object.keys(obj).forEach(function (k) {
+    copy[k] = obj[k];
+  });
+  return copy;
+}
 
 
 
@@ -45,7 +51,7 @@ var Cache = require("amon-common").Cache;
  */
 function modelList(app, Model, parentDn, log, callback) {
   // Check cache. "cached" is `{err: <error>, items: <items>}`.
-  var cacheScope = Model._modelName + "List";
+  var cacheScope = Model.name + "List";
   var cacheKey = parentDn;
   var cached = app.cacheGet(cacheScope, cacheKey);
   if (cached) {
@@ -60,7 +66,7 @@ function modelList(app, Model, parentDn, log, callback) {
   }
   
   var opts = {
-    filter: '(objectclass=' + Model._objectclass + ')',
+    filter: '(objectclass=' + Model.objectclass + ')',
     scope: 'sub'
   };
   app.ufds.search(parentDn, opts, function(err, result) {
@@ -71,10 +77,10 @@ function modelList(app, Model, parentDn, log, callback) {
         items.push((new Model(app, entry.object)).serialize());
       } catch(err2) {
         if (err2 instanceof restify.RESTError) {
-          log.warn("Ignoring invalid %s (dn='%s'): %s", Model._modelName,
+          log.warn("Ignoring invalid %s (dn='%s'): %s", Model.name,
             entry.object.dn, err2)
         } else {
-          log.error("Unknown error with %s entry: %s %o\n%s", Model._modelName,
+          log.error("Unknown error with %s entry: %s %o\n%s", Model.name,
             err2, entry.object, err2.stack)
         }
       }
@@ -90,21 +96,22 @@ function modelList(app, Model, parentDn, log, callback) {
           result, JSON.stringify(opts));
         return callback(new restify.InternalError());
       }
-      log.trace('%s items: %o', Model._modelName, items);
+      log.trace('%s items: %o', Model.name, items);
       return cacheAndCallback(null, items);
     });
   });
 }
 
 
-function modelPut(app, Model, dn, name, data, log, callback) {
+function modelPut(app, Model, data, log, callback) {
   var item;
   try {
-    item = new Model(app, name, data);
+    item = new Model(app, data);
   } catch (e) {
     return callback(e);
   }
   
+  var dn = item.raw.dn;
   app.ufds.add(dn, item.raw, function(err) {
     if (err) {
       if (err instanceof ldap.EntryAlreadyExistsError) {
@@ -128,9 +135,9 @@ function modelPut(app, Model, dn, name, data, log, callback) {
       }
     } else {
       if (log.trace()) {
-        log.trace('<%s> create: item=%o', Model._modelName, item.serialize());
+        log.trace('<%s> create: item=%o', Model.name, item.serialize());
       }
-      app.cacheInvalidateCreate(Model._modelName, item);
+      app.cacheInvalidatePut(Model.name, item);
       return callback(null, item);
     }
   });
@@ -154,7 +161,7 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
   
   // Check cache. "cached" is `{err: <error>, item: <item>}`.
   if (!skipCache) {
-    var cacheScope = Model._modelName + "Get";
+    var cacheScope = Model.name + "Get";
     var cached = app.cacheGet(cacheScope, dn);
     if (cached) {
       if (cached.err)
@@ -179,13 +186,13 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
       // Should only one entry with this DN.
       assert.ok(item === null, "more than one item with dn='"+dn+"': "+item);
       try {
-        item = (new Model(app, entry.object)).serialize();
+        item = new Model(app, entry.object);
       } catch(err2) {
         if (err2 instanceof restify.RESTError) {
-          log.warn("Ignoring invalid %s (dn='%s'): %s", Model._modelName,
+          log.warn("Ignoring invalid %s (dn='%s'): %s", Model.name,
             entry.object.dn, err2)
         } else {
-          log.error("Unknown error with %s entry: %s %o\n%s", Model._modelName,
+          log.error("Unknown error with %s entry: %s %o\n%s", Model.name,
             err2, entry.object, err2.stack)
         }
       }
@@ -235,7 +242,7 @@ function modelDelete(app, Model, dn, log, callback) {
           return callback(new restify.InternalError());
         }
       } else {
-        app.cacheInvalidateDelete(Model._modelName, item);
+        app.cacheInvalidateDelete(Model.name, item);
         return callback();
       }
     });
@@ -263,10 +270,17 @@ function requestList(req, res, next, Model) {
 
 function requestPut(req, res, next, Model) {
   req._log.trace('<%s> create entered: params=%o, uriParams=%o',
-    Model._modelName, req.params, req.uriParams);
-  var dn = Model.dnFromRequest(req);
-  var name = Model.nameFromRequest(req);
-  modelPut(req._app, Model, dn, name, req.params, req._log, function(err, item) {
+    Model.name, req.params, req.uriParams);
+  
+  // Note this means that the *route variable names* need to match the
+  // expected `data` key names in the models (e.g. `monitors.Monitor`).
+  var data = objCopy(req.params);
+  Object.keys(req.uriParams).forEach(function (k) {
+    data[k] = req.uriParams[k];
+  });
+  data.user = req._user.uuid;
+  
+  modelPut(req._app, Model, data, req._log, function(err, item) {
     if (err) {
       res.sendError(err);
     } else {

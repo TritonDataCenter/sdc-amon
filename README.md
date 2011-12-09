@@ -299,17 +299,16 @@ What should happen now:
 
 ## Testing
 
-The test suite is in the 'tst' directory. First you'll need to create
-an appropriate "tst/config.json" for configuring the master.
+The test suite is in the 'tst' directory. Note that config files for the
+test files (e.g. "config-master.json") are commited. If you have, say, a
+different UFDS url, then you'll need a local change. That'll be a pain.
+Config notes:
 
-    cd tst
-    cp config.json.in config.json
-    # - This includes the required 'email' notification plugin using the
-    #   'testy' module.
-    # - This uses port 7000 to intentionally differ from the master
-    #   default of 8080, which you might already be using for a dev server.
-    # - You ccan edit the "ufds.url" to point to whereever you have a
-    #   working UFDS.
+- master.test.js presumes a UFDS running in COAL.
+- master.test.js uses a 'email' notification plugin using the 'testy' module.
+- master.test.js uses port 7000 to intentionally differ from the master
+  default of 8080, which you might already be using for a dev server.
+
 
 Now run the test suite:
 

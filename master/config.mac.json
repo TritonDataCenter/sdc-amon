@@ -2,7 +2,8 @@
   "ufds": {
     "url": "ldaps://10.88.88.50:636",
     "rootDn": "cn=root",
-    "password": "secret"
+    "password": "secret",
+    "caching": true
   },
   "notificationPlugins": {
     "sms": {
