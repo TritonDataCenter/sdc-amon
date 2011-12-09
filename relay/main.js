@@ -342,6 +342,11 @@ function main() {
   }
   log.debug("config: %o", config);
 
+  // Create data dir, if necessary.
+  if (!path.existsSync(config.dataDir)) {
+    log.info("Create data dir: %s", config.dataDir);
+    fs.mkdirSync(config.dataDir, 0777)
+  }
   
   // Determine the master URL.
   // Either 'config.masterUrl' is set (from '-m' option), or we get it

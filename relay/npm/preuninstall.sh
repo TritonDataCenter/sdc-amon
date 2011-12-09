@@ -22,4 +22,6 @@ fi
 rm -f "$SMFDIR/amon-relay.xml"
 rm -f "$SMFDIR/amon-zwatch.xml"
 
-rm -fr /var/run/smartdc/amon-relay
+# This deletion is fine as long as this data dir is fully restorable, i.e. is
+# just a cache.
+rm -fr /var/db/amon-relay

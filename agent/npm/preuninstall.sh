@@ -16,4 +16,6 @@ fi
 
 rm -f "$SMFDIR/amon-agent.xml"
 
-rm -fr /var/run/smartdc/amon-agent
+# This deletion is fine as long as this data dir is fully restorable, i.e. is
+# just a cache.
+rm -fr /var/db/amon-agent

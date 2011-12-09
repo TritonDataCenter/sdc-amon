@@ -34,8 +34,6 @@ subfile "$DIR/../smf/amon-relay.smf.in" "$SMFDIR/amon-relay.xml"
 [[ -n "${ZWATCH_ENABLED}" ]] \
   && subfile "$DIR/../smf/amon-zwatch.smf.in" "$SMFDIR/amon-zwatch.xml"
 
-mkdir -p /var/run/smartdc/amon-relay
-
 svccfg import $SMFDIR/amon-relay.xml
 [[ -n "${ZWATCH_ENABLED}" ]] && svccfg import $SMFDIR/amon-zwatch.xml
 

@@ -23,8 +23,6 @@ subfile () {
 
 subfile "$DIR/../smf/amon-agent.smf.in" "$SMFDIR/amon-agent.xml"
 
-mkdir -p /var/run/smartdc/amon-agent
-
 svccfg import $SMFDIR/amon-agent.xml
 
 ## Gracefully restart the agent if it is online.

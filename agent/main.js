@@ -17,7 +17,7 @@ var fs = require('fs');
 var http = require('http');
 var assert = require('assert');
 var nopt = require('nopt');
-var pathlib = require('path');
+var path = require('path');
 var sprintf = require('sprintf').sprintf;
 var uuid = require('node-uuid');
 
@@ -302,7 +302,7 @@ function saveProbeDataCache(callback) {
  * Load cached data into a couple global vars.
  */
 function loadProbeDataCacheSync() {
-  if (pathlib.existsSync(config.pdCachePath)) {
+  if (path.existsSync(config.pdCachePath)) {
     try {
       probeDataCache = JSON.parse(fs.readFileSync(config.pdCachePath, 'utf8'));
     } catch(e) {
@@ -310,7 +310,7 @@ function loadProbeDataCacheSync() {
       probeDataCache = [];
     }
   }
-  if (pathlib.existsSync(config.pdMD5CachePath)) {
+  if (path.existsSync(config.pdMD5CachePath)) {
     try {
       probeDataCacheMD5 = fs.readFileSync(config.pdMD5CachePath, 'utf8');
     } catch(e) {
@@ -388,11 +388,15 @@ function main() {
     poll: rawOpts.poll || DEFAULT_POLL,
     socket: rawOpts.socket || DEFAULT_SOCKET
   };
-  config.pdCachePath = pathlib.resolve(config.dataDir, "probeData.json");
-  config.pdMD5CachePath = pathlib.resolve(config.dataDir, "probeData.json.content-md5");
+  config.pdCachePath = path.resolve(config.dataDir, "probeData.json");
+  config.pdMD5CachePath = path.resolve(config.dataDir, "probeData.json.content-md5");
   log.debug("config: %o", config);
-  assert.ok(pathlib.existsSync(config.dataDir),
-    "Data dir '"+config.dataDir+"' does not exist.");
+
+  // Create data dir, if necessary.
+  if (!path.existsSync(config.dataDir)) {
+    log.info("Create data dir: %s", config.dataDir);
+    fs.mkdirSync(config.dataDir, 0777)
+  }
 
   relay = new RelayClient({url: config.socket, log: log}); // intentionally global
   loadProbeDataCacheSync();
