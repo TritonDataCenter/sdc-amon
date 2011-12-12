@@ -65,7 +65,7 @@ function Probe(app, data) {
       amonprobename: data.name,
       zone: data.zone,
       type: data.type,
-      data: JSON.stringify(data.data),
+      config: JSON.stringify(data.config),
       objectclass: Probe.objectclass
     };
     this.user = data.user;
@@ -85,11 +85,11 @@ function Probe(app, data) {
   this.__defineGetter__('zone', function() {
     return self.raw.zone;
   });
-  this.__defineGetter__('data', function() {
-    if (self._data === undefined) {
-      self._data = JSON.parse(self.raw.data);
+  this.__defineGetter__('config', function() {
+    if (self._config === undefined) {
+      self._config = JSON.parse(self.raw.config);
     }
-    return self._data;
+    return self._config;
   });
 }
 
@@ -132,7 +132,7 @@ Probe.prototype.serialize = function serialize() {
     name: this.name,
     type: this.type,
     zone: this.zone,
-    data: this.data,
+    config: this.config,
   };
 }
 
@@ -175,7 +175,7 @@ Probe.validate = function validate(app, raw) {
     "amonprobename": "name",
     "zone": "zone",
     "type": "type",
-    "data": "data"
+    "config": "config"
   }
   Object.keys(requiredFields).forEach(function (field) {
     if (!raw[field]) {
@@ -203,7 +203,7 @@ Probe.validate = function validate(app, raw) {
 
   //XXX validate data for that probe type
   //  try {
-  //    plugin.validateInstanceData(raw.data);
+  //    plugin.validateConfig(raw.config);
   //  } catch (e) {
   //var e = restify.newError({
   //  httpCode: HttpCodes.Conflict,

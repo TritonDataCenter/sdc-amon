@@ -33,7 +33,7 @@
  *              type: 'amon:logscan' },
  *           type: 'Integer',
  *           value: 1,
- *           data: { match: 'tweet' },
+ *           config: { match: 'tweet' },
  *           uuid: '58ec2860-bef8-493d-a333-4f765ee30b19',
  *           version: '1.0.0' }
  */
@@ -56,7 +56,7 @@ function Plugin(id, data, type) {
     type: type
   };
   this.json = JSON.stringify(data);
-  this.instanceData = data.data;
+  this.config = data.config;
 }
 util.inherits(Plugin, events.EventEmitter);
 

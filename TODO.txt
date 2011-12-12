@@ -1,7 +1,6 @@
 # immediate priorities
 
 - TODOs for zone/machine/running-in-global handling:
-  - urn s/amon://
   - probe data -> probe "config"
   - s/zone/machine
   - PutProbe needs to error out if the given customer doesn't own the
@@ -29,6 +28,9 @@
 
 # todo
 
+- from master/lib/probes.js:
+    //XXX validate the type is an existing probe type
+    //XXX validate data for that probe type
 - [Trent] clean up TODO.txt and README.md (they are too out of date)
     update README
 - [Trent] :login -> :uuid

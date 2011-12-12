@@ -37,7 +37,7 @@ var FIXTURES = {
           whistlelog: {
             "zone": "river-saskatchewan",
             "type": "logscan",
-            "data": {
+            "config": {
               "path": "/tmp/whistle.log",
               "regex": "tweet",
               "threshold": 1,
@@ -389,8 +389,8 @@ test('probes: create', function(t) {
           t.equal(body.name, probeName)
           t.equal(body.zone, probe.zone)
           t.equal(body.type, probe.type)
-          Object.keys(body.data).forEach(function(k) {
-            t.equal(body.data[k], probe.data[k])
+          Object.keys(body.config).forEach(function(k) {
+            t.equal(body.config[k], probe.config[k])
           })
           nextProbe();
         }
@@ -444,8 +444,8 @@ test('probes: get', function(t) {
           t.equal(body.name, probeName)
           t.equal(body.zone, probe.zone)
           t.equal(body.type, probe.type)
-          Object.keys(body.data).forEach(function(k) {
-            t.equal(body.data[k], probe.data[k])
+          Object.keys(body.config).forEach(function(k) {
+            t.equal(body.config[k], probe.config[k])
           })
           
           // Second time should be faster.
@@ -455,8 +455,8 @@ test('probes: get', function(t) {
               t.equal(body.name, probeName)
               t.equal(body.zone, probe.zone)
               t.equal(body.type, probe.type)
-              Object.keys(body.data).forEach(function(k) {
-                t.equal(body.data[k], probe.data[k])
+              Object.keys(body.config).forEach(function(k) {
+                t.equal(body.config[k], probe.config[k])
               })
               t.ok(Number(headers2['x-response-time']) < 50, "faster cached response")
               nextProbe();

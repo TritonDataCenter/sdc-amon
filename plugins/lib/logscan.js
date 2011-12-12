@@ -30,12 +30,12 @@ function _trim(s) {
 
 function LogScan(id, data) {
   Plugin.call(this, id, data, LogScan.type);
-  LogScan.validateInstanceData(this.instanceData);
+  LogScan.validateConfig(this.config);
   
-  this.path = this.instanceData.path;
-  this.period = this.instanceData.period;
-  this.regex = new RegExp(this.instanceData.regex);
-  this.threshold = this.instanceData.threshold;
+  this.path = this.config.path;
+  this.period = this.config.period;
+  this.regex = new RegExp(this.config.regex);
+  this.threshold = this.config.threshold;
 
   this._count = 0;
   this._running = false;
@@ -44,12 +44,12 @@ util.inherits(LogScan, Plugin);
 
 LogScan.type = "logscan";
 
-LogScan.validateInstanceData = function(data) {
-  if (!data) throw new TypeError('data is required');
-  if (!data.path) throw new TypeError('data.path is required');
-  if (!data.period) throw new TypeError('data.period is required');
-  if (!data.regex) throw new TypeError('data.regex is required');
-  if (!data.threshold) throw new TypeError('data.threshold is required');
+LogScan.validateConfig = function(config) {
+  if (!config) throw new TypeError('config is required');
+  if (!config.path) throw new TypeError('config.path is required');
+  if (!config.period) throw new TypeError('config.period is required');
+  if (!config.regex) throw new TypeError('config.regex is required');
+  if (!config.threshold) throw new TypeError('config.threshold is required');
 };
 
 
