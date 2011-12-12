@@ -382,3 +382,114 @@ More detail:
   through its lifetime.
 
 
+
+# Use Cases
+
+A few use cases to start to feel out practicalities.
+
+1.  Operator SDC Log monitor. Probe for watching log file of each SDC svc log
+    for ERROR, say (need to be specified). Probe watching for ERROR in
+    smartdc and core zones' primary service log files.
+        
+        PUT /my/monitors/logs < {
+                "contacts": ["email"]
+            }
+        PUT /my/monitors/logs/probes/$machine_uuid < {
+                "type": "logscan",   // TODO: from `urn=amon:logscan`
+                "machine": "$machine_uuid",
+                "config": {       // TODO: perhaps back to "config" here, from "data"
+                  "path": "/tmp/whistle2.log",
+                  "regex": "tweet",
+                  "threshold": 1,
+                  "period": 60
+                }
+            }
+
+
+2. Operator SDC Zones monitor. Probe for SDC zones going up and down.
+   Separate from "SDC Log monitor" because zone up/down alarms can clear.
+        
+        PUT /my/monitors/zones < {
+                "contacts": ["email"]
+            }
+        PUT /my/monitors/zones/probes/$machine_uuid < {
+                "type": "machinedown",
+                "machine": "$machine_uuid"
+                // "runInGlobal": true    // Added by Amon master
+            }
+
+3. Operator SDC Services monitor. Probe for SDC zones' and GZ's "smartdc"
+   services going up/down.
+
+        PUT /my/monitors/services < {
+                "contacts": ["email"]
+            }
+        PUT /my/monitors/services/probes/$machine_uuid < {
+                "type": "smf",
+                "machine": "$machine_uuid",
+                "config": {
+                    "fmri": "$fmri"
+                }
+            }
+
+4.  Customer "Machine up" monitor. Probe for each of my machines going up
+    and down.
+   
+    Portal UX: This monitor is likely often wanted for *all* my zones.
+    However, don't want it on by default. Should portal's page after
+    "create new machine" have a big button (or a checkbox) to add this
+    monitor for this zone. Nice to have would be to offer checkboxes for
+    all monitors on existing zones: "You have monitor A on (some of) your
+    other machines. Would you like it on this one too?" Should portal add
+    a separate monitor? Or add a probe (or probes?) to the same monitor?
+    Probably another probe to the same monitor. Naming (of probe or
+    monitor) will be a pain, need to include machine UUID in the name?
+    
+    Cloud API: You have to add these separately per-machine. That shouldn't
+    be so bad.
+    
+        PUT /my/monitors/machine-up < {
+                "contacts": ["email"]
+            }
+        PUT /my/monitors/machine-up/probes/$machine_uuid < {
+                "type": "machinedown",
+                "machine": "$machine_uuid"
+            }
+
+5.  Customer "Site up" monitor. Probe to "GET /canary" on the site from
+    some other source location.
+        
+        PUT /my/monitors/site < {
+                "contacts": ["email"]
+            }
+        PUT /my/monitors/site/probes/webcheck < {
+                "machine": "$machine_uuid",  // <--- this is the machine to run HTTP request from
+                "type": "httprequest",
+                "config": {
+                    "url": "http://example.com/canary.html",
+                    "method": "GET",
+                    "status": 200  // number or list of HTTP status numbers to expect
+                    "regex": "...",   // check for a pattern in returned content
+                    "period": 60  // how frequently to check. Should this be exposed?
+                }
+            }
+
+6.  Operator wants to run a particular "mdb -k" goober (Bryan's words) to
+    run a healthcheck on KVM.
+    
+        PUT /my/monitors/kvmcheck < {
+                "contacts": ["email"]
+            }
+        PUT /my/monitors/kvmcheck/probes/webcheck < {
+                "type": "mdbkernel",
+                "machine": "$machine_uuid",
+                "runInGlobal": true,   // must be operator to set this
+                "config": {
+                    // This is essential wide open. That command can presumably
+                    // do anything.
+                    "command": ...,
+                    "regex": "...",   // check for a pattern in returned content?
+                    // Something to check exit value?
+                    "period": 60  // how frequently to check.
+                }
+            }

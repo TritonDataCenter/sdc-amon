@@ -1,12 +1,34 @@
 # immediate priorities
 
-- get this working in COAL:
-  - zone -> $server_uuid:$zonename
-- a plan and schedule for January SDC.next release with Amon
+- TODOs for zone/machine/running-in-global handling:
+  - urn s/amon://
+  - probe data -> probe "config"
+  - s/zone/machine
+  - PutProbe needs to error out if the given customer doesn't own the
+    target machine. Check MAPI. User UUID must own machine UUID.
+  - Change semantics so:
+  
+         GET /agentprobes?machine=$uuid1
+    
+    is probes on behalf of that machine. Some of those probes might have a
+    "runInGlobal" boolean attr.
+  - Then have a "machine" value "node:$server_uuid" to specify running something
+    in the global.
+    What about the "mdb -k" option? I.e. want to run on behalf of a machine
+    "$uuidA" but need to run in the global. Can't allow customer to add that.
+    Allow an "operator" to set "runInGlobal"? Or have certain probe types
+    that can only be added by an operator? I like the former.
+  - Exclude "runInGlobal" from "public" repr, but include in admin repr.
+    Either add ?public or ?admin to endpoints.
+  - Think about how/if to bootstrap suggested/helpful starter operator
+    monitors. Can't just automatically bootstrap for 'admin' user b/c might
+    not always have it or want to use it instead of other operator accounts.
+    Perhaps a "sdc-monitoring" tool (monadm? amonadm?) to add canned sets of
+    monitors and probes?
+
 
 # todo
 
-- [Trent] contacts -> UFDS sdcperson attributes
 - [Trent] clean up TODO.txt and README.md (they are too out of date)
     update README
 - [Trent] :login -> :uuid
@@ -15,6 +37,18 @@
 - Idea: have amon-master create event/alarm to operator if it cannot connect/work
   with UFDS.
 - [Trent] test suite for relay and agent
+- Relay needs to have guards for run away agents. One case is an infinite
+  loop: a probe watching for "ERROR" in amon logs, where sending the
+  event results in an "ERROR". Handle this with relay per-agent throttling
+  (can't use restify built-in throttling for this). If over limit, then
+  an alarm is created for the monitor owner and the relay ignores or
+  closes that zone server/socket.
+- Consider adding run-time as attribute on probe events, i.e. how long it
+  took the probe to run. Also, send a warning config alarm to a monitor owner
+  if a probe is taking too long to run, e.g. a pathological regex. A *really*
+  pathological regex (or mdb command) could hang and would need process
+  mgmt to deal with. How to break out of this??? A separate process everytime
+  is a pain.
 - update "zone" field to include CN uuid prefix: Because "global" is
   ambiguous with multiple servers (e.g. the headnode and a CN). Also
   should talk with Josh about whether this should use zone *name* or
@@ -41,7 +75,6 @@
 - ticket for the system error twillio message (and retire twillio). What
   for actual SMS *text*?
 - spec how processEvent should work with persistent alarms
-- relay -D/--data-dir and create subdir
 - consistent `new restify.FooError(...)` usage
 - [Trent] master: improve this log line to include user context:
     2011-11-23 21:36:37Z DEBUG: App.processEvent: contact 'email' notified
