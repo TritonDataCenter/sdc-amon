@@ -1,0 +1,20 @@
+{
+  "notificationPlugins": {
+    "sms": {
+      "path": "../master/lib/notifications/twilio",
+      "config": {
+        "accountSid": "AC1b6e23d616e71d2ea8a9a68e677a9073",
+        "authToken": "8a78b10841a0d662dec04c140a35697b",
+        "from": "+12064555313",
+        "url": "https://s3-us-west-1.amazonaws.com/mcavage-sdc-twilio/alarm.twiml"
+      }
+    },
+    "email": {
+      "path": "../master/lib/notifications/email",
+      "config": {
+        "sendmail": "/usr/sbin/sendmail -i",
+        "from": "\"Amon Dev (no reply)\" <no-reply@joyent.com>"
+      }
+    }
+  }
+}
