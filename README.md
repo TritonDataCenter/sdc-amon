@@ -49,7 +49,7 @@ probes that must run inside.
     relay/          Amon relay (node.js package)
     agent/          Amon agent (node.js package)
     plugins/        "amon-plugins" node.js package that holds probe type
-                    plugins (e.g. "logscan.js" implements the "amon:logscan"
+                    plugins (e.g. "logscan.js" implements the "logscan"
                     probe type).
     common/         Node.js module to share code between the above packages.
     zwatch/         Zonecfg watcher daemon. Intended to be used by relay to
@@ -220,7 +220,7 @@ Add a couple probes to this monitor:
     {
       "name": "whistlelog",
       "zone": "global",
-      "urn": "amon:logscan",
+      "type": "logscan",
       "data": {
         "path": "/tmp/whistle.log",
         "regex": "tweet",
@@ -234,7 +234,7 @@ Add a couple probes to this monitor:
     {
       "name": "whistlelog",
       "zone": "global",
-      "urn": "amon:logscan",
+      "type": "logscan",
       "data": {
         "path": "/tmp/whistle.log",
         "regex": "tweet",
@@ -275,7 +275,7 @@ What should happen now:
             { user: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             monitor: 'whistle',
             name: 'whistlelog',
-            type: 'amon:logscan' },
+            type: 'logscan' },
          type: 'Integer',
          value: 2,
          data: { match: 'Tue Nov 22 15:50:19 PST 2011: tweet' },
@@ -395,7 +395,7 @@ A few use cases to start to feel out practicalities.
                 "contacts": ["email"]
             }
         PUT /my/monitors/logs/probes/$machine_uuid < {
-                "type": "logscan",   // TODO: from `urn=amon:logscan`
+                "type": "logscan",
                 "machine": "$machine_uuid",
                 "config": {       // TODO: perhaps back to "config" here, from "data"
                   "path": "/tmp/whistle2.log",

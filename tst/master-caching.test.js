@@ -36,7 +36,7 @@ var FIXTURES = {
         probes: {
           whistlelog: {
             "zone": "river-saskatchewan",
-            "urn": "amon:logscan",
+            "type": "logscan",
             "data": {
               "path": "/tmp/whistle.log",
               "regex": "tweet",
@@ -388,7 +388,7 @@ test('probes: create', function(t) {
           t.ifError(err);
           t.equal(body.name, probeName)
           t.equal(body.zone, probe.zone)
-          t.equal(body.urn, probe.urn)
+          t.equal(body.type, probe.type)
           Object.keys(body.data).forEach(function(k) {
             t.equal(body.data[k], probe.data[k])
           })
@@ -443,7 +443,7 @@ test('probes: get', function(t) {
           t.ifError(err);
           t.equal(body.name, probeName)
           t.equal(body.zone, probe.zone)
-          t.equal(body.urn, probe.urn)
+          t.equal(body.type, probe.type)
           Object.keys(body.data).forEach(function(k) {
             t.equal(body.data[k], probe.data[k])
           })
@@ -454,7 +454,7 @@ test('probes: get', function(t) {
               t.ifError(err);
               t.equal(body.name, probeName)
               t.equal(body.zone, probe.zone)
-              t.equal(body.urn, probe.urn)
+              t.equal(body.type, probe.type)
               Object.keys(body.data).forEach(function(k) {
                 t.equal(body.data[k], probe.data[k])
               })

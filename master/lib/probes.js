@@ -64,7 +64,7 @@ function Probe(app, data) {
       dn: Probe.dn(data.user, data.monitor, data.name),
       amonprobename: data.name,
       zone: data.zone,
-      urn: data.urn,
+      type: data.type,
       data: JSON.stringify(data.data),
       objectclass: Probe.objectclass
     };
@@ -79,11 +79,11 @@ function Probe(app, data) {
   this.__defineGetter__('name', function() {
     return self.raw.amonprobename;
   });
+  this.__defineGetter__('type', function() {
+    return self.raw.type;
+  });
   this.__defineGetter__('zone', function() {
     return self.raw.zone;
-  });
-  this.__defineGetter__('urn', function() {
-    return self.raw.urn;
   });
   this.__defineGetter__('data', function() {
     if (self._data === undefined) {
@@ -130,8 +130,8 @@ Probe.prototype.serialize = function serialize() {
     user: this.user,
     monitor: this.monitor,
     name: this.name,
+    type: this.type,
     zone: this.zone,
-    urn: this.urn,
     data: this.data,
   };
 }
@@ -174,7 +174,7 @@ Probe.validate = function validate(app, raw) {
     // <raw field name>: <exported name>
     "amonprobename": "name",
     "zone": "zone",
-    "urn": "urn",
+    "type": "type",
     "data": "data"
   }
   Object.keys(requiredFields).forEach(function (field) {
@@ -189,10 +189,15 @@ Probe.validate = function validate(app, raw) {
     }
   });
 
-  //XXX validate the urn is an existing probe type
-  //  var plugin = req._config.plugins[urn];
+  //XXX validate the type is an existing probe type
+  //  var plugin = req._config.plugins[type];
   //  if (!plugin) {
-  //    utils.sendInvalidUrn(res, urn);
+  //var e = restify.newError({
+  //  httpCode: HttpCodes.Conflict,
+  //  restCode: RestCodes.InvalidArgument,
+  //  message: sprintf('probe type is invalid: %s', msg)
+  //});
+  //...
   //    return next();
   //  }
 
@@ -200,7 +205,12 @@ Probe.validate = function validate(app, raw) {
   //  try {
   //    plugin.validateInstanceData(raw.data);
   //  } catch (e) {
-  //    utils.sendInvalidConfig(res, e.message);
+  //var e = restify.newError({
+  //  httpCode: HttpCodes.Conflict,
+  //  restCode: RestCodes.InvalidArgument,
+  //  message: sprintf('config is invalid: %s', msg)
+  //});
+  //...
   //    return next();
   //  }
 

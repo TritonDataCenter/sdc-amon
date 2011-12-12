@@ -167,7 +167,7 @@ TODO
         "user": "7b23ae63-37c9-420e-bb88-8d4bf5e30455",
         "monitor": "whistle",
         "zone": "global",
-        "urn": "amon:logscan",
+        "type": "logscan",
         "data": {
           "path": "/tmp/whistle.log",
           "regex": "tweet",
@@ -180,7 +180,7 @@ TODO
         "user": "7b23ae63-37c9-420e-bb88-8d4bf5e30455",
         "monitor": "whistle",
         "zone": "global",
-        "urn": "amon:logscan",
+        "type": "logscan",
         "data": {
           "path": "/tmp/whistle2.log",
           "regex": "tweet",

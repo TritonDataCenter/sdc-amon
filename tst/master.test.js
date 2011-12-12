@@ -39,7 +39,7 @@ var FIXTURES = {
         probes: {
           whistlelog: {
             "zone": "river-saskatchewan",
-            "urn": "amon:logscan",
+            "type": "logscan",
             "data": {
               "path": "/tmp/whistle.log",
               "regex": "tweet",
@@ -54,7 +54,7 @@ var FIXTURES = {
         probes: {
           whistlelog: {
             "zone": "global",
-            "urn": "amon:logscan",
+            "type": "logscan",
             "data": {
               "path": "/tmp/whistle.log",
               "regex": "tweet",
@@ -330,7 +330,7 @@ test('probes: create', function(t) {
           t.ifError(err);
           t.equal(body.name, probeName)
           t.equal(body.zone, probe.zone)
-          t.equal(body.urn, probe.urn)
+          t.equal(body.type, probe.type)
           Object.keys(body.data).forEach(function(k) {
             t.equal(body.data[k], probe.data[k])
           })
@@ -374,7 +374,7 @@ test('probes: get', function(t) {
           t.ifError(err);
           t.equal(body.name, probeName)
           t.equal(body.zone, probe.zone)
-          t.equal(body.urn, probe.urn)
+          t.equal(body.type, probe.type)
           Object.keys(body.data).forEach(function(k) {
             t.equal(body.data[k], probe.data[k])
           })
@@ -416,7 +416,7 @@ test('relay api: GetAgentProbes', function(t) {
       t.equal(body[0].monitor, "whistle")
       t.equal(body[0].name, "whistlelog")
       t.equal(body[0].zone, probe.zone)
-      t.equal(body[0].urn, probe.urn)
+      t.equal(body[0].type, probe.type)
       t.end();
     }
   );
@@ -441,7 +441,7 @@ test('relay api: AddEvents', function(t) {
     { user: sulkybob.uuid,
       monitor: 'whistle',
       name: 'whistlelog',
-      type: 'amon:logscan' },
+      type: 'logscan' },
     type: 'Integer',
     value: 1,
     data: { match: message },

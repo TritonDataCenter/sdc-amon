@@ -1,5 +1,5 @@
 {
-  "urn": "amon:logscan",
+  "type": "logscan",
   "config": {
     "path": "/var/svc/log/smartdc-agent-smartlogin:default.log",
     "regex": "ERROR .*",

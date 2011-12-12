@@ -120,9 +120,9 @@ function getProbeData(force, callback) {
  *    started probe instance.
  */
 function createProbe(id, probeData, callback) {
-  var ProbeType = plugins[probeData.urn];
+  var ProbeType = plugins[probeData.type];
   if (! ProbeType) {
-    return callback(sprintf("unknown amon probe plugin type: '%s'", probeData.urn));
+    return callback(sprintf("unknown amon probe plugin type: '%s'", probeData.type));
   }
 
   try {

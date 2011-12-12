@@ -42,7 +42,7 @@ function LogScan(id, data) {
 }
 util.inherits(LogScan, Plugin);
 
-LogScan.type = "amon:logscan";
+LogScan.type = "logscan";
 
 LogScan.validateInstanceData = function(data) {
   if (!data) throw new TypeError('data is required');
@@ -73,7 +73,7 @@ LogScan.prototype.start = function(callback) {
       self.id, self.threshold, self._count, line);
     if (self.regex.test(line)) {
       if (++self._count >= self.threshold) {
-        log.debug('amon:logscan event (id=%s): %s', self.id, line);
+        log.debug('logscan event (id=%s): %s', self.id, line);
         self.emit('event', {
           probe: self.idObject,
           type: 'Integer',
