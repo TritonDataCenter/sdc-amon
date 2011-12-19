@@ -70,26 +70,26 @@ function RelayClient(options) {
 
 
 /**
- * Get the MD5 of the agent probes data for the given zone from the master.
+ * Get the MD5 of the agent probes data for the given machine from the master.
  *
- * @param zone {String} The name of the zone for which to get probe data.
+ * @param machine {String} The name of the machine for which to get probe data.
  *    This argument is required when calling against the amon-master and
- *    is unused when calling against an amon-relay (the zone is implied)
+ *    is unused when calling against an amon-relay (the machine is implied)
  *    in the socket provide by a relay to an agent. I.e. the agent can only
- *    get info for its own zone.
+ *    get info for its own machine/zone.
  * @param callback {Function} `function (err, md5)`.
  */
-RelayClient.prototype.agentProbesMD5 = function (zone, callback) {
-  if (!callback && typeof(zone) === "function") {
-    callback = zone;
-    zone = null;
+RelayClient.prototype.agentProbesMD5 = function (machine, callback) {
+  if (!callback && typeof(machine) === "function") {
+    callback = machine;
+    machine = null;
   }
   if (!callback) throw new TypeError('callback is required');
   var self = this;
 
   var path = "/agentprobes";
-  if (zone) {
-    path += "?zone=" + zone;
+  if (machine) {
+    path += "?machine=" + machine;
   }
   this._request('HEAD', path, function(err, res) {
     if (err) return callback(err);
@@ -104,25 +104,25 @@ RelayClient.prototype.agentProbesMD5 = function (zone, callback) {
 
 
 /**
- * Get the agent probes data for the given zone from the master.
+ * Get the agent probes data for the given machine from the master.
  *
- * @param zone {String} The name of the zone for which to get probe data.
+ * @param machine {String} The name of the machine for which to get probe data.
  *    This argument is required when calling against the amon-master and
- *    is unused when calling against an amon-relay (the zone is implied)
+ *    is unused when calling against an amon-relay (the machine is implied)
  *    in the socket provide by a relay to an agent. I.e. the agent can only
- *    get info for its own zone.
+ *    get info for its own machine/zone.
  * @param callback {Function} `function (err, agentProbes, md5)`.
  */
-RelayClient.prototype.agentProbes = function (zone, callback) {
-  if (!callback && typeof(zone) === "function") {
-    callback = zone;
-    zone = null;
+RelayClient.prototype.agentProbes = function (machine, callback) {
+  if (!callback && typeof(machine) === "function") {
+    callback = machine;
+    machine = null;
   }
   if (!callback) throw new TypeError('callback is required');
 
   var path = "/agentprobes";
-  if (zone) {
-    path += "?zone=" + zone;
+  if (machine) {
+    path += "?machine=" + machine;
   }
   this._request("GET", path, function(err, res) {
     if (err) return callback(err);

@@ -219,9 +219,9 @@ Add a couple probes to this monitor:
     ...
     {
       "name": "whistlelog",
-      "zone": "global",
+      "machine": "global",
       "type": "logscan",
-      "data": {
+      "config": {
         "path": "/tmp/whistle.log",
         "regex": "tweet",
         "threshold": 2,
@@ -233,9 +233,9 @@ Add a couple probes to this monitor:
     ...
     {
       "name": "whistlelog",
-      "zone": "global",
+      "machine": "global",
       "type": "logscan",
-      "data": {
+      "config": {
         "path": "/tmp/whistle.log",
         "regex": "tweet",
         "threshold": 2,
@@ -480,7 +480,7 @@ A few use cases to start to feel out practicalities.
         PUT /my/monitors/kvmcheck < {
                 "contacts": ["email"]
             }
-        PUT /my/monitors/kvmcheck/probes/webcheck < {
+        PUT /my/monitors/kvmcheck/probes/foo < {
                 "type": "mdbkernel",
                 "machine": "$machine_uuid",
                 "runInGlobal": true,   // must be operator to set this

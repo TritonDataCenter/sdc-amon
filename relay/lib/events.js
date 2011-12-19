@@ -15,7 +15,7 @@ function addEvents(req, res, next) {
   
   // Add data known by the relay (this is info the master can trust more
   // because the relay is always in the hands of the operator).
-  event.zone = req._zone;
+  event.machine = req._machine;
   
   log.debug("relaying event: %o", event);
   req._master.sendEvent(event, function(err) {

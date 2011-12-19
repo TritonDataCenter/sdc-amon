@@ -10,16 +10,17 @@ docs for SDC monitoring and alarming are part of the Cloud API
 documentation.*
 
 Amon is a monitoring and alarming system for SmartDataCenter (SDC). It has
-three components: a central master, a tree of relays and agents in global
-zones and (eventually) in smartos zones and guest VMs. **Monitors** (grouping
-of probes and contacts) and **probes** (things to check and alarm on) are
-configured on the master (i.e. on the "Amon Master API"). Probe data is
-passed from the master, via the relays to the appropriate agent where the
-probe is run. When a probe fails/trips it raises and event, which passes
-through the relays up to the master. The master handles events by creating or
-updating **alarms** and sending notifications to the configured contacts, if
-appropriate (suppression and de-duplication rules can mean a notification is
-not always sent). Contact info lives with the user account in UFDS.
+three components: a central master, a relay agent ("amon relay") in each
+node global zone agents ("amon agent") in global zones and, eventually, in
+customer zones and guest VMs. **Monitors** (grouping of probes and contacts)
+and **probes** (things to check and alarm on) are configured on the master
+(i.e. on the "Amon Master API"). Probe data is passed from the master, via
+the relays to the appropriate agent where the probe is run. When a probe
+fails/trips it raises and event, which passes through the relays up to the
+master. The master handles events by creating or updating **alarms** and
+sending notifications to the configured contacts, if appropriate (suppression
+and de-duplication rules can mean a notification is not always sent). Contact
+info lives with the user account in UFDS.
 
 For external users (i.e. anyone other than an Amon developer), it is the Amon
 Master API (or "Amon API" for short) that is most relevant. This document
@@ -166,9 +167,9 @@ TODO
         "name": "whistlelog",
         "user": "7b23ae63-37c9-420e-bb88-8d4bf5e30455",
         "monitor": "whistle",
-        "zone": "global",
+        "machine": "global",
         "type": "logscan",
-        "data": {
+        "config": {
           "path": "/tmp/whistle.log",
           "regex": "tweet",
           "threshold": 2,
@@ -179,9 +180,9 @@ TODO
         "name": "whistlelog2",
         "user": "7b23ae63-37c9-420e-bb88-8d4bf5e30455",
         "monitor": "whistle",
-        "zone": "global",
+        "machine": "global",
         "type": "logscan",
-        "data": {
+        "config": {
           "path": "/tmp/whistle2.log",
           "regex": "tweet",
           "threshold": 1,

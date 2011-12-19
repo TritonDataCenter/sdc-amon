@@ -35,8 +35,8 @@ var FIXTURES = {
         contacts: ['email'],
         probes: {
           whistlelog: {
-            "zone": "river-saskatchewan",
             "type": "logscan",
+            "machine": "river-saskatchewan",
             "config": {
               "path": "/tmp/whistle.log",
               "regex": "tweet",
@@ -293,7 +293,7 @@ var riverSaskatchewanContentMD5;
 
 test('GetAgentProbes', function(t) {
   var probe = FIXTURES.sulkybob2.monitors.whistle.probes.whistlelog;
-  masterClient.get("/agentprobes?zone=river-saskatchewan",
+  masterClient.get("/agentprobes?machine=river-saskatchewan",
     function (err, body, headers, res) {
       t.ifError(err);
       riverSaskatchewanContentMD5 = headers["content-md5"];
@@ -306,13 +306,13 @@ test('GetAgentProbes', function(t) {
 
 test('HeadAgentProbes', function(t) {
   var probe = FIXTURES.sulkybob2.monitors.whistle.probes.whistlelog;
-  masterClient.head("/agentprobes?zone=river-saskatchewan",
+  masterClient.head("/agentprobes?machine=river-saskatchewan",
     function (err, headers, res) {
       t.ifError(err);
       t.equal(headers['content-md5'], riverSaskatchewanContentMD5)
   
       // Second time should be fast.
-      masterClient.head("/agentprobes?zone=river-saskatchewan",
+      masterClient.head("/agentprobes?machine=river-saskatchewan",
         function (err2, headers2, res) {
           t.ifError(err2);
           t.equal(headers2['content-md5'], riverSaskatchewanContentMD5)
@@ -381,20 +381,17 @@ test('probes: create', function(t) {
     var probes = monitors[monitorName].probes;
     asyncForEach(Object.keys(probes), function(probeName, nextProbe) {
       var probe = probes[probeName];
-      masterClient.put({
-          path: sprintf("/pub/sulkybob2/monitors/%s/probes/%s", monitorName, probeName),
-          body: probe
-        }, function (err, body, headers) {
-          t.ifError(err);
-          t.equal(body.name, probeName)
-          t.equal(body.zone, probe.zone)
-          t.equal(body.type, probe.type)
-          Object.keys(body.config).forEach(function(k) {
-            t.equal(body.config[k], probe.config[k])
-          })
-          nextProbe();
-        }
-      );
+      var path = sprintf("/pub/sulkybob2/monitors/%s/probes/%s", monitorName, probeName);
+      masterClient.put({path: path, body: probe}, function (err, body, headers) {
+        t.ifError(err, "error PUT'ing "+path);
+        t.equal(body.name, probeName)
+        t.equal(body.machine, probe.machine)
+        t.equal(body.type, probe.type)
+        Object.keys(body.config).forEach(function(k) {
+          t.equal(body.config[k], probe.config[k])
+        })
+        nextProbe();
+      });
     }, function (err) {
       nextMonitor();
     });
@@ -442,7 +439,7 @@ test('probes: get', function(t) {
         function (err, body, headers) {
           t.ifError(err);
           t.equal(body.name, probeName)
-          t.equal(body.zone, probe.zone)
+          t.equal(body.machine, probe.machine)
           t.equal(body.type, probe.type)
           Object.keys(body.config).forEach(function(k) {
             t.equal(body.config[k], probe.config[k])
@@ -453,7 +450,7 @@ test('probes: get', function(t) {
             function (err2, body2, headers2) {
               t.ifError(err);
               t.equal(body.name, probeName)
-              t.equal(body.zone, probe.zone)
+              t.equal(body.machine, probe.machine)
               t.equal(body.type, probe.type)
               Object.keys(body.config).forEach(function(k) {
                 t.equal(body.config[k], probe.config[k])
@@ -474,16 +471,16 @@ test('probes: get', function(t) {
 
 
 var newRiverSaskatchewanContentMD5;
-test('HeadAgentProbes changed after probe added', function(t) {
+test('HeadAgentProbes changed after probe added', {timeout: 5000}, function(t) {
   var probe = FIXTURES.sulkybob2.monitors.whistle.probes.whistlelog;
-  masterClient.head("/agentprobes?zone=river-saskatchewan",
+  masterClient.head("/agentprobes?machine=river-saskatchewan",
     function (err, headers, res) {
       t.ifError(err);
       newRiverSaskatchewanContentMD5 = headers['content-md5'];
       t.ok(newRiverSaskatchewanContentMD5 !== riverSaskatchewanContentMD5)
   
       // Second time should be fast.
-      masterClient.head("/agentprobes?zone=river-saskatchewan",
+      masterClient.head("/agentprobes?machine=river-saskatchewan",
         function (err2, headers2, res) {
           t.ifError(err2);
           t.equal(headers2['content-md5'], newRiverSaskatchewanContentMD5)
@@ -497,7 +494,7 @@ test('HeadAgentProbes changed after probe added', function(t) {
 
 test('GetAgentProbes', function(t) {
   var probe = FIXTURES.sulkybob2.monitors.whistle.probes.whistlelog;
-  masterClient.get("/agentprobes?zone=river-saskatchewan",
+  masterClient.get("/agentprobes?machine=river-saskatchewan",
     function (err, body, headers, res) {
       t.ifError(err);
       t.equal(headers["content-md5"], newRiverSaskatchewanContentMD5);

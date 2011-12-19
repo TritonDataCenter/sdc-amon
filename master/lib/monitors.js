@@ -12,6 +12,7 @@ var restify = require('restify');
 var sprintf = require('sprintf').sprintf;
 var ufdsmodel = require('./ufdsmodel');
 var Contact = require('./contact');
+var objCopy = require('amon-common').utils.objCopy;
 
 
 
@@ -48,13 +49,15 @@ function Monitor(app, data) {
   var raw;
   if (data.objectclass) {  // from UFDS
     assert.equal(data.objectclass, Monitor.objectclass);
-    raw = data;
+    this.dn = data.dn;
+    raw = objCopy(data);
+    delete raw.dn;
     this.user = Monitor.parseDn(data.dn).user;
   } else {
     assert.ok(data.name)
     assert.ok(data.user)
+    this.dn = Monitor.dn(data.user, data.name);
     raw = {
-      dn: Monitor.dn(data.user, data.name),
       amonmonitorname: data.name,
       contact: data.contacts,
       objectclass: Monitor.objectclass

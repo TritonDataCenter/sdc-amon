@@ -40,9 +40,10 @@ var appIndex = {};
 //---- internal support functions
 
 function listenInGlobalZoneSync() {
-  owner = 'joyent'; //XXX can we use null here instead of "joyent", or the admin user?
+  var owner = 'joyent'; //XXX can we use null here instead of "joyent", or the admin user?
+  var machine = 'global'; //XXX
   appIndex.global = new App({
-    zone: 'global',
+    machine: machine,
     socket: config.socket,
     owner: owner,
     dataDir: config.dataDir,
@@ -50,8 +51,8 @@ function listenInGlobalZoneSync() {
     masterUrl: config.masterUrl,
     poll: config.poll
   });
-  log.debug('Starting new amon-relay for %s zone at "%s" (owner=%s).',
-    'global', config.socket, owner);
+  log.debug('Starting new amon-relay for %s machine at "%s" (owner=%s).',
+    machine, config.socket, owner);
   appIndex.global.listen(function(err) {
     if (!err) {
       log.info('Amon-relay listening in global zone at %s.', config.socket);
@@ -81,7 +82,7 @@ function listenInZone(zone, callback) {
       if (callback) return callback();
     }
     appIndex[zone] = new App({
-      zone: zone,
+      machine: zone,
       socket: config.socket,
       owner: attr.value,
       localMode: false,  // use a zsock, this isn't the current zone
@@ -89,7 +90,7 @@ function listenInZone(zone, callback) {
       masterUrl: config.masterUrl,
       poll: config.poll
     });
-    log.debug('Starting new amon-relay for %s zone at "%s" (owner=%s).',
+    log.debug('Starting new amon-relay for %s machine at "%s" (owner=%s).',
       zone, config.socket, attr.value);
     appIndex[zone].listen(function(error) {
       if (!error) {

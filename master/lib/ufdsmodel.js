@@ -15,7 +15,7 @@
  *     Foo.parentDnFromRequest = function (req) {...}
  *     Foo.prototype.serialize = function serialize() {...}  # output for API responses
  *     <instance>.raw     # the raw UFDS data
- *     <instance>.raw.dn  # the UFDS DN for this object
+ *     <instance>.dn      s# the UFDS DN for this object
  */
 
 var debug = console.warn;
@@ -25,18 +25,7 @@ var sprintf = require('sprintf').sprintf;
 var restify = require('restify');
 var RestCodes = restify.RestCodes;
 var Cache = require("amon-common").Cache;
-
-
-
-//---- internal support stuff
-
-function objCopy(obj) {
-  var copy = {};
-  Object.keys(obj).forEach(function (k) {
-    copy[k] = obj[k];
-  });
-  return copy;
-}
+var objCopy = require('amon-common').utils.objCopy;
 
 
 
@@ -111,7 +100,7 @@ function modelPut(app, Model, data, log, callback) {
     return callback(e);
   }
   
-  var dn = item.raw.dn;
+  var dn = item.dn;
   app.ufds.add(dn, item.raw, function(err) {
     if (err) {
       if (err instanceof ldap.EntryAlreadyExistsError) {

@@ -1,7 +1,6 @@
 # immediate priorities
 
 - TODOs for zone/machine/running-in-global handling:
-  - probe data -> probe "config"
   - s/zone/machine
   - PutProbe needs to error out if the given customer doesn't own the
     target machine. Check MAPI. User UUID must own machine UUID.

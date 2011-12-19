@@ -1,5 +1,6 @@
 {
   "type": "logscan",
+  "machine": "global",
   "config": {
     "path": "/var/svc/log/smartdc-agent-smartlogin:default.log",
     "regex": "ERROR .*",

@@ -89,7 +89,7 @@ LogScan.prototype.start = function(callback) {
   this.tail.on('exit', function(code) {
     if (!self._running) return;
 
-    log.fatal('amon:logscan (id=%s): tail exited (code=%d)', self.id, code);
+    log.fatal('logscan (id=%s): tail exited (code=%d)', self.id, code);
     clearInterval(self.timer);
   });
 

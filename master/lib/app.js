@@ -117,12 +117,7 @@ function createApp(config, callback) {
     url: config.ufds.url
   }); 
   
-  var opts;
-  opts = {
-    filter: '(login=*)',
-    scope: 'sub'
-  };
-  ufds.bind('cn=root', 'secret', function(err) {
+  ufds.bind(config.ufds.rootDn, config.ufds.password, function(err) {
     if (err) {
       return callback(err);
     }
@@ -177,7 +172,7 @@ function App(config, ufds) {
     ProbeGet: new Cache(100, 300, log, "ProbeGet"),
     ProbeList: new Cache(100, 300, log, "ProbeList"),
     // This is unbounded in size because (a) the data stored is small and (b)
-    // we expect `headAgentProbes` calls for *all* zones (the key) regularly
+    // we expect `headAgentProbes` calls for *all* machines (the key) regularly
     // so an LRU-cache is pointless.
     headAgentProbes: new Cache(0, 300, log, "headAgentProbes"),
   };
@@ -271,10 +266,10 @@ App.prototype.cacheSet = function(scope, key, value) {
  */
 App.prototype.cacheInvalidatePut = function(modelName, item) {
   if (! this._ufdsCaching) return;
-  var dn = item.raw.dn;
+  var dn = item.dn;
   assert.ok(dn);
-  log.trace("App.cacheInvalidatePut modelName='%s' dn='%s' zone=%s",
-    modelName, dn, (modelName === "Probe" ? item.zone : "(N/A)"));
+  log.trace("App.cacheInvalidatePut modelName='%s' dn='%s' machine=%s",
+    modelName, dn, (modelName === "Probe" ? item.machine : "(N/A)"));
 
   // Reset the "${modelName}List" cache.
   // Note: This could be improved by only invalidating the item for this
@@ -287,9 +282,9 @@ App.prototype.cacheInvalidatePut = function(modelName, item) {
   this._cacheFromScope[modelName + "Get"].del(dn);
   
   // Furthermore, if this is a probe, then need to invalidate the
-  // `headAgentProbes` for this probe's zone.
+  // `headAgentProbes` for this probe's machine.
   if (modelName === "Probe") {
-    this._cacheFromScope.headAgentProbes.del(item.zone);
+    this._cacheFromScope.headAgentProbes.del(item.machine);
   }
 }
 
@@ -298,10 +293,10 @@ App.prototype.cacheInvalidatePut = function(modelName, item) {
  */
 App.prototype.cacheInvalidateDelete = function(modelName, item) {
   if (! this._ufdsCaching) return;
-  var dn = item.raw.dn;
+  var dn = item.dn;
   assert.ok(dn);
-  log.trace("App.cacheInvalidateDelete modelName='%s' dn='%s' zone=%s",
-    modelName, dn, (modelName === "Probe" ? item.zone : "(N/A)"));
+  log.trace("App.cacheInvalidateDelete modelName='%s' dn='%s' machine=%s",
+    modelName, dn, (modelName === "Probe" ? item.machine : "(N/A)"));
 
   // Reset the "${modelName}List" cache.
   // Note: This could be improved by only invalidating the item for this
@@ -313,9 +308,9 @@ App.prototype.cacheInvalidateDelete = function(modelName, item) {
   this._cacheFromScope[modelName + "Get"].del(dn);
   
   // Furthermore, if this is a probe, then need to invalidate the
-  // `headAgentProbes` for this probe's zone.
+  // `headAgentProbes` for this probe's machine.
   if (modelName === "Probe") {
-    this._cacheFromScope.headAgentProbes.del(item.zone);
+    this._cacheFromScope.headAgentProbes.del(item.machine);
   }
 }
 

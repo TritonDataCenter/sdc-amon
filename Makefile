@@ -249,7 +249,7 @@ tmp:
 
 test: $(TAP)
 	./tst/clean-test-data.sh
-	@$(TAP) tst/*.test.js
+	$(TAP) tst/*.test.js
 
 devrun: tmp $(NODEDIR)/bin/node-dev
 	support/devrun.sh

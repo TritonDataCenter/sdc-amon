@@ -1,5 +1,6 @@
 {
   "type": "logscan",
+  "machine": "global",
   "config": {
     "path": "/var/log/appfirewall.log",
     "regex": "last message repeated .*",

@@ -4,6 +4,7 @@
  * Amon Master controller for '/agentprobes' endpoints.
  */
 
+var debug = console.warn;
 var crypto = require('crypto');
 var sprintf = require('sprintf').sprintf;
 var restify = require('restify');
@@ -23,17 +24,19 @@ var log = restify.log;
 //---- internal support functions
 
 /**
- * Get all the probes for the given zone.
+ * Get all the probes for the given machine.
  *
- * Note: Probes are sorted by name to ensure a stable order (necessary
- * to ensure reliable Content-MD5 for HEAD and caching usage.
+ * Note: Probes are sorted by (user, monitor, name) to ensure a stable order,
+ * necessary to ensure reliable Content-MD5 for HEAD and caching usage.
  */
-function probesFromZone(app, zone, callback) {
+function probesFromMachine(app, machine, callback) {
   var opts = {
-    filter: '(&(zone='+zone+')(objectclass=amonprobe))',
+    filter: '(&(machine='+machine+')(objectclass=amonprobe))',
     scope: 'sub'
   };
   app.ufds.search("ou=users, o=smartdc", opts, function(err, result) {
+    if (err) return callback(err);
+
     var probes = [];
     result.on('searchEntry', function(entry) {
       probes.push((new Probe(app, entry.object)).serialize());
@@ -63,7 +66,7 @@ function probesFromZone(app, zone, callback) {
           return 0;
       });
 
-      log.trace("probes for zone '%s': %o", zone, probes);
+      log.trace("probes for machine '%s': %o", machine, probes);
       return callback(null, probes);
     });
   });
@@ -74,7 +77,7 @@ function probesFromZone(app, zone, callback) {
 //---- controllers
 
 /**
- * List all agent probes for the given zone.
+ * List all agent probes for the given machine.
  *
  * Note: We don't bother caching this endpoint. The "HEAD" version (below)
  * is cached and clients (amon-relay's) typically won't call this list
@@ -83,18 +86,20 @@ function probesFromZone(app, zone, callback) {
 function listAgentProbes(req, res, next) {
   req._log.trace('listAgentProbes entered: params=%o, uriParams=%o',
     req.params, req.uriParams);
-  var zone = req.params.zone;
-  if (!zone) {
+  var machine = req.params.machine;
+  if (!machine) {
     res.sendError(new restify.MissingParameterError(
-      "'zone' is a required parameter"));
+      "'machine' is a required parameter"));
     return next();
   }
   
-  //XXX validate zone
+  //XXX validate machine:
+  // 1. is uuid or "node:uuid" for global zones
+  // 2. is owned by the user (do we allow operator override on that? Perhaps only on "force=true")
   
-  probesFromZone(req._app, zone, function (err, probes) {
+  probesFromMachine(req._app, machine, function (err, probes) {
     if (err) {
-      log.error("error getting probes for zone '%s'", zone);
+      req._log.error("error getting probes for machine '%s'", machine);
       res.send(500);
     } else {
       res.send(200, probes);
@@ -105,7 +110,7 @@ function listAgentProbes(req, res, next) {
 
 
 /**
- * Return the HEAD (just for the Content-MD5) of agent probes for this zone.
+ * Return the HEAD (just for the Content-MD5) of agent probes for this machine.
  *
  * Amon-relay's call this to check for changes to their local copy of the
  * agent probes.
@@ -113,14 +118,14 @@ function listAgentProbes(req, res, next) {
 function headAgentProbes(req, res, next) {
   req._log.trace('headAgentProbes entered: params=%o, uriParams=%o',
     req.params, req.uriParams);
-  var zone = req.params.zone;
-  if (!zone) {
+  var machine = req.params.machine;
+  if (!machine) {
     res.sendError(new restify.MissingParameterError(
-      "'zone' is a required parameter"));
+      "'machine' is a required parameter"));
     return next();
   }
 
-  //XXX validate zone
+  //XXX validate machine: see above
 
   function respond(contentMD5) {
     res.send({
@@ -137,14 +142,14 @@ function headAgentProbes(req, res, next) {
   }
 
   // Check cache.
-  var contentMD5 = req._app.cacheGet("headAgentProbes", zone);
+  var contentMD5 = req._app.cacheGet("headAgentProbes", machine);
   if (contentMD5) {
     return respond(contentMD5);
   }
 
-  probesFromZone(req._app, zone, function (err, probes) {
+  probesFromMachine(req._app, machine, function (err, probes) {
     if (err) {
-      log.error("error getting probes for zone '%s'", zone);
+      log.error("error getting probes for machine '%s'", machine);
       res.sendError(new restify.InternalError());
       return next();
     } else {
@@ -152,7 +157,7 @@ function headAgentProbes(req, res, next) {
       var hash = crypto.createHash('md5');
       hash.update(data);
       var contentMD5 = hash.digest('base64');
-      req._app.cacheSet("headAgentProbes", zone, contentMD5);
+      req._app.cacheSet("headAgentProbes", machine, contentMD5);
       return respond(contentMD5);
     }
   });

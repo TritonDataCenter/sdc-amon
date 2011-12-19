@@ -22,7 +22,7 @@ function headAgentProbes(req, res, next) {
   // TODO: cache these md5's in memory. With 400 zones hitting this endpoint
   //    every 30 seconds (or whatever poll interval) we should avoid
   //    reading disk.
-  var md5Path = pathlib.resolve(req._dataDir, req._zone + ".json.content-md5")
+  var md5Path = pathlib.resolve(req._dataDir, req._machine + ".json.content-md5")
   fs.readFile(md5Path, function (err, data) {
     if (err) {
       if (false && err.code === "ENOENT") {
@@ -54,7 +54,7 @@ function headAgentProbes(req, res, next) {
 
 function listAgentProbes(req, res, next) {
   log.trace('ListAgentProbes (%o): params=%o', req, req.params);
-  var jsonPath = pathlib.resolve(req._dataDir, req._zone + ".json")
+  var jsonPath = pathlib.resolve(req._dataDir, req._machine + ".json")
   fs.readFile(jsonPath, 'utf-8', function (err, data) {
     if (err) {
       if (err.code === "ENOENT") {

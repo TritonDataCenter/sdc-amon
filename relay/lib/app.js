@@ -28,13 +28,13 @@ var log = restify.log;
 /**
  * Constructor for the amon relay "application".
  *
- * The gist is we make one of these per zone, and hand it some "cookie"
+ * The gist is we make one of these per machine/zone, and hand it some "cookie"
  * information.  Callers are expected to call listen() and close() on
  * this.
  *
  * Params you send into options are:
- *  - zone {String} the zone this should be bound to.
- *  - owner {String} the customer uuid for that owns said zone.
+ *  - machine {String} the machine this should be bound to.
+ *  - owner {String} the customer uuid for that owns said machine.
  *  - socket  {String} the socket to open/close (zsock).
  *  - localMode {Boolean} to zsock or not to zsock.
  *  - dataDir {String} root of agent probes tree.
@@ -46,7 +46,7 @@ var log = restify.log;
  */
 var App = function App(options) {
   if (!options) throw TypeError('options is required');
-  if (!options.zone) throw TypeError('options.zone is required');
+  if (!options.machine) throw TypeError('options.machine is required');
   if (!options.owner) throw TypeError('options.owner is required');
   if (!options.socket) throw TypeError('options.socket is required');
   if (!options.dataDir) throw TypeError('options.dataDir is required');
@@ -54,15 +54,15 @@ var App = function App(options) {
 
   var self = this;
 
-  this.zone = options.zone;
+  this.machine = options.machine;
   this.owner = options.owner;
   this.socket = options.socket;
   this.dataDir = options.dataDir;
   this.localMode = options.localMode || false;
   this.poll = options.poll || 30;
   
-  this._stageJsonPath = pathlib.resolve(this.dataDir, this.zone + ".json");
-  this._stageMD5Path = pathlib.resolve(this.dataDir, this.zone + ".json.content-md5");
+  this._stageJsonPath = pathlib.resolve(this.dataDir, this.machine + ".json");
+  this._stageMD5Path = pathlib.resolve(this.dataDir, this.machine + ".json.content-md5");
 
   this._master = new RelayClient({
     url: options.masterUrl,
@@ -76,7 +76,7 @@ var App = function App(options) {
 
   var _setup = function(req, res, next) {
     req._log = log;
-    req._zone = self.zone;
+    req._machine = self.machine;
     req._owner = self.owner;
     req._zsock = self.socket;
     req._dataDir = self.dataDir;
@@ -98,35 +98,35 @@ var App = function App(options) {
   
   // Register the agent probes watcher.
   function _updateAgentProbes() {
-    log.debug("Checking for agent probe updates (zone=%s).", self.zone);
-    self._master.agentProbesMD5(self.zone, function(err, masterMD5) {
+    log.debug("Checking for agent probe updates (machine=%s).", self.machine);
+    self._master.agentProbesMD5(self.machine, function(err, masterMD5) {
       if (err) {
-        log.warn('Error getting master agent probes MD5 (zone=%s): %s',
-                 self.zone, err);
+        log.warn('Error getting master agent probes MD5 (machine=%s): %s',
+                 self.machine, err);
         return;
       }
       self._getCurrMD5(function(currMD5) {
-        log.trace('Zone "%s" agent probes md5: "%s" (from master) '
-                  + 'vs "%s" (curr)', self.zone, masterMD5, currMD5);
+        log.trace('Machine "%s" agent probes md5: "%s" (from master) '
+                  + 'vs "%s" (curr)', self.machine, masterMD5, currMD5);
 
         if (masterMD5 === currMD5) {
           log.trace('No agent probes update.')
           return;
         }
-        self._master.agentProbes(self.zone, function(err, agentProbes, masterMD5) {
+        self._master.agentProbes(self.machine, function(err, agentProbes, masterMD5) {
           if (err || !agentProbes || !masterMD5) {
-            log.warn('Error getting agent probes from master (zone=%s): %s',
-                     self.zone, err);
+            log.warn('Error getting agent probes from master (machine=%s): %s',
+                     self.machine, err);
             return;
           }
-          log.trace('Retrieved agent probes from master (zone=%s): %s',
-            self.zone, agentProbes);
+          log.trace('Retrieved agent probes from master (machine=%s): %s',
+            self.machine, agentProbes);
           self.writeAgentProbes(agentProbes, masterMD5, function(err) {
             if (err) {
               log.warn('Unable to save new agent probes: ' + err);
             }
             log.info('Successfully updated agent probes from master '
-              + '(zone: %s, md5: %s -> %s).', self.zone, currMD5, masterMD5);
+              + '(machine: %s, md5: %s -> %s).', self.machine, currMD5, masterMD5);
             return;
           });
         });
@@ -162,12 +162,12 @@ App.prototype.listen = function(callback) {
 
   // Production mode: using a zsocket into the target zone.
   var opts = {
-    zone: self.zone,
+    zone: self.machine,
     path: self.socket
   };
   zsock.createZoneSocket(opts, function(error, fd) {
     if (error) {
-      log.fatal('Unable to open zsock in %s: %s', self.zone, error.stack);
+      log.fatal('Unable to open zsock in %s: %s', self.machine, error.stack);
       return callback(error);
     }
     log.debug('Opening zsock server on FD :%d', fd);
@@ -192,7 +192,7 @@ App.prototype.close = function(callback) {
 
 
 /**
- * Reads in the stored MD5 for this zone.
+ * Reads in the stored MD5 for this machine.
  *
  * Callback data is null on error, so check it.
  *
@@ -222,8 +222,8 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
   var self = this;
 
   if (!agentProbes || !md5) {
-    log.debug('No agentProbes (%s) or md5 (%s) given (zone=%s). No-op',
-      agentProbes, md5, self.zone);
+    log.debug('No agentProbes (%s) or md5 (%s) given (machine=%s). No-op',
+      agentProbes, md5, self.machine);
     return callback();
   }
 

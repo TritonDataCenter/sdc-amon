@@ -30,7 +30,7 @@
  *            { user: '7b23ae63-37c9-420e-bb88-8d4bf5e30455',
  *              monitor: 'whistle',
  *              name: 'whistlelog2',
- *              type: 'amon:logscan' },
+ *              type: 'logscan' },
  *           type: 'Integer',
  *           value: 1,
  *           config: { match: 'tweet' },

@@ -12,6 +12,7 @@ var restify = require('restify');
 var sprintf = require('sprintf').sprintf;
 var ufdsmodel = require('./ufdsmodel');
 var Monitor = require('./monitors').Monitor;
+var objCopy = require('amon-common').utils.objCopy;
 
 
 
@@ -52,7 +53,9 @@ function Probe(app, data) {
   var raw;
   if (data.objectclass) {  // from UFDS
     assert.equal(data.objectclass, Probe.objectclass);
-    raw = data;
+    this.dn = data.dn;
+    raw = objCopy(data);
+    delete raw.dn;
     var parsed = Probe.parseDn(data.dn)
     this.user = parsed.user;
     this.monitor = parsed.monitor;
@@ -60,10 +63,10 @@ function Probe(app, data) {
     assert.ok(data.name)
     assert.ok(data.monitor)
     assert.ok(data.user)
+    this.dn = Probe.dn(data.user, data.monitor, data.name);
     raw = {
-      dn: Probe.dn(data.user, data.monitor, data.name),
       amonprobename: data.name,
-      zone: data.zone,
+      machine: data.machine,
       type: data.type,
       config: JSON.stringify(data.config),
       objectclass: Probe.objectclass
@@ -82,8 +85,8 @@ function Probe(app, data) {
   this.__defineGetter__('type', function() {
     return self.raw.type;
   });
-  this.__defineGetter__('zone', function() {
-    return self.raw.zone;
+  this.__defineGetter__('machine', function() {
+    return self.raw.machine;
   });
   this.__defineGetter__('config', function() {
     if (self._config === undefined) {
@@ -131,7 +134,7 @@ Probe.prototype.serialize = function serialize() {
     monitor: this.monitor,
     name: this.name,
     type: this.type,
-    zone: this.zone,
+    machine: this.machine,
     config: this.config,
   };
 }
@@ -173,7 +176,7 @@ Probe.validate = function validate(app, raw) {
   var requiredFields = {
     // <raw field name>: <exported name>
     "amonprobename": "name",
-    "zone": "zone",
+    "machine": "machine",
     "type": "type",
     "config": "config"
   }

@@ -38,7 +38,7 @@ var FIXTURES = {
         contacts: ['email'],
         probes: {
           whistlelog: {
-            "zone": "river-saskatchewan",
+            "machine": "river-saskatchewan",
             "type": "logscan",
             "config": {
               "path": "/tmp/whistle.log",
@@ -53,7 +53,7 @@ var FIXTURES = {
         contacts: ['secondaryEmail'],
         probes: {
           whistlelog: {
-            "zone": "global",
+            "machine": "global",
             "type": "logscan",
             "config": {
               "path": "/tmp/whistle.log",
@@ -329,7 +329,7 @@ test('probes: create', function(t) {
         }, function (err, body, headers) {
           t.ifError(err);
           t.equal(body.name, probeName)
-          t.equal(body.zone, probe.zone)
+          t.equal(body.machine, probe.machine)
           t.equal(body.type, probe.type)
           Object.keys(body.config).forEach(function(k) {
             t.equal(body.config[k], probe.config[k])
@@ -373,7 +373,7 @@ test('probes: get', function(t) {
         function (err, body, headers) {
           t.ifError(err);
           t.equal(body.name, probeName)
-          t.equal(body.zone, probe.zone)
+          t.equal(body.machine, probe.machine)
           t.equal(body.type, probe.type)
           Object.keys(body.config).forEach(function(k) {
             t.equal(body.config[k], probe.config[k])
@@ -407,7 +407,7 @@ var riverSaskatchewanContentMD5;
 
 test('relay api: GetAgentProbes', function(t) {
   var probe = FIXTURES.sulkybob.monitors.whistle.probes.whistlelog;
-  masterClient.get("/agentprobes?zone=river-saskatchewan",
+  masterClient.get("/agentprobes?machine=river-saskatchewan",
     function (err, body, headers, res) {
       t.ifError(err);
       riverSaskatchewanContentMD5 = headers["content-md5"];
@@ -415,7 +415,7 @@ test('relay api: GetAgentProbes', function(t) {
       t.equal(body.length, 1);
       t.equal(body[0].monitor, "whistle")
       t.equal(body[0].name, "whistlelog")
-      t.equal(body[0].zone, probe.zone)
+      t.equal(body[0].machine, probe.machine)
       t.equal(body[0].type, probe.type)
       t.end();
     }
@@ -424,7 +424,7 @@ test('relay api: GetAgentProbes', function(t) {
 
 test('relay api: HeadAgentProbes', function(t) {
   var probe = FIXTURES.sulkybob.monitors.whistle.probes.whistlelog;
-  masterClient.head("/agentprobes?zone=river-saskatchewan",
+  masterClient.head("/agentprobes?machine=river-saskatchewan",
     function (err, headers, res) {
       t.ifError(err);
       t.equal(headers['content-md5'], riverSaskatchewanContentMD5)

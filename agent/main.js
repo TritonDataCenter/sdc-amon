@@ -227,7 +227,7 @@ function updateProbes(force) {
           JSON.stringify(probeDataFromId[id]));
         createProbe(id, probeDataFromId[id], function (err, probe) {
           if (err) {
-            log.error("could not create '%s' probe (skipping): %s", id, e);
+            log.error("could not create '%s' probe (skipping): %s", id, err);
             stats.errors++;
           } else {
             probeFromId[id] = probe;
@@ -257,7 +257,7 @@ function updateProbes(force) {
         delete probeFromId[id];
         createProbe(id, probeDataFromId[id], function (err, probe) {
           if (err) {
-            log.error("could not create '%s' probe (skipping): %s", id, e);
+            log.error("could not create '%s' probe (skipping): %s", id, err);
             stats.errors++;
           } else {
             probeFromId[id] = probe;

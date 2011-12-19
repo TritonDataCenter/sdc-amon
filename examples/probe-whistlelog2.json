@@ -1,7 +1,7 @@
 {
-  "zone": "global",
   "type": "logscan",
-  "data": {
+  "machine": "global",
+  "config": {
     "path": "/tmp/whistle2.log",
     "regex": "tweet",
     "threshold": 1,
