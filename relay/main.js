@@ -28,7 +28,7 @@ var log = restify.log;
 
 // Config defaults.
 var DEFAULT_POLL = 30;
-var DEFAULT_DATA_DIR = '/var/run/smartdc/amon-relay';
+var DEFAULT_DATA_DIR = '/var/db/amon-relay';
 var DEFAULT_SOCKET = '/var/run/.smartdc-amon.sock';
 var ZWATCH_SOCKET = '/var/run/.smartdc-amon-zwatch.sock';
 

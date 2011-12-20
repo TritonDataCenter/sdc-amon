@@ -34,7 +34,7 @@ var log = require('restify').log;
 
 var DEFAULT_POLL = 45;
 var DEFAULT_SOCKET = '/var/run/.smartdc-amon.sock';
-var DEFAULT_DATA_DIR = '/var/run/smartdc/amon-agent';
+var DEFAULT_DATA_DIR = '/var/db/amon-agent';
 
 var config; // Agent configuration settings. Set in `main()`.
 var probeFromId = {}; // Active probe instances. Controlled in `updateProbes`.
