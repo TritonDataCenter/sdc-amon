@@ -493,3 +493,16 @@ A few use cases to start to feel out practicalities.
                     "period": 60  // how frequently to check.
                 }
             }
+
+7.  Run a probe on a particular server's GZ. I.e. doesn't have. a particular
+    "machine" uuid target. For machine UUIDA we
+
+        machine UUID1 -> "machine": UUID1
+        machine UUID2's GZ -> "machine": UUID2, "runInGlobal": true
+        server UUID3 GZ -> "server": UUID3, "machine": undefined
+
+    Must be an operator to add probe with 'server' attribute. Add
+    "GET /agentprobes?server=:uuid".
+
+    For dev support AMON_DEV=1 to allow `"server": "headnode"` to pick
+    headnode.
