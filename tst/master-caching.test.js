@@ -9,9 +9,9 @@ var http = require('http');
 var sprintf = require('sprintf').sprintf;
 var restify = require('restify');
 var test = require('tap').test;
-var child_process = require('child_process'),
-    spawn = child_process.spawn,
-    exec = child_process.exec;
+var async = require('async');
+
+var common = require('./common');
 
 
 
@@ -51,142 +51,30 @@ var FIXTURES = {
 };
 
 var config;
-var ufds;
 var master;
 var masterClient;
 
 
 
-//---- helpers
-
-/**
- * Run async `fn` on each entry in `list`. Call `cb(error)` when all done.
- * `fn` is expected to have `fn(item, callback) -> callback(error)` signature.
- *
- * From Isaac's rimraf.js.
- */
-function asyncForEach(list, fn, cb) {
-  if (!list.length) cb()
-  var c = list.length
-    , errState = null
-  list.forEach(function (item, i, list) {
-   fn(item, function (er) {
-      if (errState) return
-      if (er) return cb(errState = er)
-      if (-- c === 0) return cb()
-    })
-  })
-}
-
-/**
- * Return a copy of the given object (keys are copied over).
- *
- * Warning: This is *not* a deep copy.
- */
-function objCopy(obj) {
-  var copy = {};
-  Object.keys(obj).forEach(function (k) {
-    copy[k] = obj[k];
-  });
-  return copy;
-}
-
-
-
 //---- setup
 
-test('setup config', function(t) {
-  fs.readFile(__dirname + '/config-master-caching.json', 'utf8', function(err, content) {
-    t.notOk(err, err || '"config-master-caching.json" loaded');
-    config = JSON.parse(content);
-    t.ok(config, "config parsed");
-
-    //restify.log.level(restify.log.Level.Trace);
-    masterClient = restify.createClient({
-      // 8080 is the built-in default.
-      url: 'http://localhost:' + (config.port || 8080),
-      version: '1'
-    });
-
-    t.end();
-  });
-});
-
-
-test('setup ufds', function(t) {
-  var ldap = require('ldapjs');
-  var ufds = ldap.createClient({
-    url: config.ufds.url,
-    //log4js: log4js,
-    reconnect: false
-  });
-  t.ok(ufds);
-  ufds.bind(config.ufds.rootDn, config.ufds.password, function(err) {
-    t.ifError(err);
-    asyncForEach(Object.keys(FIXTURES.users), function(k, next) {
-      var user = FIXTURES.users[k];
-      ufds.search('ou=users, o=smartdc',
-        {scope: 'one', filter: '(uuid='+user.uuid+')'}, function(err, res) {
-          t.ifError(err);
-          var found = false;
-          res.on('searchEntry', function(entry) { found = true });
-          res.on('error', function(err) { t.ifError(err) });
-          res.on('end', function(result) {
-            if (found) {
-              next();
-            } else {
-              ufds.add(k, FIXTURES.users[k], next);
-            }
-          });
-        }
-      );
-    }, function(err) {
+test('setup', function (t) {
+  common.setupMaster({
+      t: t,
+      configPath: __dirname + "/config-master-caching.json",
+      users: FIXTURES.users,
+      masterLogPath: __dirname + "/master-caching.log"
+    },
+    function(err, _config, _masterClient, _master) {
+      t.ifError(err, "setup master");
       //TODO: if (err) t.bailout("boom");
-      t.ifError(err);
-      ufds.unbind(function() {
-        t.end();
-      })
-    });
-  });
+      config = _config;
+      masterClient = _masterClient;
+      master = _master;
+      t.end();
+    }
+  );
 });
-
-
-test('setup master', function (t) {
-  // Start master.
-  master = spawn(process.execPath,
-    ['../master/main.js', '-vv', '-f', 'config-master-caching.json'],
-    {cwd: __dirname});
-  var masterLog = fs.createWriteStream(__dirname + '/master-caching.log');
-  master.stdout.pipe(masterLog);
-  master.stderr.pipe(masterLog);
-  t.ok(master, "master created");
-
-  // Wait until it is running.
-  var sentinel = 0;
-  function checkPing() {
-    masterClient.get("/ping", function(err, body, headers) {
-      if (err) {
-        sentinel++;
-        if (sentinel >= 5) {
-          t.ok(false, "Master did not come up after "+sentinel
-            +" seconds (see 'master.std{out,err}').");
-          t.end();
-          return;
-        } else {
-          setTimeout(checkPing, 1000);
-        }
-      } else {
-        t.equal(body.pid, master.pid,
-          sprintf("Master responding to ping (pid %d) vs. spawned master (pid %d).",
-            body.pid, master.pid));
-        t.ok(true, "master is running")
-        t.end();
-      }
-    });
-  }
-  setTimeout(checkPing, 1000);
-});
-
 
 
 //---- test: monitors
@@ -211,7 +99,7 @@ test('monitors: list empty', function(t) {
 });
 
 test('monitors: get a monitor not yet added', function(t) {
-  asyncForEach(Object.keys(FIXTURES.sulkybob2.monitors), function(name, next) {
+  async.forEach(Object.keys(FIXTURES.sulkybob2.monitors), function(name, next) {
     var data = FIXTURES.sulkybob2.monitors[name];
     masterClient.get("/pub/sulkybob2/monitors/"+name, function (err, body, headers) {
       t.equal(err.httpCode, 404);
@@ -224,8 +112,8 @@ test('monitors: get a monitor not yet added', function(t) {
 });
 
 test('monitors: create', function(t) {
-  asyncForEach(Object.keys(FIXTURES.sulkybob2.monitors), function(name, next) {
-    var data = objCopy(FIXTURES.sulkybob2.monitors[name]);
+  async.forEach(Object.keys(FIXTURES.sulkybob2.monitors), function(name, next) {
+    var data = common.objCopy(FIXTURES.sulkybob2.monitors[name]);
     delete data["probes"]; // 'probes' key holds probe objects to add (later)
     masterClient.put({
         path: "/pub/sulkybob2/monitors/"+name,
@@ -263,7 +151,7 @@ test('monitors: list', function(t) {
 });
 
 test('monitors: get', function(t) {
-  asyncForEach(Object.keys(FIXTURES.sulkybob2.monitors), function(name, next) {
+  async.forEach(Object.keys(FIXTURES.sulkybob2.monitors), function(name, next) {
     var data = FIXTURES.sulkybob2.monitors[name];
     masterClient.get("/pub/sulkybob2/monitors/"+name, function (err, body, headers) {
       t.ifError(err);
@@ -330,7 +218,7 @@ test('HeadAgentProbes', function(t) {
 
 test('probes: list empty', function(t) {
   var monitors = FIXTURES.sulkybob2.monitors;
-  asyncForEach(Object.keys(monitors), function(monitorName, next) {
+  async.forEach(Object.keys(monitors), function(monitorName, next) {
     var probes = monitors[monitorName].probes;
     masterClient.get(sprintf("/pub/sulkybob2/monitors/%s/probes", monitorName),
       function (err, body, headers) {
@@ -356,9 +244,9 @@ test('probes: list empty', function(t) {
 
 test('probes: get a probe not yet added', function(t) {
   var monitors = FIXTURES.sulkybob2.monitors;
-  asyncForEach(Object.keys(monitors), function(monitorName, nextMonitor) {
+  async.forEach(Object.keys(monitors), function(monitorName, nextMonitor) {
     var probes = monitors[monitorName].probes;
-    asyncForEach(Object.keys(probes), function(probeName, nextProbe) {
+    async.forEach(Object.keys(probes), function(probeName, nextProbe) {
       var probe = probes[probeName];
       masterClient.get(sprintf("/pub/sulkybob2/monitors/%s/probes/%s", monitorName, probeName),
         function (err, body, headers) {
@@ -377,9 +265,9 @@ test('probes: get a probe not yet added', function(t) {
 
 test('probes: create', function(t) {
   var monitors = FIXTURES.sulkybob2.monitors;
-  asyncForEach(Object.keys(monitors), function(monitorName, nextMonitor) {
+  async.forEach(Object.keys(monitors), function(monitorName, nextMonitor) {
     var probes = monitors[monitorName].probes;
-    asyncForEach(Object.keys(probes), function(probeName, nextProbe) {
+    async.forEach(Object.keys(probes), function(probeName, nextProbe) {
       var probe = probes[probeName];
       var path = sprintf("/pub/sulkybob2/monitors/%s/probes/%s", monitorName, probeName);
       masterClient.put({path: path, body: probe}, function (err, body, headers) {
@@ -405,7 +293,7 @@ test('probes: create', function(t) {
 // the new value.
 test('probes: list', function(t) {
   var monitors = FIXTURES.sulkybob2.monitors;
-  asyncForEach(Object.keys(monitors), function(monitorName, next) {
+  async.forEach(Object.keys(monitors), function(monitorName, next) {
     var probes = monitors[monitorName].probes;
     masterClient.get(sprintf("/pub/sulkybob2/monitors/%s/probes", monitorName),
       function (err, body, headers) {
@@ -431,9 +319,9 @@ test('probes: list', function(t) {
 
 test('probes: get', function(t) {
   var monitors = FIXTURES.sulkybob2.monitors;
-  asyncForEach(Object.keys(monitors), function(monitorName, nextMonitor) {
+  async.forEach(Object.keys(monitors), function(monitorName, nextMonitor) {
     var probes = monitors[monitorName].probes;
-    asyncForEach(Object.keys(probes), function(probeName, nextProbe) {
+    async.forEach(Object.keys(probes), function(probeName, nextProbe) {
       var probe = probes[probeName];
       masterClient.get(sprintf("/pub/sulkybob2/monitors/%s/probes/%s", monitorName, probeName),
         function (err, body, headers) {
@@ -511,9 +399,9 @@ test('GetAgentProbes', function(t) {
 
 test('probes: delete', function(t) {
   var monitors = FIXTURES.sulkybob2.monitors;
-  asyncForEach(Object.keys(monitors), function(monitorName, nextMonitor) {
+  async.forEach(Object.keys(monitors), function(monitorName, nextMonitor) {
     var probes = monitors[monitorName].probes;
-    asyncForEach(Object.keys(probes), function(probeName, nextProbe) {
+    async.forEach(Object.keys(probes), function(probeName, nextProbe) {
       var probe = probes[probeName];
       masterClient.del(sprintf("/pub/sulkybob2/monitors/%s/probes/%s", monitorName, probeName),
         function (err, headers, res) {
@@ -533,7 +421,7 @@ test('probes: delete', function(t) {
 });
 
 test('monitors: delete', function(t) {
-  asyncForEach(Object.keys(FIXTURES.sulkybob2.monitors), function(name, next) {
+  async.forEach(Object.keys(FIXTURES.sulkybob2.monitors), function(name, next) {
     var data = FIXTURES.sulkybob2.monitors[name];
     masterClient.del("/pub/sulkybob2/monitors/"+name, function (err, headers, res) {
       t.ifError(err);
@@ -568,7 +456,7 @@ test('monitors: list empty again', function(t) {
 });
 
 test('monitors: get a monitor now removed', function(t) {
-  asyncForEach(Object.keys(FIXTURES.sulkybob2.monitors), function(name, next) {
+  async.forEach(Object.keys(FIXTURES.sulkybob2.monitors), function(name, next) {
     var data = FIXTURES.sulkybob2.monitors[name];
     masterClient.get("/pub/sulkybob2/monitors/"+name, function (err, body, headers) {
       t.ok(err)
@@ -585,11 +473,11 @@ test('monitors: get a monitor now removed', function(t) {
 
 //---- teardown
 
-test('teardown master', function(t) {
-  if (master) {
-    master.kill();
-  }
-  t.end();
+test('teardown', function (t) {
+  common.teardownMaster({t: t, master: master}, function(err) {
+    t.ifError(err, "tore down master");
+    t.end();
+  });
 });
 
 process.on('uncaughtException', function (err) {
