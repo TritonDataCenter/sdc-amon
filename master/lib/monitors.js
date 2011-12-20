@@ -36,8 +36,8 @@ var UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
  *        user: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
  *        contacts: ['fooEmail'] }
  *    or the raw response from UFDS, e.g.:
- *      { dn: 'amonmonitorname=serverHealth, uuid=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa, ou=users, o=smartdc',
- *        amonmonitorname: 'serverHealth',
+ *      { dn: 'amonmonitor=serverHealth, uuid=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa, ou=users, o=smartdc',
+ *        amonmonitor: 'serverHealth',
  *        contact: 'fooEmail',    // this is an array for multiple contacts
  *        objectclass: 'amonmonitor' }
  * @throws {restify.RESTError} if the given data is invalid.
@@ -58,19 +58,19 @@ function Monitor(app, data) {
     assert.ok(data.user)
     this.dn = Monitor.dn(data.user, data.name);
     raw = {
-      amonmonitorname: data.name,
+      amonmonitor: data.name,
       contact: data.contacts,
       objectclass: Monitor.objectclass
     };
     this.user = data.user;
   }
   
-  Monitor.validateName(raw.amonmonitorname);
+  Monitor.validateName(raw.amonmonitor);
   this.raw = Monitor.validate(app, raw);
 
   var self = this;
   this.__defineGetter__('name', function() {
-    return self.raw.amonmonitorname;
+    return self.raw.amonmonitor;
   });
   this.__defineGetter__('contacts', function() {
     return self.raw.contact;
@@ -83,11 +83,11 @@ Monitor.parseDn = function (dn) {
   var parsed = ldap.parseDN(dn);
   return {
     user: parsed.rdns[1].uuid,
-    name: parsed.rdns[0].amonmonitorname
+    name: parsed.rdns[0].amonmonitor
   };
 }
 Monitor.dn = function (user, name) {
-  return sprintf("amonmonitorname=%s, uuid=%s, ou=users, o=smartdc",
+  return sprintf("amonmonitor=%s, uuid=%s, ou=users, o=smartdc",
     name, user);
 }
 Monitor.dnFromRequest = function (req) {
@@ -145,7 +145,7 @@ Monitor.get = function get(app, user, name, callback) {
 Monitor.validate = function validate(app, raw) {
   var requiredFields = {
     // <raw field name>: <exported name>
-    "amonmonitorname": "name",
+    "amonmonitor": "name",
     "contact": "contacts",
   }
   Object.keys(requiredFields).forEach(function (field) {

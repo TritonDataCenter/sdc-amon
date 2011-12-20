@@ -32,7 +32,7 @@ var UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
  *
  * @param app
  * @param name {String} The instance name. Can be skipped if `data` includes
- *    "amonprobename" (which a UFDS response does).
+ *    "amonprobe" (which a UFDS response does).
  * @param data {Object} The instance data. This can either be the public
  *    representation (augmented with 'name', 'monitor' and 'user'), e.g.:
  *      { name: 'whistlelog',
@@ -40,8 +40,8 @@ var UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
  *        user: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
  *        ...
  *    or the raw response from UFDS, e.g.:
- *      { dn: 'amonprobename=whistlelog, amonmonitorname=serverHealth, uuid=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa, ou=users, o=smartdc',
- *        amonprobename: 'whistlelog',
+ *      { dn: 'amonprobe=whistlelog, amonmonitor=serverHealth, uuid=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa, ou=users, o=smartdc',
+ *        amonprobe: 'whistlelog',
  *        ...
  *        objectclass: 'amonprobe' }
  * @throws {restify.RESTError} if the given data is invalid.
@@ -65,7 +65,7 @@ function Probe(app, data) {
     assert.ok(data.user)
     this.dn = Probe.dn(data.user, data.monitor, data.name);
     raw = {
-      amonprobename: data.name,
+      amonprobe: data.name,
       machine: data.machine,
       type: data.type,
       config: JSON.stringify(data.config),
@@ -75,12 +75,12 @@ function Probe(app, data) {
     this.monitor = data.monitor;
   }
 
-  Probe.validateName(raw.amonprobename);
+  Probe.validateName(raw.amonprobe);
   this.raw = Probe.validate(app, raw);
 
   var self = this;
   this.__defineGetter__('name', function() {
-    return self.raw.amonprobename;
+    return self.raw.amonprobe;
   });
   this.__defineGetter__('type', function() {
     return self.raw.type;
@@ -102,13 +102,13 @@ Probe.parseDn = function (dn) {
   var parsed = ldap.parseDN(dn);
   return {
     user: parsed.rdns[2].uuid,
-    monitor: parsed.rdns[1].amonmonitorname,
-    name: parsed.rdns[0].amonprobename
+    monitor: parsed.rdns[1].amonmonitor,
+    name: parsed.rdns[0].amonprobe
   };
 }
 Probe.dn = function (user, monitor, name) {
   return sprintf(
-    "amonprobename=%s, amonmonitorname=%s, uuid=%s, ou=users, o=smartdc",
+    "amonprobe=%s, amonmonitor=%s, uuid=%s, ou=users, o=smartdc",
     name, monitor, user);
 }
 Probe.dnFromRequest = function (req) {
@@ -121,7 +121,7 @@ Probe.dnFromRequest = function (req) {
 Probe.parentDnFromRequest = function (req) {
   var monitorName = req.uriParams.monitor;
   Monitor.validateName(monitorName);
-  return sprintf("amonmonitorname=%s, %s", monitorName, req._user.dn);
+  return sprintf("amonmonitor=%s, %s", monitorName, req._user.dn);
 };
 
 
@@ -175,7 +175,7 @@ Probe.get = function get(app, user, monitor, name, callback) {
 Probe.validate = function validate(app, raw) {
   var requiredFields = {
     // <raw field name>: <exported name>
-    "amonprobename": "name",
+    "amonprobe": "name",
     "machine": "machine",
     "type": "type",
     "config": "config"

@@ -67,7 +67,7 @@
     'body-email-logscan.html' and 'body-email-logscan.txt'.
   - What about subject?  'subject-email.txt'
 - 'sdc-amon /pub/hamish/monitors/whistle -X DELETE' fails
-    ERROR: Error deleting 'amonmonitorname=whistle, uuid=7b23ae63-37c9-420e-bb88-8d4bf5e30455, ou=customers, o=smartdc' from UFDS: NotAllowedOnNonLeafError:...
+    ERROR: Error deleting 'amonmonitor=whistle, uuid=7b23ae63-37c9-420e-bb88-8d4bf5e30455, ou=customers, o=smartdc' from UFDS: NotAllowedOnNonLeafError:...
 - <probe>.idObject details on probe events from agent is *wrong*. Insecure.
   The userUuid value must come from relay (and should be the zone owner-uuid
   cfg var). Relay should probably also add the "zone" from which the event
