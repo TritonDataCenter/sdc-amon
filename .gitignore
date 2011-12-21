@@ -10,8 +10,9 @@ common/node_modules
 bin/amon-zwatch
 agent/checks
 agent/*.json
-tst/config.json
 
+/tst/config.json
+/tst/prep.json
 /master/config.json
 
 # built docs (ignore for now)

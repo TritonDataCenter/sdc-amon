@@ -1,4 +1,7 @@
-
+/* Copyright 2011 Joyent, Inc.  All rights reserved.
+ *
+ * Shared bits for the Amon test files.
+ */
 
 var debug = console.log;
 var fs = require('fs');
@@ -9,6 +12,10 @@ var child_process = require('child_process'),
 var sprintf = require('sprintf').sprintf;
 
 
+//---- globals & constants
+
+var CONFIG_PATH = __dirname + "/config.json";
+
 
 
 /**
@@ -16,7 +23,6 @@ var sprintf = require('sprintf').sprintf;
  *
  * @param options {Object} Setup options.
  *    t {Object} node-tap Test object
- *    configPath {String} Path to JSON config file to load
  *    users {Array} User records to add to UFDS for testing
  *    masterLogPath {String}
  * @param callback {Function} `function (err, config)` where:
@@ -25,65 +31,20 @@ var sprintf = require('sprintf').sprintf;
  */
 function setupMaster(options, callback) {
   var t = options.t;
-  var config, masterClient, master;
+  var config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+  var master;
   
-  function loadConfig(next) {
-    fs.readFile(options.configPath, 'utf8', function(err, content) {
-      t.ifError(err, "read config file");
-      if (err) return next(err);
-      config = JSON.parse(content);
-      //restify.log.level(restify.log.Level.Trace);
-      masterClient = restify.createClient({
-        // 8080 is the built-in default.
-        url: 'http://localhost:' + (config.port || 8080),
-        version: '1'
-      });
-      next(null);
-    });
-  }
-  
-  function loadUsers(next) {
-    var ldap = require('ldapjs');
-    var ufds = ldap.createClient({
-      url: config.ufds.url,
-      //log4js: log4js,
-      reconnect: false
-    });
-    t.ok(ufds, "create ufds client");
-    ufds.bind(config.ufds.rootDn, config.ufds.password, function(err) {
-      t.ifError(err, "bind to ufds");
-      if (err) return next(err);
-      async.forEach(Object.keys(options.users), function(k, nextUser) {
-        var user = options.users[k];
-        ufds.search('ou=users, o=smartdc',
-          {scope: 'one', filter: '(uuid='+user.uuid+')'}, function(err, res) {
-            t.ifError(err, "search for user "+user.uuid);
-            var found = false;
-            res.on('searchEntry', function(entry) { found = true });
-            res.on('error', function(err) { t.ifError(err) });
-            res.on('end', function(result) {
-              if (found) {
-                nextUser();
-              } else {
-                ufds.add(k, options.users[k], nextUser);
-              }
-            });
-          }
-        );
-      }, function(err) {
-        //TODO: if (err) t.bailout("boom");
-        t.ifError(err, "created users in UFDS");
-        if (err) return next(err);
-        ufds.unbind(function() { /* nothing */ });
-        next();
-      });
-    });
-  }
+  //restify.log.level(restify.log.Level.Trace);
+  var masterClient = restify.createClient({
+    // 8080 is the built-in default.
+    url: 'http://localhost:' + (config.port || 8080),
+    version: '1'
+  });
 
   function startMaster(next) {
     // Start master.
     master = spawn(process.execPath,
-      ['../master/main.js', '-vv', '-f', options.configPath],
+      ['../master/main.js', '-vv', '-f', CONFIG_PATH],
       {cwd: __dirname});
     t.ok(options.masterLogPath, "master log path: '"+options.masterLogPath+"'");
     var masterLog = fs.createWriteStream(options.masterLogPath);
@@ -117,8 +78,8 @@ function setupMaster(options, callback) {
     setTimeout(checkPing, 1000);
   }
   
-  async.series([loadConfig, loadUsers, startMaster], function(err) {
-    callback(err, config, masterClient, master);
+  async.series([startMaster], function(err) {
+    callback(err, masterClient, master);
   });
 }
 
@@ -160,6 +121,8 @@ function objCopy(obj) {
 //---- exports
 
 module.exports = {
+  CONFIG_PATH: CONFIG_PATH,
+
   // test setup/teardown support
   setupMaster: setupMaster,
   teardownMaster: teardownMaster,

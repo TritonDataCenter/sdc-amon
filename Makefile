@@ -46,10 +46,9 @@ NODE_WAF := $(NODEDIR)/bin/node-waf
 NPM_ENV := npm_config_cache=$(shell echo $(TOP)/tmp/npm-cache) npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH
 NPM := $(NPM_ENV) $(NODEDIR)/bin/npm
 PKG_DIR := .pkg
-WHISKEY := deps/node-install/bin/whiskey
 RESTDOWN := python2.6 $(TOP)/deps/restdown/bin/restdown
 NODE_DEV := $(NODEDIR)/bin/node-dev
-TAP := $(NODEDIR)/bin/tap
+TAP := $(TOP)/node_modules/.bin/tap
 
 
 #
@@ -65,8 +64,13 @@ all:: common plugins agent relay bin/amon-zwatch master
 # deps
 #
 
-deps:	$(NODEDIR)/bin/node $(NODEDIR)/bin/npm \
-	$(NODEDIR)/lib/node_modules/whiskey $(NODEDIR)/lib/node_modules/jshint $(NODE_DEV) $(TAP)
+# 'async/package.json' is a landmark for top-level devDependencies.
+deps: $(NODEDIR)/bin/node $(NODEDIR)/bin/npm \
+	$(NODEDIR)/lib/node_modules/jshint \
+	$(NODE_DEV) \
+	$(TOP)/node_modules/async/package.json \
+	$(TOP)/node_modules/sdc-clients/package.json \
+	$(TAP)
 
 # Use 'Makefile' landmarks instead of the dir itself, because dir mtime
 # is that of the most recent file: results in unnecessary rebuilds.
@@ -82,14 +86,17 @@ $(NODEDIR)/bin/npm: $(NODEDIR)/bin/node deps/npm/Makefile
 # Global npm module deps (currently just test/lint stuff used by every amon
 # package). We install globally instead of 'npm install --dev' in every package
 # and having duplicated.
-$(WHISKEY): $(NODEDIR)/bin/npm
-	$(NPM) install -g whiskey
 $(NODEDIR)/lib/node_modules/jshint: $(NODEDIR)/bin/npm
 	$(NPM) install -g jshint
 $(NODE_DEV): $(NODEDIR)/bin/npm
 	$(NPM) install -g node-dev
 $(TAP): $(NODEDIR)/bin/npm
-	$(NPM) install -g tap
+	$(NPM) install tap
+$(TOP)/node_modules/async/package.json:
+	$(NPM) install tap
+$(TOP)/node_modules/sdc-clients/package.json:
+	$(NPM) link deps/node-sdc-clients
+
 
 
 #
@@ -248,8 +255,12 @@ tmp:
 	mkdir -p tmp
 
 test: $(TAP)
+	[ -f tst/config.json ] \
+		|| (echo "error: no 'tst/config.json', use 'tst/config.json.in'" && exit 1)
+	[ -f tst/prep.json ] \
+		|| (echo "error: no 'tst/prep.json', run 'cd tst && node prep.js'" && exit 1)
 	./tst/clean-test-data.sh
-	$(TAP) tst/*.test.js
+	TAP=1 $(TAP) tst/*.test.js
 
 devrun: tmp $(NODEDIR)/bin/node-dev
 	support/devrun.sh

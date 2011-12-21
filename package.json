@@ -11,6 +11,7 @@
     "restify": "0.5",
     "sprintf": "0.1",
     "async": "0.1",
+    "http-signature": "0.9.6",
     "tap": "0.1"
   },
   "scripts": {

@@ -6,6 +6,9 @@
     "password": "secret",
     "caching": true
   },
+  "mapi": {
+    "usb-headnode": "../../usb-headnode"
+  },
   "notificationPlugins": {
     "email": {
       "path": "./notifications/testy",

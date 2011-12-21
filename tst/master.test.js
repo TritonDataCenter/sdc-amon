@@ -17,18 +17,13 @@ var common = require('./common');
 
 //log4js.setGlobalLogLevel('Info');
 
+var config = JSON.parse(fs.readFileSync(common.CONFIG_PATH, 'utf8'));
+var prep = JSON.parse(fs.readFileSync(__dirname + '/prep.json', 'utf8'));
+var sulkybob = JSON.parse(fs.readFileSync(__dirname + '/sulkybob.json', 'utf8'));
+var masterClient;
+var master;
+
 var FIXTURES = {
-  users: {
-    'uuid=11111111-1111-1111-1111-111111111111, ou=users, o=smartdc': {
-      login: 'sulkybob',
-      uuid: '11111111-1111-1111-1111-111111111111',
-      userpassword: '123123',
-      email: 'nobody+sulkybob@joyent.com',
-      cn: 'Sulky',
-      sn: 'Bob',
-      objectclass: 'sdcPerson'
-    }
-  },
   sulkybob: {
     bogusmonitor: {
       contacts: ['smokesignal'],
@@ -38,7 +33,7 @@ var FIXTURES = {
         contacts: ['email'],
         probes: {
           whistlelog: {
-            "machine": "river-saskatchewan",
+            "machine": prep.zone.name,
             "type": "logscan",
             "config": {
               "path": "/tmp/whistle.log",
@@ -53,7 +48,7 @@ var FIXTURES = {
         contacts: ['secondaryEmail'],
         probes: {
           whistlelog: {
-            "machine": "global",
+            "machine": prep.zone.name,
             "type": "logscan",
             "config": {
               "path": "/tmp/whistle.log",
@@ -68,25 +63,18 @@ var FIXTURES = {
   }
 };
 
-var config;
-var masterClient;
-var master;
-
-
 
 //---- setup
 
 test('setup', function (t) {
   common.setupMaster({
       t: t,
-      configPath: __dirname + "/config-master.json",
-      users: FIXTURES.users,
+      users: [sulkybob],
       masterLogPath: __dirname + "/master.log"
     },
-    function(err, _config, _masterClient, _master) {
+    function(err, _masterClient, _master) {
       t.ifError(err, "setup master");
       //TODO: if (err) t.bailout("boom");
-      config = _config;
       masterClient = _masterClient;
       master = _master;
       t.end();
@@ -293,20 +281,25 @@ test('probes: get 404', function(t) {
 
 //---- test relay api
 
-var riverSaskatchewanContentMD5;
+var sulkyzoneContentMD5;
 
 test('relay api: GetAgentProbes', function(t) {
   var probe = FIXTURES.sulkybob.monitors.whistle.probes.whistlelog;
-  masterClient.get("/agentprobes?machine=river-saskatchewan",
+  masterClient.get("/agentprobes?machine=" + prep.zone.name,
     function (err, body, headers, res) {
       t.ifError(err);
-      riverSaskatchewanContentMD5 = headers["content-md5"];
+      sulkyzoneContentMD5 = headers["content-md5"];
       t.ok(Array.isArray(body), "GetAgentProbes response is an array");
-      t.equal(body.length, 1);
-      t.equal(body[0].monitor, "whistle")
-      t.equal(body[0].name, "whistlelog")
-      t.equal(body[0].machine, probe.machine)
-      t.equal(body[0].type, probe.type)
+      t.equal(body.length, 2);
+      var whistleprobe;
+      body.forEach(function (p) {
+        if (p.monitor == "whistle")
+          whistleprobe = p;
+      });
+      t.equal(whistleprobe.monitor, "whistle")
+      t.equal(whistleprobe.name, "whistlelog")
+      t.equal(whistleprobe.machine, probe.machine)
+      t.equal(whistleprobe.type, probe.type)
       t.end();
     }
   );
@@ -314,10 +307,10 @@ test('relay api: GetAgentProbes', function(t) {
 
 test('relay api: HeadAgentProbes', function(t) {
   var probe = FIXTURES.sulkybob.monitors.whistle.probes.whistlelog;
-  masterClient.head("/agentprobes?machine=river-saskatchewan",
+  masterClient.head("/agentprobes?machine=" + prep.zone.name,
     function (err, headers, res) {
       t.ifError(err);
-      t.equal(headers['content-md5'], riverSaskatchewanContentMD5)
+      t.equal(headers['content-md5'], sulkyzoneContentMD5)
       t.end();
     }
   );
@@ -325,7 +318,6 @@ test('relay api: HeadAgentProbes', function(t) {
 
 test('relay api: AddEvents', function(t) {
   var testyLogPath = config.notificationPlugins.email.config.logPath;
-  var sulkybob = FIXTURES.users['uuid=11111111-1111-1111-1111-111111111111, ou=users, o=smartdc'];
   var message = 'hi mom!'
   var event = { probe: 
     { user: sulkybob.uuid,

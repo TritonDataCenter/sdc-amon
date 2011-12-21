@@ -7,9 +7,9 @@
 
 TOP=$(unset CDPATH; cd $(dirname $0)/../; pwd)
 
-UFDS_URL=`cat $TOP/tst/config-master.json | json ufds.url`
-UFDS_ROOTDN=`cat $TOP/tst/config-master.json | json ufds.rootDn`
-UFDS_PASSWORD=`cat $TOP/tst/config-master.json | json ufds.password`
+UFDS_URL=`cat $TOP/tst/config.json | json ufds.url`
+UFDS_ROOTDN=`cat $TOP/tst/config.json | json ufds.rootDn`
+UFDS_PASSWORD=`cat $TOP/tst/config.json | json ufds.password`
 
 export LDAPTLS_REQCERT=allow
 
@@ -41,18 +41,19 @@ function clearUser () {
         echo "$dns" | xargs -n1 -I{} ldapdelete $opts {}
         sleep 5
     fi
-        
-    dns=$(ldapsearch -LLL $opts -b "$dn" -s base '(objectclass=sdcperson)' 2>/dev/null \
-        | sed -n '1 {h; $ !d;}; $ {H; g; s/\n //g; p; q;}; /^ / {H; d;}; /^ /! {x; s/\n //g; p;}' \
-        | grep '^dn:' \
-        | sed "s/^dn: /\'/" | sed "s/$/'/")
-    if [[ -n "$dns" ]]; then
-        echo "$dns" | xargs -n1 echo '#'
-        echo "$dns" | xargs -n1 -I{} ldapdelete $opts {}
-        sleep 3
-    fi
+
+    # *Do not* remove the person. Want to keep, e.g., a test zone on this
+    # customer around for subsequent tests.
+    #dns=$(ldapsearch -LLL $opts -b "$dn" -s base '(objectclass=sdcperson)' 2>/dev/null \
+    #    | sed -n '1 {h; $ !d;}; $ {H; g; s/\n //g; p; q;}; /^ / {H; d;}; /^ /! {x; s/\n //g; p;}' \
+    #    | grep '^dn:' \
+    #    | sed "s/^dn: /\'/" | sed "s/$/'/")
+    #if [[ -n "$dns" ]]; then
+    #    echo "$dns" | xargs -n1 echo '#'
+    #    echo "$dns" | xargs -n1 -I{} ldapdelete $opts {}
+    #    sleep 3
+    #fi
 }
 
 
 clearUser 'uuid=11111111-1111-1111-1111-111111111111, ou=users, o=smartdc'
-clearUser 'uuid=22222222-2222-2222-2222-222222222222, ou=users, o=smartdc'

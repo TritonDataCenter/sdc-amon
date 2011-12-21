@@ -73,9 +73,7 @@ probes that must run inside.
 Current status:
 - Not quite yet running in COAL. For dev: use UFDS in coal and run
   amon master, relay and agent on your Mac.
-- Tests suite is pre-ufds and doesn't work at all.
 - Haven't run lint in a long while.
-- "make devrun" is likely broken.
 
 
 ## Mac Setup
@@ -299,16 +297,26 @@ What should happen now:
 
 ## Testing
 
-The test suite is in the 'tst' directory. Note that config files for the
-test files (e.g. "config-master.json") are commited. If you have, say, a
-different UFDS url, then you'll need a local change. That'll be a pain.
-Config notes:
+The test suite is in the 'tst' directory.
 
-- master.test.js presumes a UFDS running in COAL.
-- master.test.js uses a 'email' notification plugin using the 'testy' module.
-- master.test.js uses port 7000 to intentionally differ from the master
-  default of 8080, which you might already be using for a dev server.
+First, create the test configuration:
 
+    cd tst && cp config.json.in config.json
+
+Default config notes:
+
+- Presumes you have a usb-headnode.git clone in a sibling dir to your
+  amon.git clone. This is used to get "config.coal" info for finding
+  MAPI in your COAL.
+- Presumes a UFDS running in COAL.
+- Master tests use a 'email' notification plugin using the 'testy' module.
+- Uses port 7000 to intentionally differ from the master default of 8080,
+  which you might already be using for a dev server.
+
+Second, prepare your COAL for testing with a test user, key and zone:
+
+    cd tst
+    node prep.js   # creates prep.json used by test suite.
 
 Now run the test suite:
 
@@ -322,9 +330,7 @@ You can run individual test files to get more detailed output, for example:
 If you are getting spurious errors, it may be that a previous test run
 has left crud data in UFDS. Clean it out by running:
 
-    ./tst/clean-test-data.sh
-
-then re-run `make test`.
+    ./tst/clean-test-data.sh   # `make test` doesn't this as well
 
 
 # MVP
