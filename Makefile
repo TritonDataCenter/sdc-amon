@@ -263,7 +263,7 @@ test: $(TAP)
 	[ -f tst/prep.json ] \
 		|| (echo "error: no 'tst/prep.json', run 'cd tst && node prep.js'" && exit 1)
 	./tst/clean-test-data.sh
-	TAP=1 $(TAP) tst/*.test.js
+	PATH=$(NODEDIR)/bin:$PATH TAP=1 $(TAP) tst/*.test.js
 
 devrun: tmp $(NODEDIR)/bin/node-dev
 	support/devrun.sh
