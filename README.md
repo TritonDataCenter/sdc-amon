@@ -123,8 +123,8 @@ Config and run the amon-master:
 
     cd master
     cp config.mac.json config.json
-    # Tweak config.json if you like.
-    # See: <https://head.no.de/docs/amon/#master-configuration>
+    # Tweak config.json <https://head.no.de/docs/amon/#master-configuration>:
+    # - you must at least fill in the `mapi.password`.
     
     ../bin/node-dev main.js -v -f config.json
 
@@ -302,12 +302,10 @@ The test suite is in the 'tst' directory.
 First, create the test configuration:
 
     cd tst && cp config.json.in config.json
+    vi config.json   # enter mapi password
 
 Default config notes:
 
-- Presumes you have a usb-headnode.git clone in a sibling dir to your
-  amon.git clone. This is used to get "config.coal" info for finding
-  MAPI in your COAL.
 - Presumes a UFDS running in COAL.
 - Master tests use a 'email' notification plugin using the 'testy' module.
 - Uses port 7000 to intentionally differ from the master default of 8080,
@@ -330,7 +328,7 @@ You can run individual test files to get more detailed output, for example:
 If you are getting spurious errors, it may be that a previous test run
 has left crud data in UFDS. Clean it out by running:
 
-    ./tst/clean-test-data.sh   # `make test` doesn't this as well
+    ./tst/clean-test-data.sh   # `make test` does this as well
 
 
 # MVP

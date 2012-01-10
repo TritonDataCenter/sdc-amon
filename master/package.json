@@ -15,12 +15,13 @@
     "ldapjs": "0.3"
   },
   "devDependencies": {
-    "jshint": "0.2.3",
-    "whiskey": "0.4.1"
+    "jshint": "0.2.3"
   },
+  "bundledDependences": [
+    "sdc-clients"
+  ],
   "scripts": {
     "start": "node ./main.js",
-    "pretest": "./node_modules/jshint/bin/jshint lib tst main.js",
-    "test": "./node_modules/whiskey/bin/whiskey --timeout 1000 -t \"tst/checks/create.test.js tst/checks/get.test.js tst/checks/del.test.js tst/checks/list.test.js\""
+    "pretest": "./node_modules/jshint/bin/jshint lib tst main.js"
   }
 }

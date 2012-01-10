@@ -29,10 +29,15 @@ var MAPI = require('sdc-clients').MAPI;
 
 //---- globals and constants
 
+// TODO: keep in sync with usb-headnode/config:ufds_admin_uuid
+var adminUuid = "930896af-bf8c-48d4-885c-6573a94b1853";
+
 var config = JSON.parse(fs.readFileSync(__dirname + '/config.json', 'utf8'));
 var sulkybob = JSON.parse(fs.readFileSync(__dirname + '/sulkybob.json', 'utf8'));
 var ufds;
 var sulkyzone; // the test zone to use
+var mapi;
+var mapizone;
 
 
 
@@ -113,10 +118,8 @@ function ufdsUnbind(next) {
   }
 }
 
-function createZone(next) {
-  // `config.mapi` either has url/username/password or 'usb-headnode' which
-  // is a path to a usb-headnode repo clone from which to retrieve COAL
-  // config info for MAPI.
+
+function getMapi(next) {
   var clientOptions;
   if (config.mapi.url && config.mapi.username && config.mapi.password) {
     clientOptions = {
@@ -124,25 +127,16 @@ function createZone(next) {
       username: config.mapi.username,
       password: config.mapi.password
     };
-  } else if (config.mapi["usb-headnode"]) {
-    var configCoalPath = path.resolve(__dirname, config.mapi["usb-headnode"],
-      "config/config.coal");
-    if (!path.existsSync(configCoalPath)) {
-      return next(sprintf("'%s' (from config.mapi.usb-headnode) does not exist",
-        configCoalPath))
-    }
-    var content = fs.readFileSync(configCoalPath, 'utf8');
-    clientOptions = {
-      url: /^mapi_client_url=\s*(.*?)\s*$/m.exec(content)[1],
-      username: /^mapi_http_admin_user=\s*(.*?)\s*$/m.exec(content)[1],
-      password: /^mapi_http_admin_pw=\s*(.*?)\s*$/m.exec(content)[1]
-    };
   } else {
-    return next("invalid `config.mapi`: must either have "
-      + "url/username/password keys or a 'usb-headnode' key");
+    return next("invalid `config.mapi`: must have "
+      + "url/username/password keys");
   }
-  var mapi = new MAPI(clientOptions);
   
+  mapi = new MAPI(clientOptions);
+  next();
+}
+
+function createSulkyzone(next) {
   // First check if there is a zone for sulkybob.
   mapi.listZones(sulkybob.uuid, function (err, zones, headers) {
     if (err) return next(err);
@@ -200,15 +194,28 @@ function createZone(next) {
   });
 }
 
+function getMapizone(next) {
+  mapi.getZoneByAlias(adminUuid, "mapi", function (err, zone) {
+    if (err) {
+      return next(err);
+    }
+    log("# MAPI zone is '%s'.", zone.name);
+    mapizone = zone;
+    next();
+  });
+}
+
 function writePrepJson(next) {
   var prepJson = __dirname + "/prep.json";
   log("# Write '%s'.", prepJson)
   prep = {
-    zone: sulkyzone
+    sulkyzone: sulkyzone,
+    mapizone: mapizone
   }
   fs.writeFileSync(prepJson, JSON.stringify(prep, null, 2), 'utf8');
   next();
 }
+
 
 
 //---- mainline
@@ -218,7 +225,9 @@ async.series([
     createUser,
     addKey,
     ufdsUnbind,
-    createZone,
+    getMapi,
+    createSulkyzone,
+    getMapizone,
     writePrepJson
   ],
   function (err) {

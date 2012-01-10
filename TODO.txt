@@ -23,6 +23,7 @@
     not always have it or want to use it instead of other operator accounts.
     Perhaps a "sdc-monitoring" tool (monadm? amonadm?) to add canned sets of
     monitors and probes?
+- node 0.6
 
 
 # todo

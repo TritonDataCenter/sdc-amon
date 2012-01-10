@@ -121,7 +121,7 @@ ifeq ($(UNAME), SunOS)
 endif
 
 master: $(NODEDIR)/bin/npm common plugins
-	(cd master && $(NPM) update && $(NPM) link amon-common amon-plugins)
+	(cd master && $(NPM) update && $(NPM) install ../deps/node-sdc-clients && $(NPM) link amon-common amon-plugins)
 
 #
 # Packaging targets

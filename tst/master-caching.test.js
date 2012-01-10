@@ -31,7 +31,7 @@ var FIXTURES = {
         probes: {
           whistlelog: {
             "type": "logscan",
-            "machine": prep.zone.name,
+            "machine": prep.sulkyzone.name,
             "config": {
               "path": "/tmp/whistle.log",
               "regex": "tweet",
@@ -171,7 +171,7 @@ var sulkyzoneContentMD5;
 
 test('GetAgentProbes', function(t) {
   var probe = FIXTURES.sulkybob.monitors.whistle.probes.whistlelog;
-  masterClient.get("/agentprobes?machine=" + prep.zone.name,
+  masterClient.get("/agentprobes?machine=" + prep.sulkyzone.name,
     function (err, body, headers, res) {
       t.ifError(err);
       sulkyzoneContentMD5 = headers["content-md5"];
@@ -184,13 +184,13 @@ test('GetAgentProbes', function(t) {
 
 test('HeadAgentProbes', function(t) {
   var probe = FIXTURES.sulkybob.monitors.whistle.probes.whistlelog;
-  masterClient.head("/agentprobes?machine=" + prep.zone.name,
+  masterClient.head("/agentprobes?machine=" + prep.sulkyzone.name,
     function (err, headers, res) {
       t.ifError(err);
       t.equal(headers['content-md5'], sulkyzoneContentMD5)
   
       // Second time should be fast.
-      masterClient.head("/agentprobes?machine=" + prep.zone.name,
+      masterClient.head("/agentprobes?machine=" + prep.sulkyzone.name,
         function (err2, headers2, res) {
           t.ifError(err2);
           t.equal(headers2['content-md5'], sulkyzoneContentMD5)
@@ -351,14 +351,14 @@ test('probes: get', function(t) {
 var newSulkyzoneContentMD5;
 test('HeadAgentProbes changed after probe added', {timeout: 5000}, function(t) {
   var probe = FIXTURES.sulkybob.monitors.whistle.probes.whistlelog;
-  masterClient.head("/agentprobes?machine=" + prep.zone.name,
+  masterClient.head("/agentprobes?machine=" + prep.sulkyzone.name,
     function (err, headers, res) {
       t.ifError(err);
       newSulkyzoneContentMD5 = headers['content-md5'];
       t.ok(newSulkyzoneContentMD5 !== sulkyzoneContentMD5)
   
       // Second time should be fast.
-      masterClient.head("/agentprobes?machine=" + prep.zone.name,
+      masterClient.head("/agentprobes?machine=" + prep.sulkyzone.name,
         function (err2, headers2, res) {
           t.ifError(err2);
           t.equal(headers2['content-md5'], newSulkyzoneContentMD5)
@@ -372,7 +372,7 @@ test('HeadAgentProbes changed after probe added', {timeout: 5000}, function(t) {
 
 test('GetAgentProbes', function(t) {
   var probe = FIXTURES.sulkybob.monitors.whistle.probes.whistlelog;
-  masterClient.get("/agentprobes?machine=" + prep.zone.name,
+  masterClient.get("/agentprobes?machine=" + prep.sulkyzone.name,
     function (err, body, headers, res) {
       t.ifError(err);
       t.equal(headers["content-md5"], newSulkyzoneContentMD5);
@@ -475,4 +475,5 @@ process.on('uncaughtException', function (err) {
     master.kill();
   }
   console.log("* * *\n" + err.stack + "\n* * *\n");
+  process.exit(1);
 });

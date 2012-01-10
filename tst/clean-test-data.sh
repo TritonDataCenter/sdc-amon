@@ -3,7 +3,23 @@
 # Clean out test data from UFDS.
 #
 
-#set -o xtrace
+if [[ -n "$TRACE" ]]; then
+    export PS4='${BASH_SOURCE}:${LINENO}: ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+    set -o xtrace
+fi
+set -o errexit
+set -o pipefail
+
+
+function cleanup () {
+    local status=$?
+    if [[ $status -ne 0 ]]; then
+        echo "error $status (run 'TRACE=1 $0' for more info)"
+    fi
+}
+trap 'cleanup' EXIT
+
+
 
 TOP=$(unset CDPATH; cd $(dirname $0)/../; pwd)
 
@@ -24,7 +40,7 @@ function clearUser () {
     #   on subsequent delete of parent.
     dns=$(ldapsearch -LLL $opts -b "$dn" '(objectclass=amonprobe)' \
         | sed -n '1 {h; $ !d;}; $ {H; g; s/\n //g; p; q;}; /^ / {H; d;}; /^ /! {x; s/\n //g; p;}' \
-        | grep '^dn:' \
+        | (grep '^dn:' || true) \
         | sed "s/^dn: /\'/" | sed "s/$/'/")
     if [[ -n "$dns" ]]; then
         echo "$dns" | xargs -n1 echo '#'
@@ -34,7 +50,7 @@ function clearUser () {
     
     dns=$(ldapsearch -LLL $opts -b "$dn" '(objectclass=amon*)' \
         | sed -n '1 {h; $ !d;}; $ {H; g; s/\n //g; p; q;}; /^ / {H; d;}; /^ /! {x; s/\n //g; p;}' \
-        | grep '^dn:' \
+        | (grep '^dn:' || true) \
         | sed "s/^dn: /\'/" | sed "s/$/'/")
     if [[ -n "$dns" ]]; then
         echo "$dns" | xargs -n1 echo '#'
@@ -46,7 +62,7 @@ function clearUser () {
     # customer around for subsequent tests.
     #dns=$(ldapsearch -LLL $opts -b "$dn" -s base '(objectclass=sdcperson)' 2>/dev/null \
     #    | sed -n '1 {h; $ !d;}; $ {H; g; s/\n //g; p; q;}; /^ / {H; d;}; /^ /! {x; s/\n //g; p;}' \
-    #    | grep '^dn:' \
+    #    | (grep '^dn:' || true) \
     #    | sed "s/^dn: /\'/" | sed "s/$/'/")
     #if [[ -n "$dns" ]]; then
     #    echo "$dns" | xargs -n1 echo '#'

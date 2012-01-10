@@ -4,6 +4,7 @@
  * Amon Master controller for '/pub/:user/monitors/:monitor/probes/...' endpoints.
  */
 
+var debug = console.warn;
 var events = require('events');
 var assert = require('assert');
 
@@ -141,6 +142,42 @@ Probe.prototype.serialize = function serialize() {
 
 
 /**
+ * Authorize that this Probe can be added/updated.
+ *
+ * @param app {App} The amon-master app.
+ * @param callback {Function} `function (err)`. `err` may be:
+ *    undefined: put is authorized
+ *    restify.InvalidArgumentError: the named machine doesn't
+ *        exist or isn't owned by the monitor owner
+ *    restify.InternalError: some other error in authorizing
+ */
+Probe.prototype.authorizePut = function (app, callback) {
+  //XXX Add handling for 'server' instead of 'this.machine'
+  var self = this;
+  app.mapi.getMachine(this.machine, {owner_uuid: this.user}, function (err, machine) {
+    if (err) {
+      if (err.httpCode === 404) {
+        return callback(new restify.InvalidArgumentError(sprintf(
+          "Invalid 'machine': machine '%s' does not exist or is not "
+          + "owned by user '%s'.", self.machine, self.user)));
+      } else {
+        log.error("unexpected error authorizing probe put against MAPI: "
+          + "probe=%s, mapi-error=%o",
+          JSON.stringify(self.serialize()), err);
+        return callback(new restify.InternalError(
+          "Internal error authorizing probe put."));
+      }
+    }
+    callback();
+  });
+};
+Probe.prototype.authorizeDelete = function (app, callback) {
+  throw new Error("XXX authorize boom");
+};
+
+
+
+/**
  * Get a probe.
  *
  * @param app {App} The Amon Master App.
@@ -235,6 +272,7 @@ Probe.validateName = function validateName(name) {
 
 // Note: Should be in sync with "ufds/schema/amonprobe.js".
 Probe._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,31}$/;
+
 
 
 

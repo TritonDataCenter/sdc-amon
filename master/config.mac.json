@@ -5,6 +5,11 @@
     "password": "secret",
     "caching": true
   },
+  "mapi": {
+    "url": "http://10.99.99.8:80",
+    "username": "admin",
+    "password": "TODO:PASSWORD"
+  },
   "notificationPlugins": {
     "sms": {
       "path": "./notifications/twilio",

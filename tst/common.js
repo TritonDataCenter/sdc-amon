@@ -38,7 +38,11 @@ function setupMaster(options, callback) {
   var masterClient = restify.createClient({
     // 8080 is the built-in default.
     url: 'http://localhost:' + (config.port || 8080),
-    version: '1'
+    version: '1',
+    retryOptions: {
+      retries: 0,
+      minTimeout: 250
+    }
   });
 
   function startMaster(next) {

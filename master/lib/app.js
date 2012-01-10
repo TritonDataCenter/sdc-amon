@@ -11,6 +11,7 @@ var debug = console.log;
 var ldap = require('ldapjs');
 var restify = require('restify');
 var sprintf = require('sprintf').sprintf;
+var MAPI = require('sdc-clients').MAPI;
 
 var amonCommon = require('amon-common');
 var Cache = amonCommon.Cache;
@@ -113,6 +114,12 @@ function asyncForEach(list, fn, cb) {
  * @param callback {Function} `function (err, app) {...}`.
  */
 function createApp(config, callback) {
+  var mapi = new MAPI({
+    url: config.mapi.url,
+    username: config.mapi.username,
+    password: config.mapi.password
+  });
+  
   var ufds = ldap.createClient({
     url: config.ufds.url
   }); 
@@ -122,7 +129,7 @@ function createApp(config, callback) {
       return callback(err);
     }
     try {
-      var app = new App(config, ufds);
+      var app = new App(config, ufds, mapi);
     } catch(err) {
       return callback(err);
     }
@@ -137,8 +144,9 @@ function createApp(config, callback) {
  *
  * @param config {Object} Config object.
  * @param ufds {ldapjs.Client} LDAP client to UFDS.
+ * @param mapi {sdc-clients.MAPI} MAPI client.
  */
-function App(config, ufds) {
+function App(config, ufds, mapi) {
   var self = this;
 
   if (!config) throw TypeError('config is required');
@@ -148,6 +156,7 @@ function App(config, ufds) {
   this.ufds = ufds;
   this._ufdsCaching = (config.ufds.caching === undefined
     ? true : config.ufds.caching);
+  this.mapi = mapi;
 
   this.notificationPlugins = {};
   if (config.notificationPlugins) {
@@ -260,6 +269,10 @@ App.prototype.cacheSet = function(scope, key, value) {
   //log.trace("App.cacheSet scope='%s' key='%s'", scope, key);
   this._cacheFromScope[scope].set(key, value);
 }
+App.prototype.cacheDel = function(scope, key) {
+  if (! this._ufdsCaching) return;
+  this._cacheFromScope[scope].del(key);
+}
 
 /**
  * Invalidate caches as appropriate for the given DB object create/update.
@@ -366,13 +379,14 @@ App.prototype.userFromId = function(userId, callback) {
     return callback(err, user);
   }
 
-  // Look up the login, cache the result and return.
+  // Look up the user, cache the result and return.
   var searchOpts = {
     filter: (uuid
       ? '(&(uuid=' + uuid + ')(objectclass=sdcperson))'
       : '(&(login=' + login + ')(objectclass=sdcperson))'),
     scope: 'one'
   };
+  log.trace("search for user: ldap filter: %s", searchOpts.filter)
   this.ufds.search("ou=users, o=smartdc", searchOpts, function(err, result) {
     if (err) return cacheAndCallback(err);
 

@@ -106,10 +106,15 @@ Monitor.parentDnFromRequest = function (req) {
  */
 Monitor.prototype.serialize = function serialize() {
   return {
+    user: this.user,
     name: this.name,
     contacts: this.contacts
   };
 }
+
+Monitor.prototype.authorizePut = function (app, callback) {
+  callback();
+};
 
 
 /**

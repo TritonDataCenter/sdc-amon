@@ -7,7 +7,9 @@
     "caching": true
   },
   "mapi": {
-    "usb-headnode": "../../usb-headnode"
+    "url": "http://10.99.99.8:80",
+    "username": "admin",
+    "password": "TODO:PASSWORD"
   },
   "notificationPlugins": {
     "email": {

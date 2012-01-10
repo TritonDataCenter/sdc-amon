@@ -4,12 +4,14 @@ var debug = console.log;
 var fs = require('fs');
 var http = require('http');
 var sprintf = require('sprintf').sprintf;
-var restify = require('restify');
 var test = require('tap').test;
+var restify = require('restify');
 //var log4js = require('log4js');
 var async = require('async');
 
 var common = require('./common');
+
+
 
 
 
@@ -33,7 +35,7 @@ var FIXTURES = {
         contacts: ['email'],
         probes: {
           whistlelog: {
-            "machine": prep.zone.name,
+            "machine": prep.sulkyzone.name,
             "type": "logscan",
             "config": {
               "path": "/tmp/whistle.log",
@@ -48,7 +50,7 @@ var FIXTURES = {
         contacts: ['secondaryEmail'],
         probes: {
           whistlelog: {
-            "machine": prep.zone.name,
+            "machine": prep.sulkyzone.name,
             "type": "logscan",
             "config": {
               "path": "/tmp/whistle.log",
@@ -94,15 +96,23 @@ test('ping', function(t) {
   });
 });
 
+test('user', function(t) {
+  masterClient.get("/pub/sulkybob", function(err, body, headers) {
+    t.ifError(err, "/pub/sulkybob");
+    t.equal(body.login, "sulkybob")
+    t.end();
+  });
+});
+
 
 
 //---- test: monitors
 
 test('monitors: list empty', function(t) {
   masterClient.get("/pub/sulkybob/monitors", function(err, body, headers) {
-    t.ifError(err);
-    t.ok(Array.isArray(body));
-    t.equal(body.length, 0);
+    t.ifError(err, "/pub/sulkybob/monitors");
+    t.ok(Array.isArray(body), "response is an array");
+    t.equal(body.length, 0, "empty array");
     t.end();
   });
 });
@@ -115,11 +125,14 @@ test('monitors: create', function(t) {
         path: "/pub/sulkybob/monitors/"+name,
         body: data
       }, function (err, body, headers) {
-        t.ifError(err);
-        t.equal(body.name, name)
-        t.equal(body.contacts.sort().join(','),
-          data.contacts.sort().join(','),
-          sprintf("monitor.contacts: %s === %s", body.contacts, data.contacts))
+        t.ifError(err, "PUT /pub/sulkybob/monitors/"+name);
+        t.ok(body, "got a response body");
+        if (body) {
+          t.equal(body.name, name, "created monitor name")
+          t.equal(body.contacts.sort().join(','),
+            data.contacts.sort().join(','),
+            sprintf("monitor.contacts: %s === %s", body.contacts, data.contacts))
+        }
         next();
       });
   }, function (err) {
@@ -201,11 +214,10 @@ test('probes: create', function(t) {
     var probes = monitors[monitorName].probes;
     async.forEach(Object.keys(probes), function(probeName, nextProbe) {
       var probe = probes[probeName];
-      masterClient.put({
-          path: sprintf("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName),
-          body: probe
-        }, function (err, body, headers) {
-          t.ifError(err);
+      var path = sprintf("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName)
+      masterClient.put({path: path, body: probe},
+        function (err, body, headers) {
+          t.ifError(err, path);
           t.equal(body.name, probeName)
           t.equal(body.machine, probe.machine)
           t.equal(body.type, probe.type)
@@ -223,19 +235,64 @@ test('probes: create', function(t) {
   });
 });
 
+test('probes: create without owning zone', function(t) {
+  var monitor = FIXTURES.sulkybob.monitors.whistle
+  var probes = {
+    "donotown": {
+      "machine": prep.mapizone.name,
+      "type": "logscan",
+      "config": {
+        "path": "/tmp/whistle.log",
+        "regex": "tweet",
+        "threshold": 1,
+        "period": 60
+      }
+    },
+    "doesnotexist": {
+      "machine": "fef43adb-8152-b94c-9dd9-058247579a3d", // some random uuid
+      "type": "logscan",
+      "config": {
+        "path": "/tmp/whistle.log",
+        "regex": "tweet",
+        "threshold": 1,
+        "period": 60
+      }
+    }
+  };
+  
+  async.forEach(Object.keys(probes), function(probeName, nextProbe) {
+    var probe = probes[probeName];
+    masterClient.put({
+        path: sprintf("/pub/sulkybob/monitors/whistle/probes/%s", probeName),
+        body: probe
+      }, function (err, body, headers) {
+        t.ok(err);
+        t.equal(err.httpCode, 409);
+        t.equal(err.restCode, "InvalidArgument");
+        nextProbe();
+      }
+    );
+  }, function (err) {
+    t.end();
+  });
+});
+
+
 
 test('probes: list', function(t) {
   var monitors = FIXTURES.sulkybob.monitors;
   async.forEach(Object.keys(monitors), function(monitorName, next) {
     var probes = monitors[monitorName].probes;
-    masterClient.get(sprintf("/pub/sulkybob/monitors/%s/probes", monitorName),
-      function (err, body, headers) {
-        t.ifError(err);
-        t.ok(Array.isArray(body), "listProbes response is an array");
-        t.equal(body.length, Object.keys(probes).length);
-        next();
-      }
-    );
+    var path = sprintf("/pub/sulkybob/monitors/%s/probes", monitorName)
+    masterClient.get(path, function (err, body, headers) {
+      t.ifError(err, path);
+      t.ok(Array.isArray(body), "listProbes response is an array");
+      var expectedProbeNames = Object.keys(probes).sort();
+      t.deepEqual(body.map(function (p) { return p.name }).sort(),
+        expectedProbeNames,
+        sprintf("monitor '%s' probes are %s", monitorName, expectedProbeNames));
+      next();
+    });
   }, function (err) {
     t.end();
   });
@@ -285,7 +342,7 @@ var sulkyzoneContentMD5;
 
 test('relay api: GetAgentProbes', function(t) {
   var probe = FIXTURES.sulkybob.monitors.whistle.probes.whistlelog;
-  masterClient.get("/agentprobes?machine=" + prep.zone.name,
+  masterClient.get("/agentprobes?machine=" + prep.sulkyzone.name,
     function (err, body, headers, res) {
       t.ifError(err);
       sulkyzoneContentMD5 = headers["content-md5"];
@@ -307,7 +364,7 @@ test('relay api: GetAgentProbes', function(t) {
 
 test('relay api: HeadAgentProbes', function(t) {
   var probe = FIXTURES.sulkybob.monitors.whistle.probes.whistlelog;
-  masterClient.head("/agentprobes?machine=" + prep.zone.name,
+  masterClient.head("/agentprobes?machine=" + prep.sulkyzone.name,
     function (err, headers, res) {
       t.ifError(err);
       t.equal(headers['content-md5'], sulkyzoneContentMD5)
@@ -425,4 +482,5 @@ process.on('uncaughtException', function (err) {
     master.kill();
   }
   console.log("* * *\n" + err.stack + "\n* * *\n");
+  process.exit(1);
 });

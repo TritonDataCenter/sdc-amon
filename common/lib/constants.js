@@ -31,9 +31,5 @@ module.exports = {
   ],
 
   /// Misc
-  ApiVersion: '1.0.0',
-  ContentType: 'Content-Type',
-  HashHeader: 'ETag',
-  JsonContentType: 'application/json',
-  TarContentType: 'application/x-tar'
+  ApiVersion: '1.0.0'
 };
