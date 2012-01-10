@@ -9,7 +9,7 @@ var restify = require('restify');
 var async = require('async');
 var child_process = require('child_process'),
     spawn = child_process.spawn;
-var sprintf = require('sprintf').sprintf;
+var format = require('amon-common').utils.format;
 
 
 //---- globals & constants
@@ -62,7 +62,7 @@ function setupMaster(options, callback) {
       masterClient.get("/ping", function(err, body, headers) {
         if (err) {
           sentinel++;
-          if (sentinel >= 5) {
+          if (sentinel >= 10) {
             t.ok(false, "Master did not come up after "+sentinel
               +" seconds (see 'master.std{out,err}').");
             t.end();
@@ -72,7 +72,7 @@ function setupMaster(options, callback) {
           }
         } else {
           t.equal(body.pid, master.pid,
-            sprintf("Master responding to ping (pid %d) vs. spawned master (pid %d).",
+            format("Master responding to ping (pid %d) vs. spawned master (pid %d).",
               body.pid, master.pid));
           t.ok(true, "master is running")
           next();

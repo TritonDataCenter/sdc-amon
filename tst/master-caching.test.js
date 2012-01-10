@@ -6,7 +6,7 @@
 var debug = console.log;
 var fs = require('fs');
 var http = require('http');
-var sprintf = require('sprintf').sprintf;
+var format = require('amon-common').utils.format;
 var restify = require('restify');
 var test = require('tap').test;
 var async = require('async');
@@ -113,7 +113,7 @@ test('monitors: create', function(t) {
         t.equal(body.name, name)
         t.equal(body.contacts.sort().join(','),
           data.contacts.sort().join(','),
-          sprintf("monitor.contacts: %s === %s", body.contacts, data.contacts))
+          format("monitor.contacts: %s === %s", body.contacts, data.contacts))
         next();
       });
   }, function (err) {
@@ -147,14 +147,14 @@ test('monitors: get', function(t) {
       t.ifError(err);
       t.equal(body.contacts.sort().join(','),
         data.contacts.sort().join(','),
-        sprintf("monitor.contacts: %s === %s", body.contacts, data.contacts))
+        format("monitor.contacts: %s === %s", body.contacts, data.contacts))
 
       // Second time should be fast.
       masterClient.get("/pub/sulkybob/monitors/"+name, function(err, body2, headers2) {
         t.ifError(err);
         t.equal(body.contacts.sort().join(','),
           data.contacts.sort().join(','),
-          sprintf("monitor.contacts: %s === %s", body.contacts, data.contacts))
+          format("monitor.contacts: %s === %s", body.contacts, data.contacts))
         t.ok(Number(headers2['x-response-time']) < 50, "faster cached response")
         next();
       });
@@ -210,14 +210,14 @@ test('probes: list empty', function(t) {
   var monitors = FIXTURES.sulkybob.monitors;
   async.forEach(Object.keys(monitors), function(monitorName, next) {
     var probes = monitors[monitorName].probes;
-    masterClient.get(sprintf("/pub/sulkybob/monitors/%s/probes", monitorName),
+    masterClient.get(format("/pub/sulkybob/monitors/%s/probes", monitorName),
       function (err, body, headers) {
         t.ifError(err);
         t.ok(Array.isArray(body));
         t.equal(body.length, 0);
         
         // Second one from cache should be fast.
-        masterClient.get(sprintf("/pub/sulkybob/monitors/%s/probes", monitorName),
+        masterClient.get(format("/pub/sulkybob/monitors/%s/probes", monitorName),
           function (err, body2, headers2) {
             t.ifError(err);
             t.equal(body2.length, 0);
@@ -238,7 +238,7 @@ test('probes: get a probe not yet added', function(t) {
     var probes = monitors[monitorName].probes;
     async.forEach(Object.keys(probes), function(probeName, nextProbe) {
       var probe = probes[probeName];
-      masterClient.get(sprintf("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName),
+      masterClient.get(format("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName),
         function (err, body, headers) {
           t.equal(err.httpCode, 404);
           t.equal(err.restCode, "ResourceNotFound");
@@ -259,7 +259,7 @@ test('probes: create', function(t) {
     var probes = monitors[monitorName].probes;
     async.forEach(Object.keys(probes), function(probeName, nextProbe) {
       var probe = probes[probeName];
-      var path = sprintf("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName);
+      var path = format("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName);
       masterClient.put({path: path, body: probe}, function (err, body, headers) {
         t.ifError(err, "error PUT'ing "+path);
         t.equal(body.name, probeName)
@@ -285,14 +285,14 @@ test('probes: list', function(t) {
   var monitors = FIXTURES.sulkybob.monitors;
   async.forEach(Object.keys(monitors), function(monitorName, next) {
     var probes = monitors[monitorName].probes;
-    masterClient.get(sprintf("/pub/sulkybob/monitors/%s/probes", monitorName),
+    masterClient.get(format("/pub/sulkybob/monitors/%s/probes", monitorName),
       function (err, body, headers) {
         t.ifError(err);
         t.ok(Array.isArray(body), "listProbes response is an array");
         t.equal(body.length, Object.keys(probes).length);
         
         // Second time should be fast.
-        masterClient.get(sprintf("/pub/sulkybob/monitors/%s/probes", monitorName),
+        masterClient.get(format("/pub/sulkybob/monitors/%s/probes", monitorName),
           function (err, body2, headers2) {
             t.ifError(err);
             t.equal(body2.length, body.length);
@@ -313,7 +313,7 @@ test('probes: get', function(t) {
     var probes = monitors[monitorName].probes;
     async.forEach(Object.keys(probes), function(probeName, nextProbe) {
       var probe = probes[probeName];
-      masterClient.get(sprintf("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName),
+      masterClient.get(format("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName),
         function (err, body, headers) {
           t.ifError(err);
           t.equal(body.name, probeName)
@@ -324,7 +324,7 @@ test('probes: get', function(t) {
           })
           
           // Second time should be faster.
-          masterClient.get(sprintf("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName),
+          masterClient.get(format("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName),
             function (err2, body2, headers2) {
               t.ifError(err);
               t.equal(body.name, probeName)
@@ -393,7 +393,7 @@ test('probes: delete', function(t) {
     var probes = monitors[monitorName].probes;
     async.forEach(Object.keys(probes), function(probeName, nextProbe) {
       var probe = probes[probeName];
-      masterClient.del(sprintf("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName),
+      masterClient.del(format("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName),
         function (err, headers, res) {
           t.ifError(err);
           t.equal(res.statusCode, 204)

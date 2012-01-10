@@ -20,7 +20,7 @@ var restify = require('restify');
 var async = require('async');
 var child_process = require('child_process'),
     spawn = child_process.spawn;
-var sprintf = require('sprintf').sprintf;
+var format = require('amon-common').utils.format;
 var httpSignature = require('http-signature');
 var ldap = require('ldapjs');
 var MAPI = require('sdc-clients').MAPI;
@@ -29,7 +29,8 @@ var MAPI = require('sdc-clients').MAPI;
 
 //---- globals and constants
 
-// TODO: keep in sync with usb-headnode/config:ufds_admin_uuid
+// Keep in sync with usb-headnode/config:ufds_admin_uuid
+// (TODO: get this from UFDS)
 var adminUuid = "930896af-bf8c-48d4-885c-6573a94b1853";
 
 var config = JSON.parse(fs.readFileSync(__dirname + '/config.json', 'utf8'));
@@ -38,6 +39,7 @@ var ufds;
 var sulkyzone; // the test zone to use
 var mapi;
 var mapizone;
+var headnodeUuid;
 
 
 
@@ -55,7 +57,7 @@ function ufdsBind(next) {
 }
 
 function createUser(next) {
-  var dn = sprintf("uuid=%s, ou=users, o=smartdc", sulkybob.uuid);
+  var dn = format("uuid=%s, ou=users, o=smartdc", sulkybob.uuid);
   ufds.search('ou=users, o=smartdc',
     {scope: 'one', filter: '(uuid='+sulkybob.uuid+')'},
     function(err, res) {
@@ -81,8 +83,8 @@ function addKey(next) {
   // to encode the pain of getting the CAPI auth.
   var key = fs.readFileSync(__dirname + '/id_rsa.amontest.pub', 'utf8');
   var fp = httpSignature.sshKeyFingerprint(key);
-  var userDn = sprintf("uuid=%s, ou=users, o=smartdc", sulkybob.uuid);
-  var dn = sprintf("fingerprint=%s, %s", fp, userDn);
+  var userDn = format("uuid=%s, ou=users, o=smartdc", sulkybob.uuid);
+  var dn = format("fingerprint=%s, %s", fp, userDn);
   var entry = {
     name: ["amontest"],
     openssh: [key],
@@ -205,12 +207,32 @@ function getMapizone(next) {
   });
 }
 
+function getHeadnodeUuid(next) {
+  mapi.listServers(function (err, servers) {
+    if (err) {
+      return next(err);
+    }
+    for (var i=0; i < servers.length; i++) {
+      if (servers[i].hostname === "headnode") {
+        headnodeUuid = servers[i].uuid;
+        break;
+      }
+    }
+    if (!headnodeUuid) {
+      throw new Error("could not find headnode in MAPI servers list");
+    }
+    log("# Header server UUID '%s'.", headnodeUuid);
+    next();
+  });
+}
+
 function writePrepJson(next) {
   var prepJson = __dirname + "/prep.json";
   log("# Write '%s'.", prepJson)
   prep = {
     sulkyzone: sulkyzone,
-    mapizone: mapizone
+    mapizone: mapizone,
+    headnodeUuid: headnodeUuid
   }
   fs.writeFileSync(prepJson, JSON.stringify(prep, null, 2), 'utf8');
   next();
@@ -228,6 +250,7 @@ async.series([
     getMapi,
     createSulkyzone,
     getMapizone,
+    getHeadnodeUuid,
     writePrepJson
   ],
   function (err) {

@@ -3,7 +3,7 @@
 var debug = console.log;
 var fs = require('fs');
 var http = require('http');
-var sprintf = require('sprintf').sprintf;
+var format = require('amon-common').utils.format;
 var test = require('tap').test;
 var restify = require('restify');
 //var log4js = require('log4js');
@@ -61,6 +61,22 @@ var FIXTURES = {
           }
         }
       }
+      //,
+      //gz: {
+      //  contacts: ['email'],
+      //  probes: {
+      //    smartlogin: {
+      //      "server": prep.headnodeUuid,
+      //      "type": "logscan",
+      //      "config": {
+      //        "path": "/var/svc/log/smartdc-agent-smartlogin:default.log",
+      //        "regex": "Stopping",
+      //        "threshold": 1,
+      //        "period": 60
+      //      }
+      //    }
+      //  }
+      //}
     },
   }
 };
@@ -131,7 +147,7 @@ test('monitors: create', function(t) {
           t.equal(body.name, name, "created monitor name")
           t.equal(body.contacts.sort().join(','),
             data.contacts.sort().join(','),
-            sprintf("monitor.contacts: %s === %s", body.contacts, data.contacts))
+            format("monitor.contacts: %s === %s", body.contacts, data.contacts))
         }
         next();
       });
@@ -173,7 +189,7 @@ test('monitors: get', function(t) {
       t.ifError(err);
       t.equal(body.contacts.sort().join(','),
         data.contacts.sort().join(','),
-        sprintf("monitor.contacts: %s === %s", body.contacts, data.contacts))
+        format("monitor.contacts: %s === %s", body.contacts, data.contacts))
       next();
     })
   }, function (err) {
@@ -196,13 +212,13 @@ test('probes: list empty', function(t) {
   var monitors = FIXTURES.sulkybob.monitors;
   async.forEach(Object.keys(monitors), function(monitorName, next) {
     var probes = monitors[monitorName].probes;
-    masterClient.get(sprintf("/pub/sulkybob/monitors/%s/probes", monitorName),
-      function (err, body, headers) {
-        t.ifError(err);
-        t.ok(Array.isArray(body));
-        t.equal(body.length, 0);
-        next();
-      });
+    var path = format("/pub/sulkybob/monitors/%s/probes", monitorName);
+    masterClient.get(path, function (err, body, headers) {
+      t.ifError(err, path);
+      t.ok(Array.isArray(body), "response is an array");
+      t.equal(body.length, 0, "list of probes is empty");
+      next();
+    });
   }, function (err) {
     t.end();
   });
@@ -214,9 +230,12 @@ test('probes: create', function(t) {
     var probes = monitors[monitorName].probes;
     async.forEach(Object.keys(probes), function(probeName, nextProbe) {
       var probe = probes[probeName];
-      var path = sprintf("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName)
+      var path = format("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName);
       masterClient.put({path: path, body: probe},
         function (err, body, headers) {
+debug("XXX err", err)
+debug("XXX body", body)
+debug("XXX headers", headers)
           t.ifError(err, path);
           t.equal(body.name, probeName)
           t.equal(body.machine, probe.machine)
@@ -263,7 +282,7 @@ test('probes: create without owning zone', function(t) {
   async.forEach(Object.keys(probes), function(probeName, nextProbe) {
     var probe = probes[probeName];
     masterClient.put({
-        path: sprintf("/pub/sulkybob/monitors/whistle/probes/%s", probeName),
+        path: format("/pub/sulkybob/monitors/whistle/probes/%s", probeName),
         body: probe
       }, function (err, body, headers) {
         t.ok(err);
@@ -283,14 +302,14 @@ test('probes: list', function(t) {
   var monitors = FIXTURES.sulkybob.monitors;
   async.forEach(Object.keys(monitors), function(monitorName, next) {
     var probes = monitors[monitorName].probes;
-    var path = sprintf("/pub/sulkybob/monitors/%s/probes", monitorName)
+    var path = format("/pub/sulkybob/monitors/%s/probes", monitorName)
     masterClient.get(path, function (err, body, headers) {
       t.ifError(err, path);
       t.ok(Array.isArray(body), "listProbes response is an array");
       var expectedProbeNames = Object.keys(probes).sort();
       t.deepEqual(body.map(function (p) { return p.name }).sort(),
         expectedProbeNames,
-        sprintf("monitor '%s' probes are %s", monitorName, expectedProbeNames));
+        format("monitor '%s' probes are %s", monitorName, expectedProbeNames));
       next();
     });
   }, function (err) {
@@ -304,7 +323,7 @@ test('probes: get', function(t) {
     var probes = monitors[monitorName].probes;
     async.forEach(Object.keys(probes), function(probeName, nextProbe) {
       var probe = probes[probeName];
-      masterClient.get(sprintf("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName),
+      masterClient.get(format("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName),
         function (err, body, headers) {
           t.ifError(err);
           t.equal(body.name, probeName)
@@ -326,7 +345,7 @@ test('probes: get', function(t) {
 
 test('probes: get 404', function(t) {
   var monitorName = Object.keys(FIXTURES.sulkybob.monitors)[0];
-  masterClient.get(sprintf("/pub/sulkybob/monitors/%s/probes/bogus", monitorName),
+  masterClient.get(format("/pub/sulkybob/monitors/%s/probes/bogus", monitorName),
     function (err, body, headers, res) {
       t.equal(err.httpCode, 404);
       t.equal(err.restCode, "ResourceNotFound");
@@ -436,7 +455,7 @@ test('probes: delete', function(t) {
     var probes = monitors[monitorName].probes;
     async.forEach(Object.keys(probes), function(probeName, nextProbe) {
       var probe = probes[probeName];
-      masterClient.del(sprintf("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName),
+      masterClient.del(format("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName),
         function (err, headers, res) {
           t.ifError(err);
           t.equal(res.statusCode, 204)

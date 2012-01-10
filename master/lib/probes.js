@@ -10,7 +10,7 @@ var assert = require('assert');
 
 var ldap = require('ldapjs');
 var restify = require('restify');
-var sprintf = require('sprintf').sprintf;
+var format = require('util').format;
 var ufdsmodel = require('./ufdsmodel');
 var Monitor = require('./monitors').Monitor;
 var objCopy = require('amon-common').utils.objCopy;
@@ -108,8 +108,7 @@ Probe.parseDn = function (dn) {
   };
 }
 Probe.dn = function (user, monitor, name) {
-  return sprintf(
-    "amonprobe=%s, amonmonitor=%s, uuid=%s, ou=users, o=smartdc",
+  return format("amonprobe=%s, amonmonitor=%s, uuid=%s, ou=users, o=smartdc",
     name, monitor, user);
 }
 Probe.dnFromRequest = function (req) {
@@ -122,7 +121,7 @@ Probe.dnFromRequest = function (req) {
 Probe.parentDnFromRequest = function (req) {
   var monitorName = req.uriParams.monitor;
   Monitor.validateName(monitorName);
-  return sprintf("amonmonitor=%s, %s", monitorName, req._user.dn);
+  return format("amonmonitor=%s, %s", monitorName, req._user.dn);
 };
 
 
@@ -157,7 +156,7 @@ Probe.prototype.authorizePut = function (app, callback) {
   app.mapi.getMachine(this.machine, {owner_uuid: this.user}, function (err, machine) {
     if (err) {
       if (err.httpCode === 404) {
-        return callback(new restify.InvalidArgumentError(sprintf(
+        return callback(new restify.InvalidArgumentError(format(
           "Invalid 'machine': machine '%s' does not exist or is not "
           + "owned by user '%s'.", self.machine, self.user)));
       } else {
@@ -189,7 +188,7 @@ Probe.prototype.authorizeDelete = function (app, callback) {
 Probe.get = function get(app, user, monitor, name, callback) {
   if (! UUID_REGEX.test(user)) {
     throw new restify.InvalidArgumentError(
-      sprintf("invalid user UUID: '%s'", user));
+      format("invalid user UUID: '%s'", user));
   }
   Probe.validateName(name);
   Monitor.validateName(monitor);
@@ -213,7 +212,6 @@ Probe.validate = function validate(app, raw) {
   var requiredFields = {
     // <raw field name>: <exported name>
     "amonprobe": "name",
-    "machine": "machine",
     "type": "type",
     "config": "config"
   }
@@ -225,9 +223,31 @@ Probe.validate = function validate(app, raw) {
       //      that. Would be a pain to have a separate error hierarchy here
       //      that is translated higher up.
       throw new restify.MissingParameterError(
-        sprintf("'%s' is a required parameter", requiredFields[field]));
+        format("'%s' is a required parameter for a probe",
+          requiredFields[field]));
     }
   });
+
+  // One of 'machine' or 'server' is required.
+  if (raw.machine && raw.server) {
+    throw new restify.InvalidArgumentError(
+      format("must specify only one of 'machine' or 'server' for a "
+        + "probe: %j", raw));
+  } else if (raw.machine) {
+    if (! UUID_REGEX.test(raw.machine)) {
+      throw new restify.InvalidArgumentError(
+        format("invalid probe machine UUID: '%s'", raw.machine));
+    }
+  } else if (raw.server) {
+    if (! UUID_REGEX.test(raw.server)) {
+      throw new restify.InvalidArgumentError(
+        format("invalid probe server UUID: '%s'", raw.server));
+    }
+  } else {
+    throw new restify.MissingParameterError(
+      format("must specify one of 'machine' or 'server' for a probe: %j",
+        raw));
+  }
 
   //XXX validate the type is an existing probe type
   //  var plugin = req._config.plugins[type];
@@ -235,7 +255,7 @@ Probe.validate = function validate(app, raw) {
   //var e = restify.newError({
   //  httpCode: HttpCodes.Conflict,
   //  restCode: RestCodes.InvalidArgument,
-  //  message: sprintf('probe type is invalid: %s', msg)
+  //  message: format('probe type is invalid: %s', msg)
   //});
   //...
   //    return next();
@@ -248,7 +268,7 @@ Probe.validate = function validate(app, raw) {
   //var e = restify.newError({
   //  httpCode: HttpCodes.Conflict,
   //  restCode: RestCodes.InvalidArgument,
-  //  message: sprintf('config is invalid: %s', msg)
+  //  message: format('config is invalid: %s', msg)
   //});
   //...
   //    return next();
@@ -266,7 +286,7 @@ Probe.validate = function validate(app, raw) {
 Probe.validateName = function validateName(name) {
   if (! Probe._nameRegex.test(name)) {
     throw new restify.InvalidArgumentError(
-      sprintf("%s name is invalid: '%s'", Probe.name, name));
+      format("%s name is invalid: '%s'", Probe.name, name));
   }
 }
 

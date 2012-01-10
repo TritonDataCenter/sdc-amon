@@ -70,6 +70,7 @@ deps: $(NODEDIR)/bin/node $(NODEDIR)/bin/npm \
 	$(NODE_DEV) \
 	$(TOP)/node_modules/async/package.json \
 	$(TOP)/node_modules/sdc-clients/package.json \
+	$(TOP)/node_modules/amon-common/package.json \
 	$(TAP)
 
 # Use 'Makefile' landmarks instead of the dir itself, because dir mtime
@@ -96,6 +97,8 @@ $(TOP)/node_modules/async/package.json:
 	$(NPM) install tap
 $(TOP)/node_modules/sdc-clients/package.json:
 	$(NPM) link deps/node-sdc-clients
+$(TOP)/node_modules/amon-common/package.json:
+	$(NPM) link ./common
 
 
 

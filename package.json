@@ -9,13 +9,11 @@
     "log4js": "0.4",
     "ldapjs": "0.3",
     "restify": "0.5",
-    "sprintf": "0.1",
     "async": "0.1",
     "http-signature": "0.9.6",
     "tap": "0.1"
   },
   "scripts": {
-    "// pretest": "./node_modules/jshint/bin/jshint lib tst main.js",
     "test": "./node_modules/.bin/tap ./tst/*.test.js"
   }
 }
