@@ -276,6 +276,7 @@ install_relay_pkg:
 clean:
 	([[ -d deps/node ]] && cd deps/node && $(MAKE) distclean || true)
 	@rm -rf $(NODEDIR) agent/node_modules relay/node_modules \
-		master/node_modules bin/amon-zwatch .pkg amon-*.tgz \
+		master/node_modules common/node_modules plugins/node_modules \
+		bin/amon-zwatch .pkg amon-*.tgz \
 		tmp/npm-cache amon-*.tar.bz2
 
