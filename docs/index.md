@@ -320,9 +320,9 @@ the master. This is done via the Relay API. The Amon Master also implements
 this API.
 
 Dev Note: The module "common/lib/relay-client.js" is used by both amon-relay
-and amon-agent to speak the Relay API. In production usage the relays
+and amon-master to speak the Relay API. In production usage the relays
 speak to the master over a network socket and agents speak to their relay
-over a Unix domain socket.
+over a Unix domain socket (zsocket).
 
 
 ## AddEvents (POST /events)

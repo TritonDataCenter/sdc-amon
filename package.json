@@ -13,7 +13,11 @@
     "http-signature": "0.9.6",
     "tap": "0.1"
   },
+  "bundledDependences": [
+    "sdc-clients",
+    "amon-common"
+  ],
   "scripts": {
-    "test": "./node_modules/.bin/tap ./tst/*.test.js"
+    "test": "make test"
   }
 }

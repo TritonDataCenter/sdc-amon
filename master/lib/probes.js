@@ -10,10 +10,11 @@ var assert = require('assert');
 
 var ldap = require('ldapjs');
 var restify = require('restify');
-var format = require('util').format;
 var ufdsmodel = require('./ufdsmodel');
 var Monitor = require('./monitors').Monitor;
-var objCopy = require('amon-common').utils.objCopy;
+var utils = require('amon-common').utils,
+  objCopy = utils.objCopy,
+  format = utils.format;
 
 
 

@@ -20,6 +20,7 @@ var common = require('./common');
 var config = JSON.parse(fs.readFileSync(common.CONFIG_PATH, 'utf8'));
 var prep = JSON.parse(fs.readFileSync(__dirname + '/prep.json', 'utf8'));
 var sulkybob = JSON.parse(fs.readFileSync(__dirname + '/sulkybob.json', 'utf8'));
+var masterLogPath = __dirname + "/master-caching.log";
 var master;
 var masterClient;
 
@@ -53,7 +54,7 @@ test('setup', function (t) {
   common.setupMaster({
       t: t,
       users: [sulkybob],
-      masterLogPath: __dirname + "/master-caching.log"
+      masterLogPath: masterLogPath
     },
     function(err, _masterClient, _master) {
       t.ifError(err, "setup master");
@@ -474,6 +475,7 @@ process.on('uncaughtException', function (err) {
   if (master) {
     master.kill();
   }
-  console.log("* * *\n" + err.stack + "\n* * *\n");
+  console.log("* * *\n%s\n\nTry looking in '%s'.\n* * *\n",
+    err.stack, masterLogPath);
   process.exit(1);
 });

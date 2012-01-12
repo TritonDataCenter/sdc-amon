@@ -57,7 +57,7 @@ TAP := $(TOP)/node_modules/.bin/tap
 
 all:: common plugins agent relay bin/amon-zwatch master
 
-.PHONY: deps agent relay master common plugins test lint gjslint jshint pkg pkg_agent pkg_relay pkg_master upload
+.PHONY: testdeps deps agent relay master common plugins test lint gjslint jshint pkg pkg_agent pkg_relay pkg_master upload
 
 
 #
@@ -91,14 +91,11 @@ $(NODEDIR)/lib/node_modules/jshint: $(NODEDIR)/bin/npm
 	$(NPM) install -g jshint
 $(NODE_DEV): $(NODEDIR)/bin/npm
 	$(NPM) install -g node-dev
+# TAP is a landmark for all testdeps.
 $(TAP): $(NODEDIR)/bin/npm
-	$(NPM) install tap
-$(TOP)/node_modules/async/package.json:
-	$(NPM) install tap
-$(TOP)/node_modules/sdc-clients/package.json:
-	$(NPM) link deps/node-sdc-clients
-$(TOP)/node_modules/amon-common/package.json:
+	$(NPM) install
 	$(NPM) link ./common
+	$(NPM) link deps/node-sdc-clients
 
 
 
@@ -263,7 +260,7 @@ test: $(TAP)
 	[ -f tst/prep.json ] \
 		|| (echo "error: no 'tst/prep.json', run 'cd tst && node prep.js'" && exit 1)
 	./tst/clean-test-data.sh
-	PATH=$(NODEDIR)/bin:$PATH TAP=1 $(TAP) tst/*.test.js
+	PATH=$(NODEDIR)/bin:$(PATH) TAP=1 $(TAP) tst/*.test.js
 
 devrun: tmp $(NODEDIR)/bin/node-dev
 	support/devrun.sh

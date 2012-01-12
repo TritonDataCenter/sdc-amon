@@ -22,6 +22,7 @@ var common = require('./common');
 var config = JSON.parse(fs.readFileSync(common.CONFIG_PATH, 'utf8'));
 var prep = JSON.parse(fs.readFileSync(__dirname + '/prep.json', 'utf8'));
 var sulkybob = JSON.parse(fs.readFileSync(__dirname + '/sulkybob.json', 'utf8'));
+var masterLogPath = __dirname + "/master.log";
 var masterClient;
 var master;
 
@@ -88,7 +89,7 @@ test('setup', function (t) {
   common.setupMaster({
       t: t,
       users: [sulkybob],
-      masterLogPath: __dirname + "/master.log"
+      masterLogPath: masterLogPath
     },
     function(err, _masterClient, _master) {
       t.ifError(err, "setup master");
@@ -199,8 +200,8 @@ test('monitors: get', function(t) {
 
 test('monitors: get 404', function(t) {
   masterClient.get("/pub/sulkybob/monitors/bogus", function (err, body, headers, res) {
-    t.equal(err.httpCode, 404);
-    t.equal(err.restCode, "ResourceNotFound");
+    t.equal(err.httpCode, 404, "should get 404");
+    t.equal(err.restCode, "ResourceNotFound", "should get rest code for 404");
     t.end();
   })
 });
@@ -500,6 +501,7 @@ process.on('uncaughtException', function (err) {
   if (master) {
     master.kill();
   }
-  console.log("* * *\n" + err.stack + "\n* * *\n");
+  console.log("* * *\n%s\n\nTry looking in '%s'.\n* * *\n",
+    err.stack, masterLogPath);
   process.exit(1);
 });
