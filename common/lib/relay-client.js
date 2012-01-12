@@ -12,8 +12,8 @@ var https = require('https');
 var httpu = require('httpu');
 var url = require('url');
 var restify = require('restify');
-var sprintf = require('sprintf');
 var assert = require('assert');
+var format = require('./utils').format;
 
 var Constants = require('./constants');
 
@@ -58,7 +58,7 @@ function RelayClient(options) {
       this._requestMode = "https";
       break;
     default:
-      throw new TypeError(sprintf("invalid relay API protocol: '%s'",
+      throw new TypeError(format("invalid relay API protocol: '%s'",
         parsed.protocol));
     }
   } else {
@@ -228,7 +228,7 @@ RelayClient.prototype._request = function(method, path, callback) {
     req = httpu.request(options, onResponse);
     break;
   default:
-    throw new Error(sprintf("unknown request mode: '%s'", this._requestMode));
+    throw new Error(format("unknown request mode: '%s'", this._requestMode));
   }
 
   req.on('error', function(err) {

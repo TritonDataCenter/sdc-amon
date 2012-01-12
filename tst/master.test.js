@@ -109,6 +109,18 @@ test('ping', function(t) {
   masterClient.get("/ping", function(err, body, headers) {
     t.ifError(err, "ping'd");
     t.equal(body.ping, 'pong', "responded with 'pong'")
+  
+    t.ok(headers['access-control-allow-origin']);
+    t.ok(headers['access-control-allow-methods']);
+    t.ok(headers.server);
+    t.ok(headers.connection);
+    t.ok(headers.date);
+    t.ok(headers['x-api-version']);
+    t.ok(headers['x-request-id']);
+    t.ok(headers['x-response-time']);
+    t.equal(headers.connection, 'close');
+    t.equal(headers['x-api-version'], '1.0.0');
+
     t.end();
   });
 });

@@ -6,14 +6,13 @@ var pathlib = require('path');
 var os = require('os');
 var spawn = require('child_process').spawn;
 
-var sprintf = require('sprintf');
 var restify = require('restify');
-var uuid = require('node-uuid');
 var zsock = require('zsock');
 
-var amonCommon = require('amon-common');
-var Constants = amonCommon.Constants;
-var RelayClient = amonCommon.RelayClient;
+var amonCommon = require('amon-common'),
+  Constants = amonCommon.Constants,
+  RelayClient = amonCommon.RelayClient,
+  format = amonCommon.utils.format;
 
 var agentprobes = require('./agentprobes');
 var events = require('./events');
@@ -274,7 +273,7 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
         if (backedUp) {
           return restore(function (err3) {
             if (err3) {
-              return callback(sprintf("%s (also: %s)", err2, err3));
+              return callback(format("%s (also: %s)", err2, err3));
             }
             return callback(err2);
           });

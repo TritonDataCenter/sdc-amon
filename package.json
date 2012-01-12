@@ -11,6 +11,7 @@
     "restify": "0.5",
     "async": "0.1",
     "http-signature": "0.9.6",
+    "jshint": "0.2.3",
     "tap": "0.1"
   },
   "bundledDependences": [

@@ -5,18 +5,10 @@
   "author": "Joyent (joyent.com)",
   "private": true,
   "dependencies": {
-    "httpu": "0.0.1",
-    "node-uuid": "1.2.0",
     "nopt": "1.0.6",
-    "request": "2.0.2",
-    "restify": "0.5.4",
-    "sprintf": "0.1.1",
+    "restify": "0.5.6",
     "zsock": "1.0.5",
     "zutil": "0.1.2"
-  },
-  "devDependencies": {
-    "jshint": "0.2.3",
-    "whiskey": "0.4.1"
   },
   "bin": {
     "amon-relay": "./bin/amon-relay",
@@ -24,8 +16,6 @@
   },
   "scripts": {
     "start": "node ./main.js",
-    "pretest": "./node_modules/jshint/bin/jshint lib tst",
-    "test": "./node_modules/.bin/whiskey -t tst/checks.test.js",
     "postinstall": "./npm/postinstall.sh",
     "preuninstall": "./npm/preuninstall.sh"
   }

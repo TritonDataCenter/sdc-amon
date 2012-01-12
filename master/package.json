@@ -7,21 +7,17 @@
   "dependencies": {
     "node-uuid": "1.2.0",
     "nopt": "1.0.6",
-    "restify": "0.5.x",
+    "restify": "0.5.6",
     "retry": "0.5.0",
     "httpu": "0.0.1",
     "sprintf": "0.1.1",
     "nodemailer": "0.2",
     "ldapjs": "0.3"
   },
-  "devDependencies": {
-    "jshint": "0.2.3"
-  },
   "bundledDependences": [
     "sdc-clients"
   ],
   "scripts": {
     "start": "node ./main.js",
-    "pretest": "./node_modules/jshint/bin/jshint lib tst main.js"
   }
 }

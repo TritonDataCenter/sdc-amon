@@ -1,33 +1,14 @@
 {
   "name": "amon-common",
-  "description": "Smart DataCenter Monitoring common utilities package",
-  "homepage": "https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming",
+  "description": "Smart DataCenter Monitoring common utilities",
   "version": "1.0.0",
-  "repository": {
-    "type": "git",
-    "url": "git@git.joyent.com:amon.git"
-  },
   "private": true,
-  "contributors": [
-    "Mark Cavage <mark.cavage@joyent.com> (http://www.joyent.com)",
-    "Trent Mick <trent.mick@joyent.com> (http://www.joyent.com)"
-  ],
+  "author": "Joyent (joyent.com)",
   "main": "lib/index.js",
   "dependencies": {
-    "dirsum": "0.1.1",
     "httpu": "0.0.1",
     "node-uuid": "1.2.0",
-    "nopt": "1.0.6",
-    "restify": "0.5.4",
-    "sprintf": "0.1.1",
+    "restify": "0.5.6",
     "lru-cache": "1.0.5"
-  },
-  "devDependencies": {
-    "jshint": "0.2.3",
-    "whiskey": "0.4.1"
-  },
-  "scripts": {
-    "pretest": "./node_modules/jshint/bin/jshint lib tst",
-    "test": "./node_modules/.bin/whiskey -t tst/config.test.js"
   }
 }

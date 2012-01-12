@@ -18,12 +18,12 @@ var http = require('http');
 var assert = require('assert');
 var nopt = require('nopt');
 var path = require('path');
-var sprintf = require('sprintf').sprintf;
 var uuid = require('node-uuid');
 
-var amonCommon = require('amon-common');
-var RelayClient = amonCommon.RelayClient;
-var Constants = amonCommon.Constants;
+var amonCommon = require('amon-common'),
+  RelayClient = amonCommon.RelayClient,
+  Constants = amonCommon.Constants,
+  format = amonCommon.utils.format;
 var plugins = require('amon-plugins');
 
 
@@ -122,7 +122,7 @@ function getProbeData(force, callback) {
 function createProbe(id, probeData, callback) {
   var ProbeType = plugins[probeData.type];
   if (! ProbeType) {
-    return callback(sprintf("unknown amon probe plugin type: '%s'", probeData.type));
+    return callback(format("unknown amon probe plugin type: '%s'", probeData.type));
   }
 
   try {
@@ -269,7 +269,7 @@ function updateProbes(force) {
         break;
 
       default:
-        throw new Error(sprintf("unknown probe todo action: '%s'", action));
+        throw new Error(format("unknown probe todo action: '%s'", action));
       }
     }
     asyncForEach(todos, handleProbeTodo, function (err) {

@@ -5,15 +5,10 @@
   "private": true,
   "author": "Joyent (joyent.com)",
   "dependencies": {
-    "dirsum": "0.1.1",
-    "httpu": "1.0.0",
     "nopt": "1.0.6",
     "node-uuid": "1.2.0",
     "sprintf": "0.1.1",
-    "restify": "0.5.4"
-  },
-  "devDependencies": {
-    "jshint": "0.2.3"
+    "restify": "0.5.6"
   },
   "bin": {
     "amon-agent": "./bin/amon-agent"
