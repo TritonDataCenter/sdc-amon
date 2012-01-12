@@ -4,6 +4,5 @@ module.exports = {
   Constants: require('./constants'),
   Cache: require('./cache'),
   RelayClient: require('./relay-client'),
-  utils: require('./utils'),
-  _test: require('./test-common')
+  utils: require('./utils')
 };
