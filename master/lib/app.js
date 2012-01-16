@@ -10,12 +10,12 @@ var debug = console.log;
 
 var ldap = require('ldapjs');
 var restify = require('restify');
-var sprintf = require('sprintf').sprintf;
 var MAPI = require('sdc-clients').MAPI;
 
-var amonCommon = require('amon-common');
-var Cache = amonCommon.Cache;
-var Constants = amonCommon.Constants;
+var amonCommon = require('amon-common'),
+  Cache = amonCommon.Cache,
+  Constants = amonCommon.Constants,
+  format = amonCommon.utils.format;
 var Contact = require('./contact');
 
 // Endpoint controller modules.
@@ -120,6 +120,7 @@ function createApp(config, callback) {
     password: config.mapi.password
   });
   
+  // TODO: should change to sdc-clients.UFDS at some point.
   var ufds = ldap.createClient({
     url: config.ufds.url
   }); 
@@ -171,6 +172,8 @@ function App(config, ufds, mapi) {
   // Cache of login/uuid (aka username) -> full user record.
   this.userCache = new Cache(config.userCache.size,
     config.userCache.expiry, log, "user");
+  this.isOperatorCache = new Cache(100, 300, log, "isOperator");
+  this.mapiServersCache = new Cache(100, 300, log, "mapiServers");
   
   // Caches for server response caching. This is centralized on the app
   // because it allows the interdependant cache-invalidation to be
@@ -206,7 +209,7 @@ function App(config, ufds, mapi) {
           res.sendError(err, err instanceof restify.ResourceNotFoundError);
         } else if (! user) {
           res.sendError(new restify.ResourceNotFoundError(
-            sprintf("no such user: '%s'", userId)), true);
+            format("no such user: '%s'", userId)), true);
         } else {
           req._user = user;
         }
@@ -363,7 +366,7 @@ App.prototype.userFromId = function(userId, callback) {
     login = userId;
   } else {
     return callback(new restify.InvalidArgumentError(
-      sprintf("user id is not a valid UUID or login: '%s'", userId)));
+      format("user id is not a valid UUID or login: '%s'", userId)));
   }
 
   var self = this;
@@ -418,12 +421,114 @@ App.prototype.userFromId = function(userId, callback) {
           + "searchOpts=%o  users=%o", users.length, userId, searchOpts,
           users);
         return cacheAndCallback(new restify.InternalError(
-          sprintf("error determining user for '%s'", userId)));
+          format("error determining user for '%s'", userId)));
       }
     });
   });
-  
 };
+
+
+/**
+ * Is the given user UUID an operator.
+ *
+ * @param userUuid {String}
+ * @param callback {Function} `function (err, isOperator)`
+ * @throws {TypeError} if invalid args are given.
+ */
+App.prototype.isOperator = function (userUuid, callback) {
+  // Validate args.
+  if (typeof(userUuid) !== 'string')
+    throw new TypeError('userUuid (String) required');
+  if (!UUID_REGEX.test(userUuid))
+    throw new TypeError(format('userUuid is not a valid UUID: %s', userUuid));
+  if (typeof(callback) !== 'function')
+    throw new TypeError('callback (Function) required');
+  
+  // Check cache. "cached" is `{isOperator: <isOperator>}`.
+  var cached = this.isOperatorCache.get(userUuid);
+  if (cached) {
+    return callback(null, cached.isOperator);
+  }
+
+  // Look up the user, cache the result and return.
+  var self = this;
+  var base = 'cn=operators, ou=groups, o=smartdc';
+  var searchOpts = {
+    // Must use EqualityFilter until
+    // <https://github.com/mcavage/node-ldapjs/issues/50> is fixed.
+    //filter: format('(uniquemember=uuid=%s, ou=users, o=smartdc)', userUuid),
+    filter: new ldap.filters.EqualityFilter({
+      attribute: 'uniquemember',
+      value: format('uuid=%s, ou=users, o=smartdc', userUuid)
+    }),
+    scope: 'base',
+    attributes: ['dn']
+  };
+  log.trace("search if user is operator: search opts: %s",
+    JSON.stringify(searchOpts));
+  this.ufds.search(base, searchOpts, function(err, result) {
+    if (err) return callback(err);
+
+    var entries = [];
+    result.on('searchEntry', function(entry) {
+      entries.push(entry.object);
+    });
+
+    result.on('error', function(err) {
+      // `err` is an ldapjs error (<http://ldapjs.org/errors.html>) which is
+      // currently compatible enough so that we don't bother wrapping it in
+      // a `restify.RESTError`. (TODO: verify that)
+      return callback(err);
+    });
+
+    result.on('end', function(result) {
+      if (result.status !== 0) {
+        //XXX restify this error
+        return callback("non-zero status from LDAP search: "+result);
+      }
+      var isOperator = (entries.length > 0);
+      self.isOperatorCache.set(userUuid, {isOperator: isOperator});
+      return callback(null, isOperator);
+    });
+  });
+}
+
+/**
+ * Does the given server UUID exist (in MAPI).
+ *
+ * @param serverUuid {String}
+ * @param callback {Function} `function (err, serverExists)`
+ * @throws {TypeError} if invalid args are given.
+ */
+App.prototype.serverExists = function (serverUuid, callback) {
+  // Validate args.
+  if (typeof(serverUuid) !== 'string')
+    throw new TypeError('serverUuid (String) required');
+  if (!UUID_REGEX.test(serverUuid))
+    throw new TypeError(format('serverUuid is not a valid UUID: %s', serverUuid));
+  if (typeof(callback) !== 'function')
+    throw new TypeError('callback (Function) required');
+  
+  // Check cache. "cached" is `{server-uuid-1: true, ...}`.
+  var cached = this.mapiServersCache.get("servers");
+  if (cached) {
+    return callback(null, (cached[serverUuid] !== undefined));
+  }
+
+  // Look up the user, cache the result and return.
+  var self = this;
+  this.mapi.listServers(function (err, servers) {
+    if (err) {
+      return callback(err);
+    }
+    var serverMap = {};
+    for (var i = 0; i < servers.length; i++) {
+      serverMap[servers[i].uuid] = true;
+    }
+    self.mapiServersCache.set("servers", serverMap);
+    callback(null, (serverMap[serverUuid] !== undefined));
+  });
+}
 
 
 /**
@@ -530,7 +635,7 @@ App.prototype.notificationTypeFromMedium = function(medium) {
   log.warn('Could not determine an appropriate notification plugin '
     + 'for "%s" medium.', medium);
   throw new restify.InvalidArgumentError(
-    sprintf('Invalid or unsupported contact medium "%s".', medium));
+    format('Invalid or unsupported contact medium "%s".', medium));
 }
 
 

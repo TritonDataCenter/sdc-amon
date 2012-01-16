@@ -68,11 +68,12 @@ function Probe(app, data) {
     this.dn = Probe.dn(data.user, data.monitor, data.name);
     raw = {
       amonprobe: data.name,
-      machine: data.machine,
       type: data.type,
       config: JSON.stringify(data.config),
       objectclass: Probe.objectclass
     };
+    if (data.machine) raw.machine = data.machine;
+    if (data.server) raw.server = data.server;
     this.user = data.user;
     this.monitor = data.monitor;
   }
@@ -89,6 +90,9 @@ function Probe(app, data) {
   });
   this.__defineGetter__('machine', function() {
     return self.raw.machine;
+  });
+  this.__defineGetter__('server', function() {
+    return self.raw.server;
   });
   this.__defineGetter__('config', function() {
     if (self._config === undefined) {
@@ -130,14 +134,16 @@ Probe.parentDnFromRequest = function (req) {
  * Return the public API view of this Probe's data.
  */
 Probe.prototype.serialize = function serialize() {
-  return {
+  var data = {
     user: this.user,
     monitor: this.monitor,
     name: this.name,
     type: this.type,
-    machine: this.machine,
     config: this.config,
   };
+  if (this.machine) data.machine = this.machine;
+  if (this.server) data.server = this.server;
+  return data;
 }
 
 
@@ -152,25 +158,66 @@ Probe.prototype.serialize = function serialize() {
  *    restify.InternalError: some other error in authorizing
  */
 Probe.prototype.authorizePut = function (app, callback) {
-  //XXX Add handling for 'server' instead of 'this.machine'
   var self = this;
-  app.mapi.getMachine(this.machine, {owner_uuid: this.user}, function (err, machine) {
-    if (err) {
-      if (err.httpCode === 404) {
-        return callback(new restify.InvalidArgumentError(format(
-          "Invalid 'machine': machine '%s' does not exist or is not "
-          + "owned by user '%s'.", self.machine, self.user)));
-      } else {
-        log.error("unexpected error authorizing probe put against MAPI: "
-          + "probe=%s, mapi-error=%o",
-          JSON.stringify(self.serialize()), err);
+  if (this.machine) {
+    // Must be the owner of this machine.
+    app.mapi.getMachine(this.machine, {owner_uuid: this.user}, function (err, machine) {
+      if (err) {
+        if (err.httpCode === 404) {
+          return callback(new restify.InvalidArgumentError(format(
+            "Invalid 'machine': machine '%s' does not exist or is not "
+            + "owned by user '%s'.", self.machine, self.user)));
+        } else {
+          log.error("unexpected error authorizing probe put against MAPI: "
+            + "probe=%s, mapi-error=%o",
+            JSON.stringify(self.serialize()), err.stack || err);
+          return callback(new restify.InternalError(
+            "Internal error authorizing probe put."));
+        }
+      }
+      callback();
+    });
+  } else if (this.server) {
+    // Must be an operator to add a probe to a GZ.
+    app.isOperator(this.user, function (err, isOperator) {
+      if (err) {
+        log.error("unexpected error authorizing probe put: "
+          + "probe=%s, error=%s", JSON.stringify(self.serialize()),
+          err.stack || err);
         return callback(new restify.InternalError(
           "Internal error authorizing probe put."));
       }
-    }
-    callback();
-  });
+      if (!isOperator) {
+        return callback(new restify.InvalidArgumentError(format(
+          "Must be operator put a probe on a server (server=%s): "
+          + "user '%s' is not an operator.", self.server, self.user)));
+      }
+      
+      // Server must exist.
+      app.serverExists(self.server, function (err, serverExists) {
+        if (err) {
+          log.error("unexpected error authorizing probe put against MAPI: "
+            + "probe=%s, mapi-error=%o",
+            JSON.stringify(self.serialize()), err.stack || err);
+          return callback(new restify.InternalError(
+            "Internal error authorizing probe put."));
+        }
+        if (!serverExists) {
+          return callback(new restify.InvalidArgumentError(format(
+            "'server', %s, is invalid: no such server", self.server)));
+        }
+        callback();
+      });
+    });
+  } else {
+    log.error("Attempting to authorize PUT on an invalid probe: "
+      + "no 'machine' or 'server' value: %s",
+      JSON.stringify(this.serialize()));
+    return callback(new restify.InternalError(
+      "Internal error authorizing probe put."));
+  }
 };
+
 Probe.prototype.authorizeDelete = function (app, callback) {
   throw new Error("XXX authorize boom");
 };

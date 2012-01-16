@@ -27,6 +27,10 @@ var LRU = require('lru-cache');
  * @param name {string} Optional name for this cache. Just used for logging.
  */
 function Cache(size, expiry, log, name) {
+  if (!(this instanceof Cache)) {
+    return new Cache(size, expiry, log, name);
+  }
+
   assert.ok(size !== undefined);
   assert.ok(expiry !== undefined);
   this.size = size;

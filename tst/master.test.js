@@ -21,7 +21,8 @@ var common = require('./common');
 
 var config = JSON.parse(fs.readFileSync(common.CONFIG_PATH, 'utf8'));
 var prep = JSON.parse(fs.readFileSync(__dirname + '/prep.json', 'utf8'));
-var sulkybob = JSON.parse(fs.readFileSync(__dirname + '/sulkybob.json', 'utf8'));
+var sulkybob = prep.sulkybob;
+var adminbob = prep.adminbob;
 var masterLogPath = __dirname + "/master.log";
 var masterClient;
 var master;
@@ -61,23 +62,52 @@ var FIXTURES = {
             }
           }
         }
+      },
+      gz: {
+        contacts: ['email'],
+        probes: {
+          smartlogin: {
+            "server": prep.headnodeUuid,
+            "type": "logscan",
+            "config": {
+              "path": "/var/svc/log/smartdc-agent-smartlogin:default.log",
+              "regex": "Stopping",
+              "threshold": 1,
+              "period": 60
+            }
+          }
+        }
       }
-      //,
-      //gz: {
-      //  contacts: ['email'],
-      //  probes: {
-      //    smartlogin: {
-      //      "server": prep.headnodeUuid,
-      //      "type": "logscan",
-      //      "config": {
-      //        "path": "/var/svc/log/smartdc-agent-smartlogin:default.log",
-      //        "regex": "Stopping",
-      //        "threshold": 1,
-      //        "period": 60
-      //      }
-      //    }
-      //  }
-      //}
+    },
+  },
+  
+  adminbob: {
+    monitors: {
+      gz: {
+        contacts: ['email'],
+        probes: {
+          smartlogin: {
+            "server": prep.headnodeUuid,
+            "type": "logscan",
+            "config": {
+              "path": "/var/svc/log/smartdc-agent-smartlogin:default.log",
+              "regex": "Stopping",
+              "threshold": 1,
+              "period": 60
+            }
+          },
+          bogusserver: {
+            "server": "9b07ce48-52e4-3c49-b445-3c135c55311b", // bogus server uuid
+            "type": "logscan",
+            "config": {
+              "path": "/var/svc/log/smartdc-agent-smartlogin:default.log",
+              "regex": "Stopping",
+              "threshold": 1,
+              "period": 60
+            }
+          }
+        }
+      }
     },
   }
 };
@@ -169,6 +199,29 @@ test('monitors: create', function(t) {
   });
 });
 
+test('monitors: create (for adminbob)', function(t) {
+  async.forEach(Object.keys(FIXTURES.adminbob.monitors), function(name, next) {
+    var data = common.objCopy(FIXTURES.adminbob.monitors[name]);
+    delete data["probes"]; // 'probes' key holds probe objects to add (later)
+    masterClient.put({
+        path: "/pub/adminbob/monitors/"+name,
+        body: data
+      }, function (err, body, headers) {
+        t.ifError(err, "PUT /pub/adminbob/monitors/"+name);
+        t.ok(body, "got a response body");
+        if (body) {
+          t.equal(body.name, name, "created monitor name")
+          t.equal(body.contacts.sort().join(','),
+            data.contacts.sort().join(','),
+            format("monitor.contacts: %s === %s", body.contacts, data.contacts))
+        }
+        next();
+      });
+  }, function (err) {
+    t.end();
+  });
+});
+
 test('monitors: create with bogus contact', function(t) {
   var name = "bogusmonitor";
   var monitor = FIXTURES.sulkybob[name];
@@ -238,17 +291,13 @@ test('probes: list empty', function(t) {
 });
 
 test('probes: create', function(t) {
-  var monitors = FIXTURES.sulkybob.monitors;
-  async.forEach(Object.keys(monitors), function(monitorName, nextMonitor) {
-    var probes = monitors[monitorName].probes;
+  async.forEach(["whistle", "sanscontactfield"], function(monitorName, nextMonitor) {
+    var probes = FIXTURES.sulkybob.monitors[monitorName].probes;
     async.forEach(Object.keys(probes), function(probeName, nextProbe) {
       var probe = probes[probeName];
       var path = format("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName);
       masterClient.put({path: path, body: probe},
         function (err, body, headers) {
-debug("XXX err", err)
-debug("XXX body", body)
-debug("XXX headers", headers)
           t.ifError(err, path);
           t.equal(body.name, probeName)
           t.equal(body.machine, probe.machine)
@@ -268,7 +317,7 @@ debug("XXX headers", headers)
 });
 
 test('probes: create without owning zone', function(t) {
-  var monitor = FIXTURES.sulkybob.monitors.whistle
+  var monitor = FIXTURES.sulkybob.monitors.whistle;
   var probes = {
     "donotown": {
       "machine": prep.mapizone.name,
@@ -310,10 +359,57 @@ test('probes: create without owning zone', function(t) {
 });
 
 
+test('probes: create for server without being operator', function(t) {
+  var probes = FIXTURES.sulkybob.monitors.gz.probes;
+  async.forEach(Object.keys(probes), function(probeName, nextProbe) {
+    var probe = probes[probeName];
+    var path = format("/pub/sulkybob/monitors/gz/probes/%s", probeName);
+    masterClient.put({path: path, body: probe},
+      function (err, body, headers) {
+        t.ok(err);
+        t.equal(err.httpCode, 409)
+        t.equal(err.restCode, "InvalidArgument");
+        t.ok(/operator/.test(err.message));
+        nextProbe();
+      }
+    );
+  }, function (err) {
+    t.end();
+  });
+});
+
+test('probes: create GZ probe on headnode for adminbob', function(t) {
+  var probe = FIXTURES.adminbob.monitors.gz.probes.smartlogin;
+  var path = "/pub/adminbob/monitors/gz/probes/smartlogin";
+  masterClient.put({path: path, body: probe}, function (err, body, headers) {
+    t.ifError(err, path);
+    t.equal(body.name, "smartlogin")
+    t.equal(body.machine, probe.machine)
+    t.equal(body.type, probe.type)
+    Object.keys(body.config).forEach(function(k) {
+      t.equal(body.config[k], probe.config[k])
+    })
+    t.end();
+  });
+});
+
+test('probes: create GZ probe on bogus server for adminbob', function(t) {
+  var probe = FIXTURES.adminbob.monitors.gz.probes.bogusserver;
+  var path = "/pub/adminbob/monitors/gz/probes/bogusserver";
+  masterClient.put({path: path, body: probe}, function (err, body, headers) {
+    t.ok(err, path);
+    t.equal(err.httpCode, 409)
+    t.equal(err.restCode, "InvalidArgument")
+    t.ok(err.message.indexOf("server") !== -1)
+    t.ok(err.message.indexOf("invalid") !== -1)
+    t.end();
+  });
+});
+
 
 test('probes: list', function(t) {
   var monitors = FIXTURES.sulkybob.monitors;
-  async.forEach(Object.keys(monitors), function(monitorName, next) {
+  async.forEach(["whistle", "sanscontactfield"], function(monitorName, next) {
     var probes = monitors[monitorName].probes;
     var path = format("/pub/sulkybob/monitors/%s/probes", monitorName)
     masterClient.get(path, function (err, body, headers) {
@@ -332,7 +428,7 @@ test('probes: list', function(t) {
 
 test('probes: get', function(t) {
   var monitors = FIXTURES.sulkybob.monitors;
-  async.forEach(Object.keys(monitors), function(monitorName, nextMonitor) {
+  async.forEach(["whistle", "sanscontactfield"], function(monitorName, nextMonitor) {
     var probes = monitors[monitorName].probes;
     async.forEach(Object.keys(probes), function(probeName, nextProbe) {
       var probe = probes[probeName];
@@ -357,8 +453,7 @@ test('probes: get', function(t) {
 });
 
 test('probes: get 404', function(t) {
-  var monitorName = Object.keys(FIXTURES.sulkybob.monitors)[0];
-  masterClient.get(format("/pub/sulkybob/monitors/%s/probes/bogus", monitorName),
+  masterClient.get("/pub/sulkybob/monitors/whistle/probes/bogus",
     function (err, body, headers, res) {
       t.equal(err.httpCode, 404);
       t.equal(err.restCode, "ResourceNotFound");
@@ -464,7 +559,7 @@ test('relay api: AddEvents', function(t) {
 
 test('probes: delete', function(t) {
   var monitors = FIXTURES.sulkybob.monitors;
-  async.forEach(Object.keys(monitors), function(monitorName, nextMonitor) {
+  async.forEach(["whistle", "sanscontactfield"], function(monitorName, nextMonitor) {
     var probes = monitors[monitorName].probes;
     async.forEach(Object.keys(probes), function(probeName, nextProbe) {
       var probe = probes[probeName];

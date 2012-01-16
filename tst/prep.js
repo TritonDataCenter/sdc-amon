@@ -8,7 +8,7 @@
  *      ...
  *    }
  *
- * This creates a test user (if necessary), key and test zone (if necessary)
+ * This creates test users (if necessary), key and test zone (if necessary)
  * and writes out prep.json (and emits that to stdout). Exits non-zero if
  * there was a problem.
  */
@@ -23,7 +23,9 @@ var child_process = require('child_process'),
 var format = require('amon-common').utils.format;
 var httpSignature = require('http-signature');
 var ldap = require('ldapjs');
-var MAPI = require('sdc-clients').MAPI;
+var sdcClients = require('sdc-clients'),
+  MAPI = sdcClients.MAPI,
+  UFDS = sdcClients.UFDS;
 
 
 
@@ -35,7 +37,9 @@ var adminUuid = "930896af-bf8c-48d4-885c-6573a94b1853";
 
 var config = JSON.parse(fs.readFileSync(__dirname + '/config.json', 'utf8'));
 var sulkybob = JSON.parse(fs.readFileSync(__dirname + '/sulkybob.json', 'utf8'));
-var ufds;
+var adminbob = JSON.parse(fs.readFileSync(__dirname + '/adminbob.json', 'utf8'));
+var ldapClient;
+var ufdsClient;
 var sulkyzone; // the test zone to use
 var mapi;
 var mapizone;
@@ -45,21 +49,36 @@ var headnodeUuid;
 
 //---- prep steps
 
-function ufdsBind(next) {
-  ufds = ldap.createClient({
+function ufdsClientBind(next) {
+  ufdsClient = new UFDS({
+    url: config.ufds.url,
+    bindDN: config.ufds.rootDn,
+    bindPassword: config.ufds.password
+  });
+  ufdsClient.on('ready', function() {
+    next();
+  })
+  ufdsClient.on('error', function(err) {
+    next(err);
+  })
+}
+
+function ldapClientBind(next) {
+  ldapClient = ldap.createClient({
     url: config.ufds.url,
     //log4js: log4js,
     reconnect: false
   });
-  ufds.bind(config.ufds.rootDn, config.ufds.password, function(err) {
+  ldapClient.bind(config.ufds.rootDn, config.ufds.password, function(err) {
     next(err);
   });
 }
 
-function createUser(next) {
-  var dn = format("uuid=%s, ou=users, o=smartdc", sulkybob.uuid);
-  ufds.search('ou=users, o=smartdc',
-    {scope: 'one', filter: '(uuid='+sulkybob.uuid+')'},
+
+function createUser(user, next) {
+  var dn = format("uuid=%s, ou=users, o=smartdc", user.uuid);
+  ldapClient.search('ou=users, o=smartdc',
+    {scope: 'one', filter: '(uuid='+user.uuid+')'},
     function(err, res) {
       if (err) return next(err);
       var found = false;
@@ -67,15 +86,36 @@ function createUser(next) {
       res.on('error', function(err) { next(err) });
       res.on('end', function(result) {
         if (found) {
-          log("# User %s (%s) already exists.", sulkybob.uuid, sulkybob.login);
+          log("# User %s (%s) already exists.", user.uuid, user.login);
           next();
         } else {
-          log("# Create user %s (%s).", sulkybob.uuid, sulkybob.login);
-          ufds.add(dn, sulkybob, next);
+          log("# Create user %s (%s).", user.uuid, user.login);
+          ldapClient.add(dn, user, next);
         }
       });
     }
   );
+}
+
+function createUsers(next) {
+  async.map([sulkybob, adminbob], createUser, function(err, _){
+    next(err)
+  });
+}
+
+
+function makeAdminbobOperator(next) {
+  var dn = format("uuid=%s, ou=users, o=smartdc", adminbob.uuid);
+  var change = {
+    type: 'add',
+    modification: {
+      uniquemember: dn,
+    }
+  };
+  log("# Make user %s (%s) an operator", adminbob.uuid, adminbob.login);
+  ufdsClient.modify('cn=operators, ou=groups, o=smartdc', change, function (err) {
+    next(err);
+  });
 }
 
 function addKey(next) {
@@ -92,7 +132,7 @@ function addKey(next) {
     objectclass: ['sdckey'],
   };
 
-  ufds.search(userDn,
+  ldapClient.search(userDn,
     {scope: 'one', filter: '(fingerprint='+fp+')'},
     function(err, res) {
       if (err) return next(err);
@@ -105,16 +145,24 @@ function addKey(next) {
           next();
         } else {
           log("# Create key 'amontest' (%s).", fp);
-          ufds.add(dn, entry, next);
+          ldapClient.add(dn, entry, next);
         }
       });
     }
   );
 }
 
-function ufdsUnbind(next) {
-  if (ufds) {
-    ufds.unbind(next);
+function ufdsClientUnbind(next) {
+  if (ufdsClient) {
+    ufdsClient.close(next);
+  } else {
+    next();
+  }
+}
+
+function ldapClientUnbind(next) {
+  if (ldapClient) {
+    ldapClient.unbind(next);
   } else {
     next();
   }
@@ -232,7 +280,9 @@ function writePrepJson(next) {
   prep = {
     sulkyzone: sulkyzone,
     mapizone: mapizone,
-    headnodeUuid: headnodeUuid
+    headnodeUuid: headnodeUuid,
+    sulkybob: sulkybob,
+    adminbob: adminbob
   }
   fs.writeFileSync(prepJson, JSON.stringify(prep, null, 2), 'utf8');
   next();
@@ -243,10 +293,13 @@ function writePrepJson(next) {
 //---- mainline
 
 async.series([
-    ufdsBind,
-    createUser,
+    ldapClientBind,
+    ufdsClientBind,
+    createUsers,
     addKey,
-    ufdsUnbind,
+    makeAdminbobOperator,
+    ldapClientUnbind,
+    ufdsClientUnbind,
     getMapi,
     createSulkyzone,
     getMapizone,
