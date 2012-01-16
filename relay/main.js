@@ -184,48 +184,36 @@ function getMasterUrl(poll, callback) {
   });
   var notAmonZoneUuids = []; // Ones with a `smartdc_role!=amon`.
   
-  function areYouTheAmonZone(zone, cb) {
-    if (notAmonZoneUuids.indexOf(zone.name) !== -1) {
-      return cb();
-    }
-    log.trace("get 'smartdc_role' tag for admin zone '%s'", zone.name)
-    mapi.getZoneTag(process.env.UFDS_ADMIN_UUID, zone.name, "smartdc_role",
-      function (err, tag) {
-        log.trace("'smartdc_role' tag for admin zone '%s': %s", zone.name,
-          (tag ? JSON.stringify(tag) : "(none)"));
-        if (!tag) {
-          // pass through
-        } else if (tag.value === 'amon') {
-          return cb(zone);
-        } else {
-          // Remember this one to not bother getting it tags the next
-          // time we ping MAPI.
-          notAmonZoneUuids.push(zone.name);
-        }
-        return cb();
-      }
-    );
-  }
-  
   function pollMapi() {
     log.info("Poll MAPI for Amon zone (admin uuid '%s').",
       process.env.UFDS_ADMIN_UUID);
-    mapi.listZones(process.env.UFDS_ADMIN_UUID, function (err, zones, headers) {
+    var options = {
+      owner_uuid: process.env.UFDS_ADMIN_UUID,
+      "tag.smartdc_role": "amon"
+    }
+    mapi.listMachines(options, function (err, machines, headers) {
       if (err) {
-        //TODO: We should recover from some errors talking to MAPI, e.g. if
-        //  it is temporarily down the relay shouldn't just die. Perhaps should
-        //  always retry.
-        return callback(err);
-      }
-      asyncForEach(zones, areYouTheAmonZone, function(amonZone) {
-        if (amonZone) {
-          //TODO: guards on not having an IP, i.e. not setup correctly
-          log.debug("Found amon zone: %s", amonZone.name);
-          callback(null, 'http://' + amonZone.ips[0].address)
-        } else {
+        // Retry on error.
+        log.error("MAPI listZones error: '%s'",
+          String(err).slice(0, 100) + '...');
+        setTimeout(pollMapi, pollInterval);
+      } else if (machines.length === 0) {
+        log.error("No Amon zone (tag smartdc_role=amon).")
+        setTimeout(pollMapi, pollInterval);
+      } else {
+        // TODO: A start at handling HA is to accept multiple Amon zones here.
+        var amonZone = machines[0];
+        var amonIp = amonZone.ips && amonZone.ips[0] && amonZone.ips[0].address;
+        if (!amonIp) {
+          log.error("No Amon zone IP: amonZone.ips=%s",
+            JSON.stringify(amonZone.ips));
           setTimeout(pollMapi, pollInterval);
+        } else {
+          var amonMasterUrl = 'http://' + amonIp;
+          log.info("Found amon zone: %s <%s>", amonZone.name, amonMasterUrl);
+          callback(null, amonMasterUrl);
         }
-      });
+      }
     });
   }
   
