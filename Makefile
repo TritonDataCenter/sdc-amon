@@ -68,9 +68,6 @@ all:: common plugins agent relay bin/amon-zwatch master
 deps: $(NODEDIR)/bin/node $(NODEDIR)/bin/npm \
 	$(NODEDIR)/lib/node_modules/jshint \
 	$(NODE_DEV) \
-	$(TOP)/node_modules/async/package.json \
-	$(TOP)/node_modules/sdc-clients/package.json \
-	$(TOP)/node_modules/amon-common/package.json \
 	$(TAP)
 
 # Use 'Makefile' landmarks instead of the dir itself, because dir mtime
@@ -91,8 +88,8 @@ $(NODEDIR)/lib/node_modules/jshint: $(NODEDIR)/bin/npm
 	$(NPM) install -g jshint
 $(NODE_DEV): $(NODEDIR)/bin/npm
 	$(NPM) install -g node-dev
-# TAP is a landmark for all testdeps.
-$(TAP): $(NODEDIR)/bin/npm
+# TAP is a landmark for all test deps.
+$(TAP): $(NODEDIR)/bin/npm deps/node-sdc-clients/package.json
 	$(NPM) install
 	$(NPM) link ./common
 	$(NPM) link deps/node-sdc-clients

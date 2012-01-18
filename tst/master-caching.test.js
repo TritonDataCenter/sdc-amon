@@ -170,7 +170,7 @@ test('monitors: get', function(t) {
 
 var sulkyzoneContentMD5;
 
-test('GetAgentProbes', function(t) {
+test('GetAgentProbes before any probes', function(t) {
   var probe = FIXTURES.sulkybob.monitors.whistle.probes.whistlelog;
   masterClient.get("/agentprobes?machine=" + prep.sulkyzone.name,
     function (err, body, headers, res) {
@@ -183,7 +183,7 @@ test('GetAgentProbes', function(t) {
   );
 });
 
-test('HeadAgentProbes', function(t) {
+test('HeadAgentProbes before any probes', function(t) {
   var probe = FIXTURES.sulkybob.monitors.whistle.probes.whistlelog;
   masterClient.head("/agentprobes?machine=" + prep.sulkyzone.name,
     function (err, headers, res) {
@@ -356,12 +356,13 @@ test('HeadAgentProbes changed after probe added', {timeout: 5000}, function(t) {
     function (err, headers, res) {
       t.ifError(err);
       newSulkyzoneContentMD5 = headers['content-md5'];
-      t.ok(newSulkyzoneContentMD5 !== sulkyzoneContentMD5)
+      t.ok(newSulkyzoneContentMD5 !== sulkyzoneContentMD5,
+        "expect sulkyzone Content-MD5 to have changed")
   
       // Second time should be fast.
       masterClient.head("/agentprobes?machine=" + prep.sulkyzone.name,
         function (err2, headers2, res) {
-          t.ifError(err2);
+          t.ifError(err2, "/agentprobes?machine=" + prep.sulkyzone.name);
           t.equal(headers2['content-md5'], newSulkyzoneContentMD5)
           t.ok(Number(headers2['x-response-time']) < 50, "faster cached response")
           t.end();

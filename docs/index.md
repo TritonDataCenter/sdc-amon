@@ -342,6 +342,21 @@ this control data.
 Note: The returned probes are sorted to ensure a stable order and hence a
 stable "Content-MD5" header to use for caching.
 
+### Inputs
+
+||machine||UUID||The machine (VM or SmartMachine, aka zone) for which to return probes.||
+||server||UUID||The server GZ for which to return probes.||
+
+Either `machine` or `server` must be specified.
+
+### Returns
+
+An array of probe objects, which contain:
+
+TODO
+
+### Errors
+
 TODO
 
 
@@ -351,8 +366,6 @@ This "HEAD" form of `GetAgentProbes` allows for relays and agents to check
 for agent control data changes with less network overhead.
 
 TODO
-
-
 
 
 # Master Configuration

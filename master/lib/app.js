@@ -298,9 +298,11 @@ App.prototype.cacheInvalidatePut = function(modelName, item) {
   this._cacheFromScope[modelName + "Get"].del(dn);
   
   // Furthermore, if this is a probe, then need to invalidate the
-  // `headAgentProbes` for this probe's machine.
+  // `headAgentProbes` for this probe's machine/server.
   if (modelName === "Probe") {
-    this._cacheFromScope.headAgentProbes.del(item.machine);
+    var cacheKey = (item.machine ? "machine:"+item.machine
+      : "server:"+item.server);
+    this._cacheFromScope.headAgentProbes.del(cacheKey);
   }
 }
 

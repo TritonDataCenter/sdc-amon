@@ -1,0 +1,9 @@
+{
+  "login": "devbob",
+  "uuid": "55555555-5555-5555-5555-555555555555",
+  "userpassword": "123123",
+  "email": "trent.mick+devbob@joyent.com",
+  "cn": "Developer",
+  "sn": "Bob",
+  "objectclass": "sdcPerson"
+}

@@ -6,6 +6,7 @@ amon-*.tgz
 amon-*.tar.bz2
 *.log
 .pkg
+/bootstrap.json
 common/node_modules
 bin/amon-zwatch
 agent/checks

@@ -1,21 +1,21 @@
-/* Copyright 2011 Joyent, Inc.  All rights reserved.
+/* Copyright 2011-2012 Joyent, Inc.  All rights reserved.
  *
- * Prepare for testing Amon.
+ * Load some play/dev data for Amon play.
  * 
  * Usage:
- *    $ node prep.js
- *    {
- *      ...
- *    }
+ *    $ node bootstrap.js
  *
- * This creates test users (if necessary), key and test zone (if necessary)
- * and writes out prep.json (and emits that to stdout). Exits non-zero if
- * there was a problem.
+ * This will:
+ * - create test users (devbob, devalice)
+ * - devalice will be an operator
+ * - create a 'devzone' for bob
+ * - write relevant data to ../bootstrap.json
  */
 
 var log = console.error;
 var fs = require('fs');
 var path = require('path');
+var glob = require('glob');
 var restify = require('restify');
 var async = require('async');
 var child_process = require('child_process'),
@@ -25,22 +25,21 @@ var httpSignature = require('http-signature');
 var ldap = require('ldapjs');
 var sdcClients = require('sdc-clients'),
   MAPI = sdcClients.MAPI,
-  UFDS = sdcClients.UFDS;
+  UFDS = sdcClients.UFDS,
+  Amon = sdcClients.Amon;
 
 
 
 //---- globals and constants
 
-var config = JSON.parse(fs.readFileSync(__dirname + '/config.json', 'utf8'));
-var sulkybob = JSON.parse(fs.readFileSync(__dirname + '/sulkybob.json', 'utf8'));
-var adminbob = JSON.parse(fs.readFileSync(__dirname + '/adminbob.json', 'utf8'));
+var config = JSON.parse(fs.readFileSync(__dirname + '/../tst/config.json', 'utf8'));
+var devbob = JSON.parse(fs.readFileSync(__dirname + '/devbob.json', 'utf8'));
+var devalice = JSON.parse(fs.readFileSync(__dirname + '/devalice.json', 'utf8')); // operator
 var ldapClient;
 var ufdsClient;
 var adminUuid;
-var sulkyzone; // the test zone to use
 var mapi;
-var mapizone;
-var headnodeUuid;
+var amonClient;
 
 
 
@@ -71,11 +70,11 @@ function ldapClientBind(next) {
   });
 }
 
-
 function getAdminUuid(next) {
   ufdsClient.getUser("admin", function(err, user) {
     if (err) return next(err);
     adminUuid = user.uuid;
+    log("# Admin UUID is '%s'", adminUuid)
     next();
   });
 }
@@ -104,21 +103,21 @@ function createUser(user, next) {
 }
 
 function createUsers(next) {
-  async.map([sulkybob, adminbob], createUser, function(err, _){
+  async.map([devbob, devalice], createUser, function(err, _){
     next(err)
   });
 }
 
 
-function makeAdminbobOperator(next) {
-  var dn = format("uuid=%s, ou=users, o=smartdc", adminbob.uuid);
+function makeDevaliceAdmin(next) {
+  var dn = format("uuid=%s, ou=users, o=smartdc", devalice.uuid);
   var change = {
     type: 'add',
     modification: {
       uniquemember: dn,
     }
   };
-  log("# Make user %s (%s) an operator", adminbob.uuid, adminbob.login);
+  log("# Make user %s (%s) an operator", devalice.uuid, devalice.login);
   ufdsClient.modify('cn=operators, ou=groups, o=smartdc', change, function (err) {
     next(err);
   });
@@ -127,9 +126,9 @@ function makeAdminbobOperator(next) {
 function addKey(next) {
   // Note: We should probably just use the CAPI api for this, but don't want
   // to encode the pain of getting the CAPI auth.
-  var key = fs.readFileSync(__dirname + '/id_rsa.amontest.pub', 'utf8');
+  var key = fs.readFileSync(__dirname + '/../tst/id_rsa.amontest.pub', 'utf8');
   var fp = httpSignature.sshKeyFingerprint(key);
-  var userDn = format("uuid=%s, ou=users, o=smartdc", sulkybob.uuid);
+  var userDn = format("uuid=%s, ou=users, o=smartdc", devbob.uuid);
   var dn = format("fingerprint=%s, %s", fp, userDn);
   var entry = {
     name: ["amontest"],
@@ -147,10 +146,10 @@ function addKey(next) {
       res.on('error', function(err) { next(err) });
       res.on('end', function(result) {
         if (found) {
-          log("# Key 'amontest' already exists.");
+          log("# Key 'amontest' on user '%s' already exists.", devbob.login);
           next();
         } else {
-          log("# Create key 'amontest' (%s).", fp);
+          log("# Create key 'amontest' (%s) on user '%s'.", fp, devbob.login);
           ldapClient.add(dn, entry, next);
         }
       });
@@ -192,22 +191,22 @@ function getMapi(next) {
   next();
 }
 
-function createSulkyzone(next) {
-  // First check if there is a zone for sulkybob.
-  mapi.listZones(sulkybob.uuid, function (err, zones, headers) {
+function createDevzone(next) {
+  // First check if there is a zone for devbob.
+  mapi.listZones(devbob.uuid, function (err, zones, headers) {
     if (err) return next(err);
     if (zones.length > 0) {
-      sulkyzone = zones[0];
-      log("# Sulkybob already has a zone (%s).", sulkyzone.name)
+      devzone = zones[0];
+      log("# Devbob already has a zone (%s).", devzone.name)
       return next();
     }
-    log("# Create a test zone for sulkybob.")
+    log("# Create a test zone for devbob.")
     mapi.listServers(function(err, servers) {
       if (err) return next(err);
       var headnodeUuid = servers[0].uuid;
-      mapi.createZone(sulkybob.uuid, {
+      mapi.createZone(devbob.uuid, {
           package: "regular_128",
-          alias: "sulkyzone",
+          alias: "devzone",
           dataset_urn: "smartos",
           server_uuid: headnodeUuid,
           force: "true"  // XXX does MAPI client support `true -> "true"`
@@ -229,7 +228,7 @@ function createSulkyzone(next) {
                   + "become 'running'");
               }
               setTimeout(function () {
-                mapi.getZone(sulkybob.uuid, zoneName, function (err, zone_) {
+                mapi.getZone(devbob.uuid, zoneName, function (err, zone_) {
                   if (err) return nextCheck(err);
                   zone = zone_;
                   nextCheck();
@@ -238,8 +237,8 @@ function createSulkyzone(next) {
             },
             function (err) {
               if (!err) {
-                sulkyzone = zone;
-                log("# Zone %s is running.", sulkyzone.name);
+                devzone = zone;
+                log("# Zone %s (devzone) is running.", devzone.name);
               }
               next(err);
             }
@@ -273,24 +272,135 @@ function getHeadnodeUuid(next) {
       }
     }
     if (!headnodeUuid) {
-      throw new Error("could not find headnode in MAPI servers list");
+      return next(new Error("could not find headnode in MAPI servers list"));
     }
     log("# Header server UUID '%s'.", headnodeUuid);
-    next();
+    next()
   });
 }
 
-function writePrepJson(next) {
-  var prepJson = __dirname + "/prep.json";
-  log("# Write '%s'.", prepJson)
-  var prep = {
-    sulkyzone: sulkyzone,
+
+function getAmonClient(next) {
+  // Amon Master in COAL:
+  //var options = {
+  //  owner_uuid: adminUuid,
+  //  "tag.smartdc_role": "amon"
+  //}
+  //mapi.listMachines(options, function(err, machines) {
+  //  if (err) return next(err);
+  //  var amonMasterUrl = 'http://' + machines[0].ips[0].address;
+  //  amonClient = new Amon({url: amonMasterUrl});
+  //  log("# Get Amon client (%s).", amonMasterUrl)
+  //  next();
+  //});
+  
+  // Local running Amon
+  var amonMasterUrl = 'http://127.0.0.1:8080';
+  amonClient = new Amon({url: amonMasterUrl});
+  log("# Get Amon client (%s).", amonMasterUrl)
+  next();
+}
+
+
+
+function loadAmonObject(obj, next) {
+  if (obj.probe) {
+    amonClient.listProbes(obj.user, obj.monitor, function(err, probes) {
+      var foundIt = false;
+      for (var i = 0; i < probes.length; i++) {
+        if (probes[i].name === obj.probe) {
+          foundIt = true;
+          break;
+        }
+      }
+      if (foundIt) return next();
+      log("# Load Amon object: /pub/%s/monitors/%s/probes/%s", obj.user,
+          obj.monitor, obj.probe);
+      amonClient.putProbe(obj.user, obj.monitor, obj.probe, obj.body, next);
+    });
+  } else if (obj.monitor) {
+    amonClient.listMonitors(obj.user, function(err, monitors) {
+      var foundIt = false;
+      for (var i = 0; i < monitors.length; i++) {
+        if (monitors[i].name === obj.monitor) {
+          foundIt = true;
+          break;
+        }
+      }
+      if (foundIt) return next();
+      log("# Load Amon object: /pub/%s/monitors/%s", obj.user, obj.monitor);
+      amonClient.putMonitor(obj.user, obj.monitor, obj.body, next);
+    });
+  } else {
+    next("WTF?")
+  }
+}
+
+function loadAmonObjects(next) {
+  log("# Loading Amon objects.");
+  var objs = [
+    {
+      user: devbob.uuid,
+      monitor: 'whistle',
+      body: {
+        contacts: ['email']
+      }
+    },
+    {
+      user: devbob.uuid,
+      monitor: 'whistle',
+      probe: 'whistlelog',
+      body: {
+        "machine": devzone.name,
+        "type": "logscan",
+        "config": {
+          "path": "/tmp/whistle.log",
+          "regex": "tweet",
+          "threshold": 1,
+          "period": 60
+        }
+      }
+    },
+    {
+      user: devalice.uuid,
+      monitor: 'gz',
+      body: {
+        contacts: ['email']
+      }
+    },
+    {
+      user: devalice.uuid,
+      monitor: 'gz',
+      probe: 'smartlogin',
+      body: {
+        "server": headnodeUuid,
+        "type": "logscan",
+        "config": {
+          "path": "/var/svc/log/smartdc-agent-smartlogin:default.log",
+          "regex": "Stopping",
+          "threshold": 1,
+          "period": 60
+        }
+      }
+    }
+  ];
+  
+  async.forEachSeries(objs, loadAmonObject, function(err, _) {
+    next(err)
+  })
+}
+
+function writeJson(next) {
+  var outPath = path.resolve(__dirname, "../bootstrap.json");
+  log("# Write '%s'.", outPath)
+  var data = {
+    devzone: devzone,
     mapizone: mapizone,
     headnodeUuid: headnodeUuid,
-    sulkybob: sulkybob,
-    adminbob: adminbob
+    devbob: devbob,
+    devalice: devalice
   }
-  fs.writeFileSync(prepJson, JSON.stringify(prep, null, 2), 'utf8');
+  fs.writeFileSync(outPath, JSON.stringify(data, null, 2), 'utf8');
   next();
 }
 
@@ -304,18 +414,20 @@ async.series([
     getAdminUuid,
     createUsers,
     addKey,
-    makeAdminbobOperator,
+    makeDevaliceAdmin,
     ldapClientUnbind,
     ufdsClientUnbind,
     getMapi,
-    createSulkyzone,
+    createDevzone,
     getMapizone,
     getHeadnodeUuid,
-    writePrepJson
+    getAmonClient,
+    loadAmonObjects,
+    writeJson
   ],
   function (err) {
     if (err) {
-      log("error preparing:", (err.stack || err))
+      log("error bootstrapping:", (err.stack || err))
       process.exit(1);
     }
   }

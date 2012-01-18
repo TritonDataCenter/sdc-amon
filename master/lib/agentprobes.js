@@ -6,11 +6,12 @@
 
 var debug = console.warn;
 var crypto = require('crypto');
-var sprintf = require('sprintf').sprintf;
 var restify = require('restify');
 var HttpCodes = restify.HttpCodes;
 var RestCodes = restify.RestCodes;
 
+var amonCommon = require('amon-common'),
+  format = amonCommon.utils.format;
 var Probe = require('./probes').Probe;
 
 
@@ -18,20 +19,26 @@ var Probe = require('./probes').Probe;
 //---- globals
 
 var log = restify.log;
+var UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 
 
 //---- internal support functions
 
 /**
- * Get all the probes for the given machine.
+ * Get all the probes for the given machine or server.
+ *
+ * @param app {Amon Master App}
+ * @param field {String} One of 'machine' or 'server'.
+ * @param uuid {String} The UUID of the machine or server.
+ * @param callback {Function} `function (err, probes)`.
  *
  * Note: Probes are sorted by (user, monitor, name) to ensure a stable order,
  * necessary to ensure reliable Content-MD5 for HEAD and caching usage.
  */
-function probesFromMachine(app, machine, callback) {
+function findProbes(app, field, uuid, callback) {
   var opts = {
-    filter: '(&(machine='+machine+')(objectclass=amonprobe))',
+    filter: '(&(' + field + '=' + uuid + ')(objectclass=amonprobe))',
     scope: 'sub'
   };
   app.ufds.search("ou=users, o=smartdc", opts, function(err, result) {
@@ -49,8 +56,8 @@ function probesFromMachine(app, machine, callback) {
     result.on('end', function(result) {
       if (result.status !== 0) {
         return callback(
-          sprintf('Non-zero status from UFDS search: %s (opts: %s)',
-                  result, JSON.stringify(opts)));
+          format('Non-zero status from UFDS search: %s (opts: %s)',
+            result, JSON.stringify(opts)));
       }
 
       // To enable meaningful usage of Content-MD5 we need a stable order
@@ -66,7 +73,7 @@ function probesFromMachine(app, machine, callback) {
           return 0;
       });
 
-      log.trace("probes for machine '%s': %o", machine, probes);
+      log.trace("probes for %s '%s': %o", field, uuid, probes);
       return callback(null, probes);
     });
   });
@@ -74,10 +81,42 @@ function probesFromMachine(app, machine, callback) {
 
 
 
+function _parseReqParams(req) {
+  var err, field, uuid;
+  var machine = req.params.machine;
+  var server = req.params.server;
+  if (!machine && !server) {
+    err = new restify.MissingParameterError(
+      "one of 'machine' or 'server' is a required parameter");
+  } else if (machine && server) {
+    err = new restify.InvalidArgumentError(
+      "only one of 'machine' or 'server' parameters can be given");
+  } else {
+    if (machine) {
+      field = "machine";
+      uuid = machine;
+    } else if (server) {
+      field = "server"
+      uuid = server;
+    }
+    if (!UUID_REGEX.test(uuid)) {
+      err = new restify.InvalidArgumentError(
+        format("'%s' is not a valid UUID: %s", field, uuid));
+    }
+  }
+  
+  return {
+    err: err,
+    field: field,
+    uuid: uuid
+  }
+}
+
+
 //---- controllers
 
 /**
- * List all agent probes for the given machine.
+ * List all agent probes for the given machine or server.
  *
  * Note: We don't bother caching this endpoint. The "HEAD" version (below)
  * is cached and clients (amon-relay's) typically won't call this list
@@ -86,20 +125,17 @@ function probesFromMachine(app, machine, callback) {
 function listAgentProbes(req, res, next) {
   req._log.trace('listAgentProbes entered: params=%o, uriParams=%o',
     req.params, req.uriParams);
-  var machine = req.params.machine;
-  if (!machine) {
-    res.sendError(new restify.MissingParameterError(
-      "'machine' is a required parameter"));
+  var parsed = _parseReqParams(req);
+  if (parsed.err) {
+    res.sendError(parsed.err);
     return next();
   }
+  var field = parsed.field;
+  var uuid = parsed.uuid;
   
-  //XXX validate machine:
-  // 1. is uuid or "node:uuid" for global zones
-  // 2. is owned by the user (do we allow operator override on that? Perhaps only on "force=true")
-  
-  probesFromMachine(req._app, machine, function (err, probes) {
+  findProbes(req._app, field, uuid, function (err, probes) {
     if (err) {
-      req._log.error("error getting probes for machine '%s'", machine);
+      req._log.error("error getting probes for %s '%s'", field, uuid);
       res.send(500);
     } else {
       res.send(200, probes);
@@ -118,14 +154,13 @@ function listAgentProbes(req, res, next) {
 function headAgentProbes(req, res, next) {
   req._log.trace('headAgentProbes entered: params=%o, uriParams=%o',
     req.params, req.uriParams);
-  var machine = req.params.machine;
-  if (!machine) {
-    res.sendError(new restify.MissingParameterError(
-      "'machine' is a required parameter"));
+  var parsed = _parseReqParams(req);
+  if (parsed.err) {
+    res.sendError(parsed.err);
     return next();
   }
-
-  //XXX validate machine: see above
+  var field = parsed.field;
+  var uuid = parsed.uuid;
 
   function respond(contentMD5) {
     res.send({
@@ -142,14 +177,15 @@ function headAgentProbes(req, res, next) {
   }
 
   // Check cache.
-  var contentMD5 = req._app.cacheGet("headAgentProbes", machine);
+  var cacheKey = format("%s:%s", field, uuid)
+  var contentMD5 = req._app.cacheGet("headAgentProbes", cacheKey);
   if (contentMD5) {
     return respond(contentMD5);
   }
 
-  probesFromMachine(req._app, machine, function (err, probes) {
+  findProbes(req._app, field, uuid, function (err, probes) {
     if (err) {
-      log.error("error getting probes for machine '%s'", machine);
+      log.error("error getting probes for %s '%s'", field, uuid);
       res.sendError(new restify.InternalError());
       return next();
     } else {
@@ -157,7 +193,7 @@ function headAgentProbes(req, res, next) {
       var hash = crypto.createHash('md5');
       hash.update(data);
       var contentMD5 = hash.digest('base64');
-      req._app.cacheSet("headAgentProbes", machine, contentMD5);
+      req._app.cacheSet("headAgentProbes", cacheKey, contentMD5);
       return respond(contentMD5);
     }
   });
