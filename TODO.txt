@@ -1,12 +1,9 @@
 # immediate priorities
 
 - TODOs for zone/machine/running-in-global handling:
-  - s/zone/machine
-  - PutProbe needs to error out if the given customer doesn't own the
-    target machine. Check MAPI. User UUID must own machine UUID.
   - Change semantics so:
   
-         GET /agentprobes?machine=$uuid1
+        GET /agentprobes?machine=$uuid1
     
     is probes on behalf of that machine. Some of those probes might have a
     "runInGlobal" boolean attr.
@@ -35,6 +32,8 @@
 - [Trent] :login -> :uuid
 - [Trent] update https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming
 - [Trent] turn on in COAL
+- from workflow/mapi talk: Amon should have the monitor skel for provisioning
+  workflow a la FWAPI (but still use normal Amon comm channel). Spec that.
 - Idea: have amon-master create event/alarm to operator if it cannot connect/work
   with UFDS.
 - [Trent] test suite for relay and agent
@@ -79,6 +78,7 @@
 - consistent `new restify.FooError(...)` usage
 - [Trent] master: improve this log line to include user context:
     2011-11-23 21:36:37Z DEBUG: App.processEvent: contact 'email' notified
+- send an op notification if Redis is down when attempting to process an event
 - relay: improve this log line to know which zone/zsock this request came
   from. Perhaps the "unknown" could be the zone name. Also perhaps "anonymous"
   could be the owner uuid (only if no cost to that).
