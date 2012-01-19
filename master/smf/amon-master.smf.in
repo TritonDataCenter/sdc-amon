@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE service_bundle SYSTEM "/usr/share/lib/xml/dtd/service_bundle.dtd.1">
 <service_bundle type="manifest" name="amon-master">
-  <service name="smartdc/site/amon-master" type="service" version="0.0.1">
+  <service name="smartdc/site/amon-master" type="service" version="1.0.0">
     <create_default_instance enabled="true"/>
     <single_instance/>
 
@@ -13,40 +13,38 @@
       <service_fmri value="svc:/system/filesystem/local"/>
     </dependency>
 
-    <exec_method
-      type="method"
-      name="start"
-      exec="/opt/smartdc/amon/bin/amon-master -f master/config.coal.json -p 8080 &amp;"
-      timeout_seconds="60">
+    <exec_method type="method" name="start"
+        exec="/opt/smartdc/amon/master/bin/amon-master -v -f %{config_file} &amp;"
+        timeout_seconds="60">
       <method_context working_directory="/opt/smartdc/amon">
         <method_credential user="nobody" group="nobody" privileges="basic,net_privaddr"/>
         <method_environment>
-          <envvar name="PATH" value="/opt/local/bin:/usr/bin:/usr/sbin:/bin"/>
+          <envvar name="PATH" value="/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin"/>
           <envvar name="LD_PRELOAD_32" value="/usr/lib/extendedFILE.so.1" />
         </method_environment>
       </method_context>
     </exec_method>
 
-    <exec_method type="method" name="restart" exec=":kill" timeout_seconds="10">
-      <method_context working_directory="/opt/smartdc/amon">
-        <method_credential user="root" group="staff"/>
-      </method_context>
+    <exec_method type="method" name="restart" exec=":kill" timeout_seconds="60">
+      <method_context working_directory="/opt/smartdc/amon" />
     </exec_method>
 
-    <exec_method type="method" name="stop" exec=":kill" timeout_seconds="10">
-      <method_context working_directory="/opt/smartdc/amon">
-        <method_credential user="root" group="staff"/>
-      </method_context>
+    <exec_method type="method" name="stop" exec=":kill" timeout_seconds="60">
+      <method_context working_directory="/opt/smartdc/amon" />
     </exec_method>
 
-    <property_group name="startd" type="framework" />
-    <property_group name="application" type="application" />
+    <property_group name="application" type="application">
+      <propval name="config_file" type="astring" value="/opt/smartdc/amon/cfg/amon-master.json"/>
+    </property_group>
 
-    <stability value="Evolving"/>
+    <property_group name="startd" type="framework">
+      <propval name="ignore_error" type="astring" value="core,signal"/>
+    </property_group>
 
+    <stability value="Stable"/>
     <template>
       <common_name>
-        <loctext xml:lang="C">SDC Amon master daemon</loctext>
+        <loctext xml:lang="C">SDC Amon Master daemon</loctext>
       </common_name>
     </template>
   </service>
