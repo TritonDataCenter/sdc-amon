@@ -129,23 +129,27 @@ pkg_relay:
 		relay/smf		\
 		relay/npm \
 		relay/bin \
-		relay/.npmignore \
-		$(PKG_DIR)/relay
+		$(PKG_DIR)/relay/
 	cp bin/amon-zwatch $(PKG_DIR)/relay/bin
 
 	# Need .npmignore in each node module to explictly keep prebuilt
-	# parts of it.
-	ls -d $(PKG_DIR)/relay/node_modules/* \
-		| xargs -n1 -I{} bash -c "touch {}/.npmignore; cat $(PKG_DIR)/relay/.npmignore >> {}/.npmignore"
+	# parts of it. Last time I checked this was only needed for the
+	# 'buffertools' and 'dtrace-provider' modules.
+	find $(PKG_DIR)/relay/node_modules -name node_modules \
+		| xargs -n1 -I{} bash -c "ls -d {}/*" \
+		| xargs -n1 -I{} touch {}/.npmignore
+	find $(PKG_DIR)/relay/node_modules -name node_modules \
+		| xargs -n1 -I{} bash -c "ls -d {}/*" \
+		| xargs -n1 -I{} bash -c "cat $(TOP)/support/keepbuildbits.npmignore >> {}/.npmignore"
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
-	rm -rf \
-		$(PKG_DIR)/relay/deps/node-install/lib/node_modules/amon-common \
+	rm -rf $(PKG_DIR)/relay/deps/node-install/lib/node_modules/amon-common \
 		$(PKG_DIR)/relay/deps/node-install/lib/node_modules/amon-plugins
 	find $(PKG_DIR)/relay -name "*.pyc" | xargs rm -f
 	find $(PKG_DIR)/relay -name "*.o" | xargs rm -f
 	find $(PKG_DIR)/relay -name c4che | xargs rm -rf   # waf build file
 	find $(PKG_DIR)/relay -name .wafpickle* | xargs rm -rf   # waf build file
+	find $(PKG_DIR)/relay -name .lock-wscript | xargs rm -rf   # waf build file
 	find $(PKG_DIR)/relay -name config.log | xargs rm -rf   # waf build file
 
 	(cd $(PKG_DIR) && $(TAR) zcf ../amon-relay-$(STAMP).tgz relay)
@@ -175,6 +179,7 @@ pkg_agent:
 	rm -rf $(PKG_DIR)/agent/deps/node-install/lib/node_modules/amon-common \
 		$(PKG_DIR)/agent/deps/node-install/lib/node_modules/amon-plugins
 	find $(PKG_DIR)/agent -name "*.pyc" | xargs rm -f
+	find $(PKG_DIR)/agent -name .lock-wscript | xargs rm -rf   # waf build file
 
 	(cd $(PKG_DIR) && $(TAR) zcf ../amon-agent-$(STAMP).tgz agent)
 	@echo "Created 'amon-agent-$(STAMP).tgz'."
@@ -200,6 +205,7 @@ pkg_master:
 	find $(PKG_DIR)/pkg_master -name "*.o" | xargs rm -f
 	find $(PKG_DIR)/pkg_master -name c4che | xargs rm -rf   # waf build file
 	find $(PKG_DIR)/pkg_master -name .wafpickle* | xargs rm -rf   # waf build file
+	find $(PKG_DIR)/pkg_master -name .lock-wscript | xargs rm -rf   # waf build file
 	find $(PKG_DIR)/pkg_master -name config.log | xargs rm -rf   # waf build file
 
 	(cd $(PKG_DIR)/pkg_master && $(TAR) cjf $(TOP)/amon-master-$(STAMP).tar.bz2 *)

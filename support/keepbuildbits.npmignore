@@ -3,3 +3,4 @@
 # to rebuild prebuilt and included 'build/' and 'node_modules/' bits.
 !./build
 !./node_modules
+!./*.node
