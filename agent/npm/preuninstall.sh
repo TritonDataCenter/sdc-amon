@@ -9,12 +9,12 @@ fi
 
 export SMFDIR=$npm_config_smfdir
 
-if svcs amon-agent; then
-  svcadm disable -s amon-agent
-  svccfg delete amon-agent
+if svcs amon; then
+  svcadm disable -s amon
+  svccfg delete amon
 fi
 
-rm -f "$SMFDIR/amon-agent.xml"
+rm -f "$SMFDIR/amon.xml"
 
 # This deletion is fine as long as this data dir is fully restorable, i.e. is
 # just a cache.
