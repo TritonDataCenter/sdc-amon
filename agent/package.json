@@ -1,6 +1,6 @@
 {
   "name": "amon-agent",
-  "description": "Smart DataCenter Monitoring Agent component",
+  "description": "Smart DataCenter Monitoring Agent",
   "version": "1.0.0",
   "private": true,
   "author": "Joyent (joyent.com)",
