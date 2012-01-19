@@ -1,0 +1,30 @@
+#!/bin/bash
+#
+# Rsync the relay in this working copy to the install on the COAL headnode GZ.
+#
+
+#set -x
+TOP=$(cd $(dirname $0)/../; pwd)
+RELAY_DIR=$TOP/relay
+COAL=root@10.99.99.7
+
+rsync -av ${RELAY_DIR}/ \
+    $COAL:/opt/smartdc/agents/lib/node_modules/amon-relay/ \
+    --exclude deps/ \
+    --exclude "*.node" \
+    --exclude amon-common \
+    --exclude amon-plugins \
+    --exclude zsock/ \
+    --exclude zutil/ \
+    --exclude tmp/
+rsync -av ${TOP}/common/ \
+    $COAL:/opt/smartdc/agents/lib/node_modules/amon-relay/node_modules/amon-common/ \
+    --exclude "*.node" \
+    --exclude tmp/
+rsync -av ${TOP}/plugins/ \
+    $COAL:/opt/smartdc/agents/lib/node_modules/amon-relay/node_modules/amon-plugins/ \
+    --exclude "*.node" \
+    --exclude tmp/
+
+ssh ${COAL} svcadm clear amon-relay
+ssh ${COAL} svcadm restart amon-relay

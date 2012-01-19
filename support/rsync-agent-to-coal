@@ -1,0 +1,28 @@
+#!/bin/bash
+#
+# Rsync the agent in this working copy to the install on the COAL headnode GZ.
+#
+
+#set -x
+TOP=$(cd $(dirname $0)/../; pwd)
+AGENT_DIR=$TOP/agent
+COAL=root@10.99.99.7
+
+rsync -av ${AGENT_DIR}/ \
+    $COAL:/opt/smartdc/agents/lib/node_modules/amon-agents/ \
+    --exclude deps/ \
+    --exclude "*.node" \
+    --exclude amon-common \
+    --exclude amon-plugins \
+    --exclude tmp/
+rsync -av ${TOP}/common/ \
+    $COAL:/opt/smartdc/agents/lib/node_modules/amon-agent/node_modules/amon-common/ \
+    --exclude "*.node" \
+    --exclude tmp/
+rsync -av ${TOP}/plugins/ \
+    $COAL:/opt/smartdc/agents/lib/node_modules/amon-agent/node_modules/amon-plugins/ \
+    --exclude "*.node" \
+    --exclude tmp/
+
+ssh ${COAL} svcadm clear amon-agent
+ssh ${COAL} svcadm restart amon-agent

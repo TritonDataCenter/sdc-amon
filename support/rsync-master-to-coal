@@ -1,0 +1,28 @@
+#!/bin/bash
+#
+# Rsync the master in this working copy to the install on the COAL headnode GZ.
+#
+
+#set -x
+TOP=$(cd $(dirname $0)/../; pwd)
+COAL=root@10.99.99.7
+
+AMON_ZONE=$(ssh coal "/smartdc/bin/sdc-mapi /machines?tag.smartdc_role=amon | json -H 0.name" 2>/dev/null)
+
+rsync -av ${TOP}/master/ \
+    $COAL:/zones/$AMON_ZONE/root/opt/smartdc/amon/master/ \
+    --exclude "*.node" \
+    --exclude amon-common \
+    --exclude amon-plugins \
+    --exclude tmp/
+rsync -av ${TOP}/common/ \
+    $COAL:/zones/$AMON_ZONE/root/opt/smartdc/amon/master/node_modules/amon-common/ \
+    --exclude "*.node" \
+    --exclude tmp/
+rsync -av ${TOP}/plugins/ \
+    $COAL:/zones/$AMON_ZONE/root/opt/smartdc/amon/master/node_modules/amon-plugins/ \
+    --exclude "*.node" \
+    --exclude tmp/
+
+ssh ${COAL} svcadm -z ${AMON_ZONE} clear amon
+ssh ${COAL} svcadm -z ${AMON_ZONE} restart amon
