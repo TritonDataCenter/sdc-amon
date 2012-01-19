@@ -103,7 +103,7 @@ function getProbeData(force, callback) {
           log.warn("unable to cache probe data to disk (continuing): %s", err);
         }
         log.info("Successfully updated probe data from relay (md5: %s -> %s).",
-          oldMD5, probeDataMD5);
+          oldMD5 || "(none)", probeDataMD5);
         return callback(err, probeDataCache);
       });
     });

@@ -5,6 +5,7 @@
   "author": "Joyent (joyent.com)",
   "private": true,
   "dependencies": {
+    "async": "0.1.15",
     "nopt": "1.0.6",
     "restify": "0.5.6",
     "zsock": "1.0.5",

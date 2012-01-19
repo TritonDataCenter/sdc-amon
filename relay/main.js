@@ -10,14 +10,16 @@
 
 var fs = require('fs');
 var net = require('net');
+var execFile = require('child_process').execFile;
 
+var async = require('async');
 var nopt = require('nopt');
 var path = require('path');
 var zutil = require('zutil');
 
-var asyncForEach = require('./lib/utils').asyncForEach;
 var App = require('./lib/app');
-var Constants = require('amon-common').Constants;
+var amonCommon = require('amon-common'),
+  format = amonCommon.utils.format;
 
 var restify = require('restify');
 var log = restify.log;
@@ -40,27 +42,25 @@ var appIndex = {};
 //---- internal support functions
 
 function listenInGlobalZoneSync() {
-  var owner = 'joyent'; //XXX can we use null here instead of "joyent", or the admin user?
-  var machine = 'global'; //XXX
-  appIndex.global = new App({
-    machine: machine,
+  var app = appIndex['global'] = new App({
+    server: config.computeNodeUuid,
     socket: config.socket,
-    owner: owner,
     dataDir: config.dataDir,
     localMode: true,  // use a local socket, not a zsock
     masterUrl: config.masterUrl,
     poll: config.poll
   });
-  log.debug('Starting new amon-relay for %s machine at "%s" (owner=%s).',
-    machine, config.socket, owner);
-  appIndex.global.listen(function(err) {
+  log.debug('Starting new amon-relay for global zone (server %s) at "%s".',
+    config.computeNodeUuid, config.socket);
+  app.listen(function(err) {
     if (!err) {
       log.info('Amon-relay listening in global zone at %s.', config.socket);
     } else {
       log.error('Unable to start amon-relay in global zone: %o', err);
+      //XXX Shouldn't this be fatal?
     }
   });
-  return appIndex.global;
+  return app;
 }
 
 
@@ -306,6 +306,7 @@ function main() {
     'v': ['--verbose'],
     'D': ['--data-dir'],
     'm': ['--master-url'],
+    'n': ['--compute-node-uuid'],
     'p': ['--poll'],
     's': ['--socket'],
     'Z': ['--all-zones']
@@ -324,36 +325,80 @@ function main() {
     masterUrl: rawOpts["master-url"],
     poll: rawOpts.poll || DEFAULT_POLL,
     socket: rawOpts.socket || DEFAULT_SOCKET,
-    allZones: rawOpts["all-zones"] || false
+    allZones: rawOpts["all-zones"] || false,
+    computeNodeUuid: rawOpts["compute-node-uuid"]
   };
   if (config.allZones && typeof(config.socket) === 'number') {
     usage(1, "cannot use '-Z' and a port number to '-s'");
   }
-  log.debug("config: %o", config);
 
   // Create data dir, if necessary.
-  if (!path.existsSync(config.dataDir)) {
-    log.info("Create data dir: %s", config.dataDir);
-    fs.mkdirSync(config.dataDir, 0777)
+  function ensureDataDir(next) {
+    if (!path.existsSync(config.dataDir)) {
+      log.info("Create data dir: %s", config.dataDir);
+      fs.mkdirSync(config.dataDir, 0777)
+    }
+    next();
   }
   
+  // Get the compute node UUID.
+  function ensureComputeNodeUuid(next) {
+    if (!config.computeNodeUuid) {
+      log.info("Getting compute node UUID from `sysinfo`.")
+      execFile('/usr/bin/sysinfo', [], function (err, stdout, stderr) {
+        if (err)
+          return next(format(
+            "Error calling sysinfo: %s stdout='%s' stderr='%s'",
+            err, stdout, stderr));
+        try {
+          var sysinfo = JSON.parse(stdout);
+        } catch (ex) {
+          return next(format("Error parsing sysinfo output: %s output='%s'",
+            ex, stdout));
+        }
+        log.info("Compute node UUID: %s", sysinfo.UUID);
+        config.computeNodeUuid = sysinfo.UUID;
+        next();
+      });
+    } else {
+      next();
+    }
+  }
+  
+  function logConfig(next) {
+    log.debug("config: %o", config);
+    next();
+  }
+
   // Determine the master URL.
   // Either 'config.masterUrl' is set (from '-m' option), or we get it
   // from MAPI (with MAPI passed in on env: MAPI_CLIENT_URL, ...).
-  if (!config.masterUrl) {
-    log.info("Getting master URL from MAPI.");
-    getMasterUrl(config.poll, function (err, masterUrl) {
-      if (err) {
-        log.error("Error getting Amon master URL from MAPI: %s", err)
-        process.exit(2);
-      }
-      log.info("Got master URL (from MAPI): %s", masterUrl);
-      config.masterUrl = masterUrl;
-      startServers();
-    });
-  } else {
-    startServers();
+  function ensureMasterUrl(next) {
+    if (!config.masterUrl) {
+      log.info("Getting master URL from MAPI.");
+      getMasterUrl(config.poll, function (err, masterUrl) {
+        if (err) return next("Error getting Amon master URL from MAPI: "+err);
+        log.info("Got master URL (from MAPI): %s", masterUrl);
+        config.masterUrl = masterUrl;
+        next();
+      });
+    } else {
+      next();
+    }
   }
+
+  async.series([
+    ensureDataDir,
+    ensureComputeNodeUuid,
+    logConfig,
+    ensureMasterUrl
+  ], function (err) {
+    if (err) {
+      log.error(err);
+      process.exit(2);
+    }
+    startServers();
+  });
 }
 
 main();

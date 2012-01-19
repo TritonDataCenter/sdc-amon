@@ -134,12 +134,17 @@ server whenever a used source file changes. You can just use "../bin/node"
 directly if you like.
 
 
-In a separate shell run an amon-relay:
+In a separate shell run an amon-relay. The amon-relay needs to be know two
+things: (a) the Amon Master URL and (b) the compute node UUID on which this
+is running. Normally these are both discovered automatically (using MAPI
+and `sysinfo` respectively), but for testing outside of COAL they can
+be specified via the `-m URL` and `-n UUID` switches.
 
     cd .../amon/relay
-    mkdir -p tmp/db   # a location for caching probe data
+    mkdir -p tmp/data   # a location for caching probe data
     
     # Here we are:
+    # - storing local data in 'tmp/data'
     # - connecting to the master at "localhost:8080"
     # - listening on port 8081 (-s 8081)
     #   (rather than using a Unix domain socket, as is done in production)
@@ -147,7 +152,9 @@ In a separate shell run an amon-relay:
     #
     # `../bin/node main.js -h` for details on options.
     #
-    ../bin/node-dev main.js -v -D tmp/db -m http://localhost:8080 -s 8081 -p 90
+    ../bin/node-dev main.js -v -D tmp/data \
+        -m http://localhost:8080 -s 8081 -p 90 \
+        -n $(sdc-mapi /servers/1 | json -H uuid)
 
     # In production the amon-relay is run as follows, without a '-m' argument
     # so that it has to find the Amon zone in MAPI:
@@ -155,13 +162,13 @@ In a separate shell run an amon-relay:
         MAPI_CLIENT_URL=http://10.99.99.8 \
         MAPI_HTTP_ADMIN_USER=admin \
         MAPI_HTTP_ADMIN_PW=xxx \
-        ../bin/node-dev main.js -v -D tmp/db -s 8081 -p 90
+        ../bin/node-dev main.js -v
 
 
 In a separate shell run an amon-agent:
     
     cd .../amon/agent
-    mkdir -p tmp/db   # a location for caching probe data
+    mkdir -p tmp/data   # a location for caching probe data
     
     # Here we are:
     # - connecting to the relay at "localhost:8081"
@@ -169,7 +176,7 @@ In a separate shell run an amon-agent:
     #
     # `../bin/node main.js -h` for details on options.
     #
-    ../bin/node-dev main.js -v -D tmp/db -s http://localhost:8081 -p 90
+    ../bin/node-dev main.js -v -D tmp/data -s http://localhost:8081 -p 90
 
 
 ## Adding some data

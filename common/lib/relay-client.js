@@ -70,26 +70,35 @@ function RelayClient(options) {
 
 
 /**
- * Get the MD5 of the agent probes data for the given machine from the master.
+ * Get the MD5 of the agent probes data for the given machine or server.
  *
- * @param machine {String} The name of the machine for which to get probe data.
- *    This argument is required when calling against the amon-master and
- *    is unused when calling against an amon-relay (the machine is implied)
- *    in the socket provide by a relay to an agent. I.e. the agent can only
- *    get info for its own machine/zone.
+ * The `type` and `uuid` args are required when calling against the
+ * amon-master. They are unused whan calling against an amon-relay, because
+ * the machine/server is implicit in the socket communication channel
+ * provided by the relay. More succintly:
+ *
+ *    client.agentProbesMD5(TYPE, UUID, function(err, md5) {...}) # relay usage
+ *    client.agentProbesMD5(function(err, md5) {...})             # agent usage
+ *
+ * @param type {String} One of "server" or "machine" indicating the scope
+ *    for the `uuid` param.
+ * @param uuid {String} The server or machine UUID for which to get probe
+ *    data.
  * @param callback {Function} `function (err, md5)`.
  */
-RelayClient.prototype.agentProbesMD5 = function (machine, callback) {
-  if (!callback && typeof(machine) === "function") {
-    callback = machine;
-    machine = null;
+RelayClient.prototype.agentProbesMD5 = function (type, uuid, callback) {
+  if (!callback && typeof(type) === "function") {
+    callback = type;
+    type = null;
+    uuid = null;
   }
-  if (!callback) throw new TypeError('callback is required');
+  if (!callback) throw TypeError('callback (function) is required');
+  if (type && !uuid) throw TypeError('"uuid" is required with "type" param');
   var self = this;
 
   var path = "/agentprobes";
-  if (machine) {
-    path += "?machine=" + machine;
+  if (type) {
+    path += "?" + type + "=" + uuid;
   }
   this._request('HEAD', path, function(err, res) {
     if (err) return callback(err);
@@ -104,25 +113,35 @@ RelayClient.prototype.agentProbesMD5 = function (machine, callback) {
 
 
 /**
- * Get the agent probes data for the given machine from the master.
+ * Get the agent probes data for the given machine or server.
  *
- * @param machine {String} The name of the machine for which to get probe data.
- *    This argument is required when calling against the amon-master and
- *    is unused when calling against an amon-relay (the machine is implied)
- *    in the socket provide by a relay to an agent. I.e. the agent can only
- *    get info for its own machine/zone.
- * @param callback {Function} `function (err, agentProbes, md5)`.
+ * The `type` and `uuid` args are required when calling against the
+ * amon-master. They are unused whan calling against an amon-relay, because
+ * the machine/server is implicit in the socket communication channel
+ * provided by the relay. More succintly:
+ *
+ *    client.agentProbes(TYPE, UUID, function(err, md5) {...}) # relay usage
+ *    client.agentProbes(function(err, md5) {...})             # agent usage
+ *
+ * @param type {String} One of "server" or "machine" indicating the scope
+ *    for the `uuid` param.
+ * @param uuid {String} The server or machine UUID for which to get probe
+ *    data.
+ * @param callback {Function} `function (err, md5)`.
  */
-RelayClient.prototype.agentProbes = function (machine, callback) {
-  if (!callback && typeof(machine) === "function") {
-    callback = machine;
-    machine = null;
+RelayClient.prototype.agentProbes = function (type, uuid, callback) {
+  if (!callback && typeof(type) === "function") {
+    callback = type;
+    type = null;
+    uuid = null;
   }
-  if (!callback) throw new TypeError('callback is required');
+  if (!callback) throw TypeError('callback (function) is required');
+  if (type && !uuid) throw TypeError('"uuid" is required with "type" param');
+  var self = this;
 
   var path = "/agentprobes";
-  if (machine) {
-    path += "?machine=" + machine;
+  if (type) {
+    path += "?" + type + "=" + uuid;
   }
   this._request("GET", path, function(err, res) {
     if (err) return callback(err);

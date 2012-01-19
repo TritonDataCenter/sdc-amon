@@ -8,9 +8,12 @@
 
 var crypto = require('crypto');
 var fs = require('fs');
-var pathlib = require('path');
-
+var path = require('path');
 var restify = require('restify');
+
+var amonCommon = require('amon-common'),
+  format = amonCommon.utils.format;
+
 var log = restify.log;
 
 
@@ -22,7 +25,8 @@ function headAgentProbes(req, res, next) {
   // TODO: cache these md5's in memory. With 400 zones hitting this endpoint
   //    every 30 seconds (or whatever poll interval) we should avoid
   //    reading disk.
-  var md5Path = pathlib.resolve(req._dataDir, req._machine + ".json.content-md5")
+  var md5Path = path.resolve(req._dataDir,
+    format("%s-%s.json.content-md5", req._targetType, req._targetUuid));
   fs.readFile(md5Path, function (err, data) {
     if (err) {
       if (false && err.code === "ENOENT") {
@@ -54,7 +58,8 @@ function headAgentProbes(req, res, next) {
 
 function listAgentProbes(req, res, next) {
   log.trace('ListAgentProbes (%o): params=%o', req, req.params);
-  var jsonPath = pathlib.resolve(req._dataDir, req._machine + ".json")
+  var jsonPath = path.resolve(req._dataDir,
+    format("%s-%s.json", req._targetType, req._targetUuid));
   fs.readFile(jsonPath, 'utf-8', function (err, data) {
     if (err) {
       if (err.code === "ENOENT") {
