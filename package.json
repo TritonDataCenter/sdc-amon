@@ -11,7 +11,6 @@
     "restify": "0.5",
     "async": "0.1",
     "http-signature": "0.9.6",
-    "jshint": "0.2.3",
     "glob": "2.0.9",
     "tap": "0.1"
   },

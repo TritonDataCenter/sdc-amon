@@ -47,8 +47,9 @@ NPM_ENV := npm_config_cache=$(shell echo $(TOP)/tmp/npm-cache) npm_config_tar=$(
 NPM := $(NPM_ENV) $(NODEDIR)/bin/npm
 PKG_DIR := .pkg
 RESTDOWN := python2.6 $(TOP)/deps/restdown/bin/restdown
-NODE_DEV := $(NODEDIR)/bin/node-dev
+NODE_DEV := $(TOP)/node_modules/.bin/node-dev
 TAP := $(TOP)/node_modules/.bin/tap
+JSHINT := $(TOP)/node_modules/.bin/jshint
 
 
 #
@@ -57,18 +58,15 @@ TAP := $(TOP)/node_modules/.bin/tap
 
 all:: common plugins agent relay bin/amon-zwatch master
 
-.PHONY: testdeps deps agent relay master common plugins test lint gjslint jshint pkg pkg_agent pkg_relay pkg_master upload
+.PHONY: deps agent relay master common plugins test lint gjslint jshint pkg pkg_agent pkg_relay pkg_master publish
 
 
 #
 # deps
 #
 
-# 'async/package.json' is a landmark for top-level devDependencies.
-deps: $(NODEDIR)/bin/node $(NODEDIR)/bin/npm \
-	$(NODEDIR)/lib/node_modules/jshint \
-	$(NODE_DEV) \
-	$(TAP)
+# TAP is a landmark for all dev/test deps.
+deps: $(NODEDIR)/bin/node $(NODEDIR)/bin/npm $(TAP)
 
 # Use 'Makefile' landmarks instead of the dir itself, because dir mtime
 # is that of the most recent file: results in unnecessary rebuilds.
@@ -81,14 +79,6 @@ $(NODEDIR)/bin/node: deps/node/Makefile
 $(NODEDIR)/bin/npm: $(NODEDIR)/bin/node deps/npm/Makefile
 	(cd deps/npm && $(NPM_ENV) $(MAKE) install)
 
-# Global npm module deps (currently just test/lint stuff used by every amon
-# package). We install globally instead of 'npm install --dev' in every package
-# and having duplicated.
-$(NODEDIR)/lib/node_modules/jshint: $(NODEDIR)/bin/npm
-	$(NPM) install -g jshint
-$(NODE_DEV): $(NODEDIR)/bin/npm
-	$(NPM) install -g node-dev
-# TAP is a landmark for all test deps.
 $(TAP): $(NODEDIR)/bin/npm deps/node-sdc-clients/package.json
 	$(NPM) install
 	$(NPM) link ./common
@@ -165,8 +155,8 @@ pkg_agent:
 	mkdir -p $(PKG_DIR)/agent/node_modules
 	ls -d agent/node_modules/* | xargs -n1 -I{} cp -HR {} $(PKG_DIR)/agent/node_modules/
 	cp -PR agent/main.js \
-		agent/package.json	\
-		agent/smf		\
+		agent/package.json \
+		agent/smf \
 		agent/npm \
 		agent/bin \
 		agent/.npmignore \
@@ -189,10 +179,24 @@ pkg_master:
 	rm -fr $(PKG_DIR)/pkg_master
 	mkdir -p $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/deps
 	cp -PR deps/node-install $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/deps/
-	cp -PR master common plugins $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/
+	mkdir -p $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/master/node_modules
+	# '-H' to follow symlink for amon-common and amon-plugins node modules.
+	ls -d master/node_modules/* \
+		| xargs -n1 -I{} cp -HR {} $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/master/node_modules/
+	cp -PR master/bin \
+		master/lib \
+		master/smf \
+		master/factory-settings.json \
+		master/main.js \
+		master/package.json \
+		$(PKG_DIR)/pkg_master/root/opt/smartdc/amon/master/
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
 	find $(PKG_DIR)/pkg_master -name "*.pyc" | xargs rm -f
+	find $(PKG_DIR)/pkg_master -name "*.o" | xargs rm -f
+	find $(PKG_DIR)/pkg_master -name c4che | xargs rm -rf   # waf build file
+	find $(PKG_DIR)/pkg_master -name .wafpickle* | xargs rm -rf   # waf build file
+	find $(PKG_DIR)/pkg_master -name config.log | xargs rm -rf   # waf build file
 
 	(cd $(PKG_DIR)/pkg_master && $(TAR) cjf $(TOP)/amon-master-$(STAMP).tar.bz2 *)
 	@echo "Created 'amon-master-$(STAMP).tar.bz2'."
@@ -217,7 +221,7 @@ publish: $(BITS_DIR)
 
 
 jshint: deps
-	bin/node $(NODEDIR)/lib/node_modules/jshint/bin/jshint common/lib plugins/lib master/main.js master/lib relay/main.js relay/lib agent/main.js agent/lib
+	$(JSHINT) common/lib plugins/lib master/main.js master/lib relay/main.js relay/lib agent/main.js agent/lib
 
 gjslint:
 	gjslint --nojsdoc -e deps,node_modules,tmp -x common/lib/sprintf.js -r .
