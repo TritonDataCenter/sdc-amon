@@ -21,21 +21,21 @@ subfile () {
 }
 
 
-subfile "$DIR/../smf/amon.smf.in" "$SMFDIR/amon.xml"
+subfile "$DIR/../smf/amon-agent.smf.in" "$SMFDIR/amon-agent.xml"
 
-svccfg import $SMFDIR/amon.xml
+svccfg import $SMFDIR/amon-agent.xml
 
 ## Gracefully restart the agent if it is online.
-#SL_STATUS=`svcs -H amon | awk '{ print $1 }'`
-#echo "amon status was $SL_STATUS"
+#SL_STATUS=`svcs -H amon-agent | awk '{ print $1 }'`
+#echo "amon-agent status was $SL_STATUS"
 #if [ "$SL_STATUS" = 'online' ]; then
-#  svcadm restart amon
+#  svcadm restart amon-agent
 #else
-#  svcadm enable amon
+#  svcadm enable amon-agent
 #fi
 
 # Disabled by default until ready for prime time (MON-12).
-svcadm disable amon
+svcadm disable amon-agent
 
 # Ensure zero-exit value to not abort the npm install.
 exit 0
