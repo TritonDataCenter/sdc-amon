@@ -1,6 +1,0 @@
-#!/bin/bash
-
-TOP=$(cd $(dirname $0)/../; pwd)
-NODEDIR=${TOP}/deps/node-install
-
-PATH=${NODEDIR}/bin:${PATH} whiskey "$@"

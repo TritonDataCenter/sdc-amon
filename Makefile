@@ -153,9 +153,6 @@ pkg_relay:
 		$(PKG_DIR)/relay/deps/node-install/lib/node_modules/amon-common \
 		$(PKG_DIR)/relay/deps/node-install/lib/node_modules/amon-plugins
 	find $(PKG_DIR)/relay -name "*.pyc" | xargs rm
-	find $(PKG_DIR)/relay -type d | grep 'node_modules\/jshint$$' | xargs rm -rf
-	find $(PKG_DIR)/relay -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
-	find $(PKG_DIR)/relay -type d | grep 'dirsum\/tst$$' | xargs rm -rf
 
 	(cd $(PKG_DIR) && $(TAR) zcf ../amon-relay-$(STAMP).tgz relay)
 	@echo "Created 'amon-relay-$(STAMP).tgz'."
@@ -184,9 +181,6 @@ pkg_agent:
 	rm -rf $(PKG_DIR)/agent/deps/node-install/lib/node_modules/amon-common \
 		$(PKG_DIR)/agent/deps/node-install/lib/node_modules/amon-plugins
 	find $(PKG_DIR)/agent -name "*.pyc" | xargs rm
-	find $(PKG_DIR)/agent -type d | grep 'node_modules\/jshint$$' | xargs rm -rf
-	find $(PKG_DIR)/agent -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
-	find $(PKG_DIR)/agent -type d | grep 'dirsum\/tst$$' | xargs rm -rf
 
 	(cd $(PKG_DIR) && $(TAR) zcf ../amon-agent-$(STAMP).tgz agent)
 	@echo "Created 'amon-agent-$(STAMP).tgz'."
@@ -199,11 +193,6 @@ pkg_master:
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
 	find $(PKG_DIR)/pkg_master -name "*.pyc" | xargs rm -f
-	find $(PKG_DIR)/pkg_master -type l -a -name jshint | xargs rm -f
-	find $(PKG_DIR)/pkg_master -type l -a -name whiskey | xargs rm -f
-	find $(PKG_DIR)/pkg_master -type d | grep 'node_modules\/jshint$$' | xargs rm -rf
-	find $(PKG_DIR)/pkg_master -type d | grep 'node_modules\/whiskey$$' | xargs rm -rf
-	find $(PKG_DIR)/pkg_master -type d | grep 'dirsum\/tst$$' | xargs rm -rf
 
 	(cd $(PKG_DIR)/pkg_master && $(TAR) cjf $(TOP)/amon-master-$(STAMP).tar.bz2 *)
 	@echo "Created 'amon-master-$(STAMP).tar.bz2'."
