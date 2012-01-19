@@ -107,8 +107,13 @@ function main() {
   log.trace("opts: %o", opts);
 
   var config = loadConfig(opts.file);
-  //XXX:TODO mask out notificationPlugins.*.config to mask passwords, etc.
-  log.debug("config: %o", config);
+  // Log config (but don't put passwords in the log file).
+  var censorKeys = {"password": "***", "authToken": "***"}
+  function censor(key, value) {
+    var censored = censorKeys[key];
+    return (censored === undefined ? value : censored);
+  }
+  log.debug("config: %s", JSON.stringify(config, censor, 2));
   
   // Create our app and start listening.
   var theApp;
