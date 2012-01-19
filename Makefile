@@ -142,7 +142,11 @@ pkg_relay:
 	rm -rf \
 		$(PKG_DIR)/relay/deps/node-install/lib/node_modules/amon-common \
 		$(PKG_DIR)/relay/deps/node-install/lib/node_modules/amon-plugins
-	find $(PKG_DIR)/relay -name "*.pyc" | xargs rm
+	find $(PKG_DIR)/relay -name "*.pyc" | xargs rm -f
+	find $(PKG_DIR)/relay -name "*.o" | xargs rm -f
+	find $(PKG_DIR)/relay -name c4che | xargs rm -rf   # waf build file
+	find $(PKG_DIR)/relay -name .wafpickle* | xargs rm -rf   # waf build file
+	find $(PKG_DIR)/relay -name config.log | xargs rm -rf   # waf build file
 
 	(cd $(PKG_DIR) && $(TAR) zcf ../amon-relay-$(STAMP).tgz relay)
 	@echo "Created 'amon-relay-$(STAMP).tgz'."
@@ -170,7 +174,7 @@ pkg_agent:
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
 	rm -rf $(PKG_DIR)/agent/deps/node-install/lib/node_modules/amon-common \
 		$(PKG_DIR)/agent/deps/node-install/lib/node_modules/amon-plugins
-	find $(PKG_DIR)/agent -name "*.pyc" | xargs rm
+	find $(PKG_DIR)/agent -name "*.pyc" | xargs rm -f
 
 	(cd $(PKG_DIR) && $(TAR) zcf ../amon-agent-$(STAMP).tgz agent)
 	@echo "Created 'amon-agent-$(STAMP).tgz'."
