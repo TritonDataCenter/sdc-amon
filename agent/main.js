@@ -202,6 +202,7 @@ function updateProbes(force) {
       } else {
         var pdString = JSON.stringify(probeDataFromId[id]);
         var pString = probe.json;
+        //XXX Naive. Isn't this susceptible to key order?
         if (pdString !== pString) {
           todos.push(["update", id]); // Update this probe.
         }
@@ -240,7 +241,7 @@ function updateProbes(force) {
 
       case "delete":
         log.debug("update probes: delete probe '%s' (%s)", id,
-          JSON.stringify(probeFromId[id]));
+          JSON.stringify(probeFromId[id].json));
         probeFromId[id].stop();
         delete probeFromId[id];
         stats.deleted++;
