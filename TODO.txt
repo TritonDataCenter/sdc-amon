@@ -1,5 +1,13 @@
 # immediate priorities
 
+- quick pass through readme, todo, wiki page, html docs
+  - clean out old TODOs, tickets for immediate work, move more to someday/maybe
+  - getting started docs in html docs (and less in README)
+- pick one or more use cases to get running and test
+- finish the "authorizeDelete" work
+    - Probe.prototype.authorizeDelete = function (app, callback) {
+      throw new Error("XXX authorize boom");
+    - *use* and test authorizeDelete, Monitor.authorizeDelete
 - TODOs for zone/machine/running-in-global handling:
   - Change semantics so:
   
@@ -24,19 +32,19 @@
 
 # todo
 
+- Gut <https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming>
+  and rename or remove it. Update ref in README.md.
 - from master/lib/probes.js:
     //XXX validate the type is an existing probe type
     //XXX validate data for that probe type
-- [Trent] clean up TODO.txt and README.md (they are too out of date)
-    update README
 - [Trent] :login -> :uuid
 - [Trent] update https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming
 - [Trent] turn on in COAL
-- from workflow/mapi talk: Amon should have the monitor skel for provisioning
-  workflow a la FWAPI (but still use normal Amon comm channel). Spec that.
+- docs: move contact URN spec from master/lib/contact.js to the docs
 - Idea: have amon-master create event/alarm to operator if it cannot connect/work
   with UFDS.
 - [Trent] test suite for relay and agent
+- update to latest ldapjs for #49 and #50 fixex
 - Relay needs to have guards for run away agents. One case is an infinite
   loop: a probe watching for "ERROR" in amon logs, where sending the
   event results in an "ERROR". Handle this with relay per-agent throttling
@@ -83,14 +91,10 @@
   from. Perhaps the "unknown" could be the zone name. Also perhaps "anonymous"
   could be the owner uuid (only if no cost to that).
     unknown - anonymous [23/11/2011:21:38:26 GMT] "HEAD /agentprobes HTTP/1.1" 200 0 1
-- perhaps a "POST /pub/:login/contacts/:contact/test" for test notification?
+- endpoint to test sending to a contact "POST /pub/:uuid/testnotify"
 - disallow '/' in name fields (so can use that as sep char for a string id).
   If this isn't acceptable then update id'ification in agent.
   Perhaps ':' would be preferable for id'ification? Meh.
-- kill amon-common/constants.js:
-    - separate ApiVersion btwn components. Because we should be able to
-      use 'x-api-version:1' on the wire to have an older agent talk to
-      a newer master.
 - name fields in Master API: percent escaping
 - suppression facility: global, per monitor, per customer? "per customer"
   could be implemented client side: portal/adminui just sets it for all
@@ -124,10 +128,14 @@
 
 # someday/maybe
 
-- node 0.6
-- modcloth request to have alerts when in CPU bursting range, i.e. they
-  are hitting OS caps. In Modcloth's case, they were hitting caps and didn't
-  know it.
+- json logging
+- node 0.6/0.7/0.8
+- restify 1.x
+- from workflow/mapi talk: Amon should have the monitor skel for provisioning
+  workflow a la FWAPI (but still use normal Amon comm channel). Spec that.
+- use case: modcloth request to have alerts when in CPU bursting range, i.e.
+  they are hitting OS caps. In Modcloth's case, they were hitting caps and
+  didn't know it.
 - amon-relay just fails mostly silently if given agents-probes-dir doesn't exist:
       [15:40:37 trentm@banana:~/joy/amon/relay (ufds)]
       $ ../deps/node-install/bin/node main.js -v -d -D tmp/db -m http://127.0.0.1:8080 -s 8081 -p 90
@@ -143,7 +151,6 @@
 - SNMP traps (per Mark).
   http://tools.ietf.org/html/rfc3877  Alarm MIB
   http://tools.ietf.org/html/rfc3014  Notification Log MIB
-- docs: move contact URN spec from master/lib/contact.js to the docs
 
 
 
@@ -180,14 +187,6 @@
 
 Trent needs to filter this into the above TODOs.
 
-- Build/install (usb-headnode, bamboo, mountain-gorilla):
-  - riak: discuss with others if separate riak clusters for separate apps
-    or one shared one? billing/amon/hostrouter(?)/capi
-  - master
-  - relay (SMF packaging done; bamboo started)
-  - agent
-  - package.json: get specific about included versions
-- Retry/backoff everywhere: Restify-client supports everything needed here?
 - event on zone/vm transitions: use zwatch
   - what does it mean to design to have events coming NOT from amon-agent
 - Garbage collection of /events and orphans
