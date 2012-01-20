@@ -338,6 +338,32 @@ has left crud data in UFDS. Clean it out by running:
     ./tst/clean-test-data.sh   # `make test` does this as well
 
 
+# COAL Notes: Getting email notifications
+
+At least in the Vancouver office, outbound SMTP traffic (port 25) is blocked.
+This means that Amon Master's usage of sendmail (with its default config)
+results in no outbound email notifications. One way around that is to use
+your gmail account like this:
+
+    $ ssh coal
+    $ sdc-login amon
+    $ vi /opt/smartdc/amon/cfg/amon-master.json
+    # Edit the "notificationsPlugins.email.config" key to looks something like:
+        "config": {
+          "smtp": {
+            "host": "smtp.gmail.com",
+            "port": 587,
+            "ssl": false,
+            "use_authentication": true,
+            "user": "YOUR-GMAIL-NAME@gmail.com",
+            "pass": "YOUR-GMAIL-PASSWORD"
+           },
+          "from": "\"Monitoring (no reply)\" <no-reply@joyent.com>"
+        }
+    $ svcadm restart amon-master
+
+
+
 # MVP
 
 Roughly said:

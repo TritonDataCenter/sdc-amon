@@ -12,6 +12,8 @@ function addEvents(req, res, next) {
   var event = req.params;
   
   //XXX This is where validation would be done.
+  //XXX - Can we quickly drop bogus events here? I.e. one with a 'probe'
+  //XXX   setting that is spoofed?
   
   // Add data known by the relay (this is info the master can trust more
   // because the relay is always in the hands of the operator).

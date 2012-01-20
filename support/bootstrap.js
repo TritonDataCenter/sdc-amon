@@ -282,23 +282,23 @@ function getHeadnodeUuid(next) {
 
 function getAmonClient(next) {
   // Amon Master in COAL:
-  //var options = {
-  //  owner_uuid: adminUuid,
-  //  "tag.smartdc_role": "amon"
-  //}
-  //mapi.listMachines(options, function(err, machines) {
-  //  if (err) return next(err);
-  //  var amonMasterUrl = 'http://' + machines[0].ips[0].address;
-  //  amonClient = new Amon({url: amonMasterUrl});
-  //  log("# Get Amon client (%s).", amonMasterUrl)
-  //  next();
-  //});
+  var options = {
+    owner_uuid: adminUuid,
+    "tag.smartdc_role": "amon"
+  }
+  mapi.listMachines(options, function(err, machines) {
+    if (err) return next(err);
+    var amonMasterUrl = 'http://' + machines[0].ips[0].address;
+    amonClient = new Amon({url: amonMasterUrl});
+    log("# Get Amon client (%s).", amonMasterUrl)
+    next();
+  });
   
-  // Local running Amon
-  var amonMasterUrl = 'http://127.0.0.1:8080';
-  amonClient = new Amon({url: amonMasterUrl});
-  log("# Get Amon client (%s).", amonMasterUrl)
-  next();
+  //// Local running Amon
+  //var amonMasterUrl = 'http://127.0.0.1:8080';
+  //amonClient = new Amon({url: amonMasterUrl});
+  //log("# Get Amon client (%s).", amonMasterUrl)
+  //next();
 }
 
 

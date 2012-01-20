@@ -24,5 +24,5 @@ rsync -av ${TOP}/plugins/ \
     --exclude "*.node" \
     --exclude tmp/
 
-ssh ${COAL} svcadm -z ${AMON_ZONE} clear amon
-ssh ${COAL} svcadm -z ${AMON_ZONE} restart amon
+ssh ${COAL} svcadm -z ${AMON_ZONE} clear amon-master
+ssh ${COAL} svcadm -z ${AMON_ZONE} restart amon-master

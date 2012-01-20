@@ -108,7 +108,7 @@ function main() {
 
   var config = loadConfig(opts.file);
   // Log config (but don't put passwords in the log file).
-  var censorKeys = {"password": "***", "authToken": "***"}
+  var censorKeys = {"password": "***", "authToken": "***", "pass": "***"}
   function censor(key, value) {
     var censored = censorKeys[key];
     return (censored === undefined ? value : censored);
