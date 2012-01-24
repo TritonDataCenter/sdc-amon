@@ -7,7 +7,7 @@
   "devDependencies": {
     "jshint": "0.2.3",
     "log4js": "0.4",
-    "ldapjs": "0.4.4",
+    "ldapjs": "0.4.7",
     "restify": "0.5",
     "async": "0.1",
     "http-signature": "0.9.6",
