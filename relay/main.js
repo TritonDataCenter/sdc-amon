@@ -198,7 +198,7 @@ function getMasterUrl(poll, callback) {
           String(err).slice(0, 100) + '...');
         setTimeout(pollMapi, pollInterval);
       } else if (machines.length === 0) {
-        log.error("No Amon zone (tag smartdc_role=amon).")
+        log.error("No Amon Master zone (tag smartdc_role=amon).")
         setTimeout(pollMapi, pollInterval);
       } else {
         // TODO: A start at handling HA is to accept multiple Amon zones here.

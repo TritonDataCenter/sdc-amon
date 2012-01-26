@@ -11,10 +11,6 @@
     "zsock": "1.0.5",
     "zutil": "0.1.2"
   },
-  "bin": {
-    "amon-relay": "./bin/amon-relay",
-    "amon-zwatch": "./bin/amon-zwatch"  
-  },
   "scripts": {
     "start": "node ./main.js",
     "postinstall": "./npm/postinstall.sh",
