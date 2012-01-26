@@ -48,6 +48,7 @@ var amonClient;
 //---- prep steps
 
 function ufdsClientBind(next) {
+  log("# Create UFDS client and bind.")
   ufdsClient = new UFDS({
     url: config.ufds.url,
     bindDN: config.ufds.rootDn,
@@ -62,6 +63,7 @@ function ufdsClientBind(next) {
 }
 
 function ldapClientBind(next) {
+  log("# Create LDAP client and bind.")
   ldapClient = ldap.createClient({
     url: config.ufds.url,
     //log4js: log4js,
@@ -73,6 +75,7 @@ function ldapClientBind(next) {
 }
 
 function getAdminUuid(next) {
+  log("# Get Admin UUID from UFDS.")
   ufdsClient.getUser("admin", function(err, user) {
     if (err) return next(err);
     adminUuid = user.uuid;
@@ -429,7 +432,7 @@ async.series([
   ],
   function (err) {
     if (err) {
-      log("error bootstrapping:", (err.stack || err))
+      log("error bootstrapping:", err, (err.stack || err))
       process.exit(1);
     }
   }

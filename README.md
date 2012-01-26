@@ -112,6 +112,38 @@ Then get the Amon code to work with:
 And start running (see next section).
 
 
+
+# COAL Notes: Getting email notifications
+
+At least in the Vancouver office, outbound SMTP traffic (port 25) is blocked.
+This means that Amon Master's usage of sendmail (with its default config)
+results in no outbound email notifications. One way around that is to use
+your gmail account like this:
+
+    $ ssh coal
+    $ sdc-login amon
+    $ vi /opt/smartdc/amon/cfg/amon-master.json
+    # Edit the "notificationsPlugins.email.config" key to looks something like:
+        "config": {
+          "smtp": {
+            "host": "smtp.gmail.com",
+            "port": 587,
+            "ssl": false,
+            "use_authentication": true,
+            "user": "YOUR-GMAIL-NAME@gmail.com",
+            "pass": "YOUR-GMAIL-PASSWORD"
+           },
+          "from": "\"Monitoring (no reply)\" <no-reply@joyent.com>"
+        }
+    $ svcadm restart amon-master
+
+Personally, I'm using a separate gmail account for this so I don't have
+to put my personal gmail password in that config file.
+
+TODO: write a tool to automate this.
+
+
+
 # Hybrid Development
 
 An alternative is to edit in working copy on your Mac and then push changes
@@ -207,7 +239,21 @@ There is a bootstrap tool that will add some Amon data for playing with:
 
     bin/node ./support/bootstrap.js
 
-TODO:STARTHERE
+It'll create devbob and devalice (operator) users. Create a devzone for
+devbob and add an Amon monitor and probe for each of them. Try some of the
+following to query the data:
+
+    ssh coal   # only because `sdc-amon` is setup to find the Amon URL there
+    sdc-amon /pub/devbob
+    sdc-amon /pub/devbob/monitors/whistle/probes
+    sdc-amon /pub/devalice/monitors/gz/probes
+
+If you have email notifications sending through properly (see "COAL Notes:
+Getting email notifications" above) then the
+`/pub/devalice/monitors/gz/probes/smartlogin` probe can be easily tickled
+by restarting smartlogin:
+
+    ssh coal svcadm restart smartlogin
 
 
 
@@ -320,7 +366,6 @@ And list probes:
     ]
 
 
-
 ## Tickle a probe, get an email
 
 If you have every thing right you should be able to tickle one of those
@@ -396,43 +441,6 @@ has left crud data in UFDS. Clean it out by running:
     ./tst/clean-test-data.sh   # `make test` does this as well
 
 
-# COAL Notes: Getting email notifications
-
-At least in the Vancouver office, outbound SMTP traffic (port 25) is blocked.
-This means that Amon Master's usage of sendmail (with its default config)
-results in no outbound email notifications. One way around that is to use
-your gmail account like this:
-
-    $ ssh coal
-    $ sdc-login amon
-    $ vi /opt/smartdc/amon/cfg/amon-master.json
-    # Edit the "notificationsPlugins.email.config" key to looks something like:
-        "config": {
-          "smtp": {
-            "host": "smtp.gmail.com",
-            "port": 587,
-            "ssl": false,
-            "use_authentication": true,
-            "user": "YOUR-GMAIL-NAME@gmail.com",
-            "pass": "YOUR-GMAIL-PASSWORD"
-           },
-          "from": "\"Monitoring (no reply)\" <no-reply@joyent.com>"
-        }
-    $ svcadm restart amon-master
-
-
-
-# Lint
-
-    make lint
-
-To be able to run `make lint` you'll need to install "gjslint" yourself
-manually. See:
-<http://code.google.com/closure/utilities/docs/linter_howto.html>.
-
-Note: This hasn't been run in a long time.
-
-
 
 # MVP
 
@@ -467,149 +475,4 @@ More detail:
 - Upgradable amon system.
 
 
-# Glossary
 
-- A "monitor" is a the main conceptual object that is configured by operators
-  and customers using Amon. It includes the details for what checks to
-  run and, when a check trips, who and how to notify ("contacts").
-- A "probe" is a single thing to check (the atom of physical monitoring
-  done by the Amon agents). E.g. "Check the running state of zone X." "Check
-  for 3 occurrences of 'ERROR' in 'foo.log' in zone X within 1 minute." A
-  monitor includes one or more probes.
-- An "event" is a message sent from an Amon agent up to the Amon master that
-  might create or update an alarm.
-- An open or active "alarm" is the state of a failing monitor. An alarm is
-  created when a monitor trips (i.e. one of its checks fails). An alarm can
-  be closed by user action (via the API or in the Operator or User Portals)
-  or via an Amon clear event -- the failing state is no longer failing, e.g.
-  a halted machine has come back up.  An alarm object lives until it is
-  closed.
-- A "notification" is a message sent for an alarm to one or more contacts
-  associated with that monitor. An alarm may result in many notifications
-  through its lifetime.
-
-
-
-# Use Cases
-
-A few use cases to start to feel out practicalities.
-
-1.  Operator SDC Log monitor. Probe for watching log file of each SDC svc log
-    for ERROR, say (need to be specified). Probe watching for ERROR in
-    smartdc and core zones' primary service log files.
-        
-        PUT /my/monitors/logs < {
-                "contacts": ["email"]
-            }
-        PUT /my/monitors/logs/probes/$machine_uuid < {
-                "type": "logscan",
-                "machine": "$machine_uuid",
-                "config": {       // TODO: perhaps back to "config" here, from "data"
-                  "path": "/tmp/whistle2.log",
-                  "regex": "tweet",
-                  "threshold": 1,
-                  "period": 60
-                }
-            }
-
-
-2. Operator SDC Zones monitor. Probe for SDC zones going up and down.
-   Separate from "SDC Log monitor" because zone up/down alarms can clear.
-        
-        PUT /my/monitors/zones < {
-                "contacts": ["email"]
-            }
-        PUT /my/monitors/zones/probes/$machine_uuid < {
-                "type": "machinedown",
-                "machine": "$machine_uuid"
-                // "runInGlobal": true    // Added by Amon master
-            }
-
-3. Operator SDC Services monitor. Probe for SDC zones' and GZ's "smartdc"
-   services going up/down.
-
-        PUT /my/monitors/services < {
-                "contacts": ["email"]
-            }
-        PUT /my/monitors/services/probes/$machine_uuid < {
-                "type": "smf",
-                "machine": "$machine_uuid",
-                "config": {
-                    "fmri": "$fmri"
-                }
-            }
-
-4.  Customer "Machine up" monitor. Probe for each of my machines going up
-    and down.
-   
-    Portal UX: This monitor is likely often wanted for *all* my zones.
-    However, don't want it on by default. Should portal's page after
-    "create new machine" have a big button (or a checkbox) to add this
-    monitor for this zone. Nice to have would be to offer checkboxes for
-    all monitors on existing zones: "You have monitor A on (some of) your
-    other machines. Would you like it on this one too?" Should portal add
-    a separate monitor? Or add a probe (or probes?) to the same monitor?
-    Probably another probe to the same monitor. Naming (of probe or
-    monitor) will be a pain, need to include machine UUID in the name?
-    
-    Cloud API: You have to add these separately per-machine. That shouldn't
-    be so bad.
-    
-        PUT /my/monitors/machine-up < {
-                "contacts": ["email"]
-            }
-        PUT /my/monitors/machine-up/probes/$machine_uuid < {
-                "type": "machinedown",
-                "machine": "$machine_uuid"
-            }
-
-5.  Customer "Site up" monitor. Probe to "GET /canary" on the site from
-    some other source location.
-        
-        PUT /my/monitors/site < {
-                "contacts": ["email"]
-            }
-        PUT /my/monitors/site/probes/webcheck < {
-                "machine": "$machine_uuid",  // <--- this is the machine to run HTTP request from
-                "type": "httprequest",
-                "config": {
-                    "url": "http://example.com/canary.html",
-                    "method": "GET",
-                    "status": 200  // number or list of HTTP status numbers to expect
-                    "regex": "...",   // check for a pattern in returned content
-                    "period": 60  // how frequently to check. Should this be exposed?
-                }
-            }
-
-6.  Operator wants to run a particular "mdb -k" goober (Bryan's words) to
-    run a healthcheck on KVM.
-    
-        PUT /my/monitors/kvmcheck < {
-                "contacts": ["email"]
-            }
-        PUT /my/monitors/kvmcheck/probes/foo < {
-                "type": "mdbkernel",
-                "machine": "$machine_uuid",
-                "runInGlobal": true,   // must be operator to set this
-                "config": {
-                    // This is essential wide open. That command can presumably
-                    // do anything.
-                    "command": ...,
-                    "regex": "...",   // check for a pattern in returned content?
-                    // Something to check exit value?
-                    "period": 60  // how frequently to check.
-                }
-            }
-
-7.  Run a probe on a particular server's GZ. I.e. doesn't have. a particular
-    "machine" uuid target. For machine UUIDA we
-
-        machine UUID1 -> "machine": UUID1
-        machine UUID2's GZ -> "machine": UUID2, "runInGlobal": true
-        server UUID3 GZ -> "server": UUID3, "machine": undefined
-
-    Must be an operator to add probe with 'server' attribute. Add
-    "GET /agentprobes?server=:uuid".
-
-    For dev support AMON_DEV=1 to allow `"server": "headnode"` to pick
-    headnode.

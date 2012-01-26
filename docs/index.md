@@ -368,6 +368,7 @@ for agent control data changes with less network overhead.
 TODO
 
 
+
 # Master Configuration
 
 Reference docs on configuration vars to amon-master. Default values are in
@@ -391,5 +392,189 @@ whole userCache object.
 ||notificationPlugins||An object defining all notification mechanisms. This is a mapping of plugin name, e.g. "email" or "sms", to plugin data.||
 ||notificationPlugins.NAME.path||A node `require()` path from which the Amon master can load the plugin module, e.g. "./lib/twillio".||
 ||notificationPlugins.NAME.config||An object with instance data for the plugin.||
+
+
+
+# Glossary
+
+- A "monitor" is a the main conceptual object that is configured by operators
+  and customers using Amon. It includes the details for what checks to
+  run and, when a check trips, who and how to notify ("contacts").
+- A "probe" is a single thing to check (the atom of physical monitoring
+  done by the Amon agents). E.g. "Check the running state of zone X." "Check
+  for 3 occurrences of 'ERROR' in 'foo.log' in zone X within 1 minute." A
+  monitor includes one or more probes.
+- An "event" is a message sent from an Amon agent up to the Amon master that
+  might create or update an alarm.
+- An open or active "alarm" is the state of a failing monitor. An alarm is
+  created when a monitor trips (i.e. one of its checks fails). An alarm can
+  be closed by user action (via the API or in the Operator or User Portals)
+  or via an Amon clear event -- the failing state is no longer failing, e.g.
+  a halted machine has come back up.  An alarm object lives until it is
+  closed.
+- A "notification" is a message sent for an alarm to one or more contacts
+  associated with that monitor. An alarm may result in many notifications
+  through its lifetime.
+
+
+
+# Use Cases
+
+Some Amon use cases to guide its design and to demonstrate how to use
+Amon. **Dev Note: Current Amon doesn't support all these use cases yet.**
+
+
+## 1. Operator SDC Log Monitor
+
+Probe for watching log file of each SDC svc log for ERROR, say (need to be
+specified). Probe watching for ERROR in smartdc and core zones' primary
+service log files.
+
+    PUT /my/monitors/logs < {
+            "contacts": ["email"]
+        }
+    PUT /my/monitors/logs/probes/$machine_uuid < {
+            "type": "logscan",
+            "machine": "$machine_uuid",
+            "config": {
+              "path": "/tmp/whistle2.log",
+              "regex": "tweet",
+              "threshold": 1,
+              "period": 60
+            }
+        }
+
+
+## 2. Operator SDC Zones monitor
+
+Probe for SDC zones going up and down. Separate from "SDC Log monitor"
+because zone up/down alarms can clear.
+        
+    PUT /my/monitors/zones < {
+            "contacts": ["email"]
+        }
+    PUT /my/monitors/zones/probes/$machine_uuid < {
+            "type": "machinedown",
+            "machine": "$machine_uuid"
+            // "runInGlobal": true    // Added by Amon master
+        }
+
+
+## 3. Operator SDC Services monitor
+
+Probe for SDC zones' and GZ's "smartdc" services going up/down.
+
+    PUT /my/monitors/services < {
+            "contacts": ["email"]
+        }
+    PUT /my/monitors/services/probes/$machine_alias-$fmri_nickname < {
+            "type": "smf",
+            "machine": "$machine_uuid",
+            "config": {
+                "fmri": "$fmri"
+            }
+        }
+    PUT /my/monitors/services/probes/$headnode_hostname-$fmri_nickname < {
+            "type": "smf",
+            "server": "$compute_node_uuid",
+            "config": {
+                "fmri": "$fmri"
+            }
+        }
+
+For example:
+
+    sdc-amon /pub/admin/monitors/sdcservices -X PUT -d- < '{
+        "contacts": ["email"]
+    }'
+    # Where '564d70d5-0187-e5d4-468f-7b49a6b014ff' is my headnode UUID.
+    sdc-amon /pub/admin/monitors/sdcservices/probes/headnode-smartlogin -X PUT -d- < '{
+        "type": "smf",
+        "server": "564d70d5-0187-e5d4-468f-7b49a6b014ff",
+        "config": {
+            "fmri": "svc:/smartdc/agent/smartlogin:default"
+        }
+    }'
+    ...
+    # Where 'ea3898cd-4ca9-410a-bfa6-0152ba07b1d7' is the ufds0 zone name.
+    sdc-amon /pub/admin/monitors/sdcservices/probes/ufds0-ufds-capi -X PUT -d- < '{
+        "type": "smf",
+        "machine": "ea3898cd-4ca9-410a-bfa6-0152ba07b1d7",
+        "config": {
+            "fmri": "svc:/smartdc/agent/smartlogin:default"
+        }
+    }'
+    ...
+
+
+## 4. Customer "Machine up" monitor
+
+Probe for each of my machines going up and down.
+   
+Portal UX: This monitor is likely often wanted for *all* my zones.
+However, don't want it on by default. Should portal's page after
+"create new machine" have a big button (or a checkbox) to add this
+monitor for this zone. Nice to have would be to offer checkboxes for
+all monitors on existing zones: "You have monitor A on (some of) your
+other machines. Would you like it on this one too?" Should portal add
+a separate monitor? Or add a probe (or probes?) to the same monitor?
+Probably another probe to the same monitor. Naming (of probe or
+monitor) will be a pain, need to include machine UUID in the name?
+
+Cloud API: You have to add these separately per-machine. That shouldn't
+be so bad.
+    
+    PUT /my/monitors/machine-up < {
+            "contacts": ["email"]
+        }
+    PUT /my/monitors/machine-up/probes/$machine_uuid < {
+            "type": "machinedown",
+            "machine": "$machine_uuid"
+        }
+
+
+## 5. Customer "Site up" monitor
+
+Probe to "GET /canary" on the site from some other source location.
+
+    PUT /my/monitors/site < {
+            "contacts": ["email"]
+        }
+    PUT /my/monitors/site/probes/webcheck < {
+            "machine": "$machine_uuid",  // <--- this is the machine to run HTTP request from
+            "type": "httprequest",
+            "config": {
+                "url": "http://example.com/canary.html",
+                "method": "GET",
+                "status": 200  // number or list of HTTP status numbers to expect
+                "regex": "...",   // check for a pattern in returned content
+                "period": 60  // how frequently to check. Should this be exposed?
+            }
+        }
+
+
+## 6. Operator `mdb -k` goober
+
+Operator wants to run a particular "mdb -k" goober (Bryan's words) to run a
+healthcheck on KVM.
+    
+    PUT /my/monitors/kvmcheck < {
+            "contacts": ["email"]
+        }
+    PUT /my/monitors/kvmcheck/probes/foo < {
+            "type": "mdbkernel",
+            "machine": "$machine_uuid",
+            "runInGlobal": true,   // must be operator to set this
+            "config": {
+                // This is essential wide open. That command can presumably
+                // do anything.
+                "command": ...,
+                "regex": "...",   // check for a pattern in returned content?
+                // Something to check exit value?
+                "period": 60  // how frequently to check.
+            }
+        }
+
+
 
 

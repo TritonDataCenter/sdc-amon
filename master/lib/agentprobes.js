@@ -185,7 +185,8 @@ function headAgentProbes(req, res, next) {
 
   findProbes(req._app, field, uuid, function (err, probes) {
     if (err) {
-      log.error("error getting probes for %s '%s'", field, uuid);
+      log.error("error getting probes for %s '%s': %s", field, uuid,
+        (err.stack || err));
       res.sendError(new restify.InternalError());
       return next();
     } else {
