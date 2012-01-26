@@ -423,33 +423,65 @@ whole userCache object.
 Some Amon use cases to guide its design and to demonstrate how to use
 Amon. **Dev Note: Current Amon doesn't support all these use cases yet.**
 
+In the examples below "devalice" is an operator account commonly used
+in dev work on Amon, "564d70d5-0187-e5d4-468f-7b49a6b014ff" is the headnode
+UUID, etc.
+
+
 
 ## 1. Operator SDC Log Monitor
 
-Probe for watching log file of each SDC svc log for ERROR, say (need to be
-specified). Probe watching for ERROR in smartdc and core zones' primary
-service log files.
+Probes for watching relevant SDC log files for, say, "ERROR".
 
-    PUT /my/monitors/logs < {
-            "contacts": ["email"]
+    sdc-amon /pub/devalice/monitors/sdclogs -X PUT -d- < '{
+        "contacts": ["email"]
+    }'
+    
+    # GZ probes
+    sdc-amon /pub/devalice/monitors/sdclogs/probes/headnode-ur -X PUT -d- < '{
+        "type": "logscan",
+        "server": "564d70d5-0187-e5d4-468f-7b49a6b014ff",
+        "config": {
+            "path": "/var/svc/log/smartdc-agent-ur:default.log",
+            "regex": "ERROR",
+            "threshold": 1,
+            "period": 60
         }
-    PUT /my/monitors/logs/probes/$machine_uuid < {
-            "type": "logscan",
-            "machine": "$machine_uuid",
-            "config": {
-              "path": "/tmp/whistle2.log",
-              "regex": "tweet",
-              "threshold": 1,
-              "period": 60
-            }
+    }'
+    # Or perhaps a specialized probe "smf-logscan" type for SMF logs.
+    sdc-amon /pub/devalice/monitors/sdclogs/probes/headnode-heartbeater -X PUT -d- < '{
+        "type": "smf-logscan",
+        "server": "564d70d5-0187-e5d4-468f-7b49a6b014ff",
+        "config": {
+            "fmri": "svc:/smartdc/agent/heartbeater:default",
+            "regex": "ERROR",
+            "threshold": 1,
+            "period": 60
         }
+    }'
+    ...
+    
+    # SDC zones probes
+    # Where 'ea3898cd-4ca9-410a-bfa6-0152ba07b1d7' is the ufds0 zone name.
+    sdc-amon /pub/devalice/monitors/sdclogs/probes/ufds0-ufds-server -X PUT -d- < '{
+        "type": "logscan",
+        "machine": "ea3898cd-4ca9-410a-bfa6-0152ba07b1d7",
+        "config": {
+            "path": "/var/log/ufds/server.log",
+            "regex": "ERROR",
+            "threshold": 1,
+            "period": 60
+        }
+    }'
+    ...
+
 
 
 ## 2. Operator SDC Zones monitor
 
 Probe for SDC zones going up and down. Separate from "SDC Log monitor"
 because zone up/down alarms can clear.
-        
+
     PUT /my/monitors/zones < {
             "contacts": ["email"]
         }
@@ -484,11 +516,11 @@ Probe for SDC zones' and GZ's "smartdc" services going up/down.
 
 For example:
 
-    sdc-amon /pub/admin/monitors/sdcservices -X PUT -d- < '{
+    sdc-amon /pub/devalice/monitors/sdcservices -X PUT -d- < '{
         "contacts": ["email"]
     }'
     # Where '564d70d5-0187-e5d4-468f-7b49a6b014ff' is my headnode UUID.
-    sdc-amon /pub/admin/monitors/sdcservices/probes/headnode-smartlogin -X PUT -d- < '{
+    sdc-amon /pub/devalice/monitors/sdcservices/probes/headnode-smartlogin -X PUT -d- < '{
         "type": "smf",
         "server": "564d70d5-0187-e5d4-468f-7b49a6b014ff",
         "config": {
@@ -497,7 +529,7 @@ For example:
     }'
     ...
     # Where 'ea3898cd-4ca9-410a-bfa6-0152ba07b1d7' is the ufds0 zone name.
-    sdc-amon /pub/admin/monitors/sdcservices/probes/ufds0-ufds-capi -X PUT -d- < '{
+    sdc-amon /pub/devalice/monitors/sdcservices/probes/ufds0-ufds-capi -X PUT -d- < '{
         "type": "smf",
         "machine": "ea3898cd-4ca9-410a-bfa6-0152ba07b1d7",
         "config": {

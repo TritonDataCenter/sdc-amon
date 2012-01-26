@@ -1,48 +1,30 @@
-# immediate priorities
+# higher-level prios
 
-- quick pass through readme, todo, wiki page, html docs
-  - clean out old TODOs, tickets for immediate work, move more to someday/maybe
-  - getting started docs in html docs (and less in README)
-- pick one or more use cases to get running and test
-- finish the "authorizeDelete" work
-    - Probe.prototype.authorizeDelete = function (app, callback) {
-      throw new Error("XXX authorize boom");
-    - *use* and test authorizeDelete, Monitor.authorizeDelete
-- TODOs for zone/machine/running-in-global handling:
-  - Change semantics so:
-  
-        GET /agentprobes?machine=$uuid1
-    
-    is probes on behalf of that machine. Some of those probes might have a
-    "runInGlobal" boolean attr.
-  - Then have a "machine" value "node:$server_uuid" to specify running something
-    in the global.
-    What about the "mdb -k" option? I.e. want to run on behalf of a machine
-    "$uuidA" but need to run in the global. Can't allow customer to add that.
-    Allow an "operator" to set "runInGlobal"? Or have certain probe types
-    that can only be added by an operator? I like the former.
-  - Exclude "runInGlobal" from "public" repr, but include in admin repr.
-    Either add ?public or ?admin to endpoints.
-  - Think about how/if to bootstrap suggested/helpful starter operator
-    monitors. Can't just automatically bootstrap for 'admin' user b/c might
-    not always have it or want to use it instead of other operator accounts.
-    Perhaps a "sdc-monitoring" tool (monadm? amonadm?) to add canned sets of
-    monitors and probes?
+- design use cases, assign a use case driver for each prio
+- probe type for a probe on a *machine*, that runs in the GZ.
+  How? runInGlobal? assigned "server" field?
+- sysevent-based events: use case #2, machine-running-state probe type
+- agent in all zones
+- persistent alarms/events
+- authorizeDelete finish
+- finish CRUD on UFDS objects
+- sdc-healthcheck
+- notification formatting
+- suppression support
+- upgrade plan: What if UFDS schema needs to change? How do we rev the Master
+  with older agents in the wild. Upgrading Agent versions? What about
+  an old amon-agent? old amon-relay?
+- cloud api
+- portal
+- adminui
+- load testing (hook into mock cloud for this?). Estimate of design-limit on
+  number of probes/notifications/events
+- HA
 
 
-# todo
+# todo (in no particular order)
 
-- Gut <https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming>
-  and rename or remove it. Update ref in README.md.
-- from master/lib/probes.js:
-    //XXX validate the type is an existing probe type
-    //XXX validate data for that probe type
-- [Trent] :login -> :uuid
-- docs: move contact URN spec from master/lib/contact.js to the docs
-- Idea: have amon-master create event/alarm to operator if it cannot connect/work
-  with UFDS.
-- [Trent] test suite for relay and agent
-- update to latest ldapjs for #49 and #50 fixex
+- update to latest ldapjs for #49 and #50 fixes
 - Relay needs to have guards for run away agents. One case is an infinite
   loop: a probe watching for "ERROR" in amon logs, where sending the
   event results in an "ERROR". Handle this with relay per-agent throttling
@@ -55,22 +37,6 @@
   pathological regex (or mdb command) could hang and would need process
   mgmt to deal with. How to break out of this??? A separate process everytime
   is a pain.
-- update "zone" field to include CN uuid prefix: Because "global" is
-  ambiguous with multiple servers (e.g. the headnode and a CN). Also
-  should talk with Josh about whether this should use zone *name* or
-  zone *uuid*. They can differ.
-- "sdc-amon /pub/trent.mick" messes up on '.' in username -> restify upgrade
-- [Trent] master/config.json.in and use that in usb-headnode/zones/amon/setup
-- notification templating:
-  - config.notificationsPlugins -> config.notifications.plugins
-  - add config.notifications.templatesDir, there is a factory templates dir
-    with defaults
-  - handlerbars: is whitespace handled properly?
-  - params for a template: notification type (e.g. email), probe type (e.g.
-    logscan). So could have msg-email.html and msg-email.txt for fallback
-    for 'email' notifications. Override for 'logscan' probes with
-    'body-email-logscan.html' and 'body-email-logscan.txt'.
-  - What about subject?  'subject-email.txt'
 - 'sdc-amon /pub/hamish/monitors/whistle -X DELETE' fails
     ERROR: Error deleting 'amonmonitor=whistle, uuid=7b23ae63-37c9-420e-bb88-8d4bf5e30455, ou=customers, o=smartdc' from UFDS: NotAllowedOnNonLeafError:...
 - <probe>.idObject details on probe events from agent is *wrong*. Insecure.
@@ -78,10 +44,7 @@
   cfg var). Relay should probably also add the "zone" from which the event
   came? Relay should also validate that given event is for a probe that
   *exists* for that zone, if not then drop it.
-- ticket for the system error twillio message (and retire twillio). What
-  for actual SMS *text*?
-- spec how processEvent should work with persistent alarms
-- consistent `new restify.FooError(...)` usage
+- consistent `new restify.FooError(...)` usage and document this
 - [Trent] master: improve this log line to include user context:
     2011-11-23 21:36:37Z DEBUG: App.processEvent: contact 'email' notified
 - send an op notification if Redis is down when attempting to process an event
@@ -94,41 +57,25 @@
   If this isn't acceptable then update id'ification in agent.
   Perhaps ':' would be preferable for id'ification? Meh.
 - name fields in Master API: percent escaping
-- suppression facility: global, per monitor, per customer? "per customer"
-  could be implemented client side: portal/adminui just sets it for all
-  that customer's monitors (looses mixed suppression states).
-- tack on amon records to ufds/tools/genldif
-- upgrade plan: What if UFDS schema needs to change? How do we rev the Master
-  with older agents in the wild.
-- restore this original sorta-schema for events from Mark?
-      The (sort of) schema for sending a status update:
-      
-          {
-            "status": "<STATUS>",
-            "message": "Free Form String.",
-            "metrics": [{
-              "name": "<URN>",
-              "type": <TYPE>",
-              "value": <VALUE>
-            }];
-          }
-      
-      Where:
-      
-      * <STATUS>: A string, that must be one of `"ok", "warn", "error"`.
-      * <URN>: The name of the check (note this will be validated against :check).
-        An example is something like `urn:cpu:load`.
-      * <TYPE>: One of `"String", "Integer", "Boolean", "Float"`
-      * <VALUE>: Value for this metric.  Must correspond to `type`.
-      
-      If not obvious, you can send multiple metrics per check.
 
 
 # someday/maybe
 
+- node 0.6 upgrade, npm 1.1 upgrade
+- Eng Guidelines "commit node_modules" update.
+- restify 1.x upgrade ("sdc-amon /pub/trent.mick" messes up on '.' in username -> restify upgrade)
+- Gut <https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming>
+  and rename or remove it. Update ref in README.md.
+- [Trent] master/config.json.in and use that in usb-headnode/zones/amon/setup
+- from master/lib/probes.js:
+    //XXX validate the type is an existing probe type
+    //XXX validate data for that probe type
+- [Trent] :login -> :uuid
+- docs: move contact URN spec from master/lib/contact.js to the docs
+- Idea: have amon-master create event/alarm to operator if it cannot
+  connect/work with UFDS.
+- [Trent] test suite for relay and agent
 - json logging
-- node 0.6/0.7/0.8
-- restify 1.x
 - from workflow/mapi talk: Amon should have the monitor skel for provisioning
   workflow a la FWAPI (but still use normal Amon comm channel). Spec that.
 - use case: modcloth request to have alerts when in CPU bursting range, i.e.
@@ -149,58 +96,22 @@
 - SNMP traps (per Mark).
   http://tools.ietf.org/html/rfc3877  Alarm MIB
   http://tools.ietf.org/html/rfc3014  Notification Log MIB
+- edge-triggered alarms in master for probes
+- CA probe type
+- HTTP probe type
+- revive twilio notification backend as "sms"
+- Interesting services for hooking into, messaging services that might be useful,
+  or just general related/competing services:
+    - http://aws.amazon.com/cloudwatch/
+    - https://www.cloudkick.com/
+    - http://www.splunk.com/
+    - http://www.pagerduty.com/
+    - http://www.opennms.org/ (modcloth using this I think)
 
 
 
-# Notes (possibly out of date)
+# Notes: redis
 
-## use case: operator wants an alert for every zone fault
-
-- FMA-based check in amon-agent in all CN GZs
-  Q: Ask rm how to trigger that FMA event.
-- Q: Exclude explicit reboots? What about an explicit reboot, but it doesn't
-  come back up?
-  A: Yes, exclude for now.
-- Q: how to handle clearing an alarm. Does FMA give me an event for that?
-  Ditto for non-fma-based zone status watching? Are we going to send an
-  amon event for *every* zone running state every minute? No way.
-
-## smartos event streams notes
-
-- sysevent: core element, syseventadm
-  https://mo.joyent.com/source/xref/illumos-joyent/usr/src/lib/libsysevent/libsysevent.c#2653
-    sysevent_subscribe_event
-  Note that zonecfg_notify_* itself calls a slightly different "sysevent_evc_subscribe":
-    https://mo.joyent.com/source/xref/illumos-joyent/usr/src/lib/libsysevent/libevchannel.c#566
-    https://mo.joyent.com/source/xref/illumos-joyent/usr/src/lib/libzonecfg/common/libzonecfg.c#6692
-- zonecfg_notify_bind: uses sysevent, might not need that
-  defined here: illumos/usr/src/lib/libzonecfg/common/libzonecfg.c
-- fma:
-  fmdump
-  FMA: http://hub.opensolaris.org/bin/download/Community+Group+fm/WebHome/FMDPRM.pdf
-  http://download.oracle.com/docs/cd/E19082-01/819-3196/6n5ed4h40/index.html#indexterm-289
-  fminject to test
-  
-## old TODOs for MVP
-
-Trent needs to filter this into the above TODOs.
-
-- event on zone/vm transitions: use zwatch
-  - what does it mean to design to have events coming NOT from amon-agent
-- Garbage collection of /events and orphans
-- in riak, use uuid instead of customer_name for keys, if possible
-- load testing (hook into mock cloud for this?)
-  - estimate of design-limit on number of watches/notifications/events
-  - e.g., what would it be on no.de
-  - capacity planning:
-    - http://wiki.basho.com/Cluster-Capacity-Planning.html
-    - shared riak cluster with billing and ufds
-    - http://wiki.basho.com/Bitcask-Capacity-Planning.html
-- upgrade plan and testing
-  - versioning (see ca/Makefile, and 1.0.0 instead of 6.1)
-  - config handling
-- headnode GZ cronjob that emails the /usbkey/config'd admin if amon and/or
-  redis zones are down themselves.
 - redis zone config: have "save 60 1". Make sure that isn't filling up disk
   with lots of snapshots. I *presume* this is just one or two files on
   disk, but should check.
@@ -209,15 +120,12 @@ Trent needs to filter this into the above TODOs.
   redis.conf
 
 
-## Trent's scratch area
+# Notes: suppression
 
-- upgrade deps/node and deps/npm versions to latest
-- faking an event (calling Relay API):
-    $ bin/amon-relay-api /events -X POST -d @-
-    {"check":"joyent_whistle","status":"error","metrics":{"name":"amon:logscan","type":"Integer","value":2,"data":{"match":"i hear a tweet from someone"}}}
-    ^D
-- too much noise in the log: can't have the logs grow this fast
-  don't log normal "HEAD /config" hits
+- suppression facility: global, per monitor, per customer? "per customer"
+  could be implemented client side: portal/adminui just sets it for all
+  that customer's monitors (looses mixed suppression states).
+
 - suppressing some zone transition events: How?
   - the start + reboot for zone provisioning:
     - talk with Orlando about a "ready" zoneconfig var set by provisioner
@@ -250,33 +158,61 @@ Trent needs to filter this into the above TODOs.
           for monitors M and N (or all)
           for machines X, Y and Z (or all)
           for a certain amount of time (or until re-enabled)."
-        
-- running on smartos global zone:
-  devrun.sh: USE_ZSOCK=1
-- /config -> /zonechecks
-- use "/customers" prefix instead of "/pub" for Master API.
+
+
+# notes: fma
+
+Use case: operator wants an alert for every zone fault.
+
+- FMA-based check in amon-agent in all CN GZs
+  Q: Ask rm how to trigger that FMA event.
+- Q: Exclude explicit reboots? What about an explicit reboot, but it doesn't
+  come back up?
+  A: Yes, exclude for now.
+- Q: how to handle clearing an alarm. Does FMA give me an event for that?
+  Ditto for non-fma-based zone status watching? Are we going to send an
+  amon event for *every* zone running state every minute? No way.
+
+
+# notes: smartos event streams notes
+
+- sysevent: core element, syseventadm
+  https://mo.joyent.com/source/xref/illumos-joyent/usr/src/lib/libsysevent/libsysevent.c#2653
+    sysevent_subscribe_event
+  Note that zonecfg_notify_* itself calls a slightly different "sysevent_evc_subscribe":
+    https://mo.joyent.com/source/xref/illumos-joyent/usr/src/lib/libsysevent/libevchannel.c#566
+    https://mo.joyent.com/source/xref/illumos-joyent/usr/src/lib/libzonecfg/common/libzonecfg.c#6692
+- zonecfg_notify_bind: uses sysevent, might not need that
+  defined here: illumos/usr/src/lib/libzonecfg/common/libzonecfg.c
+- fma:
+  fmdump
+  FMA: http://hub.opensolaris.org/bin/download/Community+Group+fm/WebHome/FMDPRM.pdf
+  http://download.oracle.com/docs/cd/E19082-01/819-3196/6n5ed4h40/index.html#indexterm-289
+  fminject to test
   
 
+# notes: events
 
-## Mark's old old TODOs/RFEs
+restore this original sorta-schema for events from Mark?
+The (sort of) schema for sending a status update:
+    
+      {
+        "status": "<STATUS>",
+        "message": "Free Form String.",
+        "metrics": [{
+          "name": "<URN>",
+          "type": <TYPE>",
+          "value": <VALUE>
+        }];
+      }
+    
+Where:
 
-Trent to filter this into above lists.
+* <STATUS>: A string, that must be one of `"ok", "warn", "error"`.
+* <URN>: The name of the check (note this will be validated against :check).
+  An example is something like `urn:cpu:load`.
+* <TYPE>: One of `"String", "Integer", "Boolean", "Float"`
+* <VALUE>: Value for this metric.  Must correspond to `type`.
 
-- CA Agent Plugin
-- HTTP Agent Plugin
-- revive twillio notification backend as "sms"
-- Default to CAPI lookup user email on no contacts
-- missing data alarms in master: ???
-- edge-triggered alarms in master for checks: ???
-- /events cleanup (look like other master apis)
-- client SDK
-- s/joyent/sdc/ in various runtime files and dirs
-- Admin UI
-- Interesting services for hooking into, messaging services that might be useful,
-  or just general related/competing services:
-    - http://aws.amazon.com/cloudwatch/
-    - https://www.cloudkick.com/
-    - http://www.splunk.com/
-    - http://www.pagerduty.com/
-    - http://www.opennms.org/ (modcloth using this I think)
+If not obvious, you can send multiple metrics per check.
 
