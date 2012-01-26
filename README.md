@@ -23,24 +23,26 @@ de-duplication rules can mean a notification is not always sent).
 
 # Design Overview
 
-There is an "Amon Master" HTTP server that runs in the "amon" smartdc zone.
-This is the endpoint for the "Amon Master API". The Amon Master stores
-long-lived Amon system data (monitors, contacts, probes) in UFDS and
-shorter-lived data (alarms and events) in redis (a separate "redis" smartdc
-zone).
+There is an "Amon Master" HTTP server that runs in the "amon" smartdc zone
+as the "amon-master" SMF service. This is the endpoint for the "Amon Master
+API". The Amon Master stores long-lived Amon system data (monitors, contacts,
+probes) in UFDS and shorter-lived data (alarms and events) in redis (a
+separate "redis" smartdc zone).
 
-There is an "Amon Relay" (which could be a tree of Amon Relays if necessary)
-running on each node global zone to ferry (1) probe/monitor configuration
-down to Amon Agents where probes are run; and (2) events up from agents
-to the master for handling. This is installed with the agents shar (which
-includes all SDC agents) on each node.
+There is an "Amon Relay" running on each compute node global zone to ferry
+(1) probe/monitor configuration down to Amon Agents where probes are run; and
+(2) events up from agents to the master for handling. This is installed with
+the agents shar (which includes all SDC agents) as "amon-relay" on each
+compute node.
 
 There is an "Amon Agent" running at each location where the supported probes
-need to run. For starters we only require an agent in each node global zone.
-This is installed with the agents shar (which includes all SDC agents) on
-each node. Eventually we may include an agent inside zones (communicating out
-via a zsocket) and VMs (not sure how communicating out, HTTP?) to support
-probes that must run inside.
+need to run. For starters we only require an agent in each compute node
+global zone. This is installed with the agents shar (which includes all SDC
+agents) as "amon-agent" on each compute node. Eventually we will include an
+agent inside zones (communicating out via a zsocket) and VMs (not sure how
+communicating out, HTTP?) to support probes that must run inside. We will
+also likely distribute builds of the Amon agent publicly for SDC customers
+to install and manage in their VMs on their own.
 
 
 # Code Layout
@@ -51,36 +53,32 @@ probes that must run inside.
     plugins/        "amon-plugins" node.js package that holds probe type
                     plugins (e.g. "logscan.js" implements the "logscan"
                     probe type).
-    common/         Node.js module to share code between the above packages.
+    common/         "amon-common" node.js module to share code between the
+                    above packages.
     zwatch/         Zonecfg watcher daemon. Intended to be used by relay to
                     setup watch zone state transitions to setup/teardown
-                    zsockets to agents running on zones. However, the first
-                    Amon release will only have agents in the GZ so the relay
-                    won't need this yet. May be used by *agent* to have a
-                    "zone state" probe type.
-    
+                    zsockets to agents running on zones. This is run beside
+                    each amon-relay (i.e. in each compute node GZ) as the
+                    "amon-zwatch" service.
     bin/            Some convenience scripts to run local builds of node, etc.
-    docs/           The API doc file. Uses <https://github.com/trentm/restdown>.
+    docs/           The API doc file. Uses restdown for rendering.
                     Dev builds served here: <https://head.no.de/docs/amon>.
+    tst/            Test suite.
     deps/           Git submodule deps.
     examples/       Example data for loading into your dev Amon.
     support/        General support stuff for development of amon.
     sandbox/        Play area. Go crazy.
 
 
-# Development
+# Development status
 
-Current status:
-- Not quite yet running in COAL. For dev: use UFDS in coal and run
-  amon master, relay and agent on your Mac.
+- Turned on in COAL. Still have missing pieces like persistent alarms,
+  some corners of the API, need more notification types, more probe types,
+  refine the email notifcation formatting.
 - Haven't run lint in a long while.
 
 
-## Mac Setup
-
-To be able to run `make lint` you'll need to install "gjslint" yourself
-manually. See:
-<http://code.google.com/closure/utilities/docs/linter_howto.html>.
+# Mac Development
 
 Get the source and build:
 
@@ -91,7 +89,7 @@ Get the source and build:
 And start running (see section below).
 
 
-## COAL Setup
+# COAL Development
 
 Setup and install the necessary dev tools in the global zone:
 
@@ -102,9 +100,6 @@ Setup and install the necessary dev tools in the global zone:
     ln -sf /opt/local/bin/python2.6 /opt/local/bin/python; \
     export PATH=/opt/local/bin:$PATH && \
     export CC=gcc
-
-And if you swing MarkC's way, you can do a `pkgin install emacs-nox11` to be
-"awesome".
 
 Then get the Amon code to work with:
 
@@ -117,9 +112,36 @@ Then get the Amon code to work with:
 And start running (see next section).
 
 
-## Running
+# Hybrid Development
 
-Config and run the amon-master:
+An alternative is to edit in working copy on your Mac and then push changes
+to the appropriate places in your running COAL via the
+`support/rsync-{master,relay,agent}-to-coal` scripts. Obviously this doesn't
+handle updating binary components (node itself, a few use binary npm modules,
+zwatch). However, most of the Amon code is just JavaScript, so this is a
+reasonable development mode.
+
+Get the source and build:
+
+    git clone git@git.joyent.com:amon.git
+    cd amon
+    make all
+
+Make edits, say to the Amon Master (code under "master/", "common/" and
+"plugins/"), then update:
+
+    ./support/rsync-master-to-coal
+
+This script will restart the "amon-master" service after code updates.
+
+
+
+# Running Amon Manually
+
+**Note: If you do "Hybrid Development" (see above) then you don't need
+to worry about running the Amon components manually.**
+
+Config and run the **amon-master**:
 
     cd master
     cp config.mac.json config.json
@@ -134,9 +156,9 @@ server whenever a used source file changes. You can just use "../bin/node"
 directly if you like.
 
 
-In a separate shell run an amon-relay. The amon-relay needs to be know two
-things: (a) the Amon Master URL and (b) the compute node UUID on which this
-is running. Normally these are both discovered automatically (using MAPI
+In a separate shell run an **amon-relay**. The amon-relay needs to be know
+two things: (a) the Amon Master URL and (b) the compute node UUID on which
+this is running. Normally these are both discovered automatically (using MAPI
 and `sysinfo` respectively), but for testing outside of COAL they can
 be specified via the `-m URL` and `-n UUID` switches.
 
@@ -165,7 +187,7 @@ be specified via the `-m URL` and `-n UUID` switches.
         ../bin/node-dev main.js -v
 
 
-In a separate shell run an amon-agent:
+In a separate shell run an **amon-agent**:
     
     cd .../amon/agent
     mkdir -p tmp/data   # a location for caching probe data
@@ -179,13 +201,49 @@ In a separate shell run an amon-agent:
     ../bin/node-dev main.js -v -D tmp/data -s http://localhost:8081 -p 90
 
 
-## Adding some data
+# Adding Data: bootstrap.js
+
+There is a bootstrap tool that will add some Amon data for playing with:
+
+    bin/node ./support/bootstrap.js
+
+TODO:STARTHERE
+
+
+
+# Adding Data: Manually
+
+## sdc-amon, sdc-ldap
 
 Get 'sdc-amon' wrapper setup and on your PATH ('sdc-ldap' too). It may
-already be there.
+already be there. These are tools from the operator-toolkit. If you are
+running in COAL, they are already setup appropriately.
 
     export AMON_URL=http://localhost:8080
     export PATH=.../operator-toolkit/bin:$PATH
+
+Verify that you have `sdc-ldap` working:
+
+    $ sdc-ldap search login=admin
+    dn: uuid=930896af-bf8c-48d4-885c-6573a94b1853, ou=users, o=smartdc
+    cn: Admin
+    email: user@joyent.com
+    login: admin
+
+Verify that you have `sdc-amon` working
+
+    $ sdc-amon /ping
+    HTTP/1.1 200 OK
+    Connection: close
+    ...
+    
+    {
+      "ping": "pong",
+      "pid": 26644
+    }
+
+
+## add users
 
 In a separate terminal, call the Amon Master API to add some data.
 First we need a user to use. I use ldap to directly add this user to UFDS
@@ -361,6 +419,18 @@ your gmail account like this:
           "from": "\"Monitoring (no reply)\" <no-reply@joyent.com>"
         }
     $ svcadm restart amon-master
+
+
+
+# Lint
+
+    make lint
+
+To be able to run `make lint` you'll need to install "gjslint" yourself
+manually. See:
+<http://code.google.com/closure/utilities/docs/linter_howto.html>.
+
+Note: This hasn't been run in a long time.
 
 
 

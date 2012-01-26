@@ -38,8 +38,6 @@
     //XXX validate the type is an existing probe type
     //XXX validate data for that probe type
 - [Trent] :login -> :uuid
-- [Trent] update https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming
-- [Trent] turn on in COAL
 - docs: move contact URN spec from master/lib/contact.js to the docs
 - Idea: have amon-master create event/alarm to operator if it cannot connect/work
   with UFDS.

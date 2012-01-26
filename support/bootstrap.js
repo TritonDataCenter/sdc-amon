@@ -9,6 +9,8 @@
  * - create test users (devbob, devalice)
  * - devalice will be an operator
  * - create a 'devzone' for bob
+ * - add a monitor and probe for 'devbob' in the 'devzone'
+ * - add a monitor and probe for 'devalice' in the headnode GZ
  * - write relevant data to ../bootstrap.json
  */
 
