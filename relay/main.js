@@ -54,7 +54,8 @@ function listenInGlobalZoneSync() {
     config.computeNodeUuid, config.socket);
   app.listen(function(err) {
     if (!err) {
-      log.info('Amon-relay listening in global zone at %s.', config.socket);
+      log.info('Amon-relay listening in global zone on UFDS "%s".',
+        config.socket);
     } else {
       log.error('Unable to start amon-relay in global zone: %o', err);
       //XXX Shouldn't this be fatal?
@@ -70,7 +71,6 @@ function listenInGlobalZoneSync() {
  * Side-effect: the `appIndex[zone]` global is updated.
  * TODO: Refactor this. Currently a failure during listening will still add.
  *
- * @param config {Object} The amon-relay config.
  * @param zone {String} The name of the zone in which to listen.
  * @param callback {Function} Optional. If given, will be called without
  *    args when listening or when errored out. No arguments are given.
@@ -90,11 +90,11 @@ function listenInZone(zone, callback) {
       masterUrl: config.masterUrl,
       poll: config.poll
     });
-    log.debug('Starting new amon-relay for %s machine at "%s" (owner=%s).',
-      zone, config.socket, attr.value);
+    log.debug('Starting new amon-relay for machine %s (owner=%s) on "%s".',
+      zone, attr.value, config.socket);
     appIndex[zone].listen(function(error) {
       if (!error) {
-        log.info('amon-relay listening in zone %s at zsock: %s', zone,
+        log.info('Amon-relay listening in zone %s on zsock "%s"', zone,
           config.socket);
       }
       if (callback) callback();
@@ -132,7 +132,7 @@ function zwatchHandler(sock) {
     switch (pieces[1]) {
     case 'start':
       log.debug('Starting zone: %s', pieces[0]);
-      listenInZone(config, pieces[0]);
+      listenInZone(pieces[0]);
       break;
 
     case 'stop':
@@ -224,9 +224,24 @@ function getMasterUrl(poll, callback) {
 function startServers() {
   // Create the ZWatch Daemon.
   if (config.allZones) {
-    net.createServer(zwatchHandler).listen(ZWATCH_SOCKET, function() {
-      log.info('amon-relay listening to zwatch on %s', ZWATCH_SOCKET);
+    var zwatchListener = net.createServer(zwatchHandler);
+    zwatchListener.on("listening", function() {
+      log.info('Listening to zwatch on %s', ZWATCH_SOCKET);
     });
+    zwatchListener.on('error', function (err) {
+      if (err.code == 'EADDRINUSE') {
+        log.info('EADDRINUSE attempting to listen to zwatch on "%s" ' +
+          '(trying again in 10s)', ZWATCH_SOCKET);
+        setTimeout(function () {
+          zwatchListener.close();
+          zwatchListener.listen(ZWATCH_SOCKET);
+        }, 10000);
+      } else {
+        log.error('Error listening to zwatch on "%s": %s',
+          ZWATCH_SOCKET, (err.stack || err));
+      }
+    });
+    zwatchListener.listen(ZWATCH_SOCKET);
   }
 
   // Now create the app(s).
