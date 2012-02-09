@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /* Copyright 2011-2012 Joyent, Inc.  All rights reserved.
  *
  * Load some play/dev data for Amon play.
