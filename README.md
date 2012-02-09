@@ -1,16 +1,17 @@
 # Amon (SDC Monitoring and Alarming)
 
-Where: <git@git.joyent.com:amon.git>, <https://mo.joyent.com/amon>
-Who: Trent Mick, Mark Cavage, Yunong Xiao
-Pitch: <https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming>
-API Docs: <https://head.no.de/docs/amon>
-XMPP/Jabber: <monitoring@groupchat.joyent.com>
-Tickets/bugs: <https://devhub.joyent.com/jira/browse/MON>
-CI builds: <https://jenkins.joyent.us/job/amon>, <https://stuff.joyent.us/stuff/builds/amon/>
+- Repository: <git@git.joyent.com:amon.git>, <https://mo.joyent.com/amon>
+- Who: Trent Mick, Mark Cavage, Yunong Xiao
+- API Docs: <https://head.no.de/docs/amon>
+- Pitch: <https://hub.joyent.com/wiki/display/dev/Amon>
+- XMPP/Jabber: <monitoring@groupchat.joyent.com>
+- Tickets/bugs: <https://devhub.joyent.com/jira/browse/MON>
+- CI builds: <https://jenkins.joyent.us/job/amon>,
+  <https://stuff.joyent.us/stuff/builds/amon/>
 
 
 Amon is a monitoring and alarming system for SmartDataCenter (SDC). It has
-three components: a central master, a tree of relays and agents. Monitors
+three components: a central master, a tree of relays, and agents. Monitors
 (grouping of probes and contacts) and probes (things to check and alarm on)
 are configured on the master (i.e. on the "Amon Master API" or "Amon API" for
 short). Probe data is passed from the master, via the relays to the
@@ -18,16 +19,19 @@ appropriate amon-agent where the probe is run. When a probe fails/trips it
 raises an event, which passes through the relays up to the master. The
 master handles events by creating or updating alarms and sending
 notifications to the configured contacts, if appropriate (suppression and
-de-duplication rules can mean a notification is not always sent).
+de-duplication rules can mean a notification is not always sent). The Amon
+Master API provides the API needed by cloudapi, and ultimately the User and
+Operations Portals, to allow management of Amon monitors, probes and alarms.
 
 
 # Design Overview
 
 There is an "Amon Master" HTTP server that runs in the "amon" smartdc zone
 as the "amon-master" SMF service. This is the endpoint for the "Amon Master
-API". The Amon Master stores long-lived Amon system data (monitors, contacts,
-probes) in UFDS and shorter-lived data (alarms and events) in redis (a
-separate "redis" smartdc zone).
+API". The Amon Master stores long-lived Amon system data -- monitors,
+contacts, probes -- in UFDS local-data (i.e. local to the datacenter) and
+shorter-lived data -- alarms and events -- in redis. Redis runs in a separate
+"redis" smartdc zone.
 
 There is an "Amon Relay" running on each compute node global zone to ferry
 (1) probe/monitor configuration down to Amon Agents where probes are run; and

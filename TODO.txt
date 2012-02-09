@@ -1,8 +1,10 @@
 # higher-level prios
 
+- start at 'machine-running-status' probe
+- relay/zwatch resiliency and relay zsock in all zones re-enabling
+- node 0.6
 - design use cases, assign a use case driver for each prio
-- probe type for a probe on a *machine*, that runs in the GZ.
-  How? runInGlobal? assigned "server" field?
+- probe type that runs in global targeting a machine (runInGlobal, notes below)
 - sysevent-based events: use case #2, machine-running-state probe type
 - agent in all zones
 - persistent alarms/events
@@ -57,6 +59,8 @@
   If this isn't acceptable then update id'ification in agent.
   Perhaps ':' would be preferable for id'ification? Meh.
 - name fields in Master API: percent escaping
+- walk through a server boot (and boot of all its zones): does Amon eventing
+  go crazy?
 
 
 # someday/maybe
@@ -91,6 +95,8 @@
       2011-11-10 23:40:43Z INFO: Amon-relay listening in global zone at 8081.
       2011-11-10 23:40:43Z WARN: Unable to save new agent probes: Error: ENOENT, No such file or directory 'tmp/db/.6d617f32-4062-4bab-aa15-dfcf8f9e7113'
       2011-11-10 23:40:43Z INFO: Successfully updated agent probes from master (zone: global, md5: undefined -> UaTV7YW3MTyNMX+uguZZZw==).
+- review <https://hub.joyent.com/wiki/display/dev/Operating+a+server+fleet>
+  How are we doing?
 - JSON api summary at "GET /"
 - HTML docs at "GET /docs"
 - SNMP traps (per Mark).
@@ -100,6 +106,8 @@
 - CA probe type
 - HTTP probe type
 - revive twilio notification backend as "sms"
+- more probe types: run cmd, http check, zone list, ping, disk free, disk
+  iops, cpu, mem, ps (aka "top")
 - Interesting services for hooking into, messaging services that might be useful,
   or just general related/competing services:
     - http://aws.amazon.com/cloudwatch/
@@ -215,4 +223,70 @@ Where:
 * <VALUE>: Value for this metric.  Must correspond to `type`.
 
 If not obvious, you can send multiple metrics per check.
+
+
+
+# notes: alarms
+
+- missing monitor and alarm *priority* or severity
+
+model Alarm:  (a)
+    uuid:
+    timestamp:
+    priority: Or could just inherit this from `monitor`
+    state|suppressed
+    dupeOf: used for grouping de-dupes
+    watch: uuid of watch that generted this
+    zone: zone id if came from a zone
+
+
+
+# notes: runInGlobal
+
+Dev Notes: Probes of this type run in the global zone, though. So, at some
+point a "server" needs to be attached. Perhaps the relay can co-ordinate
+that? If "GET /agentprobes?server=564d70d5-0187-e5d4-468f-7b49a6b014ff"
+could support it, that would be nice. Not easy tho.
+
+    GET /agentprobes?server=564
+        []
+    GET /agentprobes?machine=ea3
+        [
+            {"name": "ufds0",
+             "global": true},  // inferred from probe type
+            ...
+        ]
+
+TODO:
+
+- Making zwatch listener in amon-relay resilient to zwatch socket not being available
+  yet.
+  TODO: make it resilient to zwatch HUP'ing.
+  TODO: add -Z to to amon-relay.xml, add zwatch svc, make -Z the default?
+
+  - https://mo.joyent.com/sdc-platform/blob/master/overlay/lib/svc/method/smartdc-ur
+    ctrun example, learn that, use that
+  - use /usr/vm/sbin/zoneevent instead of zwatch
+
+- Relay could just pull those (gz=true) out to separate file.
+  Then when *it* is called by GZ agent, it merges the two. Only does this
+  separation if *it* has an "App" for that "machine" value.
+
+- How does the MachineRunningStatusProbe get a stream of up/down events?
+  - Agent spawns /usr/vm/sbin/zoneevent (GZ only)
+  - Add agent "app", EventEmitter. It emits an event for each zone up/down:
+      zoneevent:$uuid   args=full zoneevent json
+      zoneevent:$uuid   args=full zoneevent json
+  - App is passed into Probe.start(app, callback). Probe can setup
+    listener on that event.
+    start:  app.on("zoneevent:$uuid", this._onZoneEvent);
+    stop:   app.removeListener("zoneevent:$uuid", this._onZoneEvent);
+  - Note: fma events might be preferred: context for why the zone is going
+    down. But this is a decent first pass. Next stage is to write:
+      sysevent*
+      fmevent*
+    binaries a la zoneevent (https://mo.joyent.com/source/xref/illumos-live/src/zoneevent.c)
+
+- Relay should change to request agentprobes for *down* zones as well to
+  give an event on the machine being down. ???
 
