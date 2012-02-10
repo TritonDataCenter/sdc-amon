@@ -482,14 +482,20 @@ Probes for watching relevant SDC log files for, say, "ERROR".
 Probe for SDC zones going up and down. Separate from "SDC Log monitor"
 because zone up/down alarms can clear.
 
-    PUT /my/monitors/zones < {
-            "contacts": ["email"]
-        }
-    PUT /my/monitors/zones/probes/$machine_uuid < {
-            "type": "machinedown",
-            "machine": "$machine_uuid"
-            // "runInGlobal": true    // Added by Amon master
-        }
+    sdc-amon /pub/devalice/monitors/sdczones -X PUT -d- < '{
+        "contacts": ["email"]
+    }'
+
+    # Where 'ea3898cd-4ca9-410a-bfa6-0152ba07b1d7' is the ufds0 zone name.
+    sdc-amon /pub/devalice/monitors/sdczones/probes/ufds0 -X PUT -d- < '{
+        "type": "machine-up",
+        "machine": "ea3898cd-4ca9-410a-bfa6-0152ba07b1d7"
+    }'
+    ... one for each sdc zone (sdc-mapi /machines?tag.smartdc_role=*)
+
+
+
+    
 
 
 ## 3. Operator SDC Services monitor

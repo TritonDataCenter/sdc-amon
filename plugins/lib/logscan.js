@@ -28,9 +28,9 @@ function _trim(s) {
 
 //---- plugin class
 
-function LogScan(id, data) {
-  Plugin.call(this, id, data, LogScan.type);
-  LogScan.validateConfig(this.config);
+function LogScanProbe(id, data) {
+  Plugin.call(this, id, data);
+  LogScanProbe.validateConfig(this.config);
   
   this.path = this.config.path;
   this.period = this.config.period;
@@ -40,11 +40,11 @@ function LogScan(id, data) {
   this._count = 0;
   this._running = false;
 }
-util.inherits(LogScan, Plugin);
+util.inherits(LogScanProbe, Plugin);
 
-LogScan.type = "logscan";
+LogScanProbe.prototype.type = "logscan";
 
-LogScan.validateConfig = function(config) {
+LogScanProbe.validateConfig = function(config) {
   if (!config) throw new TypeError('config is required');
   if (!config.path) throw new TypeError('config.path is required');
   if (!config.period) throw new TypeError('config.period is required');
@@ -53,7 +53,7 @@ LogScan.validateConfig = function(config) {
 };
 
 
-LogScan.prototype.start = function(callback) {
+LogScanProbe.prototype.start = function(callback) {
   var self = this;
 
   this.timer = setInterval(function() {
@@ -74,21 +74,14 @@ LogScan.prototype.start = function(callback) {
     if (self.regex.test(line)) {
       if (++self._count >= self.threshold) {
         log.debug('logscan event (id=%s): %s', self.id, line);
-        self.emit('event', {
-          probe: self.idObject,
-          type: 'Integer',
-          value: self._count,
-          data: {
-            match: line
-          }
-        });
+        self.emitEvent('Integer', self._count, {match: line});
       }
     }
   });
 
   this.tail.on('exit', function(code) {
-    if (!self._running) return;
-
+    if (!self._running)
+      return;
     log.fatal('logscan (id=%s): tail exited (code=%d)', self.id, code);
     clearInterval(self.timer);
   });
@@ -96,7 +89,7 @@ LogScan.prototype.start = function(callback) {
   if (callback && (callback instanceof Function)) return callback();
 };
 
-LogScan.prototype.stop = function(callback) {
+LogScanProbe.prototype.stop = function(callback) {
   this._running = false;
   clearInterval(this.timer);
   this.tail.kill();
@@ -106,4 +99,4 @@ LogScan.prototype.stop = function(callback) {
 
 
 
-module.exports = LogScan;
+module.exports = LogScanProbe;

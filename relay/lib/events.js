@@ -5,6 +5,7 @@
 
 var assert = require('assert');
 var restify = require('restify');
+var uuid = require('node-uuid');
 var log = restify.log;
 
 
@@ -14,6 +15,12 @@ function addEvents(req, res, next) {
   //XXX This is where validation would be done.
   //XXX - Can we quickly drop bogus events here? I.e. one with a 'probe'
   //XXX   setting that is spoofed?
+  //XXX - See TODO.txt notes on 'idObject'.
+  //XXX Validate that the event schema matches the given `version`.
+
+  // We add the UUID in the relay, because we don't trust data from an
+  // agent -- a rogue agent could be trying to spoof/replay UUIDs.
+  event.uuid = uuid();
   
   // Add data known by the relay (this is info the master can trust more
   // because the relay is always in the hands of the operator).

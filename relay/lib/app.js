@@ -164,7 +164,7 @@ App.prototype.listen = function(callback) {
     return self.server.listen(self.socket, '127.0.0.1', callback);
   }
   if (self.localMode) {
-    log.debug('Starting app at socket %s (local mode).', self.socket);
+    log.debug('Starting app on local UDS "%s".', self.socket);
     return self.server.listen(self.socket, callback);
   }
 
@@ -178,7 +178,7 @@ App.prototype.listen = function(callback) {
       log.fatal('Unable to open zsock in %s: %s', self._targetUuid, error.stack);
       return callback(error);
     }
-    log.debug('Opening zsock server on FD :%d', fd);
+    log.debug('Opening zsock server on FD %d', fd);
     self.server.listenFD(fd);
     return callback();
   });

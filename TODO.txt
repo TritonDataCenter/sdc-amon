@@ -1,8 +1,12 @@
 # higher-level prios
 
-- start at 'machine-running-status' probe
+- current 'machine-up' probe type work
+- s/support/tools/
+- s/tst/test/
 - relay/zwatch resiliency and relay zsock in all zones re-enabling
 - node 0.6
+- restify 1.x & bunyan
+- back on 'machine-up' probe type
 - design use cases, assign a use case driver for each prio
 - probe type that runs in global targeting a machine (runInGlobal, notes below)
 - sysevent-based events: use case #2, machine-running-state probe type

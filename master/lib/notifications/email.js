@@ -49,14 +49,14 @@ Email.prototype.sanitizeAddress = function(address) {
 Email.prototype.notify = function(event, contactAddress, message, callback) {
   // TODO: add retries (retry module)
   var data = {
-      sender: this.from,
-      to: contactAddress,
-      // TODO: templating of these values
-      subject: 'Monitoring alert',
-      //html: '...',
-      body: message
-    }
-  console.error("XXX email data: ", JSON.stringify(data, null, 2))
+    sender: this.from,
+    to: contactAddress,
+    // TODO: templating of these values
+    subject: 'Monitoring alert',
+    //html: '...',
+    body: message
+  };
+  log.debug("notify: email data: %j", data);
   nodemailer.send_mail(
     {
       sender: this.from,

@@ -18,11 +18,9 @@ var http = require('http');
 var assert = require('assert');
 var nopt = require('nopt');
 var path = require('path');
-var uuid = require('node-uuid');
 
 var amonCommon = require('amon-common'),
   RelayClient = amonCommon.RelayClient,
-  Constants = amonCommon.Constants,
   format = amonCommon.utils.format;
 var plugins = require('amon-plugins');
 
@@ -151,13 +149,10 @@ function onNewProbe(probe) {
  * Send the given event up to this agent's relay.
  */
 function sendEvent(event) {
-  event.uuid = uuid();
-  event.version = Constants.ApiVersion;
-  
   log.info("sending event: %o", event);
   relay.sendEvent(event, function (err) {
     if (err) {
-      log.error("event '%s' was not sent: %s", event.uuid, err);
+      log.error("error sending event: %o: %s", event, err);
     }
   });
 }

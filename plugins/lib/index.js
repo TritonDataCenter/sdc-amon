@@ -5,8 +5,7 @@
  * to probe class. See "plugin.js" module comment for API details.
  */
 
-var logscan = require('./logscan');
-
 module.exports = {
-  'logscan': require('./logscan')
+  'logscan': require('./logscan'),
+  'machine-up': require('./machine-up')
 };
