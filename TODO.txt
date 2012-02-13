@@ -1,6 +1,5 @@
 # higher-level prios
 
-- current 'machine-up' probe type work
 - s/support/tools/
 - s/tst/test/
 - relay/zwatch resiliency and relay zsock in all zones re-enabling
@@ -201,13 +200,13 @@ Use case: operator wants an alert for every zone fault.
   FMA: http://hub.opensolaris.org/bin/download/Community+Group+fm/WebHome/FMDPRM.pdf
   http://download.oracle.com/docs/cd/E19082-01/819-3196/6n5ed4h40/index.html#indexterm-289
   fminject to test
-  
+
 
 # notes: events
 
 restore this original sorta-schema for events from Mark?
 The (sort of) schema for sending a status update:
-    
+
       {
         "status": "<STATUS>",
         "message": "Free Form String.",
@@ -217,7 +216,7 @@ The (sort of) schema for sending a status update:
           "value": <VALUE>
         }];
       }
-    
+
 Where:
 
 * <STATUS>: A string, that must be one of `"ok", "warn", "error"`.
@@ -293,4 +292,3 @@ TODO:
 
 - Relay should change to request agentprobes for *down* zones as well to
   give an event on the machine being down. ???
-
