@@ -34,7 +34,7 @@
  *
  * Amon probe types should inherit from this base class -- see "logscan.js"
  * for an example -- and implement the following interface:
- * 
+ *
  *    Probe.validateConfig(config) {...}
  *      @param config {Object} The config data for a probe.
  *      @throws {TypeError} if invalid.
@@ -61,7 +61,7 @@ function Plugin(id, data) {
 
   this.id = id;
   this.json = JSON.stringify(data);
-  
+
   this._idObject = {
     user: data.user,
     monitor: data.monitor,

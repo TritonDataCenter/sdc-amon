@@ -30,7 +30,7 @@ if (util.format) {
       }
       return objects.join(' ');
     }
-  
+
     var i = 1;
     var args = arguments;
     var len = args.length;
@@ -55,4 +55,3 @@ if (util.format) {
     return str;
   };
 }
-

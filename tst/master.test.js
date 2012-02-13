@@ -80,7 +80,7 @@ var FIXTURES = {
       }
     },
   },
-  
+
   adminbob: {
     monitors: {
       gz: {
@@ -139,7 +139,7 @@ test('ping', function(t) {
   masterClient.get("/ping", function(err, body, headers) {
     t.ifError(err, "ping'd");
     t.equal(body.ping, 'pong', "responded with 'pong'")
-  
+
     t.ok(headers['access-control-allow-origin']);
     t.ok(headers['access-control-allow-methods']);
     t.ok(headers.server);
@@ -340,7 +340,7 @@ test('probes: create without owning zone', function(t) {
       }
     }
   };
-  
+
   async.forEach(Object.keys(probes), function(probeName, nextProbe) {
     var probe = probes[probeName];
     masterClient.put({
@@ -503,7 +503,7 @@ test('relay api: HeadAgentProbes', function(t) {
 test('relay api: AddEvents', function(t) {
   var testyLogPath = config.notificationPlugins.email.config.logPath;
   var message = 'hi mom!'
-  var event = { probe: 
+  var event = { probe:
     { user: sulkybob.uuid,
       monitor: 'whistle',
       name: 'whistlelog',
@@ -536,7 +536,7 @@ test('relay api: AddEvents', function(t) {
 // (eventually creation of an alarm) that is sent to a monitor owner when
 // there is a config problem that results in a notification not being able
 // to be sent. An example where this is used:
-// 
+//
 // A notification is to be sent to a contact for a monitor, but the contact
 // field, e.g. "fooEmail", doesn't exist on that particular user.
 //

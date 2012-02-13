@@ -45,7 +45,7 @@ var UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
 function Monitor(app, data) {
   assert.ok(app);
   assert.ok(data);
-  
+
   var raw;
   if (data.objectclass) {  // from UFDS
     assert.equal(data.objectclass, Monitor.objectclass);
@@ -64,7 +64,7 @@ function Monitor(app, data) {
     };
     this.user = data.user;
   }
-  
+
   Monitor.validateName(raw.amonmonitor);
   this.raw = Monitor.validate(app, raw);
 

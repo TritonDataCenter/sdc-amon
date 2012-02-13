@@ -119,12 +119,12 @@ function createApp(config, callback) {
     username: config.mapi.username,
     password: config.mapi.password
   });
-  
+
   // TODO: should change to sdc-clients.UFDS at some point.
   var ufds = ldap.createClient({
     url: config.ufds.url
-  }); 
-  
+  });
+
   ufds.bind(config.ufds.rootDn, config.ufds.password, function(err) {
     if (err) {
       return callback(err);
@@ -174,7 +174,7 @@ function App(config, ufds, mapi) {
     config.userCache.expiry, log, "user");
   this.isOperatorCache = new Cache(100, 300, log, "isOperator");
   this.mapiServersCache = new Cache(100, 300, log, "mapiServers");
-  
+
   // Caches for server response caching. This is centralized on the app
   // because it allows the interdependant cache-invalidation to be
   // centralized.
@@ -228,20 +228,20 @@ function App(config, ufds, mapi) {
   //server.get('/caches', before, listCaches, after);
 
   server.get('/pub/:user', before, getUser, after);
-  
+
   server.get('/pub/:user/monitors', before, monitors.listMonitors, after);
   server.put('/pub/:user/monitors/:name', before, monitors.putMonitor, after);
   server.get('/pub/:user/monitors/:name', before, monitors.getMonitor, after);
   server.del('/pub/:user/monitors/:name', before, monitors.deleteMonitor, after);
-  
+
   server.get('/pub/:user/monitors/:monitor/probes', before, probes.listProbes, after);
   server.put('/pub/:user/monitors/:monitor/probes/:name', before, probes.putProbe, after);
   server.get('/pub/:user/monitors/:monitor/probes/:name', before, probes.getProbe, after);
   server.del('/pub/:user/monitors/:monitor/probes/:name', before, probes.deleteProbe, after);
-  
+
   server.get('/agentprobes', before, agentprobes.listAgentProbes, after);
   server.head('/agentprobes', before, agentprobes.headAgentProbes, after);
-  
+
   server.post('/events', before, events.addEvents, after);
 };
 
@@ -292,11 +292,11 @@ App.prototype.cacheInvalidatePut = function(modelName, item) {
   // specific user. We are being lazy for starters here.
   var scope = modelName + "List"
   this._cacheFromScope[scope].reset();
-  
+
   // Delete the "${modelName}Get" cache item with this dn (possible because
   // we cache error responses).
   this._cacheFromScope[modelName + "Get"].del(dn);
-  
+
   // Furthermore, if this is a probe, then need to invalidate the
   // `headAgentProbes` for this probe's machine/server.
   if (modelName === "Probe") {
@@ -321,10 +321,10 @@ App.prototype.cacheInvalidateDelete = function(modelName, item) {
   // specific user. We are being lazy for starters here.
   var scope = modelName + "List";
   this._cacheFromScope[scope].reset();
-  
+
   // Delete the "${modelName}Get" cache item with this dn.
   this._cacheFromScope[modelName + "Get"].del(dn);
-  
+
   // Furthermore, if this is a probe, then need to invalidate the
   // `headAgentProbes` for this probe's machine.
   if (modelName === "Probe") {
@@ -351,7 +351,7 @@ App.prototype.userFromId = function(userId, callback) {
       typeof(callback));
     return callback(new restify.InternalError());
   }
-  
+
   // Check cache. "cached" is `{err: <error>, user: <user>}`.
   var cached = this.userCache.get(userId);
   if (cached) {
@@ -359,7 +359,7 @@ App.prototype.userFromId = function(userId, callback) {
       return callback(cached.err);
     return callback(null, cached.user);
   }
-  
+
   // UUID or login?
   var uuid = null, login = null;
   if (UUID_REGEX.test(userId)) {
@@ -445,7 +445,7 @@ App.prototype.isOperator = function (userUuid, callback) {
     throw new TypeError(format('userUuid is not a valid UUID: %s', userUuid));
   if (typeof(callback) !== 'function')
     throw new TypeError('callback (Function) required');
-  
+
   // Check cache. "cached" is `{isOperator: <isOperator>}`.
   var cached = this.isOperatorCache.get(userUuid);
   if (cached) {
@@ -510,7 +510,7 @@ App.prototype.serverExists = function (serverUuid, callback) {
     throw new TypeError(format('serverUuid is not a valid UUID: %s', serverUuid));
   if (typeof(callback) !== 'function')
     throw new TypeError('callback (Function) required');
-  
+
   // Check cache. "cached" is `{server-uuid-1: true, ...}`.
   var cached = this.mapiServersCache.get("servers");
   if (cached) {
@@ -564,7 +564,7 @@ App.prototype.serverExists = function (serverUuid, callback) {
 App.prototype.processEvent = function (event, callback) {
   var self = this;
   log.debug("App.processEvent: %o", event);
-  
+
   // 1. Get the monitor for this probe, to get its list of contacts.
   var userUuid = event.probe.user;
   var monitorName = event.probe.monitor;
@@ -680,7 +680,7 @@ App.prototype.notifyContact = function (userUuid, monitor, contact, event, callb
 
 /**
  * Close this app.
- * 
+ *
  * @param {Function} callback called when closed. Takes no arguments.
  */
 App.prototype.close = function(callback) {

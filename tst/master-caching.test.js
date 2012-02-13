@@ -75,7 +75,7 @@ test('monitors: list empty', function(t) {
     t.ifError(err);
     t.ok(Array.isArray(body));
     t.equal(body.length, 0);
-    
+
     // Second time should be fast.
     masterClient.get("/pub/sulkybob/monitors", function(err, body2, headers2) {
       t.ifError(err);
@@ -189,7 +189,7 @@ test('HeadAgentProbes before any probes', function(t) {
     function (err, headers, res) {
       t.ifError(err);
       t.equal(headers['content-md5'], sulkyzoneContentMD5)
-  
+
       // Second time should be fast.
       masterClient.head("/agentprobes?machine=" + prep.sulkyzone.name,
         function (err2, headers2, res) {
@@ -216,7 +216,7 @@ test('probes: list empty', function(t) {
         t.ifError(err);
         t.ok(Array.isArray(body));
         t.equal(body.length, 0);
-        
+
         // Second one from cache should be fast.
         masterClient.get(format("/pub/sulkybob/monitors/%s/probes", monitorName),
           function (err, body2, headers2) {
@@ -291,7 +291,7 @@ test('probes: list', function(t) {
         t.ifError(err);
         t.ok(Array.isArray(body), "listProbes response is an array");
         t.equal(body.length, Object.keys(probes).length);
-        
+
         // Second time should be fast.
         masterClient.get(format("/pub/sulkybob/monitors/%s/probes", monitorName),
           function (err, body2, headers2) {
@@ -323,7 +323,7 @@ test('probes: get', function(t) {
           Object.keys(body.config).forEach(function(k) {
             t.equal(body.config[k], probe.config[k])
           })
-          
+
           // Second time should be faster.
           masterClient.get(format("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName),
             function (err2, body2, headers2) {
@@ -358,7 +358,7 @@ test('HeadAgentProbes changed after probe added', {timeout: 5000}, function(t) {
       newSulkyzoneContentMD5 = headers['content-md5'];
       t.ok(newSulkyzoneContentMD5 !== sulkyzoneContentMD5,
         "expect sulkyzone Content-MD5 to have changed")
-  
+
       // Second time should be fast.
       masterClient.head("/agentprobes?machine=" + prep.sulkyzone.name,
         function (err2, headers2, res) {
@@ -433,7 +433,7 @@ test('monitors: list empty again', function(t) {
     t.ifError(err);
     t.ok(Array.isArray(body));
     t.equal(body.length, 0);
-    
+
     // Second time should be fast.
     masterClient.get("/pub/sulkybob/monitors", function(err, body2, headers2) {
       t.ifError(err);

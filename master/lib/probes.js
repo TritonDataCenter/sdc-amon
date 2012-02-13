@@ -192,7 +192,7 @@ Probe.prototype.authorizePut = function (app, callback) {
           "Must be operator put a probe on a server (server=%s): "
           + "user '%s' is not an operator.", self.server, self.user)));
       }
-      
+
       // Server must exist.
       app.serverExists(self.server, function (err, serverExists) {
         if (err) {

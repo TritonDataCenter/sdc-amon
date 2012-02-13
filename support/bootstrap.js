@@ -2,7 +2,7 @@
 /* Copyright 2011-2012 Joyent, Inc.  All rights reserved.
  *
  * Load some play/dev data for Amon play.
- * 
+ *
  * Usage:
  *    $ node bootstrap.js
  *
@@ -192,7 +192,7 @@ function getMapi(next) {
     return next("invalid `config.mapi`: must have "
       + "url/username/password keys");
   }
-  
+
   mapi = new MAPI(clientOptions);
   next();
 }
@@ -299,7 +299,7 @@ function getAmonClient(next) {
     log("# Get Amon client (%s).", amonMasterUrl)
     next();
   });
-  
+
   //// Local running Amon
   //var amonMasterUrl = 'http://127.0.0.1:8080';
   //amonClient = new Amon({url: amonMasterUrl});
@@ -390,7 +390,7 @@ function loadAmonObjects(next) {
       }
     }
   ];
-  
+
   async.forEachSeries(objs, loadAmonObject, function(err, _) {
     next(err)
   })

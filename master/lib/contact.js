@@ -109,4 +109,3 @@ Contact.get = function (app, userUuid, urn, callback) {
 //---- exports
 
 module.exports = Contact
-

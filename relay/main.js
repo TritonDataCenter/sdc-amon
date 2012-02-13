@@ -162,7 +162,7 @@ function zwatchHandler(sock) {
  */
 function getMasterUrl(poll, callback) {
   var pollInterval = poll * 1000;  // seconds -> ms
-  
+
   var missing = [];
   ["MAPI_CLIENT_URL", "MAPI_HTTP_ADMIN_USER",
    "MAPI_HTTP_ADMIN_PW", "UFDS_ADMIN_UUID"].forEach(function (name) {
@@ -183,7 +183,7 @@ function getMasterUrl(poll, callback) {
     password: process.env.MAPI_HTTP_ADMIN_PW
   });
   var notAmonZoneUuids = []; // Ones with a `smartdc_role!=amon`.
-  
+
   function pollMapi() {
     log.info("Poll MAPI for Amon zone (admin uuid '%s').",
       process.env.UFDS_ADMIN_UUID);
@@ -216,7 +216,7 @@ function getMasterUrl(poll, callback) {
       }
     });
   }
-  
+
   pollMapi();
 }
 
@@ -333,7 +333,7 @@ function main() {
   if (rawOpts.verbose) {
     log.level(rawOpts.verbose.length > 1 ? log.Level.Trace : log.Level.Debug);
   }
-  
+
   // Build the config (intentionally global).
   config = {
     dataDir: rawOpts["data-dir"] || DEFAULT_DATA_DIR,
@@ -355,7 +355,7 @@ function main() {
     }
     next();
   }
-  
+
   // Get the compute node UUID.
   function ensureComputeNodeUuid(next) {
     if (!config.computeNodeUuid) {
@@ -379,7 +379,7 @@ function main() {
       next();
     }
   }
-  
+
   function logConfig(next) {
     log.debug("config: %o", config);
     next();

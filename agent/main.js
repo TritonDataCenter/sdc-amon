@@ -166,7 +166,7 @@ function sendEvent(event) {
  */
 function updateProbes(force) {
   log.trace('updateProbes entered');
-  
+
   // 1. Get probe data from relay (may be cached).
   getProbeData(force, function (err, probeData) {
     if (err) {

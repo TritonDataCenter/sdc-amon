@@ -91,4 +91,3 @@ Cache.prototype.del = function del(key) {
 
 
 module.exports = Cache;
-

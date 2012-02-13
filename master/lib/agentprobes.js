@@ -104,7 +104,7 @@ function _parseReqParams(req) {
         format("'%s' is not a valid UUID: %s", field, uuid));
     }
   }
-  
+
   return {
     err: err,
     field: field,
@@ -132,7 +132,7 @@ function listAgentProbes(req, res, next) {
   }
   var field = parsed.field;
   var uuid = parsed.uuid;
-  
+
   findProbes(req._app, field, uuid, function (err, probes) {
     if (err) {
       req._log.error("error getting probes for %s '%s'", field, uuid);

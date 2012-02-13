@@ -18,7 +18,7 @@ test('setup', function(t) {
     t.notOk(err, err || '"config-notifications.json" loaded');
     config = JSON.parse(content);
     t.ok(config, "config parsed");
-    
+
     notificationPlugins = {};
     if (config.notificationPlugins) {
       Object.keys(config.notificationPlugins || {}).forEach(function (name) {
@@ -62,4 +62,3 @@ test('email: sanitize empty', function(t) {
   t.ok(!email.sanitizeAddress(null));
   t.end();
 });
-

@@ -33,7 +33,7 @@ function setupMaster(options, callback) {
   var t = options.t;
   var config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
   var master;
-  
+
   //restify.log.level(restify.log.Level.Trace);
   var masterClient = restify.createClient({
     // 8080 is the built-in default.
@@ -55,7 +55,7 @@ function setupMaster(options, callback) {
     master.stdout.pipe(masterLog);
     master.stderr.pipe(masterLog);
     t.ok(master, "master created");
-  
+
     // Wait until it is running.
     var sentinel = 0;
     function checkPing() {
@@ -81,7 +81,7 @@ function setupMaster(options, callback) {
     }
     setTimeout(checkPing, 1000);
   }
-  
+
   async.series([startMaster], function(err) {
     callback(err, masterClient, master);
   });
@@ -134,4 +134,3 @@ module.exports = {
   // helpers
   objCopy: objCopy
 };
-

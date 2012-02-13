@@ -72,13 +72,13 @@ function modelList(app, Model, parentDn, log, callback) {
       app.cacheDel(cacheScope, cacheKey);
     }
   }
-  
+
   function cacheAndCallback(err, items) {
     var data = items && items.map(function (i) { return i.serialize() });
     app.cacheSet(cacheScope, cacheKey, {err: err, data: data});
     callback(err, items);
   }
-  
+
   var opts = {
     filter: '(objectclass=' + Model.objectclass + ')',
     scope: 'sub'
@@ -137,7 +137,7 @@ function modelPut(app, Model, data, log, callback) {
   } catch (e) {
     return callback(e);
   }
-  
+
   // Access control check.
   item.authorizePut(app, function (err) {
     log.trace("<%s> '%s' authorizePut: err: %s", Model.name, item.dn,
@@ -145,7 +145,7 @@ function modelPut(app, Model, data, log, callback) {
     if (err) {
       return callback(err);
     }
-    
+
     // Add it.
     var dn = item.dn;
     app.ufds.add(dn, item.raw, function(err) {
@@ -198,7 +198,7 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
     callback = skipCache
     skipCache = false;
   }
-  
+
   // Check cache. "cached" is `{err: <error>, data: <data>}`.
   if (!skipCache) {
     var cacheScope = Model.name + "Get";
@@ -216,14 +216,14 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
       }
     }
   }
-  
+
   function cacheAndCallback(err, item) {
     if (!skipCache) {
       app.cacheSet(cacheScope, dn, {err: err, data: item && item.serialize()});
     }
     callback(err, item);
   }
-  
+
   var opts = {scope: 'base'};
   app.ufds.search(dn, opts, function(err, result) {
     if (err) return cacheAndCallback(err);
@@ -285,7 +285,7 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
  */
 function modelDelete(app, Model, dn, log, callback) {
   //TODO: could validate the 'dn'
-  
+
   // We need to first get the item (we'll need it for proper cache
   // invalidation).
   modelGet(app, Model, dn, log, true, function(err, item) {
@@ -331,7 +331,7 @@ function requestList(req, res, next, Model) {
 function requestPut(req, res, next, Model) {
   req._log.trace('<%s> create entered: params=%o, uriParams=%o',
     Model.name, req.params, req.uriParams);
-  
+
   // Note this means that the *route variable names* need to match the
   // expected `data` key names in the models (e.g. `monitors.Monitor`).
   var data = objCopy(req.params);
@@ -339,7 +339,7 @@ function requestPut(req, res, next, Model) {
     data[k] = req.uriParams[k];
   });
   data.user = req._user.uuid;
-  
+
   modelPut(req._app, Model, data, req._log, function(err, item) {
     if (err) {
       res.sendError(err);

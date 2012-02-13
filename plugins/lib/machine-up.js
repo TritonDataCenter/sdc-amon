@@ -19,7 +19,7 @@ var Plugin = require('./plugin');
 function MachineUpProbe(id, data) {
   Plugin.call(this, id, data);
   MachineUpProbe.validateConfig(this.config);
-  
+
   this.path = this.config.path;
   this.period = this.config.period;
   this.regex = new RegExp(this.config.regex);

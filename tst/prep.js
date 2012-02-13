@@ -1,7 +1,7 @@
 /* Copyright 2011 Joyent, Inc.  All rights reserved.
  *
  * Prepare for testing Amon.
- * 
+ *
  * Usage:
  *    $ node prep.js
  *    {
@@ -187,7 +187,7 @@ function getMapi(next) {
     return next("invalid `config.mapi`: must have "
       + "url/username/password keys");
   }
-  
+
   mapi = new MAPI(clientOptions);
   next();
 }

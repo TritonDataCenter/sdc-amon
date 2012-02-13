@@ -1,6 +1,6 @@
 /*
  * Copyright 2011 Joyent, Inc.  All rights reserved.
- * 
+ *
  * Errors returned by the Amon master.
  * The full set of errors that Amon master can return in its responses are:
  * - the custom error codes here
@@ -19,6 +19,3 @@ var sprintf = require('sprintf').sprintf;
 
 
 //---- custom errors
-
-
-

@@ -31,7 +31,7 @@ function _trim(s) {
 function LogScanProbe(id, data) {
   Plugin.call(this, id, data);
   LogScanProbe.validateConfig(this.config);
-  
+
   this.path = this.config.path;
   this.period = this.config.period;
   this.regex = new RegExp(this.config.regex);

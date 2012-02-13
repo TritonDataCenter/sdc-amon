@@ -61,7 +61,7 @@ function loadConfig(configPath) {
   var factorySettingsPath = __dirname + '/factory-settings.json';
   log.info("Loading default config from '" + factorySettingsPath + "'.");
   var config = JSON.parse(fs.readFileSync(factorySettingsPath, 'utf-8'));
-  
+
   if (configPath) {
     if (! Path.existsSync(configPath)) {
       usage("Config file not found: '" + configPath + "' does not exist. Aborting.");
@@ -75,9 +75,10 @@ function loadConfig(configPath) {
   } else {
     config.configPath = null;
   }
-  
+
   return config;
 }
+
 
 
 //---- mainline
@@ -114,7 +115,7 @@ function main() {
     return (censored === undefined ? value : censored);
   }
   log.debug("config: %s", JSON.stringify(config, censor, 2));
-  
+
   // Create our app and start listening.
   var theApp;
   createApp(config, function(err, app) {

@@ -166,7 +166,7 @@ RelayClient.prototype.agentProbes = function (type, uuid, callback) {
  */
 RelayClient.prototype.sendEvent = function(event, callback) {
   var self = this;
-  
+
   function onComplete(err, res) {
     if (err) {
       self.log.warn('RelayClient.sendEvent: HTTP error: ' + err);
@@ -195,7 +195,7 @@ RelayClient.prototype.sendEvent = function(event, callback) {
 
 /**
  * Make an HTTP(S) request to the relay api.
- * 
+ *
  * @param method {String} HTTP verb to use, e.g. "GET".
  * @param path {String} HTTP path, e.g. "/agentprobes".
  * @param callback {Function} Called when request is complete.

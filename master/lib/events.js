@@ -59,7 +59,7 @@ function addEvents(req, res, next) {
     events = [req.params];
   }
   log.info("addEvents: events=%o", events);
-  
+
   // Collect errors so first failure doesn't abort the others.
   var errs = [];
   function validateAndProcess(event, cb) {
@@ -70,7 +70,7 @@ function addEvents(req, res, next) {
       cb();
     });
   }
-  
+
   asyncForEach(events, validateAndProcess, function (err) {
     if (errs.length > 0) {
       res.sendError(restify.newError({
