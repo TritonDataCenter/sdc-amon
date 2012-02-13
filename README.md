@@ -67,10 +67,10 @@ to install and manage in their VMs on their own.
     bin/            Some convenience scripts to run local builds of node, etc.
     docs/           The API doc file. Uses restdown for rendering.
                     Dev builds served here: <https://head.no.de/docs/amon>.
-    tst/            Test suite.
+    test/           Test suite.
     deps/           Git submodule deps.
     examples/       Example data for loading into your dev Amon.
-    support/        General support stuff for development of amon.
+    tools/          General tools stuff for development of amon.
     sandbox/        Play area. Go crazy.
 
 
@@ -152,7 +152,7 @@ TODO: write a tool to automate this.
 
 An alternative is to edit in working copy on your Mac and then push changes
 to the appropriate places in your running COAL via the
-`support/rsync-{master,relay,agent}-to-coal` scripts. Obviously this doesn't
+`tools/rsync-{master,relay,agent}-to-coal` scripts. Obviously this doesn't
 handle updating binary components (node itself, a few use binary npm modules,
 zwatch). However, most of the Amon code is just JavaScript, so this is a
 reasonable development mode.
@@ -166,7 +166,7 @@ Get the source and build:
 Make edits, say to the Amon Master (code under "master/", "common/" and
 "plugins/"), then update:
 
-    ./support/rsync-master-to-coal
+    ./tools/rsync-master-to-coal
 
 This script will restart the "amon-master" service after code updates.
 
@@ -183,7 +183,7 @@ Config and run the **amon-master**:
     cp config.mac.json config.json
     # Tweak config.json <https://head.no.de/docs/amon/#master-configuration>:
     # - you must at least fill in the `mapi.password`.
-    
+
     ../bin/node-dev main.js -v -f config.json
 
 Note that "node-dev" (https://github.com/fgnass/node-dev) is a tool for
@@ -200,7 +200,7 @@ be specified via the `-m URL` and `-n UUID` switches.
 
     cd .../amon/relay
     mkdir -p tmp/data   # a location for caching probe data
-    
+
     # Here we are:
     # - storing local data in 'tmp/data'
     # - connecting to the master at "localhost:8080"
@@ -224,10 +224,10 @@ be specified via the `-m URL` and `-n UUID` switches.
 
 
 In a separate shell run an **amon-agent**:
-    
+
     cd .../amon/agent
     mkdir -p tmp/data   # a location for caching probe data
-    
+
     # Here we are:
     # - connecting to the relay at "localhost:8081"
     # - polling the relay every 90 seconds (-p 90)
@@ -241,7 +241,7 @@ In a separate shell run an **amon-agent**:
 
 There is a bootstrap tool that will add some Amon data for playing with:
 
-    bin/node ./support/bootstrap.js
+    bin/node ./tools/bootstrap.js
 
 It'll create devbob and devalice (operator) users. Create a devzone for
 devbob and add an Amon monitor and probe for each of them. Try some of the
@@ -286,7 +286,7 @@ Verify that you have `sdc-amon` working
     HTTP/1.1 200 OK
     Connection: close
     ...
-    
+
     {
       "ping": "pong",
       "pid": 26644
@@ -311,7 +311,7 @@ Add a monitor. We'll call this one "whistle", and just have one contact for
 it. A monitor can have any number of contacts (e.g. you might want the
 while ops team to know about a particular failure):
 
-    $ cat examples/monitor-whistle.json 
+    $ cat examples/monitor-whistle.json
     {
         "contacts": ["email"]
     }
@@ -382,8 +382,8 @@ What should happen now:
 
 1. The agent should generate an event for the "whistlelog" probe and send
    to the master:
-    
-        2011-11-22 23:50:19Z INFO: sending event: { probe: 
+
+        2011-11-22 23:50:19Z INFO: sending event: { probe:
             { user: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             monitor: 'whistle',
             name: 'whistlelog',
@@ -401,8 +401,8 @@ What should happen now:
 
 3. The master should send a notification for the event. (Eventually this
    should create or update an "alarm" instance and *possibly* notify.)
-   
-        2011-11-22 23:50:19Z DEBUG: App.processEvent: { probe: 
+
+        2011-11-22 23:50:19Z DEBUG: App.processEvent: { probe:
         ...
         2011-11-22 23:50:21Z DEBUG: App.processEvent: notify contact 'email'
         2011-11-22 23:50:22Z DEBUG: App.processEvent: contact 'email' notified
@@ -411,11 +411,11 @@ What should happen now:
 
 ## Testing
 
-The test suite is in the 'tst' directory.
+The test suite is in the 'test' directory.
 
 First, create the test configuration:
 
-    cd tst && cp config.json.in config.json
+    cd test && cp config.json.in config.json
     vi config.json   # enter mapi password
 
 Default config notes:
@@ -427,7 +427,7 @@ Default config notes:
 
 Second, prepare your COAL for testing with a test user, key and zone:
 
-    cd tst
+    cd test
     node prep.js   # creates prep.json used by test suite.
 
 Now run the test suite:
@@ -436,13 +436,13 @@ Now run the test suite:
 
 You can run individual test files to get more detailed output, for example:
 
-    cd tst
+    cd test
     ../bin/node master.test.js
 
 If you are getting spurious errors, it may be that a previous test run
 has left crud data in UFDS. Clean it out by running:
 
-    ./tst/clean-test-data.sh   # `make test` does this as well
+    ./test/clean-test-data.sh   # `make test` does this as well
 
 
 
@@ -477,6 +477,3 @@ More detail:
 - Amon Master API integrated into Cloud API.
 - Integration of Monitor management into AdminUI and Portal.
 - Upgradable amon system.
-
-
-

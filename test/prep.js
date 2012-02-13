@@ -47,6 +47,7 @@ var headnodeUuid;
 //---- prep steps
 
 function ufdsClientBind(next) {
+  log('# UFDS client bind.')
   ufdsClient = new UFDS({
     url: config.ufds.url,
     bindDN: config.ufds.rootDn,
@@ -61,6 +62,7 @@ function ufdsClientBind(next) {
 }
 
 function ldapClientBind(next) {
+  log('# LDAP client bind.')
   ldapClient = ldap.createClient({
     url: config.ufds.url,
     //log4js: log4js,
@@ -73,6 +75,7 @@ function ldapClientBind(next) {
 
 
 function getAdminUuid(next) {
+  log('# Get "admin" UUID.')
   ufdsClient.getUser("admin", function(err, user) {
     if (err) return next(err);
     adminUuid = user.uuid;
@@ -82,6 +85,7 @@ function getAdminUuid(next) {
 
 
 function createUser(user, next) {
+  log('# Create user "%s" (%s).', user.login, user.uuid);
   var dn = format("uuid=%s, ou=users, o=smartdc", user.uuid);
   ldapClient.search('ou=users, o=smartdc',
     {scope: 'one', filter: '(uuid='+user.uuid+')'},

@@ -4,7 +4,7 @@
 # files.
 #
 # Usage:
-#   support/devrun.sh
+#   tools/devrun.sh
 #
 
 if [ "$DEBUG" != "" ]; then

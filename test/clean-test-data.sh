@@ -23,9 +23,9 @@ trap 'cleanup' EXIT
 
 TOP=$(unset CDPATH; cd $(dirname $0)/../; pwd)
 
-UFDS_URL=`cat $TOP/tst/config.json | json ufds.url`
-UFDS_ROOTDN=`cat $TOP/tst/config.json | json ufds.rootDn`
-UFDS_PASSWORD=`cat $TOP/tst/config.json | json ufds.password`
+UFDS_URL=`cat $TOP/test/config.json | json ufds.url`
+UFDS_ROOTDN=`cat $TOP/test/config.json | json ufds.rootDn`
+UFDS_PASSWORD=`cat $TOP/test/config.json | json ufds.password`
 
 export LDAPTLS_REQCERT=allow
 

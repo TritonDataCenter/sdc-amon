@@ -140,7 +140,7 @@ pkg_relay:
 		| xargs -n1 -I{} touch {}/.npmignore
 	find $(PKG_DIR)/relay/node_modules -name node_modules \
 		| xargs -n1 -I{} bash -c "ls -d {}/*" \
-		| xargs -n1 -I{} bash -c "cat $(TOP)/support/keepbuildbits.npmignore >> {}/.npmignore"
+		| xargs -n1 -I{} bash -c "cat $(TOP)/tools/keepbuildbits.npmignore >> {}/.npmignore"
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
 	rm -rf $(PKG_DIR)/relay/deps/node-install/lib/node_modules/amon-common \
@@ -255,15 +255,15 @@ tmp:
 	mkdir -p tmp
 
 test: $(TAP)
-	[ -f tst/config.json ] \
-		|| (echo "error: no 'tst/config.json', use 'tst/config.json.in'" && exit 1)
-	[ -f tst/prep.json ] \
-		|| (echo "error: no 'tst/prep.json', run 'cd tst && node prep.js'" && exit 1)
-	./tst/clean-test-data.sh
-	PATH=$(NODEDIR)/bin:$(PATH) TAP=1 $(TAP) tst/*.test.js
+	[ -f test/config.json ] \
+		|| (echo "error: no 'test/config.json', use 'test/config.json.in'" && exit 1)
+	[ -f test/prep.json ] \
+		|| (echo "error: no 'test/prep.json', run 'cd test && node prep.js'" && exit 1)
+	./test/clean-test-data.sh
+	PATH=$(NODEDIR)/bin:$(PATH) TAP=1 $(TAP) test/*.test.js
 
 devrun: tmp $(NODEDIR)/bin/node-dev
-	support/devrun.sh
+	tools/devrun.sh
 
 install_agent_pkg:
 	/opt/smartdc/agents/bin/agents-npm --no-registry install ./`ls -1 amon-agent*.tgz | tail -1`

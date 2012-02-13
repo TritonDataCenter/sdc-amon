@@ -10,8 +10,8 @@ node_modules
 /bootstrap.json
 /bin/amon-zwatch
 /agent/*.json
-/tst/config.json
-/tst/prep.json
+/test/config.json
+/test/prep.json
 /master/config.json
 
 # built docs (ignore for now)
