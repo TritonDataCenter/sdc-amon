@@ -4,7 +4,6 @@ var fs = require('fs');
 var http = require('http');
 var path = require('path');
 var os = require('os');
-var spawn = require('child_process').spawn;
 
 var restify = require('restify');
 var zsock = require('zsock');
@@ -16,7 +15,7 @@ var amonCommon = require('amon-common'),
 
 var agentprobes = require('./agentprobes');
 var events = require('./events');
-var asyncForEach = require('./utils').asyncForEach;
+var utils = require('./utils');
 
 var log = restify.log;
 
@@ -65,7 +64,7 @@ var App = function App(options) {
   this.dataDir = options.dataDir;
   this.localMode = options.localMode || false;
   this.poll = options.poll || 30;
-  
+
   this._stageJsonPath = path.resolve(this.dataDir,
     format("%s-%s.json", this._targetType, this._targetUuid));
   this._stageMD5Path = path.resolve(this.dataDir,
@@ -102,7 +101,7 @@ var App = function App(options) {
   // Currently this is a testing-only option to avoid the updating getting
   // in the way.
   if (options._noAgentProbesUpdating) return;
-  
+
   // Register the agent probes watcher.
   function _updateAgentProbes() {
     log.debug("Checking for agent probe updates (%s=%s).", self._targetType, self._targetUuid);
@@ -147,6 +146,33 @@ var App = function App(options) {
 
 
 /**
+ * Send an event to the admin/operator (typically for a runtime problem).
+ *
+ * @param msg {String} String message to operator.
+ * @param details {Object} Extra data about the message. This object must
+ *    be JSON.stringify'able. `null` is fine if no details.
+ * @param callback {Function} `function (err) {}`
+ */
+App.prototype.sendOperatorEvent = function (msg, details, callback) {
+  //XXX Not really sure what this event should look like. Event format
+  //    isn't well defined.
+  var event = {
+    //XXX Currently 'PROBE_EVENT_VERSION' hardcoded in plugin.js. Can't stay
+    //    that way. Spec must now be "Amon Events" rather than "Probe
+    //    events". This kind isn't about a probe.
+    version: '1.0.0',
+    type: 'operator',
+    //XXX Include uuid for this CN in this event. "Which relay is this? --Op"
+    data: {
+      msg: msg,
+      details: details
+    }
+  };
+  this._master.sendEvent(event, callback);
+}
+
+
+/**
  * Gets Application up and listening.
  *
  * This method creates a zsock with the zone/path you passed in to the
@@ -169,18 +195,41 @@ App.prototype.listen = function(callback) {
   }
 
   // Production mode: using a zsocket into the target zone.
-  var opts = {
-    zone: self._targetUuid,
-    path: self.socket
-  };
-  zsock.createZoneSocket(opts, function(error, fd) {
-    if (error) {
-      log.fatal('Unable to open zsock in %s: %s', self._targetUuid, error.stack);
-      return callback(error);
+  // 1. Wait until the zone is ready.
+  //    A zsock creation *immediately* after sysevent reports the zone is
+  //    running, will fail. A solution (haven't really dug into what the
+  //    actual requisite milestone is) is to wait for the 'multi-user'
+  //    SMF milestone in the zone.
+  // 2. Create the zsock and listen.
+  var zonename = self._targetUuid;
+  var timeout = 5 * 60 * 1000; // 5 minutes
+  utils.waitForZoneSvc(zonename, 'milestone/multi-user', timeout, log,
+                       function (err) {
+    if (err) {
+      // Note: We get a spurious timeout here for a zone that was mid
+      // going down when amon-relay was started. An improvement would be
+      // to not error/event for that.
+      var msg = format('Relay could not setup socket to zone "%s": %s',
+        zonename, err.stack || err);
+      log.error(msg);
+      return self.sendOperatorEvent(msg, {zone: zonename}, callback);
     }
-    log.debug('Opening zsock server on FD %d', fd);
-    self.server.listenFD(fd);
-    return callback();
+
+    var opts = {
+      zone: zonename,
+      path: self.socket
+    };
+    zsock.createZoneSocket(opts, function(err, fd) {
+      if (err) {
+        var msg = format('Relay could not open zsock in zone "%s": %s',
+          zonename, err.stack);
+        log.error(msg);
+        return self.sendOperatorEvent(msg, {zone: zonename}, callback);
+      }
+      log.debug('Opened zsock to zone "%s" on FD %d', zonename, fd);
+      self.server.listenFD(fd);
+      return callback();
+    });
   });
 };
 
@@ -195,7 +244,13 @@ App.prototype.close = function(callback) {
     clearInterval(this._updatePollHandle);
   }
   this.server.on('close', callback);
-  this.server.close();
+  try {
+    this.server.close();
+  } catch (err) {
+    // A `net.Server` at least will throw if it hasn't reached a ready
+    // state yet. We don't care.
+    callback();
+  }
 };
 
 
@@ -237,10 +292,10 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
 
   var jsonPath = this._stageJsonPath;
   var md5Path = this._stageMD5Path;
-  
+
   function backup(cb) {
     var backedUp = false;
-    asyncForEach([jsonPath, md5Path], function (p, cb2) {
+    utils.asyncForEach([jsonPath, md5Path], function (p, cb2) {
       path.exists(p, function (exists) {
         if (exists) {
           log.trace("Backup '%s' to '%s'.", p, p + ".bak");
@@ -256,20 +311,20 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
   }
   function write(cb) {
     var agentProbesStr = JSON.stringify(agentProbes, null, 2);
-    asyncForEach([[jsonPath, agentProbesStr], [md5Path, md5]],
+    utils.asyncForEach([[jsonPath, agentProbesStr], [md5Path, md5]],
       function (item, cb2) {
         fs.writeFile(item[0], item[1], cb2);
       },
       cb);
   }
   function restore(cb) {
-    asyncForEach([jsonPath, md5Path], function (p, cb2) {
+    utils.asyncForEach([jsonPath, md5Path], function (p, cb2) {
       log.trace("Restore backup '%s' to '%s'.", p + ".bak", p);
       fs.rename(p + ".bak", p, cb2);
     }, cb);
   }
   function cleanBackup(cb) {
-    asyncForEach([jsonPath, md5Path], function (p, cb2) {
+    utils.asyncForEach([jsonPath, md5Path], function (p, cb2) {
       log.trace("Remove backup '%s'.", p + ".bak");
       fs.unlink(p + ".bak", cb2);
     }, cb);

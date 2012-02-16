@@ -9,18 +9,12 @@ fi
 
 export SMFDIR=$npm_config_smfdir
 
-if svcs amon-zwatch; then
-  svcadm disable -s amon-zwatch
-  svccfg delete amon-zwatch
-fi
-
 if svcs amon-relay; then
   svcadm disable -s amon-relay
   svccfg delete amon-relay
 fi
 
 rm -f "$SMFDIR/amon-relay.xml"
-rm -f "$SMFDIR/amon-zwatch.xml"
 
 # This deletion is fine as long as this data dir is fully restorable, i.e. is
 # just a cache.

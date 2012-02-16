@@ -10,7 +10,9 @@
 
 var fs = require('fs');
 var net = require('net');
-var execFile = require('child_process').execFile;
+var child_process = require('child_process'),
+  execFile = child_process.execFile,
+  spawn = child_process.spawn;
 
 var async = require('async');
 var nopt = require('nopt');
@@ -32,7 +34,6 @@ var log = restify.log;
 var DEFAULT_POLL = 30;
 var DEFAULT_DATA_DIR = '/var/db/amon-relay';
 var DEFAULT_SOCKET = '/var/run/.smartdc-amon.sock';
-var ZWATCH_SOCKET = '/var/run/.smartdc-amon-zwatch.sock';
 
 var config; // set in `main()`
 var appIndex = {};
@@ -50,7 +51,7 @@ function listenInGlobalZoneSync() {
     masterUrl: config.masterUrl,
     poll: config.poll
   });
-  log.debug('Starting new amon-relay for global zone (server %s) at "%s".',
+  log.debug('Starting new amon-relay socket for global zone (server %s) at "%s".',
     config.computeNodeUuid, config.socket);
   app.listen(function(err) {
     if (!err) {
@@ -90,7 +91,7 @@ function listenInZone(zone, callback) {
       masterUrl: config.masterUrl,
       poll: config.poll
     });
-    log.debug('Starting new amon-relay for machine %s (owner=%s) on "%s".',
+    log.debug('Starting new amon-relay socket for machine %s (owner=%s) on "%s".',
       zone, attr.value, config.socket);
     appIndex[zone].listen(function(error) {
       if (!error) {
@@ -99,52 +100,6 @@ function listenInZone(zone, callback) {
       }
       if (callback) callback();
     });
-  });
-}
-
-
-/**
- * The handler for the server listening on the zwatch socket.
- *
- * The other end of this socket in the "amon-zwatch" service. It sends
- * "<zone>:<command>" commands for zones starting and stopping. We watch
- * those to start and stop amon-relays listening in those zones to
- * communicate with agents in those zones.
- */
-function zwatchHandler(sock) {
-  var msg = '';
-  sock.setEncoding('utf8');
-  sock.on('data', function(chunk) {
-    msg += chunk;
-  });
-  sock.on('end', function() {
-    log.debug('zwatch message received: ' + msg);
-    // <zone>:<command>
-    // command is one of:
-    //  - start
-    //  - stop
-    var pieces = msg.split(':');
-    if (!pieces || pieces.length !== 2) {
-      log.error('Bad Message received on zwatch socket: %s', msg);
-      return;
-    }
-
-    switch (pieces[1]) {
-    case 'start':
-      log.debug('Starting zone: %s', pieces[0]);
-      listenInZone(pieces[0]);
-      break;
-
-    case 'stop':
-      log.info('amon-relay shut down in zone %s', pieces[0]);
-      appIndex[pieces[0]].close(function() {
-        delete appIndex[pieces[0]];
-      });
-      break;
-
-    default:
-      log.error('Invalid command received on zwatch socket: %s', pieces[1]);
-    }
   });
 }
 
@@ -221,43 +176,122 @@ function getMasterUrl(poll, callback) {
 }
 
 
-function startServers() {
-  // Create the ZWatch Daemon.
-  if (config.allZones) {
-    var zwatchListener = net.createServer(zwatchHandler);
-    zwatchListener.on("listening", function() {
-      log.info('Listening to zwatch on %s', ZWATCH_SOCKET);
-    });
-    zwatchListener.on('error', function (err) {
-      if (err.code == 'EADDRINUSE') {
-        log.info('EADDRINUSE attempting to listen to zwatch on "%s" ' +
-          '(trying again in 10s)', ZWATCH_SOCKET);
-        setTimeout(function () {
-          zwatchListener.close();
-          zwatchListener.listen(ZWATCH_SOCKET);
-        }, 10000);
-      } else {
-        log.error('Error listening to zwatch on "%s": %s',
-          ZWATCH_SOCKET, (err.stack || err));
-      }
-    });
-    zwatchListener.listen(ZWATCH_SOCKET);
+/**
+ * Start watching for zone up/down events to handle creating an App for
+ * each.
+ *
+ * @param callback {Function} `function () {}` called when up and listening.
+ */
+function startZoneEventWatcher(callback) {
+  if (!config.allZones) {
+    return callback();
   }
 
-  // Now create the app(s).
-  if (!config.allZones) {
-    // Presuming local is the global zone (as it is in current production
-    // usage).
-    listenInGlobalZoneSync();
-  } else {
-    zutil.listZones().forEach(function(z) {
-      if (z.name === 'global') {
-        listenInGlobalZoneSync();
-      } else {
-        listenInZone(z.name);
+  function handleZoneEvent(event) {
+    // $ /usr/vm/sbin/zoneevent
+    // {"zonename": "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "shutting_down", "oldstate": "running", "zoneid": "18", "when": "4518649281252", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
+    // {"zonename": "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "shutting_down", "oldstate": "shutting_down", "zoneid": "18", "when": "4519667177096", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
+    // {"zonename": "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "shutting_down", "oldstate": "shutting_down", "zoneid": "18", "when": "4519789169375", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
+    // {"zonename": "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "shutting_down", "oldstate": "shutting_down", "zoneid": "18", "when": "4519886487860", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
+    // {"zonename": "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "uninitialized", "oldstate": "shutting_down", "zoneid": "18", "when": "4519887001569", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
+    // {"zonename": "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "initialized", "oldstate": "uninitialized", "zoneid": "19", "when": "4520268151381", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
+    // {"zonename": "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "ready", "oldstate": "initialized", "zoneid": "19", "when": "4520270413097", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
+    // {"zonename": "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "ready", "oldstate": "ready", "zoneid": "19", "when": "4520615339060", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
+    // {"zonename": "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "running", "oldstate": "ready", "zoneid": "19", "when": "4520616213191", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
+    //
+    // We care about:
+    // 1. newstate=shutting_down, oldstate=running -> zone down
+    // 2. newstate=running, oldstate=ready -> zone up
+    var zonename = event.zonename;
+    var oldstate = event.oldstate;
+    var newstate = event.newstate;
+    if (oldstate === 'running' && newstate === 'shutting_down') {
+      //XXX log.info({zoneevent: event}, "handle zone event")
+      log.info('handle zone "%s" down event', zonename);
+      var app = appIndex[zonename];
+      if (app) {
+        app.close(function() {
+          delete appIndex[zonename];
+        });
       }
-    });
+    } else if (oldstate === 'ready' && newstate === 'running') {
+      log.info('handle zone "%s" up event', zonename);
+      listenInZone(zonename);
+    } else {
+      log.trace('ignore zone "%s" event', zonename);
+    }
   }
+
+  function handleZoneEventLine(line) {
+    try {
+      var event = JSON.parse(line);
+    } catch (err) {
+      handleZoneEventError(err);
+    }
+    handleZoneEvent(event);
+  }
+
+  // Missing a 'zone down' event is bad: It means that amon-relay's open
+  // zsock into that zone can prevent the zone from shutting down. Therefore
+  // we'll treat an unexpected end or error from `zoneevent` as fatal: let
+  // SMF restarter sort it out.
+  function handleZoneEventError(reason) {
+    log.fatal("unexpected zoneevent error, HUP'ing: %s", reason);
+    process.exit(1);
+  }
+
+  var zoneevent = spawn('/usr/vm/sbin/zoneevent');
+  zoneevent.stdout.setEncoding('utf8');
+  var leftover = "";  // Left-over partial line from last chunk.
+  zoneevent.stdout.on('data', function (chunk) {
+    var lines = chunk.split(/\r\n|\n/);
+    var length = lines.length;
+    if (length === 1) {
+      leftover += lines[0];
+      return;
+    }
+    if (length > 1) {
+      handleZoneEventLine(leftover + lines[0]);
+    }
+    leftover = lines.pop();
+    length -= 1;
+    for (var i=1; i < length; i++) {
+      handleZoneEventLine(lines[i]);
+    }
+  });
+
+  zoneevent.stdout.on('end', function () {
+    if (leftover) {
+      handleZoneEventLine(leftover);
+      leftover = '';
+    }
+    handleZoneEventError("zoneevent process ended")
+  });
+
+  callback();
+}
+
+
+function startServers() {
+  startZoneEventWatcher(function () {
+    // We wait until the zonevent watcher is started to avoid a baroque race
+    // with missing a 'zone down' event while initially setting up zsocks.
+
+    // Now create the app(s).
+    if (!config.allZones) {
+      // Presuming local is the global zone (as it is in current production
+      // usage).
+      listenInGlobalZoneSync();
+    } else {
+      zutil.listZones().forEach(function(z) {
+        if (z.name === 'global') {
+          listenInGlobalZoneSync();
+        } else {
+          listenInZone(z.name);
+        }
+      });
+    }
+  });
 }
 
 

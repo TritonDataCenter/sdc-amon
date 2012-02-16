@@ -8,7 +8,6 @@ node_modules
 /amon-*.tar.bz2
 /deps/node-install
 /bootstrap.json
-/bin/amon-zwatch
 /agent/*.json
 /test/config.json
 /test/prep.json

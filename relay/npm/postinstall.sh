@@ -9,9 +9,6 @@ fi
 
 set -o xtrace
 
-# amon-zwatch disabled for now as we are just running an amon-agent in the GZ.
-ZWATCH_ENABLED=
-
 . /lib/sdc/config.sh
 load_sdc_config
 
@@ -31,21 +28,16 @@ function subfile () {
 
 
 subfile "$DIR/../smf/amon-relay.smf.in" "$SMFDIR/amon-relay.xml"
-[[ -n "${ZWATCH_ENABLED}" ]] \
-  && subfile "$DIR/../smf/amon-zwatch.smf.in" "$SMFDIR/amon-zwatch.xml"
 
 svccfg import $SMFDIR/amon-relay.xml
-[[ -n "${ZWATCH_ENABLED}" ]] && svccfg import $SMFDIR/amon-zwatch.xml
 
 # Gracefully restart the agent if it is online.
 SL_STATUS=`svcs -H amon-relay | awk '{ print $1 }'`
 echo "Restarting amon-relay (status was $SL_STATUS)."
 if [ "$SL_STATUS" = 'online' ]; then
   svcadm restart amon-relay
-  [[ -n "${ZWATCH_ENABLED}" ]] && svcadm restart amon-zwatch
 else
   svcadm enable amon-relay
-  [[ -n "${ZWATCH_ENABLED}" ]] && svcadm enable amon-zwatch
 fi
 
 # Ensure zero-exit value to not abort the npm install.

@@ -25,13 +25,13 @@ MTAIL=multitail
 if [[ `uname` == "SunOS" ]]; then
     MTAIL=mtail
 fi
-USE_ZSOCK_AND_ZWATCH=0
+USE_ZSOCK=0
 if [[ `uname` == "SunOS" ]]; then
-    USE_ZSOCK_AND_ZWATCH=1
+    USE_ZSOCK=1
 fi
 RELAY_OPTS=
 AGENT_OPTS=
-if [[ "$USE_ZSOCK_AND_ZWATCH" == "0" ]]; then
+if [[ "$USE_ZSOCK" == "0" ]]; then
     RELAY_OPTS+=" -s 8081 -n"
     AGENT_OPTS+=" -s 8081"
 fi
@@ -70,18 +70,11 @@ rm -f $ROOT/tmp/dev-*.log.lastrun
 rm -rf $ROOT/tmp/dev-relay $ROOT/tmp/dev-agent
 if [[ `uname` == "SunOS" ]] && [[ `zonename` == "global" ]]; then
     [[ `svcs -H -o state amon-relay` == "online" ]] && svcadm disable -s amon-relay
-    [[ `svcs -H -o state amon-zwatch` == "online" ]] && svcadm disable -s amon-zwatch
 fi
 
 echo "== start master (tmp/dev-master.log)"
 ${NODE_DEV} $ROOT/master/main.js -v -f $ROOT/master/config.coal.json -p 8080 > $ROOT/tmp/dev-master.log 2>&1 &
 sleep 1
-
-if [[ "$USE_ZSOCK_AND_ZWATCH" == "1" ]]; then
-    echo "== start zwatch (tmp/dev-zwatch.log)"
-    mkdir -p $ROOT/tmp
-    ${ROOT}/bin/amon-zwatch >$ROOT/tmp/dev-zwatch.log 2>&1 &
-fi
 
 echo "== start relay (tmp/dev-relay.log)"
 mkdir -p $ROOT/tmp/dev-relay
@@ -97,9 +90,9 @@ ${NODE_DEV} $ROOT/agent/main.js -d -p 10 -c $ROOT/tmp/dev-agent/config -t $ROOT/
 if [[ -z "$NOLOG" ]]; then
     echo "== tail the logs ..."
     if [[ -z "$LOG" ]]; then
-        LOG="$ROOT/tmp/dev-master.log $ROOT/tmp/dev-zwatch.log $ROOT/tmp/dev-relay.log $ROOT/tmp/dev-agent.log"
-        if [[ "$USE_ZSOCK_AND_ZWATCH" == "1" ]]; then
-            LOG="$ROOT/tmp/dev-master.log $ROOT/tmp/dev-zwatch.log $ROOT/tmp/dev-relay.log $ROOT/tmp/dev-agent.log"
+        LOG="$ROOT/tmp/dev-master.log $ROOT/tmp/dev-relay.log $ROOT/tmp/dev-agent.log"
+        if [[ "$USE_ZSOCK" == "1" ]]; then
+            LOG="$ROOT/tmp/dev-master.log $ROOT/tmp/dev-relay.log $ROOT/tmp/dev-agent.log"
         else
             LOG="$ROOT/tmp/dev-master.log $ROOT/tmp/dev-relay.log $ROOT/tmp/dev-agent.log"
         fi

@@ -59,11 +59,6 @@ to install and manage in their VMs on their own.
                     probe type).
     common/         "amon-common" node.js module to share code between the
                     above packages.
-    zwatch/         Zonecfg watcher daemon. Intended to be used by relay to
-                    setup watch zone state transitions to setup/teardown
-                    zsockets to agents running on zones. This is run beside
-                    each amon-relay (i.e. in each compute node GZ) as the
-                    "amon-zwatch" service.
     bin/            Some convenience scripts to run local builds of node, etc.
     docs/           The API doc file. Uses restdown for rendering.
                     Dev builds served here: <https://head.no.de/docs/amon>.
@@ -153,9 +148,9 @@ TODO: write a tool to automate this.
 An alternative is to edit in working copy on your Mac and then push changes
 to the appropriate places in your running COAL via the
 `tools/rsync-{master,relay,agent}-to-coal` scripts. Obviously this doesn't
-handle updating binary components (node itself, a few use binary npm modules,
-zwatch). However, most of the Amon code is just JavaScript, so this is a
-reasonable development mode.
+handle updating binary components (node itself, a few use binary npm modules).
+However, most of the Amon code is just JavaScript, so this is a reasonable
+development mode.
 
 Get the source and build:
 

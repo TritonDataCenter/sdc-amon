@@ -35,9 +35,6 @@ ifeq ($(UNAME), SunOS)
 	MAKE = gmake
 	TAR = gtar
 	CC = gcc
-	CCFLAGS	= -fPIC -g -Wall
-	LDFLAGS	= -static-libgcc
-	LIBS = -lpthread -lzonecfg -L/lib -lnsl -lsocket
 endif
 
 HAVE_GJSLINT := $(shell which gjslint >/dev/null && echo yes || echo no)
@@ -56,7 +53,7 @@ JSHINT := $(TOP)/node_modules/.bin/jshint
 # Targets
 #
 
-all:: common plugins agent relay bin/amon-zwatch master
+all:: common plugins agent relay master
 
 .PHONY: deps agent relay master common plugins test lint gjslint jshint pkg pkg_agent pkg_relay pkg_master publish
 
@@ -102,11 +99,6 @@ agent: $(NODEDIR)/bin/npm common plugins
 relay: $(NODEDIR)/bin/npm deps/node-sdc-clients/package.json common plugins
 	(cd relay && $(NPM) update && $(NPM) install ../deps/node-sdc-clients && $(NPM) link amon-common amon-plugins)
 
-bin/amon-zwatch:
-ifeq ($(UNAME), SunOS)
-	${CC} ${CCFLAGS} ${LDFLAGS} -o bin/amon-zwatch $^ zwatch/zwatch.c ${LIBS}
-endif
-
 master: $(NODEDIR)/bin/npm common plugins
 	(cd master && $(NPM) update && $(NPM) install ../deps/node-sdc-clients && $(NPM) link amon-common amon-plugins)
 
@@ -130,7 +122,6 @@ pkg_relay:
 		relay/npm \
 		relay/bin \
 		$(PKG_DIR)/relay/
-	cp bin/amon-zwatch $(PKG_DIR)/relay/bin
 
 	# Need .npmignore in each node module to explictly keep prebuilt
 	# parts of it. Last time I checked this was only needed for the
@@ -274,5 +265,6 @@ clean:
 	([[ -d deps/node ]] && cd deps/node && $(MAKE) distclean || true)
 	@rm -rf $(NODEDIR) agent/node_modules relay/node_modules \
 		master/node_modules common/node_modules plugins/node_modules \
-		./node_modules bin/amon-zwatch .pkg amon-*.tgz \
+		./node_modules .pkg amon-*.tgz \
 		tmp/npm-cache amon-*.tar.bz2
+	@rm -rf bin/amon-zwatch     # recently removed bits

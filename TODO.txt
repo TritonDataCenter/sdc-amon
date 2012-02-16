@@ -1,7 +1,5 @@
 # higher-level prios
 
-- s/support/tools/
-- s/tst/test/
 - relay/zwatch resiliency and relay zsock in all zones re-enabling
 - node 0.6
 - restify 1.x & bunyan
@@ -83,6 +81,8 @@
   connect/work with UFDS.
 - [Trent] test suite for relay and agent
 - json logging
+- 'ping-agent' probe type. Basically this is a test that the amon-relay <->
+  amon-agent socket is working and that the agent is responding.
 - from workflow/mapi talk: Amon should have the monitor skel for provisioning
   workflow a la FWAPI (but still use normal Amon comm channel). Spec that.
 - use case: modcloth request to have alerts when in CPU bursting range, i.e.
@@ -111,6 +111,13 @@
 - revive twilio notification backend as "sms"
 - more probe types: run cmd, http check, zone list, ping, disk free, disk
   iops, cpu, mem, ps (aka "top")
+- torture test on amon-relay resiliency on start
+    // XXX Test/design for race condition where: get list of zones, zone
+    //     goes down before zsock is created for it. I.e. should be buffering
+    //     zoneevents until completed initial setup.
+  Amon-relay restarts with lots of zones, while chaos-monkey hup'ing zones.
+  Run that for a while then ensure that none of the zones are fubar'd with
+  failures to shutdown.
 - Interesting services for hooking into, messaging services that might be useful,
   or just general related/competing services:
     - http://aws.amazon.com/cloudwatch/
