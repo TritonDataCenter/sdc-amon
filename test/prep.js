@@ -255,6 +255,7 @@ function createSulkyzone(next) {
 }
 
 function getMapizone(next) {
+  log("# Get MAPI zone.")
   mapi.getZoneByAlias(adminUuid, "mapi", function (err, zone) {
     if (err) {
       return next(err);
@@ -266,6 +267,7 @@ function getMapizone(next) {
 }
 
 function getHeadnodeUuid(next) {
+  log("# Get headnode UUID.")
   mapi.listServers(function (err, servers) {
     if (err) {
       return next(err);
@@ -285,6 +287,7 @@ function getHeadnodeUuid(next) {
 }
 
 function writePrepJson(next) {
+  log("# Write '%s/prep.json'.", __dirname)
   var prepJson = __dirname + "/prep.json";
   log("# Write '%s'.", prepJson)
   var prep = {
@@ -319,7 +322,7 @@ async.series([
   ],
   function (err) {
     if (err) {
-      log("error preparing:", (err.stack || err))
+      log("error preparing: %s\n", err.stack, err)
       process.exit(1);
     }
   }
