@@ -10,7 +10,14 @@ var log = require('restify').log;
 
 
 
-function Email(config) {
+/**
+ * Create an Email notification plugin
+ *
+ * @params log {Bunyan Logger}
+ * @params config {Object}
+ */
+function Email(log, config) {
+  this.log = log;
   if (!config || typeof(config) !== 'object')
     throw new TypeError('config (object) is required');
   if (config.smtp && typeof(config.smtp) === 'object') {
@@ -47,6 +54,8 @@ Email.prototype.sanitizeAddress = function(address) {
 
 
 Email.prototype.notify = function(event, contactAddress, message, callback) {
+  var log = this.log;
+
   // TODO: add retries (retry module)
   var data = {
     sender: this.from,

@@ -13,18 +13,20 @@ var net = require('net');
 var child_process = require('child_process'),
   execFile = child_process.execFile,
   spawn = child_process.spawn;
+var path = require('path');
 
+var Logger = require('bunyan');
+var restify = require('restify');
 var async = require('async');
 var nopt = require('nopt');
-var path = require('path');
-var zutil = require('zutil');
+var zutil;
+if (process.platform === 'sunos') {
+  zutil = require('zutil');
+}
 
 var App = require('./lib/app');
 var amonCommon = require('amon-common'),
   format = amonCommon.utils.format;
-
-var restify = require('restify');
-var log = restify.log;
 
 
 
@@ -38,12 +40,24 @@ var DEFAULT_SOCKET = '/var/run/.smartdc-amon.sock';
 var config; // set in `main()`
 var appIndex = {};
 
+var log = new Logger({
+  name: 'amon-relay',
+  src: (process.platform === 'darwin'),
+  serializers: {
+    err: Logger.stdSerializers.err,
+    req: Logger.stdSerializers.req,
+    res: restify.bunyan.serializers.response,
+  }
+});
+
+
 
 
 //---- internal support functions
 
 function listenInGlobalZoneSync() {
   var app = appIndex['global'] = new App({
+    log: log,
     server: config.computeNodeUuid,
     socket: config.socket,
     dataDir: config.dataDir,
@@ -55,7 +69,7 @@ function listenInGlobalZoneSync() {
     config.computeNodeUuid, config.socket);
   app.listen(function(err) {
     if (!err) {
-      log.info('Amon-relay listening in global zone on UFDS "%s".',
+      log.info('Amon-relay listening in global zone on socket "%s".',
         config.socket);
     } else {
       log.error('Unable to start amon-relay in global zone: %o', err);
@@ -83,6 +97,7 @@ function listenInZone(zone, callback) {
       if (callback) return callback();
     }
     appIndex[zone] = new App({
+      log: log,
       machine: zone,
       socket: config.socket,
       owner: attr.value,
@@ -315,6 +330,10 @@ function printHelp() {
   console.log("");
   console.log("  -m MASTER-URL, --master-url MASTER-URL");
   console.log("       The Amon Master API base url.")
+  console.log("  -n UUID, --compute-node-uuid UUID");
+  console.log("       UUID of the compute node on which this relay is");
+  console.log("       running. If not given, it will be determined from");
+  console.log("       `/usr/bin/sysinfo`.");
   console.log("  -D DIR, --data-dir DIR");
   console.log("       Path to a directory to use for working data storage.");
   console.log("       This is all cache data, i.e. can be restored. Typically ");
@@ -365,7 +384,7 @@ function main() {
     usage(0);
   }
   if (rawOpts.verbose) {
-    log.level(rawOpts.verbose.length > 1 ? log.Level.Trace : log.Level.Debug);
+    log.level(rawOpts.verbose.length > 1 ? 'trace' : 'debug');
   }
 
   // Build the config (intentionally global).
@@ -415,7 +434,7 @@ function main() {
   }
 
   function logConfig(next) {
-    log.debug("config: %o", config);
+    log.debug({config: config}, "config");
     next();
   }
 

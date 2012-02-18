@@ -5,6 +5,7 @@
 
 var debug = console.log;
 var fs = require('fs');
+var Logger = require('bunyan');
 var restify = require('restify');
 var async = require('async');
 var child_process = require('child_process'),
@@ -15,6 +16,18 @@ var format = require('amon-common').utils.format;
 //---- globals & constants
 
 var CONFIG_PATH = __dirname + "/config.json";
+
+var log = new Logger({
+  name: 'masterClient',
+  stream: process.stderr,
+  level: 'trace',
+  src: (process.platform === 'darwin'),
+  serializers: {
+    err: Logger.stdSerializers.err,
+    req: Logger.stdSerializers.req,
+    res: restify.bunyan.serializers.response,
+  }
+})
 
 
 
@@ -34,12 +47,12 @@ function setupMaster(options, callback) {
   var config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
   var master;
 
-  //restify.log.level(restify.log.Level.Trace);
-  var masterClient = restify.createClient({
+  var masterClient = restify.createJsonClient({
     // 8080 is the built-in default.
+    name: 'master',
     url: 'http://localhost:' + (config.port || 8080),
-    version: '1',
-    retryOptions: {
+    log: log,
+    retry: {
       retries: 0,
       minTimeout: 250
     }
@@ -59,7 +72,7 @@ function setupMaster(options, callback) {
     // Wait until it is running.
     var sentinel = 0;
     function checkPing() {
-      masterClient.get("/ping", function(err, body, headers) {
+      masterClient.get("/ping", function(err, req, res, obj) {
         if (err) {
           sentinel++;
           if (sentinel >= 10) {
@@ -71,9 +84,9 @@ function setupMaster(options, callback) {
             setTimeout(checkPing, 1000);
           }
         } else {
-          t.equal(body.pid, master.pid,
+          t.equal(obj.pid, master.pid,
             format("Master responding to ping (pid %d) vs. spawned master (pid %d).",
-              body.pid, master.pid));
+              obj.pid, master.pid));
           t.ok(true, "master is running")
           next();
         }

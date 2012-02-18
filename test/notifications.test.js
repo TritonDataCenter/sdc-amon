@@ -1,5 +1,13 @@
+/*
+ * Copyright 2011 Joyent, Inc.  All rights reserved.
+ *
+ * Test (some parts) of Amon notifications.
+ */
+
 var fs = require('fs');
 var test = require('tap').test;
+
+var Logger = require('bunyan');
 
 
 
@@ -9,6 +17,12 @@ var config;
 var notificationPlugins;
 var twilio;
 var email;
+
+var log = new Logger({
+  name: 'notifications.test',
+  stream: process.stderr,
+  level: 'trace'
+})
 
 
 //---- setup
@@ -24,7 +38,7 @@ test('setup', function(t) {
       Object.keys(config.notificationPlugins || {}).forEach(function (name) {
         var plugin = config.notificationPlugins[name];
         var NotificationType = require(plugin.path);
-        notificationPlugins[name] = new NotificationType(plugin.config);
+        notificationPlugins[name] = new NotificationType(log, plugin.config);
       });
     }
     twilio = notificationPlugins.sms;

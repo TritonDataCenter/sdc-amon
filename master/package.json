@@ -5,19 +5,22 @@
   "author": "Joyent (joyent.com)",
   "private": true,
   "dependencies": {
+    "bunyan": "0.6.3",
+    "restify": "1.0.0",
     "node-uuid": "1.2.0",
-    "nopt": "1.0.6",
-    "restify": "0.5.6",
-    "retry": "0.5.0",
-    "httpu": "0.0.1",
-    "sprintf": "0.1.1",
-    "nodemailer": "0.2",
-    "ldapjs": "0.4.7"
+    "nopt": "1.0.10",
+    "retry": "0.6.0",
+    "nodemailer": "0.3.2",
+    "ldapjs": "0.4.8"
   },
   "bundledDependences": [
     "sdc-clients"
   ],
   "scripts": {
     "start": "node ./main.js"
+  },
+  "engines": {
+    "node": ">=0.6"
   }
+
 }

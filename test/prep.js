@@ -198,7 +198,7 @@ function getMapi(next) {
 
 function createSulkyzone(next) {
   // First check if there is a zone for sulkybob.
-  mapi.listZones(sulkybob.uuid, function (err, zones, headers) {
+  mapi.listMachines(sulkybob.uuid, function (err, zones, headers) {
     if (err) return next(err);
     if (zones.length > 0) {
       sulkyzone = zones[0];
@@ -209,7 +209,7 @@ function createSulkyzone(next) {
     mapi.listServers(function(err, servers) {
       if (err) return next(err);
       var headnodeUuid = servers[0].uuid;
-      mapi.createZone(sulkybob.uuid, {
+      mapi.createMachine(sulkybob.uuid, {
           package: "regular_128",
           alias: "sulkyzone",
           dataset_urn: "smartos",
@@ -233,9 +233,15 @@ function createSulkyzone(next) {
                   + "become 'running'");
               }
               setTimeout(function () {
-                mapi.getZone(sulkybob.uuid, zoneName, function (err, zone_) {
-                  if (err) return nextCheck(err);
-                  zone = zone_;
+                mapi.listMachines(sulkybob.uuid, {name: zoneName},
+                                  function (err, zones_) {
+                  if (err) {
+                    return nextCheck(err);
+                  }
+                  if (zones_.length == 0) {
+                    return nextCheck();
+                  }
+                  zone = zones_[0];
                   nextCheck();
                 });
               }, 3000);
@@ -256,12 +262,15 @@ function createSulkyzone(next) {
 
 function getMapizone(next) {
   log("# Get MAPI zone.")
-  mapi.getZoneByAlias(adminUuid, "mapi", function (err, zone) {
+  mapi.listMachines(adminUuid, {alias: 'mapi'}, function (err, zones) {
     if (err) {
       return next(err);
     }
-    log("# MAPI zone is '%s'.", zone.name);
-    mapizone = zone;
+    if (zones.length === 0) {
+      return next(new Error('no "mapi" zone'));
+    }
+    log("# MAPI zone is '%s'.", zones[0].name);
+    mapizone = zones[0];
     next();
   });
 }

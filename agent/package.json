@@ -5,12 +5,15 @@
   "private": true,
   "author": "Joyent (joyent.com)",
   "dependencies": {
-    "nopt": "1.0.6",
-    "sprintf": "0.1.1",
-    "restify": "0.5.7"
+    "bunyan": "0.6.3",
+    "restify": "1.0.0",
+    "nopt": "1.0.10"
   },
   "scripts": {
     "postinstall": "npm/postinstall.sh",
     "preuninstall": "npm/preuninstall.sh"
+  },
+  "engines": {
+    "node": ">=0.6"
   }
 }

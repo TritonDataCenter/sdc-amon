@@ -6,10 +6,10 @@
 
 var assert = require('assert');
 var events = require('events');
+var format = require('util').format;
 
 var ldap = require('ldapjs');
 var restify = require('restify');
-var sprintf = require('sprintf').sprintf;
 var ufdsmodel = require('./ufdsmodel');
 var Contact = require('./contact');
 var objCopy = require('amon-common').utils.objCopy;
@@ -87,11 +87,11 @@ Monitor.parseDn = function (dn) {
   };
 }
 Monitor.dn = function (user, name) {
-  return sprintf("amonmonitor=%s, uuid=%s, ou=users, o=smartdc",
+  return format("amonmonitor=%s, uuid=%s, ou=users, o=smartdc",
     name, user);
 }
 Monitor.dnFromRequest = function (req) {
-  var name = req.uriParams.name;
+  var name = req.params.name;
   Monitor.validateName(name);
   return Monitor.dn(req._user.uuid, name);
 };
@@ -128,7 +128,7 @@ Monitor.prototype.authorizePut = function (app, callback) {
 Monitor.get = function get(app, user, name, callback) {
   if (! UUID_REGEX.test(user)) {
     throw new restify.InvalidArgumentError(
-      sprintf("invalid user UUID: '%s'", user));
+      format("invalid user UUID: '%s'", user));
   }
   Monitor.validateName(name);
   var dn = Monitor.dn(user, name);
@@ -143,9 +143,7 @@ Monitor.get = function get(app, user, name, callback) {
  * @param raw {Object} The raw UFDS data for this object.
  * @returns {Object} The raw data for this object, possibly massaged to
  *    normalize field values.
- * @throws {restify.RESTError} if the raw data is invalid. This is an error
- *    object that can be used to respond with `response.sendError(e)`
- *    for a node-restify response.
+ * @throws {restify.RESTError} if the raw data is invalid.
  */
 Monitor.validate = function validate(app, raw) {
   var requiredFields = {
@@ -156,7 +154,7 @@ Monitor.validate = function validate(app, raw) {
   Object.keys(requiredFields).forEach(function (field) {
     if (!raw[field]) {
       throw new restify.MissingParameterError(
-        sprintf("'%s' is a required parameter", requiredFields[field]));
+        format("'%s' is a required parameter", requiredFields[field]));
     }
   });
 
@@ -180,7 +178,7 @@ Monitor.validate = function validate(app, raw) {
 Monitor.validateName = function validateName(name) {
   if (! Monitor._nameRegex.test(name)) {
     throw new restify.InvalidArgumentError(
-      sprintf("%s name is invalid: '%s'", Monitor.name, name));
+      format("%s name is invalid: '%s'", Monitor.name, name));
   }
 }
 

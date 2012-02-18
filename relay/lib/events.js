@@ -6,12 +6,11 @@
 var assert = require('assert');
 var restify = require('restify');
 var uuid = require('node-uuid');
-var log = restify.log;
 
 
 function addEvents(req, res, next) {
   var event = req.params;
-  
+
   //XXX This is where validation would be done.
   //XXX - Can we quickly drop bogus events here? I.e. one with a 'probe'
   //XXX   setting that is spoofed?
@@ -21,7 +20,7 @@ function addEvents(req, res, next) {
   // We add the UUID in the relay, because we don't trust data from an
   // agent -- a rogue agent could be trying to spoof/replay UUIDs.
   event.uuid = uuid();
-  
+
   // Add data known by the relay (this is info the master can trust more
   // because the relay is always in the hands of the operator).
   if (req._targetType === "server") {
@@ -29,12 +28,11 @@ function addEvents(req, res, next) {
   } else {
     event.machine = req._targetUuid;
   }
-  
-  log.debug("relaying event: %o", event);
+
+  req.log.debug("relaying event: %o", event);
   req._master.sendEvent(event, function(err) {
     if (err) {
-      res.sendError(err);
-      return next();
+      return next(err);
     }
     res.send(202 /* Accepted */);
     return next();

@@ -53,7 +53,7 @@ JSHINT := $(TOP)/node_modules/.bin/jshint
 # Targets
 #
 
-all:: common plugins agent relay master
+all:: deps common plugins agent relay master
 
 .PHONY: deps agent relay master common plugins test lint gjslint jshint pkg pkg_agent pkg_relay pkg_master publish
 
@@ -225,7 +225,7 @@ jshint: deps
 	$(JSHINT) common/lib plugins/lib master/main.js master/lib relay/main.js relay/lib agent/main.js agent/lib
 
 gjslint:
-	gjslint --nojsdoc -e deps,node_modules,tmp -x common/lib/sprintf.js -r .
+	gjslint --nojsdoc -e deps,node_modules,tmp -r .
 
 ifeq ($(HAVE_GJSLINT), yes)
 lint: jshint gjslint
@@ -245,7 +245,7 @@ apisummary:
 tmp:
 	mkdir -p tmp
 
-test: $(TAP)
+test:
 	[ -f test/config.json ] \
 		|| (echo "error: no 'test/config.json', use 'test/config.json.in'" && exit 1)
 	[ -f test/prep.json ] \
@@ -263,8 +263,8 @@ install_relay_pkg:
 
 clean:
 	([[ -d deps/node ]] && cd deps/node && $(MAKE) distclean || true)
-	@rm -rf $(NODEDIR) agent/node_modules relay/node_modules \
+	rm -rf $(NODEDIR) agent/node_modules relay/node_modules \
 		master/node_modules common/node_modules plugins/node_modules \
 		./node_modules .pkg amon-*.tgz \
 		tmp/npm-cache amon-*.tar.bz2
-	@rm -rf bin/amon-zwatch     # recently removed bits
+	rm -rf bin/amon-zwatch     # recently removed bits

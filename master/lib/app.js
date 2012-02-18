@@ -29,8 +29,6 @@ var events = require('./events');
 
 //---- globals
 
-var log = restify.log;
-
 var UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 // Ensure login doesn't have LDAP search meta chars.
 // Note: this regex should conform to `LOGIN_RE` in
@@ -48,7 +46,7 @@ function ping(req, res, next) {
       restCode += "Error"
     }
     var err = new restify[restCode]("pong");
-    res.sendError(err, err instanceof restify.ResourceNotFoundError);
+    res.send(err);
   } else {
     var data = {
       ping: "pong",
@@ -111,9 +109,10 @@ function asyncForEach(list, fn, cb) {
  * Create the app.
  *
  * @param config {Object} The amon master config object.
+ * @param log {Bunyan Logger instance}
  * @param callback {Function} `function (err, app) {...}`.
  */
-function createApp(config, callback) {
+function createApp(config, log, callback) {
   var mapi = new MAPI({
     url: config.mapi.url,
     username: config.mapi.username,
@@ -123,14 +122,17 @@ function createApp(config, callback) {
   // TODO: should change to sdc-clients.UFDS at some point.
   var ufds = ldap.createClient({
     url: config.ufds.url
+    //connectTimeout: 30 * 1000   // 30 seconds
   });
 
+  log.trace({rootDn: config.ufds.rootDn}, 'bind to UFDS');
   ufds.bind(config.ufds.rootDn, config.ufds.password, function(err) {
     if (err) {
       return callback(err);
     }
+    var app;
     try {
-      var app = new App(config, ufds, mapi);
+      app = new App(config, ufds, mapi, log);
     } catch(err) {
       return callback(err);
     }
@@ -146,8 +148,9 @@ function createApp(config, callback) {
  * @param config {Object} Config object.
  * @param ufds {ldapjs.Client} LDAP client to UFDS.
  * @param mapi {sdc-clients.MAPI} MAPI client.
+ * @param log {Bunyan Logger instance}
  */
-function App(config, ufds, mapi) {
+function App(config, ufds, mapi, log) {
   var self = this;
 
   if (!config) throw TypeError('config is required');
@@ -158,6 +161,7 @@ function App(config, ufds, mapi) {
   this._ufdsCaching = (config.ufds.caching === undefined
     ? true : config.ufds.caching);
   this.mapi = mapi;
+  this.log = log;
 
   this.notificationPlugins = {};
   if (config.notificationPlugins) {
@@ -165,7 +169,7 @@ function App(config, ufds, mapi) {
       var plugin = config.notificationPlugins[name];
       log.info("Loading '%s' notification plugin.", name);
       var NotificationType = require(plugin.path);
-      self.notificationPlugins[name] = new NotificationType(plugin.config);
+      self.notificationPlugins[name] = new NotificationType(log, plugin.config);
     });
   }
 
@@ -190,25 +194,29 @@ function App(config, ufds, mapi) {
   };
 
   var server = this.server = restify.createServer({
-    apiVersion: Constants.ApiVersion,
-    serverName: "Amon Master/" + Constants.ApiVersion
+    name: "Amon Master/" + Constants.ApiVersion,
+    log: log
   });
+  server.use(restify.queryParser());
+  server.use(restify.bodyParser());
+  server.on('after', restify.auditLogger({
+    log: log.child({component: 'audit'})
+  }));
 
   function setup(req, res, next) {
     req._app = self;
     req._ufds = self.ufds;
-    req._log = log;
 
     // Handle ':user' in route: add `req._user` or respond with
     // appropriate error.
-    var userId = req.uriParams.user;
+    var userId = req.params.user;
     if (userId) {
       self.userFromId(userId, function (err, user) {
         if (err) {
           //TODO: does this work with an LDAPError?
-          res.sendError(err, err instanceof restify.ResourceNotFoundError);
+          res.send(err);
         } else if (! user) {
-          res.sendError(new restify.ResourceNotFoundError(
+          res.send(new restify.ResourceNotFoundError(
             format("no such user: '%s'", userId)), true);
         } else {
           req._user = user;
@@ -219,30 +227,31 @@ function App(config, ufds, mapi) {
       return next();
     }
   };
+  server.use(setup);
 
-  var before = [setup];
-  var after = [restify.log.w3c];
+  //var before = [setup];
+  var before = [];
 
-  server.get('/ping', before, ping, after);
+  server.get('/ping', before, ping);
   // Debugging:
-  //server.get('/caches', before, listCaches, after);
+  //server.get('/caches', before, listCaches);
 
-  server.get('/pub/:user', before, getUser, after);
+  server.get('/pub/:user', before, getUser);
 
-  server.get('/pub/:user/monitors', before, monitors.listMonitors, after);
-  server.put('/pub/:user/monitors/:name', before, monitors.putMonitor, after);
-  server.get('/pub/:user/monitors/:name', before, monitors.getMonitor, after);
-  server.del('/pub/:user/monitors/:name', before, monitors.deleteMonitor, after);
+  server.get('/pub/:user/monitors', before, monitors.listMonitors);
+  server.put('/pub/:user/monitors/:name', before, monitors.putMonitor);
+  server.get('/pub/:user/monitors/:name', before, monitors.getMonitor);
+  server.del('/pub/:user/monitors/:name', before, monitors.deleteMonitor);
 
-  server.get('/pub/:user/monitors/:monitor/probes', before, probes.listProbes, after);
-  server.put('/pub/:user/monitors/:monitor/probes/:name', before, probes.putProbe, after);
-  server.get('/pub/:user/monitors/:monitor/probes/:name', before, probes.getProbe, after);
-  server.del('/pub/:user/monitors/:monitor/probes/:name', before, probes.deleteProbe, after);
+  server.get('/pub/:user/monitors/:monitor/probes', before, probes.listProbes);
+  server.put('/pub/:user/monitors/:monitor/probes/:name', before, probes.putProbe);
+  server.get('/pub/:user/monitors/:monitor/probes/:name', before, probes.getProbe);
+  server.del('/pub/:user/monitors/:monitor/probes/:name', before, probes.deleteProbe);
 
-  server.get('/agentprobes', before, agentprobes.listAgentProbes, after);
-  server.head('/agentprobes', before, agentprobes.headAgentProbes, after);
+  server.get('/agentprobes', before, agentprobes.listAgentProbes);
+  server.head('/agentprobes', before, agentprobes.headAgentProbes);
 
-  server.post('/events', before, events.addEvents, after);
+  server.post('/events', before, events.addEvents);
 };
 
 
@@ -263,13 +272,13 @@ App.prototype.listen = function(callback) {
 App.prototype.cacheGet = function(scope, key) {
   if (! this._ufdsCaching) return;
   var hit = this._cacheFromScope[scope].get(key);
-  //log.trace("App.cacheGet scope='%s' key='%s': %s", scope, key,
+  //this.log.trace("App.cacheGet scope='%s' key='%s': %s", scope, key,
   //  (hit ? "hit" : "miss"));
   return hit
 }
 App.prototype.cacheSet = function(scope, key, value) {
   if (! this._ufdsCaching) return;
-  //log.trace("App.cacheSet scope='%s' key='%s'", scope, key);
+  //this.log.trace("App.cacheSet scope='%s' key='%s'", scope, key);
   this._cacheFromScope[scope].set(key, value);
 }
 App.prototype.cacheDel = function(scope, key) {
@@ -282,6 +291,8 @@ App.prototype.cacheDel = function(scope, key) {
  */
 App.prototype.cacheInvalidatePut = function(modelName, item) {
   if (! this._ufdsCaching) return;
+  var log = this.log;
+
   var dn = item.dn;
   assert.ok(dn);
   log.trace("App.cacheInvalidatePut modelName='%s' dn='%s' machine=%s",
@@ -311,6 +322,8 @@ App.prototype.cacheInvalidatePut = function(modelName, item) {
  */
 App.prototype.cacheInvalidateDelete = function(modelName, item) {
   if (! this._ufdsCaching) return;
+  var log = this.log;
+
   var dn = item.dn;
   assert.ok(dn);
   log.trace("App.cacheInvalidateDelete modelName='%s' dn='%s' machine=%s",
@@ -341,6 +354,8 @@ App.prototype.cacheInvalidateDelete = function(modelName, item) {
  *    error, but no such user was found.
  */
 App.prototype.userFromId = function(userId, callback) {
+  var log = this.log;
+
   // Validate args.
   if (!userId) {
     log.error("userFromId: 'userId' is required");
@@ -438,6 +453,8 @@ App.prototype.userFromId = function(userId, callback) {
  * @throws {TypeError} if invalid args are given.
  */
 App.prototype.isOperator = function (userUuid, callback) {
+  var log = this.log;
+
   // Validate args.
   if (typeof(userUuid) !== 'string')
     throw new TypeError('userUuid (String) required');
@@ -503,6 +520,8 @@ App.prototype.isOperator = function (userUuid, callback) {
  * @throws {TypeError} if invalid args are given.
  */
 App.prototype.serverExists = function (serverUuid, callback) {
+  var log = this.log;
+
   // Validate args.
   if (typeof(serverUuid) !== 'string')
     throw new TypeError('serverUuid (String) required');
@@ -563,6 +582,7 @@ App.prototype.serverExists = function (serverUuid, callback) {
  */
 App.prototype.processEvent = function (event, callback) {
   var self = this;
+  var log = this.log;
   log.debug("App.processEvent: %o", event);
 
   // 1. Get the monitor for this probe, to get its list of contacts.
@@ -625,6 +645,7 @@ App.prototype.processEvent = function (event, callback) {
  *    be determined.
  */
 App.prototype.notificationTypeFromMedium = function(medium) {
+  var log = this.log;
   var self = this;
   var types = Object.keys(this.notificationPlugins);
   for (var i = 0; i < types.length; i++) {
@@ -654,6 +675,7 @@ App.prototype.notificationTypeFromMedium = function(medium) {
  *    TODO: return alarm or alarm id.
  */
 App.prototype.alarmConfig = function (userId, msg, callback) {
+  var log = this.log;
   log.error("TODO: implement App.alarmConfig")
   callback();
 }
@@ -668,6 +690,7 @@ App.prototype.alarmConfig = function (userId, msg, callback) {
  * @param callback {Function} `function (err) {}`.
  */
 App.prototype.notifyContact = function (userUuid, monitor, contact, event, callback) {
+  var log = this.log;
   var plugin = this.notificationPlugins[contact.notificationType];
   if (!plugin) {
     return callback("notification plugin '%s' not found", contact.notificationType);
@@ -684,6 +707,7 @@ App.prototype.notifyContact = function (userUuid, monitor, contact, event, callb
  * @param {Function} callback called when closed. Takes no arguments.
  */
 App.prototype.close = function(callback) {
+  var log = this.log;
   var self = this;
   this.server.on('close', function() {
     self.ufds.unbind(function() {

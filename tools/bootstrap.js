@@ -18,7 +18,6 @@
 var log = console.error;
 var fs = require('fs');
 var path = require('path');
-var glob = require('glob');
 var restify = require('restify');
 var async = require('async');
 var child_process = require('child_process'),

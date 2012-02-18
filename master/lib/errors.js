@@ -15,7 +15,6 @@
 var assert = require('assert');
 var debug = console.warn;
 var restify = require('restify');
-var sprintf = require('sprintf').sprintf;
 
 
 //---- custom errors

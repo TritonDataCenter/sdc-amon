@@ -17,8 +17,6 @@ var agentprobes = require('./agentprobes');
 var events = require('./events');
 var utils = require('./utils');
 
-var log = restify.log;
-
 
 
 //---- App
@@ -31,6 +29,7 @@ var log = restify.log;
  * to call listen() and close() on this.
  *
  * Params you send into options are:
+ *  - log {Bunyan Logger instance}
  *  - server {String} (for a GZ only) the server (aka compute node) UUID
  *  - machine {String} (for non-GZ only) the machine this should be bound to.
  *  - owner {String} (for non-GZ only) the user uuid for that owns said machine.
@@ -45,6 +44,7 @@ var log = restify.log;
  */
 var App = function App(options) {
   if (!options) throw TypeError('options is required');
+  if (!options.log) throw TypeError('options.log is required');
   if (!options.socket) throw TypeError('options.socket is required');
   if (!options.dataDir) throw TypeError('options.dataDir is required');
   if (!options.masterUrl) throw TypeError('options.masterUrl is required');
@@ -57,6 +57,7 @@ var App = function App(options) {
   }
   var self = this;
 
+  var log = this.log = options.log;
   this._targetType = (options.server ? "server" : "machine");
   this._targetUuid = (options.server || options.machine);
   this.owner = options.owner;
@@ -75,13 +76,17 @@ var App = function App(options) {
     log: log
   });
 
-  this.server = restify.createServer({
-    apiVersion: Constants.ApiVersion,
-    serverName: "Amon Relay/" + Constants.ApiVersion
+  // Server setup.
+  var server = this.server = restify.createServer({
+    name: "Amon Relay/" + Constants.ApiVersion,
+    log: log
   });
-
-  var _setup = function(req, res, next) {
-    req._log = log;
+  server.use(restify.queryParser());
+  server.use(restify.bodyParser());
+  server.on('after', restify.auditLogger({
+    log: log.child({component: 'audit'})
+  }));
+  function setup(req, res, next) {
     req._targetType = self._targetType;
     req._targetUuid = self._targetUuid;
     req._zsock = self.socket;
@@ -89,14 +94,12 @@ var App = function App(options) {
     req._master = self._master;
     return next();
   };
+  server.use(setup);
 
-  var before = [_setup];
-  var after = [restify.log.w3c];
-
-  this.server.head('/agentprobes', before, agentprobes.headAgentProbes, after);
-  this.server.get('/agentprobes', before, agentprobes.listAgentProbes, after);
-
-  this.server.post('/events', before, events.addEvents, after);
+  // Routes.
+  this.server.head('/agentprobes', agentprobes.headAgentProbes);
+  this.server.get('/agentprobes', agentprobes.listAgentProbes);
+  this.server.post('/events', events.addEvents);
 
   // Currently this is a testing-only option to avoid the updating getting
   // in the way.
@@ -118,6 +121,8 @@ var App = function App(options) {
         if (masterMD5 === currMD5) {
           log.trace('No agent probes update.')
           return;
+        } else {
+          log.info({masterMD5:masterMD5, currMD5:currMD5}, "XXX md5s the same?")
         }
         self._master.agentProbes(self._targetType, self._targetUuid, function(err, agentProbes, masterMD5) {
           if (err || !agentProbes || !masterMD5) {
@@ -185,12 +190,12 @@ App.prototype.listen = function(callback) {
   var self = this;
 
   if (typeof(self.socket) === 'number') {
-    log.debug("Starting app on <http://127.0.0.1:%d> (developer mode)",
+    self.log.debug("Starting app on <http://127.0.0.1:%d> (developer mode)",
       self.socket);
     return self.server.listen(self.socket, '127.0.0.1', callback);
   }
   if (self.localMode) {
-    log.debug('Starting app on local UDS "%s".', self.socket);
+    self.log.debug('Starting app on local UDS "%s".', self.socket);
     return self.server.listen(self.socket, callback);
   }
 
@@ -203,7 +208,7 @@ App.prototype.listen = function(callback) {
   // 2. Create the zsock and listen.
   var zonename = self._targetUuid;
   var timeout = 5 * 60 * 1000; // 5 minutes
-  utils.waitForZoneSvc(zonename, 'milestone/multi-user', timeout, log,
+  utils.waitForZoneSvc(zonename, 'milestone/multi-user', timeout, self.log,
                        function (err) {
     if (err) {
       // Note: We get a spurious timeout here for a zone that was mid
@@ -211,7 +216,7 @@ App.prototype.listen = function(callback) {
       // to not error/event for that.
       var msg = format('Relay could not setup socket to zone "%s": %s',
         zonename, err.stack || err);
-      log.error(msg);
+      self.log.error(msg);
       return self.sendOperatorEvent(msg, {zone: zonename}, callback);
     }
 
@@ -223,10 +228,10 @@ App.prototype.listen = function(callback) {
       if (err) {
         var msg = format('Relay could not open zsock in zone "%s": %s',
           zonename, err.stack);
-        log.error(msg);
+        self.log.error(msg);
         return self.sendOperatorEvent(msg, {zone: zonename}, callback);
       }
-      log.debug('Opened zsock to zone "%s" on FD %d', zonename, fd);
+      self.log.debug('Opened zsock to zone "%s" on FD %d', zonename, fd);
       self.server.listenFD(fd);
       return callback();
     });
@@ -265,7 +270,7 @@ App.prototype._getCurrMD5 = function(callback) {
   var self = this;
   fs.readFile(this._stageMD5Path, 'utf8', function(err, data) {
     if (err && err.code !== 'ENOENT') {
-      log.warn('Unable to read file ' + self._stageMD5Path + ': ' + err);
+      self.log.warn('Unable to read file ' + self._stageMD5Path + ': ' + err);
     }
     if (data) {
       // We trim whitespace to not bork if someone adds a trailing newline
@@ -285,7 +290,7 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
   var self = this;
 
   if (!agentProbes || !md5) {
-    log.debug('No agentProbes (%s) or md5 (%s) given (%s=%s). No-op',
+    self.log.debug('No agentProbes (%s) or md5 (%s) given (%s=%s). No-op',
       agentProbes, md5, self._targetType, self._targetUuid);
     return callback();
   }
@@ -298,7 +303,7 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
     utils.asyncForEach([jsonPath, md5Path], function (p, cb2) {
       path.exists(p, function (exists) {
         if (exists) {
-          log.trace("Backup '%s' to '%s'.", p, p + ".bak");
+          self.log.trace("Backup '%s' to '%s'.", p, p + ".bak");
           fs.rename(p, p + ".bak", cb2);
           backedUp = true;
         } else {
@@ -319,13 +324,13 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
   }
   function restore(cb) {
     utils.asyncForEach([jsonPath, md5Path], function (p, cb2) {
-      log.trace("Restore backup '%s' to '%s'.", p + ".bak", p);
+      self.log.trace("Restore backup '%s' to '%s'.", p + ".bak", p);
       fs.rename(p + ".bak", p, cb2);
     }, cb);
   }
   function cleanBackup(cb) {
     utils.asyncForEach([jsonPath, md5Path], function (p, cb2) {
-      log.trace("Remove backup '%s'.", p + ".bak");
+      self.log.trace("Remove backup '%s'.", p + ".bak");
       fs.unlink(p + ".bak", cb2);
     }, cb);
   }

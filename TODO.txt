@@ -1,8 +1,39 @@
 # higher-level prios
 
-- relay/zwatch resiliency and relay zsock in all zones re-enabling
-- node 0.6
-- restify 1.x & bunyan
+- node 0.6 & restify 1.x & bunyan
+  - TODO:
+    - res.sendError gone, res.newError gone
+  - restify migration:
+    - no `restify.log`, carry your own log along
+    - can use 'after' event on restify server instead of repeating 'after'
+      handlers/middleware on every endpoint
+    - don't *need* a server 'version' field anymore
+    - server option: serverName -> name
+    - req.uriParams is gone: use req.params
+    - new `req.log`, use it, it's good
+    - server option: 'log' to provide your own Bunyan logger. You probably
+      want to.
+    - no default handlers for restify server anymore, you likely need to:
+        server.use(restify.bodyParser())
+        ... and others
+    - createServer option: 'apiVersion' is gone (I think), use optional
+      'version' option to routes.
+    - add the name of your endpoints:
+        server.get({path: '/foo', name: 'GetFoo'}, getFoo)
+      This'll be in the logging, helpful for discussion and reference.
+    - restify.createClient:
+      - probably want restify.createJsonClient
+      - drop version
+      - 'retryOptions' -> 'retry'
+      - need 'name' field now
+      - 'log' arg is now a Bunyan logger
+    - client.get() signature change (ditto head, put, post, del):
+      - not an input obj, instead client.put(path, payload, callback)
+      - callback is now `function (err, req, res, obj) {}`, at least
+        for JsonClient.
+    - res.sendError() is gone. See <http://mcavage.github.com/node-restify/#Error-handling>
+    - res.newError() is gone. See <http://mcavage.github.com/node-restify/#Error-handling>
+
 - back on 'machine-up' probe type
 - design use cases, assign a use case driver for each prio
 - probe type that runs in global targeting a machine (runInGlobal, notes below)
@@ -268,15 +299,6 @@ could support it, that would be nice. Not easy tho.
         ]
 
 TODO:
-
-- Making zwatch listener in amon-relay resilient to zwatch socket not being available
-  yet.
-  TODO: make it resilient to zwatch HUP'ing.
-  TODO: add -Z to to amon-relay.xml, add zwatch svc, make -Z the default?
-
-  - https://mo.joyent.com/sdc-platform/blob/master/overlay/lib/svc/method/smartdc-ur
-    ctrun example, learn that, use that
-  - use /usr/vm/sbin/zoneevent instead of zwatch
 
 - Relay could just pull those (gz=true) out to separate file.
   Then when *it* is called by GZ agent, it merges the two. Only does this

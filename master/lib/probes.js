@@ -117,14 +117,14 @@ Probe.dn = function (user, monitor, name) {
     name, monitor, user);
 }
 Probe.dnFromRequest = function (req) {
-  var monitorName = req.uriParams.monitor;
+  var monitorName = req.params.monitor;
   Monitor.validateName(monitorName);
-  var name = req.uriParams.name;
+  var name = req.params.name;
   Probe.validateName(name);
   return Probe.dn(req._user.uuid, monitorName, name);
 };
 Probe.parentDnFromRequest = function (req) {
-  var monitorName = req.uriParams.monitor;
+  var monitorName = req.params.monitor;
   Monitor.validateName(monitorName);
   return format("amonmonitor=%s, %s", monitorName, req._user.dn);
 };
@@ -252,9 +252,7 @@ Probe.get = function get(app, user, monitor, name, callback) {
  * @param raw {Object} The raw data for this object.
  * @returns {Object} The raw data for this object, possibly massaged to
  *    normalize field values.
- * @throws {restify Error} if the raw data is invalid. This is an error
- *    object that can be used to respond with `response.sendError(e)`
- *    for a node-restify response.
+ * @throws {restify Error} if the raw data is invalid.
  */
 Probe.validate = function validate(app, raw) {
   var requiredFields = {

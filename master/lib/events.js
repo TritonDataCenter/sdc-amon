@@ -11,11 +11,6 @@ var RestCodes = restify.RestCodes;
 var Monitor = require('./monitors').Monitor;
 
 
-//---- globals
-
-var log = restify.log;
-
-
 
 //---- internal support routines
 
@@ -58,7 +53,7 @@ function addEvents(req, res, next) {
   } else {
     events = [req.params];
   }
-  log.info("addEvents: events=%o", events);
+  req.log.info("addEvents: events=%o", events);
 
   // Collect errors so first failure doesn't abort the others.
   var errs = [];
@@ -73,11 +68,7 @@ function addEvents(req, res, next) {
 
   asyncForEach(events, validateAndProcess, function (err) {
     if (errs.length > 0) {
-      res.sendError(restify.newError({
-        httpCode: 500,
-        restCode: RestCodes.InternalError,
-        message: errs.join(", ")
-      }));
+      res.send(new restify.InternalError(errs.join(", ")));
     } else {
       res.send(202 /* Accepted */);
     }

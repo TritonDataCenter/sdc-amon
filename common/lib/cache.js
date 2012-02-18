@@ -22,8 +22,7 @@ var LRU = require('lru-cache');
  *
  * @param size {Number} Max number of entries to cache.
  * @param expiry {Number} Number of seconds after which to expire entries.
- * @param log {log4js Logger} Optional.
- *    All logging is at the Trace level.
+ * @param log {Bunyan Logger} Optional. All logging is at the trace level.
  * @param name {string} Optional name for this cache. Just used for logging.
  */
 function Cache(size, expiry, log, name) {
@@ -58,7 +57,8 @@ Cache.prototype.get = function get(key) {
   if (cached) {
     if (((new Date()).getTime() - cached.ctime) <= this.expiry) {
       if (this.log) {
-        this.log.trace("%scache hit: key='%s': %o", this.name, key, cached);
+        this.log.trace({cache: {name: this.name, key: key, cached: cached}},
+          'cache hit');
       }
       return cached.value;
     }
@@ -76,7 +76,8 @@ Cache.prototype.set = function set(key, value) {
     ctime: new Date().getTime()
   };
   if (this.log) {
-    this.log.trace("%scache set: key='%s': %o", this.name, key, item);
+    this.log.trace({cache: {name: this.name, key: key, item: item}},
+      'cache hit');
   }
   this.items.set(key, item);
   return item;

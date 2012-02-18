@@ -33,10 +33,10 @@
  */
 
 var assert = require('assert');
+var format = require('util').format;
 var debug = console.warn;
 
 var restify = require('restify');
-var sprintf = require('sprintf').sprintf;
 
 
 
@@ -71,7 +71,7 @@ Contact.parseUrn = function (app, urn) {
   }
   if (medium.indexOf(':') !== -1) {
     throw new restify.InvalidArgumentError(
-      sprintf('invalid contact: ":" in medium "%s"', medium));
+      format('invalid contact: ":" in medium "%s"', medium));
   }
   return {
     scope: scope,

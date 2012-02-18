@@ -18,7 +18,6 @@ var Probe = require('./probes').Probe;
 
 //---- globals
 
-var log = restify.log;
 var UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 
@@ -31,16 +30,19 @@ var UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
  * @param app {Amon Master App}
  * @param field {String} One of 'machine' or 'server'.
  * @param uuid {String} The UUID of the machine or server.
+ * @param log {Bunyan Logger}
  * @param callback {Function} `function (err, probes)`.
  *
  * Note: Probes are sorted by (user, monitor, name) to ensure a stable order,
  * necessary to ensure reliable Content-MD5 for HEAD and caching usage.
  */
-function findProbes(app, field, uuid, callback) {
+function findProbes(app, field, uuid, log, callback) {
   var opts = {
     filter: '(&(' + field + '=' + uuid + ')(objectclass=amonprobe))',
     scope: 'sub'
   };
+
+  log.trace({opts: opts}, 'findProbes UFDS search')
   app.ufds.search("ou=users, o=smartdc", opts, function(err, result) {
     if (err) return callback(err);
 
@@ -123,19 +125,16 @@ function _parseReqParams(req) {
  * unless the HEAD Content-MD5 changes.
  */
 function listAgentProbes(req, res, next) {
-  req._log.trace('listAgentProbes entered: params=%o, uriParams=%o',
-    req.params, req.uriParams);
   var parsed = _parseReqParams(req);
   if (parsed.err) {
-    res.sendError(parsed.err);
-    return next();
+    return next(parsed.err);
   }
   var field = parsed.field;
   var uuid = parsed.uuid;
 
-  findProbes(req._app, field, uuid, function (err, probes) {
+  findProbes(req._app, field, uuid, req.log, function (err, probes) {
     if (err) {
-      req._log.error("error getting probes for %s '%s'", field, uuid);
+      req.log.error("error getting probes for %s '%s'", field, uuid);
       res.send(500);
     } else {
       res.send(200, probes);
@@ -152,53 +151,45 @@ function listAgentProbes(req, res, next) {
  * agent probes.
  */
 function headAgentProbes(req, res, next) {
-  req._log.trace('headAgentProbes entered: params=%o, uriParams=%o',
-    req.params, req.uriParams);
   var parsed = _parseReqParams(req);
   if (parsed.err) {
-    res.sendError(parsed.err);
-    return next();
+    return next(parsed.err);
   }
   var field = parsed.field;
   var uuid = parsed.uuid;
 
   function respond(contentMD5) {
-    res.send({
-      code: 200,
-      headers: {
-        "Content-MD5": contentMD5,
-        "Content-Type": "application/json"
-      },
-      // Note: This'll give false Content-Length. If we care, then we
-      // could cache content-length as well.
-      body: ""
-    });
-    return next();
+    res.header("Content-MD5", contentMD5);
+    res.send();
+    next();
   }
 
   // Check cache.
   var cacheKey = format("%s:%s", field, uuid)
   var contentMD5 = req._app.cacheGet("headAgentProbes", cacheKey);
   if (contentMD5) {
+    req.log.trace({contentMD5: contentMD5}, 'headAgentProbes respond (cached)');
     return respond(contentMD5);
   }
 
-  findProbes(req._app, field, uuid, function (err, probes) {
+  findProbes(req._app, field, uuid, req.log, function (err, probes) {
     if (err) {
-      log.error("error getting probes for %s '%s': %s", field, uuid,
+      req.log.error("error getting probes for %s '%s': %s", field, uuid,
         (err.stack || err));
-      res.sendError(new restify.InternalError());
-      return next();
+      return next(new restify.InternalError());
     } else {
+      req.log.trace({probes: probes}, 'found probes');
       var data = JSON.stringify(probes);
       var hash = crypto.createHash('md5');
       hash.update(data);
       var contentMD5 = hash.digest('base64');
       req._app.cacheSet("headAgentProbes", cacheKey, contentMD5);
+      req.log.trace({contentMD5: contentMD5}, 'headAgentProbes respond');
       return respond(contentMD5);
     }
   });
 }
+
 
 module.exports = {
   listAgentProbes: listAgentProbes,

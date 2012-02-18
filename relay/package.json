@@ -5,16 +5,20 @@
   "author": "Joyent (joyent.com)",
   "private": true,
   "dependencies": {
+    "bunyan": "0.6.3",
+    "restify": "1.0.0",
     "async": "0.1.15",
-    "nopt": "1.0.6",
+    "nopt": "1.0.10",
     "node-uuid": "1.3.3",
-    "restify": "0.5.7",
-    "zsock": "1.0.5",
+    "zsock": "1.1.1",
     "zutil": "0.1.2"
   },
   "scripts": {
     "start": "node ./main.js",
     "postinstall": "./npm/postinstall.sh",
     "preuninstall": "./npm/preuninstall.sh"
+  },
+  "engines": {
+    "node": ">=0.6"
   }
 }

@@ -11,7 +11,8 @@ var fs = require('fs');
 var debug = console.warn;
 
 var nopt = require('nopt');
-var log = require('restify').log;
+var Logger = require('bunyan');
+var restify = require('restify');
 
 var amon_common = require('amon-common');
 //var Config = amon_common.Config;
@@ -23,6 +24,16 @@ var createApp = require('./lib/app').createApp;
 //---- globals
 
 var DEFAULT_CONFIG_PATH = "./cfg/amon-master.json";
+
+var log = new Logger({
+  name: 'amon-master',
+  src: (process.platform === 'darwin'),
+  serializers: {
+    err: Logger.stdSerializers.err,
+    req: Logger.stdSerializers.req,
+    res: restify.bunyan.serializers.response,
+  }
+});
 
 
 
@@ -100,12 +111,12 @@ function main() {
     usage(0);
   }
   if (opts.verbose) {
-    log.level(opts.verbose.length > 1 ? log.Level.Trace : log.Level.Debug);
+    log.level(opts.verbose.length > 1 ? 'trace' : 'debug');
   }
   if (! opts.file) {
     opts.file = DEFAULT_CONFIG_PATH;
   }
-  log.trace("opts: %o", opts);
+  log.trace({opts: opts}, 'opts');
 
   var config = loadConfig(opts.file);
   // Log config (but don't put passwords in the log file).
@@ -118,9 +129,9 @@ function main() {
 
   // Create our app and start listening.
   var theApp;
-  createApp(config, function(err, app) {
+  createApp(config, log, function(err, app) {
     if (err) {
-      log.error("Error creating app: %s", err);
+      log.error(err, "Error creating app");
       process.exit(1);
     }
     theApp = app;

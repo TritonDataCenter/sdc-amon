@@ -23,7 +23,6 @@
 var debug = console.warn;
 var assert = require('assert');
 var ldap = require('ldapjs');
-var sprintf = require('sprintf').sprintf;
 var restify = require('restify');
 var RestCodes = restify.RestCodes;
 var Cache = require("amon-common").Cache;
@@ -34,23 +33,15 @@ var objCopy = require('amon-common').utils.objCopy;
 //---- generic list/create/get/delete model helpers
 
 /**
- * Model.list
- *
- * ...
- * @param callback {Function} `function (err, items)` where `err` is a
- *    restify.RESTError instance on error, otherwise `items` is an array
- *    of Model instances.
- */
-/**
  * Get a list of `Model` instances under the given `parentDn`.
  *
  * @param app {App} The Amon Master app.
  * @param Model {object} The Model "class" object.
  * @param parentDn {object} Parent LDAP DN (distinguished name).
- * @param log {object} log4js-style logger.
- * @param callback {Function} `function (err, item)` where `err` is a
- *    restify.RESTError instance on error, otherwise `item` is the put Model
- *    instance.
+ * @param log {Bunyan Logger}
+ * @param callback {Function} `function (err, items)` where `err` is a
+ *    restify.RESTError instance on error, otherwise `items` is an array of
+ *    Model instances.
  */
 function modelList(app, Model, parentDn, log, callback) {
   // Check cache. "cached" is `{err: <error>, data: <data>}`.
@@ -125,12 +116,13 @@ function modelList(app, Model, parentDn, log, callback) {
  * @param app {App} The Amon Master app.
  * @param Model {object} The Model "class" object.
  * @param data {object} The model instance data.
- * @param log {object} log4js-style logger.
+ * @param log {Bunyan Logger}
  * @param callback {Function} `function (err, item)` where `err` is a
  *    restify.RESTError instance on error, otherwise `item` is the put Model
  *    instance.
  */
 function modelPut(app, Model, data, log, callback) {
+console.log("XXX modelPut: start")
   var item;
   try {
     item = new Model(app, data);
@@ -138,6 +130,7 @@ function modelPut(app, Model, data, log, callback) {
     return callback(e);
   }
 
+console.log("XXX modelPut: auth put")
   // Access control check.
   item.authorizePut(app, function (err) {
     log.trace("<%s> '%s' authorizePut: err: %s", Model.name, item.dn,
@@ -186,7 +179,7 @@ function modelPut(app, Model, data, log, callback) {
  * @param app {App} The Amon Master app.
  * @param Model {object} The Model "class" object.
  * @param dn {object} The LDAP dn (distinguished name).
- * @param log {object} log4js-style logger.
+ * @param log {Bunyan Logger}
  * @param skipCache {Boolean} Optional. Default false. Set to true to skip
  *    looking up in the cache.
  * @param callback {Function} `function (err, item)` where `err` is a
@@ -277,7 +270,7 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
  * @param app {App} The Amon Master app.
  * @param Model {object} The Model "class" object.
  * @param dn {object} The LDAP dn (distinguished name).
- * @param log {object} log4js-style logger.
+ * @param log {Bunyan Logger}
  * @param skipCache {Boolean} Optional. Default false. Set to true to skip
  *    looking up in the cache.
  * @param callback {Function} `function (err)` where `err` is a
@@ -313,12 +306,11 @@ function modelDelete(app, Model, dn, log, callback) {
 //---- request/response wrappers around the above helpers
 
 function requestList(req, res, next, Model) {
-  req._log.trace('<%s> list entered: params=%o, uriParams=%o',
-    Model.name, req.params, req.uriParams);
+  req.log.trace({params: req.params}, '<%s> list entered', Model.name);
   var parentDn = Model.parentDnFromRequest(req)
-  modelList(req._app, Model, parentDn, req._log, function (err, items) {
+  modelList(req._app, Model, parentDn, req.log, function (err, items) {
     if (err) {
-      res.sendError(err);
+      res.send(err);
     } else {
       var data = items.map(function (i) { return i.serialize() });
       res.send(200, data);
@@ -329,20 +321,19 @@ function requestList(req, res, next, Model) {
 
 
 function requestPut(req, res, next, Model) {
-  req._log.trace('<%s> create entered: params=%o, uriParams=%o',
-    Model.name, req.params, req.uriParams);
+  req.log.trace({params: req.params}, '<%s> create entered', Model.name);
 
   // Note this means that the *route variable names* need to match the
   // expected `data` key names in the models (e.g. `monitors.Monitor`).
   var data = objCopy(req.params);
-  Object.keys(req.uriParams).forEach(function (k) {
-    data[k] = req.uriParams[k];
+  Object.keys(req.params).forEach(function (k) {
+    data[k] = req.params[k];
   });
   data.user = req._user.uuid;
 
-  modelPut(req._app, Model, data, req._log, function(err, item) {
+  modelPut(req._app, Model, data, req.log, function(err, item) {
     if (err) {
-      res.sendError(err);
+      res.send(err);
     } else {
       res.send(200, item.serialize());
     }
@@ -352,18 +343,16 @@ function requestPut(req, res, next, Model) {
 
 
 function requestGet(req, res, next, Model) {
-  req._log.trace('<%s> get entered: params=%o, uriParams=%o',
-    Model.name, req.params, req.uriParams);
+  req.log.trace({params: req.params}, '<%s> get entered', Model.name);
   var dn;
   try {
     dn = Model.dnFromRequest(req);
   } catch (err) {
-    return res.sendError(err);
+    return res.send(err);
   }
-  modelGet(req._app, Model, dn, req._log, function (err, item) {
+  modelGet(req._app, Model, dn, req.log, function (err, item) {
     if (err) {
-      // Don't log "ERROR" for a 404.
-      res.sendError(err, err instanceof restify.ResourceNotFoundError);
+      res.send(err);
     } else {
       res.send(200, item.serialize());
     }
@@ -373,12 +362,11 @@ function requestGet(req, res, next, Model) {
 
 
 function requestDelete(req, res, next, Model) {
-  req._log.trace('<%s> delete entered: params=%o, uriParams=%o',
-    Model.name, req.params, req.uriParams);
+  req.log.trace({params: req.params}, '<%s> delete entered', Model.name);
   var dn = Model.dnFromRequest(req);
-  modelDelete(req._app, Model, dn, req._log, function(err) {
+  modelDelete(req._app, Model, dn, req.log, function(err) {
     if (err) {
-      res.sendError(err);
+      res.send(err);
     } else {
       res.send(204);
     }

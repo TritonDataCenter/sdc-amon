@@ -5,13 +5,12 @@
   "author": "Joyent (joyent.com)",
   "private": true,
   "devDependencies": {
-    "jshint": "0.2.3",
-    "log4js": "0.4",
-    "ldapjs": "0.4.7",
-    "restify": "0.5",
+    "bunyan": "0.6.3",
+    "restify": "1.0.0",
+    "jshint": "0.5.8",
+    "ldapjs": "0.4.8",
     "async": "0.1",
-    "http-signature": "0.9.6",
-    "glob": "2.0.9",
+    "http-signature": "0.9.8",
     "tap": "0.1"
   },
   "bundledDependences": [
@@ -20,5 +19,8 @@
   ],
   "scripts": {
     "test": "make test"
+  },
+  "engines": {
+    "node": ">=0.6"
   }
 }

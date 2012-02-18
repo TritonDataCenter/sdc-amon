@@ -9,7 +9,6 @@
 
 var http = require('http');
 var https = require('https');
-var httpu = require('httpu');
 var url = require('url');
 var restify = require('restify');
 var assert = require('assert');
@@ -31,13 +30,13 @@ var RestCodes = restify.RestCodes;
  *      url {String} Required. Fully-qualified location of the relay api.
  *          Either a URL, e.g. "http://10.99.99.14:8080", or a Unix domain
  *          socket local path, e.g. "/var/run/.smartdc_amon.sock".
- *      log {restify.log} Optional. The logger on which to log.
+ *      log {Bunyan Logger instance}
  */
 function RelayClient(options) {
   if (!options) throw new TypeError('options is required');
-  if (!options.url) throw new TypeError('options.url is required');
-
-  this.log = options.log || restify.log;
+  if (!options.url) throw new TypeError('options.url (string) is required');
+  if (!options.log) throw new TypeError('options.log (Bunyan Logger) is required');
+  this.log = options.log;
 
   var parsed = url.parse(options.url);
   this._baseRequestOpts = {
@@ -64,7 +63,7 @@ function RelayClient(options) {
   } else {
     assert.equal(options.url, parsed.pathname);
     this._baseRequestOpts.socketPath = parsed.pathname;
-    this._requestMode = "httpu";
+    this._requestMode = "http";
   }
 }
 
@@ -215,7 +214,7 @@ RelayClient.prototype._request = function(method, path, callback) {
     var chunks = [];
     res.setEncoding('utf8');
     res.on('data', function(chunk) {
-      self.log.trace('relay-client: request chunk=%s', chunk);
+      self.log.trace('RelayClient request chunk=%s', chunk);
       chunks.push(chunk);
     });
     res.on('end', function() {
@@ -228,13 +227,12 @@ RelayClient.prototype._request = function(method, path, callback) {
           return callback(e);
         }
       }
-      self.log.trace('relay-client: response code=%d, headers=%o, params=%s,',
-        res.statusCode, res.headers, res.params);
+      self.log.trace({res: res}, 'RelayClient response');
       return callback(null, res);
     });
   };
 
-  this.log.trace('relay-client: request options: %o', options);
+  this.log.trace({options: options}, 'RelayClient request');
   var req;
   switch (this._requestMode) {
   case "http":
@@ -242,9 +240,6 @@ RelayClient.prototype._request = function(method, path, callback) {
     break;
   case "https":
     req = https.request(options, onResponse);
-    break;
-  case "httpu":
-    req = httpu.request(options, onResponse);
     break;
   default:
     throw new Error(format("unknown request mode: '%s'", this._requestMode));

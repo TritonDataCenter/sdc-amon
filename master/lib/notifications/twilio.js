@@ -9,11 +9,15 @@ var https = require('https');
 var querystring = require('querystring');
 var retry = require('retry');
 
-var log = require('restify').log;
 
 
-
-function Twilio(config) {
+/**
+ * Create a Twilio notification plugin
+ *
+ * @params log {Bunyan Logger}
+ * @params config {Object}
+ */
+function Twilio(log, config) {
   if (!config || typeof(config) !== 'object')
     throw new TypeError('config must be an object');
   if (!config.accountSid)
@@ -22,6 +26,8 @@ function Twilio(config) {
     throw new TypeError('config.authToken is required');
   if (!config.from)
     throw new TypeError('config.from is required');
+
+  this.log = log;
 
   this.accountSid = config.accountSid;
   this.authToken = config.authToken;
@@ -41,6 +47,8 @@ Twilio.prototype.acceptsMedium = function(medium) {
 
 //XXX Change this API to throw error with details if invalid.
 Twilio.prototype.sanitizeAddress = function(data) {
+  var log = this.log;
+
   if (!data || typeof(data) !== 'string') {
     log.debug('Twilio.sanitizeAddress: data %s is not a string', data);
     return false;
@@ -68,6 +76,7 @@ Twilio.prototype.notify = function(event, contactAddress, message, callback) {
   if (!callback || typeof(callback) !== 'function')
     throw new TypeError('callback must be a function');
 
+  var log = this.log;
   var self = this;
   var auth = 'Basic ' +
     new Buffer(self.accountSid + ':' + self.authToken).toString('base64');

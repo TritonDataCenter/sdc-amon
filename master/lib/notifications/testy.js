@@ -9,9 +9,16 @@ var fs = require('fs');
 var log = require('restify').log;
 
 
-function Testy(config) {
+/**
+ * Create a Testy notification plugin
+ *
+ * @params log {Bunyan Logger}
+ * @params config {Object}
+ */
+function Testy(log, config) {
   if (!config.logPath || typeof(config.logPath) !== 'string')
     throw new TypeError('config.logPath is required (path)');
+  this.log = log;
   this.logPath = config.logPath;
   this.notifications = [];
 }
@@ -26,6 +33,7 @@ Testy.prototype.sanitizeAddress = function(data) {
 };
 
 Testy.prototype.notify = function(event, contactAddress, message, callback) {
+  var log = this.log;
   log.debug("Test.notify: event='%s', contactAddress='%s', message='%s'",
     event, contactAddress, message);
   this.notifications.push({
