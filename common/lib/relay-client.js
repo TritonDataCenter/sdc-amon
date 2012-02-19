@@ -43,8 +43,7 @@ function RelayClient(options) {
     headers: {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
-      'X-Api-Version': Constants.ApiVersion
-    },
+    }
   };
   if (parsed.hostname && parsed.protocol) {
     this._baseRequestOpts.host = parsed.hostname;
@@ -168,19 +167,13 @@ RelayClient.prototype.sendEvent = function(event, callback) {
 
   function onComplete(err, res) {
     if (err) {
-      self.log.warn('RelayClient.sendEvent: HTTP error: ' + err);
-      return callback(restify.newError({
-        httpCode: 500,
-        restCode: RestCodes.UnknownError
-      }));
+      self.log.warn(err, 'RelayClient.sendEvent: HTTP error');
+      return callback(new restify.InternalError());
     }
     if (res.statusCode !== 202 /* Accepted */) {
-      self.log.warn("invalid response for RelayClient.sendEvent: statusCode=%d, body='%s'",
-        res.statusCode, res.body);
-      return callback(restify.newError({
-        httpCode: 500,
-        restCode: RestCodes.UnknownError
-      }));
+      self.log.warn({res: res, body: res.body},
+        "invalid response for RelayClient.sendEvent");
+      return callback(new restify.InternalError());
     } else {
       return callback();
     }

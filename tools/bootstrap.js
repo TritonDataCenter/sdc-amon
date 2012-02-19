@@ -34,7 +34,7 @@ var sdcClients = require('sdc-clients'),
 
 //---- globals and constants
 
-var config = JSON.parse(fs.readFileSync(__dirname + '/../tst/config.json', 'utf8'));
+var config = JSON.parse(fs.readFileSync(__dirname + '/../test/config.json', 'utf8'));
 var devbob = JSON.parse(fs.readFileSync(__dirname + '/devbob.json', 'utf8'));
 var devalice = JSON.parse(fs.readFileSync(__dirname + '/devalice.json', 'utf8')); // operator
 var ldapClient;
@@ -66,7 +66,6 @@ function ldapClientBind(next) {
   log("# Create LDAP client and bind.")
   ldapClient = ldap.createClient({
     url: config.ufds.url,
-    //log4js: log4js,
     reconnect: false
   });
   ldapClient.bind(config.ufds.rootDn, config.ufds.password, function(err) {
@@ -108,6 +107,7 @@ function createUser(user, next) {
 }
 
 function createUsers(next) {
+  log("# Create users.")
   async.map([devbob, devalice], createUser, function(err, _){
     next(err)
   });
@@ -129,9 +129,10 @@ function makeDevaliceAdmin(next) {
 }
 
 function addKey(next) {
+  log("# Add key for users.")
   // Note: We should probably just use the CAPI api for this, but don't want
   // to encode the pain of getting the CAPI auth.
-  var key = fs.readFileSync(__dirname + '/../tst/id_rsa.amontest.pub', 'utf8');
+  var key = fs.readFileSync(__dirname + '/../test/id_rsa.amontest.pub', 'utf8');
   var fp = httpSignature.sshKeyFingerprint(key);
   var userDn = format("uuid=%s, ou=users, o=smartdc", devbob.uuid);
   var dn = format("fingerprint=%s, %s", fp, userDn);
@@ -198,7 +199,7 @@ function getMapi(next) {
 
 function createDevzone(next) {
   // First check if there is a zone for devbob.
-  mapi.listZones(devbob.uuid, function (err, zones, headers) {
+  mapi.listMachines(devbob.uuid, function (err, zones, headers) {
     if (err) return next(err);
     if (zones.length > 0) {
       devzone = zones[0];
@@ -209,7 +210,7 @@ function createDevzone(next) {
     mapi.listServers(function(err, servers) {
       if (err) return next(err);
       var headnodeUuid = servers[0].uuid;
-      mapi.createZone(devbob.uuid, {
+      mapi.createMachine(devbob.uuid, {
           package: "regular_128",
           alias: "devzone",
           dataset_urn: "smartos",
@@ -233,7 +234,7 @@ function createDevzone(next) {
                   + "become 'running'");
               }
               setTimeout(function () {
-                mapi.getZone(devbob.uuid, zoneName, function (err, zone_) {
+                mapi.getMachine(devbob.uuid, zoneName, function (err, zone_) {
                   if (err) return nextCheck(err);
                   zone = zone_;
                   nextCheck();
@@ -255,12 +256,16 @@ function createDevzone(next) {
 }
 
 function getMapizone(next) {
-  mapi.getZoneByAlias(adminUuid, "mapi", function (err, zone) {
+  log("# Get MAPI zone.")
+  mapi.listMachines(adminUuid, {alias: 'mapi'}, function (err, zones) {
     if (err) {
       return next(err);
     }
-    log("# MAPI zone is '%s'.", zone.name);
-    mapizone = zone;
+    if (zones.length === 0) {
+      return next(new Error('no "mapi" zone'));
+    }
+    log("# MAPI zone is '%s'.", zones[0].name);
+    mapizone = zones[0];
     next();
   });
 }
@@ -286,12 +291,15 @@ function getHeadnodeUuid(next) {
 
 
 function getAmonClient(next) {
+  log("# Get Amon client.")
+
   // Amon Master in COAL:
   var options = {
-    owner_uuid: adminUuid,
-    "tag.smartdc_role": "amon"
+    tags: {
+      smartdc_role: 'amon'
+    }
   }
-  mapi.listMachines(options, function(err, machines) {
+  mapi.listMachines(adminUuid, options, function(err, machines) {
     if (err) return next(err);
     var amonMasterUrl = 'http://' + machines[0].ips[0].address;
     amonClient = new Amon({url: amonMasterUrl});
@@ -299,13 +307,12 @@ function getAmonClient(next) {
     next();
   });
 
-  //// Local running Amon
+  //// Local running Amon:
   //var amonMasterUrl = 'http://127.0.0.1:8080';
   //amonClient = new Amon({url: amonMasterUrl});
   //log("# Get Amon client (%s).", amonMasterUrl)
   //next();
 }
-
 
 
 function loadAmonObject(obj, next) {
@@ -318,7 +325,11 @@ function loadAmonObject(obj, next) {
           break;
         }
       }
-      if (foundIt) return next();
+      if (foundIt) {
+        log("# Amon object already exists: /pub/%s/monitors/%s/probes/%s",
+          obj.user, obj.monitor, obj.probe);
+        return next();
+      }
       log("# Load Amon object: /pub/%s/monitors/%s/probes/%s", obj.user,
           obj.monitor, obj.probe);
       amonClient.putProbe(obj.user, obj.monitor, obj.probe, obj.body, next);
@@ -332,7 +343,11 @@ function loadAmonObject(obj, next) {
           break;
         }
       }
-      if (foundIt) return next();
+      if (foundIt) {
+        log("# Amon object already exists: /pub/%s/monitors/%s",
+          obj.user, obj.monitor);
+        return next();
+      }
       log("# Load Amon object: /pub/%s/monitors/%s", obj.user, obj.monitor);
       amonClient.putMonitor(obj.user, obj.monitor, obj.body, next);
     });

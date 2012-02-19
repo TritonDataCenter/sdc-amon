@@ -52,7 +52,6 @@ var log = new Logger({
 
 
 
-
 //---- internal support functions
 
 function listenInGlobalZoneSync() {
@@ -385,6 +384,18 @@ function main() {
   }
   if (rawOpts.verbose) {
     log.level(rawOpts.verbose.length > 1 ? 'trace' : 'debug');
+  }
+
+  // Die on unknown opts.
+  var extraOpts = {};
+  Object.keys(rawOpts).forEach(function (o) { extraOpts[o] = true });
+  delete extraOpts.argv;
+  Object.keys(longOpts).forEach(function (o) { delete extraOpts[o] });
+  extraOpts = Object.keys(extraOpts);
+  if (extraOpts.length) {
+    console.error('unknown option%s: -%s\n',
+      (extraOpts.length === 1 ? '' : 's'), extraOpts.join(', -'));
+    usage(1);
   }
 
   // Build the config (intentionally global).

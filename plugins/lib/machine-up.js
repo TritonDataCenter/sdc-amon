@@ -9,15 +9,14 @@ var fs = require('fs');
 var spawn = require('child_process').spawn;
 var util = require('util');
 
-var log = require('restify').log;
 var Plugin = require('./plugin');
 
 
 
 //---- plugin class
 
-function MachineUpProbe(id, data) {
-  Plugin.call(this, id, data);
+function MachineUpProbe(id, data, log) {
+  Plugin.call(this, id, data, log);
   MachineUpProbe.validateConfig(this.config);
 
   this.path = this.config.path;

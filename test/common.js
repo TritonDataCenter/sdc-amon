@@ -17,18 +17,6 @@ var format = require('amon-common').utils.format;
 
 var CONFIG_PATH = __dirname + "/config.json";
 
-var log = new Logger({
-  name: 'masterClient',
-  stream: process.stderr,
-  level: 'trace',
-  src: (process.platform === 'darwin'),
-  serializers: {
-    err: Logger.stdSerializers.err,
-    req: Logger.stdSerializers.req,
-    res: restify.bunyan.serializers.response,
-  }
-})
-
 
 
 /**
@@ -38,6 +26,7 @@ var log = new Logger({
  *    t {Object} node-tap Test object
  *    users {Array} User records to add to UFDS for testing
  *    masterLogPath {String}
+ *    clientLogPath {String}
  * @param callback {Function} `function (err, config)` where:
  *    `config` is the loaded JSON config file.
  *    `masterClient` is an Amon Master client.
@@ -47,6 +36,21 @@ function setupMaster(options, callback) {
   var config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
   var master;
 
+  var log = new Logger({
+    name: 'masterClient',
+    src: (process.platform === 'darwin'),
+    streams: [
+      {
+        path: options.clientLogPath,
+        level: 'trace'
+      }
+    ],
+    serializers: {
+      err: Logger.stdSerializers.err,
+      req: Logger.stdSerializers.req,
+      res: restify.bunyan.serializers.response,
+    }
+  });
   var masterClient = restify.createJsonClient({
     // 8080 is the built-in default.
     name: 'master',

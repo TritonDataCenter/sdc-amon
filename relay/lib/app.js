@@ -121,8 +121,6 @@ var App = function App(options) {
         if (masterMD5 === currMD5) {
           log.trace('No agent probes update.')
           return;
-        } else {
-          log.info({masterMD5:masterMD5, currMD5:currMD5}, "XXX md5s the same?")
         }
         self._master.agentProbes(self._targetType, self._targetUuid, function(err, agentProbes, masterMD5) {
           if (err || !agentProbes || !masterMD5) {

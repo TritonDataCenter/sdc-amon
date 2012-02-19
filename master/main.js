@@ -118,6 +118,18 @@ function main() {
   }
   log.trace({opts: opts}, 'opts');
 
+  // Die on unknown opts.
+  var extraOpts = {};
+  Object.keys(rawOpts).forEach(function (o) { extraOpts[o] = true });
+  delete extraOpts.argv;
+  Object.keys(longOpts).forEach(function (o) { delete extraOpts[o] });
+  extraOpts = Object.keys(extraOpts);
+  if (extraOpts.length) {
+    console.error('unknown option%s: -%s\n',
+      (extraOpts.length === 1 ? '' : 's'), extraOpts.join(', -'));
+    usage(1);
+  }
+
   var config = loadConfig(opts.file);
   // Log config (but don't put passwords in the log file).
   var censorKeys = {"password": "***", "authToken": "***", "pass": "***"}

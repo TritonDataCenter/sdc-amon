@@ -35,7 +35,7 @@ function Cache(size, expiry, log, name) {
   this.size = size;
   this.expiry = expiry * 1000;
   this.log = log;
-  this.name = (name ? name + " " : "");
+  this.name = name;
   this.items = LRU(this.size);
 }
 
@@ -46,7 +46,7 @@ function Cache(size, expiry, log, name) {
 
 Cache.prototype.reset = function reset() {
   if (this.log) {
-    this.log.trace("%scache reset", this.name);
+    this.log.trace({cache: {name: this.name}}, "cache reset");
   }
   this.items.reset();
 }
@@ -64,7 +64,7 @@ Cache.prototype.get = function get(key) {
     }
   }
   if (this.log) {
-    this.log.trace("%scache miss: key='%s'", this.name, key);
+    this.log.trace({cache: {name: this.name, key: key}}, 'cache miss');
   }
   return null;
 }
@@ -85,7 +85,7 @@ Cache.prototype.set = function set(key, value) {
 
 Cache.prototype.del = function del(key) {
   if (this.log) {
-    this.log.trace("%scache del: key='%s'", this.name, key);
+    this.log.trace({cache: {name: this.name, key: key}}, 'cache del');
   }
   this.items.del(key);
 }

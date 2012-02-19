@@ -7,7 +7,6 @@ var debug = console.log;
 var fs = require('fs');
 var http = require('http');
 var format = require('amon-common').utils.format;
-var restify = require('restify');
 var test = require('tap').test;
 var async = require('async');
 
@@ -21,6 +20,7 @@ var config = JSON.parse(fs.readFileSync(common.CONFIG_PATH, 'utf8'));
 var prep = JSON.parse(fs.readFileSync(__dirname + '/prep.json', 'utf8'));
 var sulkybob = JSON.parse(fs.readFileSync(__dirname + '/sulkybob.json', 'utf8'));
 var masterLogPath = __dirname + "/master-caching.log";
+var clientLogPath = __dirname + "/master-caching-client.log";
 var master;
 var masterClient;
 
@@ -54,7 +54,8 @@ test('setup', function (t) {
   common.setupMaster({
       t: t,
       users: [sulkybob],
-      masterLogPath: masterLogPath
+      masterLogPath: masterLogPath,
+      clientLogPath: clientLogPath
     },
     function(err, _masterClient, _master) {
       t.ifError(err, "setup master");
@@ -71,19 +72,19 @@ test('setup', function (t) {
 //---- test: monitors
 
 test('monitors: list empty', function(t) {
-  masterClient.get("/pub/sulkybob/monitors", function(err, body, headers) {
+  masterClient.get("/pub/sulkybob/monitors", function(err, req, res, obj) {
     t.ifError(err);
-    t.ok(Array.isArray(body));
-    t.equal(body.length, 0);
+    t.ok(Array.isArray(obj));
+    t.equal(obj.length, 0);
 
     // Second time should be fast.
-    masterClient.get("/pub/sulkybob/monitors", function(err, body2, headers2) {
+    masterClient.get("/pub/sulkybob/monitors", function(err, req, res2, obj2) {
       t.ifError(err);
-      t.equal(body2.length, 0);
+      t.equal(obj2.length, 0);
       // Testing x-response-time is a poor metric for "was it cached", but
       // don't want to add hacks to server for an 'X-Amon-Cached: true' or
       // something.
-      t.ok(Number(headers2['x-response-time']) < 50, "faster cached response")
+      t.ok(Number(res2.headers['x-response-time']) < 50, "faster cached response")
       t.end();
     });
   });
@@ -92,7 +93,7 @@ test('monitors: list empty', function(t) {
 test('monitors: get a monitor not yet added', function(t) {
   async.forEach(Object.keys(FIXTURES.sulkybob.monitors), function(name, next) {
     var data = FIXTURES.sulkybob.monitors[name];
-    masterClient.get("/pub/sulkybob/monitors/"+name, function (err, body, headers) {
+    masterClient.get("/pub/sulkybob/monitors/"+name, function (err, req, res, obj) {
       t.equal(err.httpCode, 404);
       t.equal(err.restCode, "ResourceNotFound");
       next();
@@ -106,15 +107,13 @@ test('monitors: create', function(t) {
   async.forEach(Object.keys(FIXTURES.sulkybob.monitors), function(name, next) {
     var data = common.objCopy(FIXTURES.sulkybob.monitors[name]);
     delete data["probes"]; // 'probes' key holds probe objects to add (later)
-    masterClient.put({
-        path: "/pub/sulkybob/monitors/"+name,
-        body: data
-      }, function (err, body, headers) {
+    masterClient.put("/pub/sulkybob/monitors/"+name, data,
+      function (err, req, res, obj) {
         t.ifError(err);
-        t.equal(body.name, name)
-        t.equal(body.contacts.sort().join(','),
+        t.equal(obj.name, name)
+        t.equal(obj.contacts.sort().join(','),
           data.contacts.sort().join(','),
-          format("monitor.contacts: %s === %s", body.contacts, data.contacts))
+          format("monitor.contacts: %s === %s", obj.contacts, data.contacts))
         next();
       });
   }, function (err) {
@@ -126,16 +125,16 @@ test('monitors: create', function(t) {
 // the new value.
 test('monitors: list', function(t) {
   var monitors = FIXTURES.sulkybob.monitors;
-  masterClient.get("/pub/sulkybob/monitors", function(err, body, headers) {
+  masterClient.get("/pub/sulkybob/monitors", function(err, req, res, obj) {
     t.ifError(err);
-    t.ok(Array.isArray(body));
-    t.equal(body.length, Object.keys(monitors).length);
+    t.ok(Array.isArray(obj));
+    t.equal(obj.length, Object.keys(monitors).length);
 
     // Second time should be fast.
-    masterClient.get("/pub/sulkybob/monitors", function(err, body2, headers2) {
+    masterClient.get("/pub/sulkybob/monitors", function(err, req, res2, obj2) {
       t.ifError(err);
-      t.equal(body2.length, body.length);
-      t.ok(Number(headers2['x-response-time']) < 50, "faster cached response")
+      t.equal(obj2.length, obj.length);
+      t.ok(Number(res2.headers['x-response-time']) < 50, "faster cached response")
       t.end();
     });
   });
@@ -144,19 +143,19 @@ test('monitors: list', function(t) {
 test('monitors: get', function(t) {
   async.forEach(Object.keys(FIXTURES.sulkybob.monitors), function(name, next) {
     var data = FIXTURES.sulkybob.monitors[name];
-    masterClient.get("/pub/sulkybob/monitors/"+name, function (err, body, headers) {
+    masterClient.get("/pub/sulkybob/monitors/"+name, function (err, req, res, obj) {
       t.ifError(err);
-      t.equal(body.contacts.sort().join(','),
+      t.equal(obj.contacts.sort().join(','),
         data.contacts.sort().join(','),
-        format("monitor.contacts: %s === %s", body.contacts, data.contacts))
+        format("monitor.contacts: %s === %s", obj.contacts, data.contacts))
 
       // Second time should be fast.
-      masterClient.get("/pub/sulkybob/monitors/"+name, function(err, body2, headers2) {
+      masterClient.get("/pub/sulkybob/monitors/"+name, function(err, req, res2, obj2) {
         t.ifError(err);
-        t.equal(body.contacts.sort().join(','),
+        t.equal(obj2.contacts.sort().join(','),
           data.contacts.sort().join(','),
-          format("monitor.contacts: %s === %s", body.contacts, data.contacts))
-        t.ok(Number(headers2['x-response-time']) < 50, "faster cached response")
+          format("monitor.contacts: %s === %s", obj2.contacts, data.contacts))
+        t.ok(Number(res2.headers['x-response-time']) < 50, "faster cached response")
         next();
       });
     })
@@ -173,11 +172,11 @@ var sulkyzoneContentMD5;
 test('GetAgentProbes before any probes', function(t) {
   var probe = FIXTURES.sulkybob.monitors.whistle.probes.whistlelog;
   masterClient.get("/agentprobes?machine=" + prep.sulkyzone.name,
-    function (err, body, headers, res) {
+    function (err, req, res, obj) {
       t.ifError(err);
-      sulkyzoneContentMD5 = headers["content-md5"];
-      t.ok(Array.isArray(body), "GetAgentProbes response is an array");
-      t.equal(body.length, 0);
+      sulkyzoneContentMD5 = res.headers["content-md5"];
+      t.ok(Array.isArray(obj), "GetAgentProbes response is an array");
+      t.equal(obj.length, 0);
       t.end();
     }
   );
@@ -188,14 +187,14 @@ test('HeadAgentProbes before any probes', function(t) {
   masterClient.head("/agentprobes?machine=" + prep.sulkyzone.name,
     function (err, headers, res) {
       t.ifError(err);
-      t.equal(headers['content-md5'], sulkyzoneContentMD5)
+      t.equal(res.headers['content-md5'], sulkyzoneContentMD5)
 
       // Second time should be fast.
       masterClient.head("/agentprobes?machine=" + prep.sulkyzone.name,
-        function (err2, headers2, res) {
+        function (err2, req2, res2) {
           t.ifError(err2);
-          t.equal(headers2['content-md5'], sulkyzoneContentMD5)
-          t.ok(Number(headers2['x-response-time']) < 50, "faster cached response")
+          t.equal(res2.headers['content-md5'], sulkyzoneContentMD5)
+          t.ok(Number(res2.headers['x-response-time']) < 50, "faster cached response")
           t.end();
         }
       );
@@ -212,17 +211,17 @@ test('probes: list empty', function(t) {
   async.forEach(Object.keys(monitors), function(monitorName, next) {
     var probes = monitors[monitorName].probes;
     masterClient.get(format("/pub/sulkybob/monitors/%s/probes", monitorName),
-      function (err, body, headers) {
+      function (err, req, res, obj) {
         t.ifError(err);
-        t.ok(Array.isArray(body));
-        t.equal(body.length, 0);
+        t.ok(Array.isArray(obj));
+        t.equal(obj.length, 0);
 
         // Second one from cache should be fast.
         masterClient.get(format("/pub/sulkybob/monitors/%s/probes", monitorName),
-          function (err, body2, headers2) {
+          function (err, req, res2, obj2) {
             t.ifError(err);
-            t.equal(body2.length, 0);
-            t.ok(Number(headers2['x-response-time']) < 50, "faster cached response")
+            t.equal(obj2.length, 0);
+            t.ok(Number(res2.headers['x-response-time']) < 50, "faster cached response")
             next();
           }
         );
@@ -240,7 +239,7 @@ test('probes: get a probe not yet added', function(t) {
     async.forEach(Object.keys(probes), function(probeName, nextProbe) {
       var probe = probes[probeName];
       masterClient.get(format("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName),
-        function (err, body, headers) {
+        function (err, req, res, obj) {
           t.equal(err.httpCode, 404);
           t.equal(err.restCode, "ResourceNotFound");
           nextProbe();
@@ -261,13 +260,13 @@ test('probes: create', function(t) {
     async.forEach(Object.keys(probes), function(probeName, nextProbe) {
       var probe = probes[probeName];
       var path = format("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName);
-      masterClient.put({path: path, body: probe}, function (err, body, headers) {
+      masterClient.put(path, probe, function (err, req, res, obj) {
         t.ifError(err, "error PUT'ing "+path);
-        t.equal(body.name, probeName)
-        t.equal(body.machine, probe.machine)
-        t.equal(body.type, probe.type)
-        Object.keys(body.config).forEach(function(k) {
-          t.equal(body.config[k], probe.config[k])
+        t.equal(obj.name, probeName)
+        t.equal(obj.machine, probe.machine)
+        t.equal(obj.type, probe.type)
+        Object.keys(obj.config).forEach(function(k) {
+          t.equal(obj.config[k], probe.config[k])
         })
         nextProbe();
       });
@@ -287,17 +286,17 @@ test('probes: list', function(t) {
   async.forEach(Object.keys(monitors), function(monitorName, next) {
     var probes = monitors[monitorName].probes;
     masterClient.get(format("/pub/sulkybob/monitors/%s/probes", monitorName),
-      function (err, body, headers) {
+      function (err, req, res, obj) {
         t.ifError(err);
-        t.ok(Array.isArray(body), "listProbes response is an array");
-        t.equal(body.length, Object.keys(probes).length);
+        t.ok(Array.isArray(obj), "listProbes response is an array");
+        t.equal(obj.length, Object.keys(probes).length);
 
         // Second time should be fast.
         masterClient.get(format("/pub/sulkybob/monitors/%s/probes", monitorName),
-          function (err, body2, headers2) {
+          function (err, req, res2, obj2) {
             t.ifError(err);
-            t.equal(body2.length, body.length);
-            t.ok(Number(headers2['x-response-time']) < 50, "faster cached response")
+            t.equal(obj2.length, obj.length);
+            t.ok(Number(res2.headers['x-response-time']) < 50, "faster cached response")
             next();
           }
         );
@@ -315,26 +314,26 @@ test('probes: get', function(t) {
     async.forEach(Object.keys(probes), function(probeName, nextProbe) {
       var probe = probes[probeName];
       masterClient.get(format("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName),
-        function (err, body, headers) {
+        function (err, req, res, obj) {
           t.ifError(err);
-          t.equal(body.name, probeName)
-          t.equal(body.machine, probe.machine)
-          t.equal(body.type, probe.type)
-          Object.keys(body.config).forEach(function(k) {
-            t.equal(body.config[k], probe.config[k])
+          t.equal(obj.name, probeName)
+          t.equal(obj.machine, probe.machine)
+          t.equal(obj.type, probe.type)
+          Object.keys(obj.config).forEach(function(k) {
+            t.equal(obj.config[k], probe.config[k])
           })
 
           // Second time should be faster.
           masterClient.get(format("/pub/sulkybob/monitors/%s/probes/%s", monitorName, probeName),
-            function (err2, body2, headers2) {
+            function (err2, req2, res2, obj2) {
               t.ifError(err);
-              t.equal(body.name, probeName)
-              t.equal(body.machine, probe.machine)
-              t.equal(body.type, probe.type)
-              Object.keys(body.config).forEach(function(k) {
-                t.equal(body.config[k], probe.config[k])
+              t.equal(obj2.name, probeName)
+              t.equal(obj2.machine, probe.machine)
+              t.equal(obj2.type, probe.type)
+              Object.keys(obj2.config).forEach(function(k) {
+                t.equal(obj2.config[k], probe.config[k])
               })
-              t.ok(Number(headers2['x-response-time']) < 50, "faster cached response")
+              t.ok(Number(res2.headers['x-response-time']) < 50, "faster cached response")
               nextProbe();
             }
           );
@@ -355,16 +354,16 @@ test('HeadAgentProbes changed after probe added', {timeout: 5000}, function(t) {
   masterClient.head("/agentprobes?machine=" + prep.sulkyzone.name,
     function (err, headers, res) {
       t.ifError(err);
-      newSulkyzoneContentMD5 = headers['content-md5'];
+      newSulkyzoneContentMD5 = res.headers['content-md5'];
       t.ok(newSulkyzoneContentMD5 !== sulkyzoneContentMD5,
         "expect sulkyzone Content-MD5 to have changed")
 
       // Second time should be fast.
       masterClient.head("/agentprobes?machine=" + prep.sulkyzone.name,
-        function (err2, headers2, res) {
+        function (err2, req2, res2) {
           t.ifError(err2, "/agentprobes?machine=" + prep.sulkyzone.name);
-          t.equal(headers2['content-md5'], newSulkyzoneContentMD5)
-          t.ok(Number(headers2['x-response-time']) < 50, "faster cached response")
+          t.equal(res2.headers['content-md5'], newSulkyzoneContentMD5)
+          t.ok(Number(res2.headers['x-response-time']) < 50, "faster cached response")
           t.end();
         }
       );
@@ -375,11 +374,11 @@ test('HeadAgentProbes changed after probe added', {timeout: 5000}, function(t) {
 test('GetAgentProbes', function(t) {
   var probe = FIXTURES.sulkybob.monitors.whistle.probes.whistlelog;
   masterClient.get("/agentprobes?machine=" + prep.sulkyzone.name,
-    function (err, body, headers, res) {
+    function (err, req, res, obj) {
       t.ifError(err);
-      t.equal(headers["content-md5"], newSulkyzoneContentMD5);
-      t.ok(Array.isArray(body), "GetAgentProbes response is an array");
-      t.equal(body.length, 1);
+      t.equal(res.headers["content-md5"], newSulkyzoneContentMD5);
+      t.ok(Array.isArray(obj), "GetAgentProbes response is an array");
+      t.equal(obj.length, 1);
       t.end();
     }
   );
@@ -429,19 +428,19 @@ test('monitors: delete', function(t) {
 //---- test that list/get are now empty again
 
 test('monitors: list empty again', function(t) {
-  masterClient.get("/pub/sulkybob/monitors", function(err, body, headers) {
+  masterClient.get("/pub/sulkybob/monitors", function(err, req, res, obj) {
     t.ifError(err);
-    t.ok(Array.isArray(body));
-    t.equal(body.length, 0);
+    t.ok(Array.isArray(obj));
+    t.equal(obj.length, 0);
 
     // Second time should be fast.
-    masterClient.get("/pub/sulkybob/monitors", function(err, body2, headers2) {
-      t.ifError(err);
-      t.equal(body2.length, 0);
+    masterClient.get("/pub/sulkybob/monitors", function(err2, req2, res2, obj2) {
+      t.ifError(err2);
+      t.equal(obj2.length, 0);
       // Testing x-response-time is a poor metric for "was it cached", but
       // don't want to add hacks to server for an 'X-Amon-Cached: true' or
       // something.
-      t.ok(Number(headers2['x-response-time']) < 50, "faster cached response")
+      t.ok(Number(res2.headers['x-response-time']) < 50, "faster cached response")
       t.end();
     });
   });
@@ -450,7 +449,7 @@ test('monitors: list empty again', function(t) {
 test('monitors: get a monitor now removed', function(t) {
   async.forEach(Object.keys(FIXTURES.sulkybob.monitors), function(name, next) {
     var data = FIXTURES.sulkybob.monitors[name];
-    masterClient.get("/pub/sulkybob/monitors/"+name, function (err, body, headers) {
+    masterClient.get("/pub/sulkybob/monitors/"+name, function (err, req, res, obj) {
       t.ok(err)
       t.equal(err.httpCode, 404);
       t.equal(err.restCode, "ResourceNotFound");

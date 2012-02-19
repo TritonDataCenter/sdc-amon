@@ -2,7 +2,10 @@
 
 - node 0.6 & restify 1.x & bunyan
   - TODO:
-    - res.sendError gone, res.newError gone
+    - add route names to all endpoints
+    - sdc-amon: drop the x-api-version header
+    - %o in logs
+    - review and log.* with err, and others
   - restify migration:
     - no `restify.log`, carry your own log along
     - can use 'after' event on restify server instead of repeating 'after'

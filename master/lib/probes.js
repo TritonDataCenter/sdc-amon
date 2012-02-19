@@ -161,7 +161,7 @@ Probe.prototype.authorizePut = function (app, callback) {
   var self = this;
   if (this.machine) {
     // Must be the owner of this machine.
-    app.mapi.getMachine(this.machine, {owner_uuid: this.user}, function (err, machine) {
+    app.mapi.getMachine(this.user, this.machine, function (err, machine) {
       if (err) {
         if (err.httpCode === 404) {
           return callback(new restify.InvalidArgumentError(format(
@@ -298,26 +298,18 @@ Probe.validate = function validate(app, raw) {
   //XXX validate the type is an existing probe type
   //  var plugin = req._config.plugins[type];
   //  if (!plugin) {
-  //var e = restify.newError({
-  //  httpCode: HttpCodes.Conflict,
-  //  restCode: RestCodes.InvalidArgument,
-  //  message: format('probe type is invalid: %s', msg)
-  //});
-  //...
-  //    return next();
+  //    var e = new restify.InvalidArgumentError(
+  //      format('probe type is invalid: %s', msg));
+  //    return next(e);
   //  }
 
   //XXX validate data for that probe type
   //  try {
   //    plugin.validateConfig(raw.config);
   //  } catch (e) {
-  //var e = restify.newError({
-  //  httpCode: HttpCodes.Conflict,
-  //  restCode: RestCodes.InvalidArgument,
-  //  message: format('config is invalid: %s', msg)
-  //});
-  //...
-  //    return next();
+  //    var e = new restify.InvalidArgumentError(
+  //      format('probe config type is invalid: %s', msg));
+  //    return next(e);
   //  }
 
   return raw;

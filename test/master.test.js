@@ -5,7 +5,6 @@ var fs = require('fs');
 var http = require('http');
 var format = require('amon-common').utils.format;
 var test = require('tap').test;
-var restify = require('restify');
 var async = require('async');
 
 var common = require('./common');
@@ -21,6 +20,7 @@ var prep = JSON.parse(fs.readFileSync(__dirname + '/prep.json', 'utf8'));
 var sulkybob = prep.sulkybob;
 var adminbob = prep.adminbob;
 var masterLogPath = __dirname + "/master.log";
+var clientLogPath = __dirname + "/master-client.log";
 var masterClient;
 var master;
 
@@ -116,7 +116,8 @@ test('setup', function (t) {
   common.setupMaster({
       t: t,
       users: [sulkybob],
-      masterLogPath: masterLogPath
+      masterLogPath: masterLogPath,
+      clientLogPath: clientLogPath
     },
     function(err, _masterClient, _master) {
       t.ifError(err, "setup master");
@@ -221,7 +222,7 @@ test('monitors: create with bogus contact', function(t) {
     function (err, req, res, obj) {
       t.ok(err)
       t.equal(err.httpCode, 409, 'expect 409')
-      t.equal(err.restCode, "InvalidArgument")
+      t.equal(err.code, "InvalidArgument")
       t.ok(err.message.indexOf("smokesignal") !== -1)
       t.end();
     }
@@ -257,7 +258,7 @@ test('monitors: get', function(t) {
 test('monitors: get 404', function(t) {
   masterClient.get("/pub/sulkybob/monitors/bogus", function (err, req, res, obj) {
     t.equal(err.httpCode, 404, "should get 404");
-    t.equal(err.restCode, "ResourceNotFound", "should get rest code for 404");
+    t.equal(err.code, "ResourceNotFound", "should get rest code for 404");
     t.end();
   })
 });
@@ -307,7 +308,6 @@ test('probes: create', function(t) {
   });
 });
 
-/* XXX START HERE */
 
 test('probes: create without owning zone', function(t) {
   var monitor = FIXTURES.sulkybob.monitors.whistle;
@@ -342,7 +342,7 @@ test('probes: create without owning zone', function(t) {
       function (err, req, res, obj) {
         t.ok(err);
         t.equal(err.httpCode, 409);
-        t.equal(err.restCode, "InvalidArgument");
+        t.equal(err.code, "InvalidArgument");
         nextProbe();
       }
     );
@@ -350,7 +350,6 @@ test('probes: create without owning zone', function(t) {
     t.end();
   });
 });
-
 
 test('probes: create for server without being operator', function(t) {
   var probes = FIXTURES.sulkybob.monitors.gz.probes;
@@ -361,8 +360,8 @@ test('probes: create for server without being operator', function(t) {
       function (err, req, res, obj) {
         t.ok(err);
         t.equal(err.httpCode, 409)
-        t.equal(err.restCode, "InvalidArgument");
-        t.ok(/operator/.test(err.message));
+        t.equal(err.code, "InvalidArgument");
+        t.ok(/operator/.test(err.message), '"operator" should be in err message');
         nextProbe();
       }
     );
@@ -386,19 +385,19 @@ test('probes: create GZ probe on headnode for adminbob', function(t) {
   });
 });
 
+
 test('probes: create GZ probe on bogus server for adminbob', function(t) {
   var probe = FIXTURES.adminbob.monitors.gz.probes.bogusserver;
   var path = "/pub/adminbob/monitors/gz/probes/bogusserver";
   masterClient.put(path, probe, function (err, req, res, obj) {
     t.ok(err, path);
     t.equal(err.httpCode, 409)
-    t.equal(err.restCode, "InvalidArgument")
+    t.equal(err.code, "InvalidArgument")
     t.ok(err.message.indexOf("server") !== -1)
     t.ok(err.message.indexOf("invalid") !== -1)
     t.end();
   });
 });
-
 
 test('probes: list', function(t) {
   var monitors = FIXTURES.sulkybob.monitors;
@@ -449,7 +448,7 @@ test('probes: get 404', function(t) {
   masterClient.get("/pub/sulkybob/monitors/whistle/probes/bogus",
     function (err, req, res, obj) {
       t.equal(err.httpCode, 404);
-      t.equal(err.restCode, "ResourceNotFound");
+      t.equal(err.code, "ResourceNotFound");
       t.end();
     }
   );
@@ -545,7 +544,6 @@ test('relay api: AddEvents', function(t) {
 
 
 
-
 //---- test deletes (and clean up test data)
 
 test('probes: delete', function(t) {
@@ -584,8 +582,6 @@ test('monitors: delete', function(t) {
   });
 });
 
-
-/* XXX */
 
 
 //---- teardown

@@ -122,7 +122,6 @@ function modelList(app, Model, parentDn, log, callback) {
  *    instance.
  */
 function modelPut(app, Model, data, log, callback) {
-console.log("XXX modelPut: start")
   var item;
   try {
     item = new Model(app, data);
@@ -130,7 +129,6 @@ console.log("XXX modelPut: start")
     return callback(e);
   }
 
-console.log("XXX modelPut: auth put")
   // Access control check.
   item.authorizePut(app, function (err) {
     log.trace("<%s> '%s' authorizePut: err: %s", Model.name, item.dn,

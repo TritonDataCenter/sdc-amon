@@ -65,7 +65,6 @@ function ldapClientBind(next) {
   log('# LDAP client bind.')
   ldapClient = ldap.createClient({
     url: config.ufds.url,
-    //log4js: log4js,
     reconnect: false
   });
   ldapClient.bind(config.ufds.rootDn, config.ufds.password, function(err) {
@@ -108,6 +107,7 @@ function createUser(user, next) {
 }
 
 function createUsers(next) {
+  log('# Create users.')
   async.map([sulkybob, adminbob], createUser, function(err, _){
     next(err)
   });
@@ -129,6 +129,7 @@ function makeAdminbobOperator(next) {
 }
 
 function addKey(next) {
+  log("# Add key for sulkybob.")
   // Note: We should probably just use the CAPI api for this, but don't want
   // to encode the pain of getting the CAPI auth.
   var key = fs.readFileSync(__dirname + '/id_rsa.amontest.pub', 'utf8');

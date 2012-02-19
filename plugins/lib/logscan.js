@@ -28,8 +28,8 @@ function _trim(s) {
 
 //---- plugin class
 
-function LogScanProbe(id, data) {
-  Plugin.call(this, id, data);
+function LogScanProbe(id, data, log) {
+  Plugin.call(this, id, data, log);
   LogScanProbe.validateConfig(this.config);
 
   this.path = this.config.path;
@@ -55,6 +55,7 @@ LogScanProbe.validateConfig = function(config) {
 
 LogScanProbe.prototype.start = function(callback) {
   var self = this;
+  var log = this.log;
 
   this.timer = setInterval(function() {
     if (!self._running)
