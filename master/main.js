@@ -106,17 +106,17 @@ function main() {
     'v': ['--verbose'],
     'f': ['--file'],
   };
-  var opts = nopt(longOpts, shortOpts, process.argv, 2);
-  if (opts.help) {
+  var rawOpts = nopt(longOpts, shortOpts, process.argv, 2);
+  if (rawOpts.help) {
     usage(0);
   }
-  if (opts.verbose) {
-    log.level(opts.verbose.length > 1 ? 'trace' : 'debug');
+  if (rawOpts.verbose) {
+    log.level(rawOpts.verbose.length > 1 ? 'trace' : 'debug');
   }
-  if (! opts.file) {
-    opts.file = DEFAULT_CONFIG_PATH;
+  if (! rawOpts.file) {
+    rawOpts.file = DEFAULT_CONFIG_PATH;
   }
-  log.trace({opts: opts}, 'opts');
+  log.trace({opts: rawOpts}, 'opts');
 
   // Die on unknown opts.
   var extraOpts = {};
@@ -130,7 +130,7 @@ function main() {
     usage(1);
   }
 
-  var config = loadConfig(opts.file);
+  var config = loadConfig(rawOpts.file);
   // Log config (but don't put passwords in the log file).
   var censorKeys = {"password": "***", "authToken": "***", "pass": "***"}
   function censor(key, value) {
