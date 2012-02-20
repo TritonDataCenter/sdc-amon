@@ -99,7 +99,7 @@ agent: $(NODEDIR)/bin/npm common plugins
 relay: $(NODEDIR)/bin/npm deps/node-sdc-clients/package.json common plugins
 	(cd relay && $(NPM) update && $(NPM) install ../deps/node-sdc-clients && $(NPM) link amon-common amon-plugins)
 	# Workaround https://github.com/isaacs/npm/issues/2144#issuecomment-4062165
-	(cd relay && rm -rf node_modules/zutil/build && $(NPM) install -f zutil)
+	(cd relay && rm -rf node_modules/zutil/build && $(NPM) rebuild zutil)
 
 master: $(NODEDIR)/bin/npm common plugins
 	(cd master && $(NPM) update && $(NPM) install ../deps/node-sdc-clients && $(NPM) link amon-common amon-plugins)
