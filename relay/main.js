@@ -157,10 +157,11 @@ function getMasterUrl(poll, callback) {
     log.info("Poll MAPI for Amon zone (admin uuid '%s').",
       process.env.UFDS_ADMIN_UUID);
     var options = {
-      owner_uuid: process.env.UFDS_ADMIN_UUID,
-      "tag.smartdc_role": "amon"
+      tags: {
+        smartdc_role: 'amon'
+      }
     }
-    mapi.listMachines(options, function (err, machines, headers) {
+    mapi.listMachines(process.env.UFDS_ADMIN_UUID, options, function (err, machines, headers) {
       if (err) {
         // Retry on error.
         log.error("MAPI listZones error: '%s'",
