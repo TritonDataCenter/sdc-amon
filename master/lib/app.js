@@ -434,9 +434,9 @@ App.prototype.userFromId = function(userId, callback) {
         return cacheAndCallback(null, users[0]);
         break;
       default:
-        log.error("unexpected number of users (%d) matching user id '%s': "
-          + "searchOpts=%o  users=%o", users.length, userId, searchOpts,
-          users);
+        log.error({searchOpts: searchOpts, users: users},
+          "unexpected number of users (%d) matching user id '%s'",
+          users.length, userId);
         return cacheAndCallback(new restify.InternalError(
           format("error determining user for '%s'", userId)));
       }
@@ -583,7 +583,7 @@ App.prototype.serverExists = function (serverUuid, callback) {
 App.prototype.processEvent = function (event, callback) {
   var self = this;
   var log = this.log;
-  log.debug("App.processEvent: %o", event);
+  log.debug({event: event}, "App.processEvent");
 
   // 1. Get the monitor for this probe, to get its list of contacts.
   var userUuid = event.probe.user;

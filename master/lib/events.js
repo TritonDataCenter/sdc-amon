@@ -53,7 +53,7 @@ function addEvents(req, res, next) {
   } else {
     events = [req.params];
   }
-  req.log.info("addEvents: events=%o", events);
+  req.log.info({events: events}, "addEvents");
 
   // Collect errors so first failure doesn't abort the others.
   var errs = [];

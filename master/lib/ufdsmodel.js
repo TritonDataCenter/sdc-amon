@@ -74,8 +74,8 @@ function modelList(app, Model, parentDn, log, callback) {
     filter: '(objectclass=' + Model.objectclass + ')',
     scope: 'sub'
   };
-  log.trace("<%s> modelList: ufds search: parentDn='%s', search opts=%o",
-    Model.name, parentDn, opts);
+  log.trace({searchOpts: opts}, "<%s> modelList: ufds search: parentDn='%s'",
+    Model.name, parentDn);
   app.ufds.search(parentDn, opts, function(err, result) {
     if (err) return cacheAndCallback(err);
     var items = [];
@@ -87,8 +87,8 @@ function modelList(app, Model, parentDn, log, callback) {
           log.warn("Ignoring invalid %s (dn='%s'): %s", Model.name,
             entry.object.dn, err2)
         } else {
-          log.error("Unknown error with %s entry: %s %o\n%s", Model.name,
-            err2, entry.object, err2.stack)
+          log.error(err2, "Unknown error with %s entry:", Model.name,
+            entry.object)
         }
       }
     });
@@ -103,7 +103,7 @@ function modelList(app, Model, parentDn, log, callback) {
           result, JSON.stringify(opts));
         return callback(new restify.InternalError());
       }
-      log.trace('%s items: %o', Model.name, items);
+      log.trace('%s items:', Model.name, items);
       return cacheAndCallback(null, items);
     });
   });
@@ -162,7 +162,7 @@ function modelPut(app, Model, data, log, callback) {
             new restify.InternalError("Error saving "+Model.name));
         }
       } else {
-        log.trace('<%s> create: item=%o', Model.name, item);
+        log.trace('<%s> create item:', Model.name, item);
         app.cacheInvalidatePut(Model.name, item);
         return callback(null, item);
       }
@@ -230,8 +230,8 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
           log.warn("Ignoring invalid %s (dn='%s'): %s", Model.name,
             entry.object.dn, err2)
         } else {
-          log.error("Unknown error with %s entry: %s %o\n%s", Model.name,
-            err2, entry.object, err2.stack)
+          log.error(err2, "Unknown error with %s entry:", Model.name,
+            entry.object)
         }
       }
     });

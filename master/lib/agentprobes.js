@@ -75,7 +75,7 @@ function findProbes(app, field, uuid, log, callback) {
           return 0;
       });
 
-      log.trace("probes for %s '%s': %o", field, uuid, probes);
+      log.trace({probes: probes}, "probes for %s '%s'", field, uuid);
       return callback(null, probes);
     });
   });

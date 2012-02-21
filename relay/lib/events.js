@@ -29,7 +29,7 @@ function addEvents(req, res, next) {
     event.machine = req._targetUuid;
   }
 
-  req.log.debug("relaying event: %o", event);
+  req.log.debug({event: event}, "relaying event");
   req._master.sendEvent(event, function(err) {
     if (err) {
       return next(err);

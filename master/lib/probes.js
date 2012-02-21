@@ -168,9 +168,8 @@ Probe.prototype.authorizePut = function (app, callback) {
             "Invalid 'machine': machine '%s' does not exist or is not "
             + "owned by user '%s'.", self.machine, self.user)));
         } else {
-          log.error("unexpected error authorizing probe put against MAPI: "
-            + "probe=%s, mapi-error=%o",
-            JSON.stringify(self.serialize()), err.stack || err);
+          log.error({err: err, probe: self.serialize()},
+            "unexpected error authorizing probe put against MAPI");
           return callback(new restify.InternalError(
             "Internal error authorizing probe put."));
         }
@@ -196,9 +195,8 @@ Probe.prototype.authorizePut = function (app, callback) {
       // Server must exist.
       app.serverExists(self.server, function (err, serverExists) {
         if (err) {
-          log.error("unexpected error authorizing probe put against MAPI: "
-            + "probe=%s, mapi-error=%o",
-            JSON.stringify(self.serialize()), err.stack || err);
+          log.error({err: err, probe: self.serialize()},
+            "unexpected error authorizing probe put against MAPI");
           return callback(new restify.InternalError(
             "Internal error authorizing probe put."));
         }

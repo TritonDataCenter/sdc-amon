@@ -76,7 +76,7 @@ Twilio.prototype.notify = function(event, contactAddress, message, callback) {
   if (!callback || typeof(callback) !== 'function')
     throw new TypeError('callback must be a function');
 
-  var log = this.log;
+  var log = this.log.child({twilioEvent: event});
   var self = this;
   var auth = 'Basic ' +
     new Buffer(self.accountSid + ':' + self.authToken).toString('base64');
@@ -102,11 +102,11 @@ Twilio.prototype.notify = function(event, contactAddress, message, callback) {
   /*jsl:ignore*/
   operation.try(function(currentAttempt) {
     /*jsl:end*/
-    log.debug('Twilio(%s): request => %o', event, options);
+    log.debug({twilioReq: options}, 'twilio request');
     var req = https.request(options, function(res) {
       if (res.statusCode >= 500) {
-        log.warn('Twilio(%s): failure code: %d, calling retry',
-                 event, res.statusCode);
+        log.warn({res: res}, 'twilio failure response (code %d), calling retry',
+          res.statusCode);
         return operation.retry(new Error());
       }
 
@@ -117,28 +117,26 @@ Twilio.prototype.notify = function(event, contactAddress, message, callback) {
       });
       res.on('end', function() {
         if (res.statusCode !== 201) {
-          log.debug('Twilio(%s): error => %s',
-                    event, res.body ? res.body : '?????');
-          log.warn('Twilio(%s): failed to issue twilio notification(%s): %d',
-                   event, self.to, res.statusCode);
+          log.debug({twilioResBody: res.body || '(empty)'}, 'twilio error');
+          log.warn({res: res}, 'failed to issue twilio notification to "%s"',
+            self.to);
           return callback(new Error(res.body ? res.body : 'UnknownError?'));
         } else {
-          log.info('Twilio(%s): notification sent to %s => %s',
-                   event, self.to, res.body ? res.body : 'empty');
+          log.info({twilioResBody: res.body || '(empty)'},
+            'twilio notification sent to "%s"', self.to);
           return callback();
         }
       });
 
-      log.debug('Twilio(%s) HTTP=%s, headers=%o',
-                event, res.statusCode, res.headers);
+      log.debug({res: res}, 'twilio response');
     });
 
     req.on('error', function(err) {
-      log.warn('Twilio(%s): error => %s', event, err.stack);
+      log.warn(err, 'twilio request error');
       operation.retry(err);
     });
 
-    log.debug('Twilio(%s): writing %s', event, body);
+    log.debug({twilioBody: body}, 'writing twilio request body');
     req.write(body);
     req.end();
   });

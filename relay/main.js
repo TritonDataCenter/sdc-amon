@@ -71,7 +71,7 @@ function listenInGlobalZoneSync() {
       log.info('Amon-relay listening in global zone on socket "%s".',
         config.socket);
     } else {
-      log.error('Unable to start amon-relay in global zone: %o', err);
+      log.error(err, 'Unable to start amon-relay in global zone');
       //XXX Shouldn't this be fatal?
     }
   });
