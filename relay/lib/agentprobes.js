@@ -25,14 +25,14 @@ function headAgentProbes(req, res, next) {
   //    reading disk.
   var md5Path = path.resolve(req._dataDir,
     format("%s-%s.json.content-md5", req._targetType, req._targetUuid));
-  fs.readFile(md5Path, function (err, contentMD5) {
+  fs.readFile(md5Path, 'utf8', function (err, contentMD5) {
     if (err) {
       if (false && err.code === "ENOENT") {
         // We haven't retrieved any probes data from master for this zone
         // yet. Just use an empty list.
         res.send(200, []);
       } else {
-        log.error("Could not read '%s': %s", md5Path, err);
+        req.log.error("Could not read '%s': %s", md5Path, err);
         res.send(new restify.InternalError());
       }
       return next();
@@ -55,7 +55,7 @@ function listAgentProbes(req, res, next) {
         // yet. Just use an empty list.
         res.send(200, []);
       } else {
-        log.error("Could not read '%s': %s", jsonPath, err);
+        req.log.error("Could not read '%s': %s", jsonPath, err);
         res.send(new restify.InternalError());
       }
       return next();

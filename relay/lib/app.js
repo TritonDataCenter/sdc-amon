@@ -324,7 +324,7 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
     var agentProbesStr = JSON.stringify(agentProbes, null, 2);
     utils.asyncForEach([[jsonPath, agentProbesStr], [md5Path, md5]],
       function (item, cb2) {
-        fs.writeFile(item[0], item[1], cb2);
+        fs.writeFile(item[0], item[1], 'utf8', cb2);
       },
       cb);
   }
