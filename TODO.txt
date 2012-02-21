@@ -4,8 +4,10 @@
   - TODO:
     - add route names to all endpoints
     - sdc-amon: drop the x-api-version header
-    - %o in logs
+    - %o in logs:
+      $ ack -a '%o' | grep -v '\.log:' | grep -v jsstyle
     - review and log.* with err, and others
+    - amon-relay log too wordy [MON-42]
   - restify migration:
     - no `restify.log`, carry your own log along
     - can use 'after' event on restify server instead of repeating 'after'

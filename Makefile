@@ -1,13 +1,12 @@
-ifeq ($(VERSION), "")
-	@echo "Use gmake"
-endif
-
-
 #
-# Config
+# Copyright (c) 2012, Joyent, Inc. All rights reserved.
+#
+# Makefile for Amon
 #
 
+#
 # Mountain Gorilla-spec'd versioning.
+#
 # Need GNU awk for multi-char arg to "-F".
 AWK=$(shell (which gawk 2>/dev/null | grep -v "^no ") || (which nawk 2>/dev/null | grep -v "^no ") || which awk)
 BRANCH=$(shell git symbolic-ref HEAD | $(AWK) -F/ '{print $$3}')
@@ -22,12 +21,18 @@ GITDESCRIBE=g$(shell git describe --all --long $(DIRTY_ARG) | $(AWK) -F'-g' '{pr
 STAMP=$(BRANCH)-$(TIMESTAMP)-$(GITDESCRIBE)
 
 
+#
 # Directories
+#
 TOP := $(shell pwd)
 NODEDIR = $(TOP)/deps/node-install
+#XXX Needed?
 NODE_PATH = $(NODEDIR)
 
+
+#
 # Tools
+#
 MAKE = make
 TAR = tar
 UNAME := $(shell uname)
@@ -36,12 +41,12 @@ ifeq ($(UNAME), SunOS)
 	TAR = gtar
 	CC = gcc
 endif
-
 HAVE_GJSLINT := $(shell which gjslint >/dev/null && echo yes || echo no)
 NODE := $(NODEDIR)/bin/node
 NODE_WAF := $(NODEDIR)/bin/node-waf
 NPM_ENV := npm_config_cache=$(shell echo $(TOP)/tmp/npm-cache) npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH
 NPM := $(NPM_ENV) $(NODEDIR)/bin/npm
+#XXX
 PKG_DIR := .pkg
 RESTDOWN := python2.6 $(TOP)/deps/restdown/bin/restdown
 NODE_DEV := $(TOP)/node_modules/.bin/node-dev
@@ -50,11 +55,33 @@ JSHINT := $(TOP)/node_modules/.bin/jshint
 
 
 #
+# Files
+#
+DOC_FILES = index.restdown
+JS_FILES = $(shell ls master/*.js relay/*.js agent/*.js) \
+       $(shell find master relay agent common plugins test -name '*.js')
+#XXX
+JSL_CONF_NODE    = tools/jsl.node.conf
+JSL_FILES_NODE   = $(JS_FILES)
+JSSTYLE_FILES    = $(JS_FILES)
+JSSTYLE_FLAGS    = -o indent=2,doxygen,unparenthesized-return=0
+#XXX
+#SMF_MANIFESTS    = smf/manifests/bapi.xml
+
+CLEAN_FILES += $(NODEDIR) agent/node_modules relay/node_modules \
+       master/node_modules common/node_modules plugins/node_modules \
+       ./node_modules .pkg amon-*.tgz \
+       tmp/npm-cache amon-*.tar.bz2 \
+       bin/amon-zwatch     # recently removed bits
+
+
+#
 # Targets
 #
 
 all:: common plugins agent relay master dev
 
+#XXX
 .PHONY: common agent relay master common plugins test lint gjslint jshint pkg pkg_agent pkg_relay pkg_master publish
 
 
@@ -249,9 +276,6 @@ doc: deps/restdown/bin/restdown
 apisummary:
 	@grep '^\(## \)' docs/index.md
 
-tmp:
-	mkdir -p tmp
-
 test:
 	[ -f test/config.json ] \
 		|| (echo "error: no 'test/config.json', use 'test/config.json.in'" && exit 1)
@@ -260,18 +284,27 @@ test:
 	./test/clean-test-data.sh
 	PATH=$(NODEDIR)/bin:$(PATH) TAP=1 $(TAP) test/*.test.js
 
+tmp:
+	mkdir -p tmp
+
+.PHONY: devrun
 devrun: tmp $(NODEDIR)/bin/node-dev
 	tools/devrun.sh
 
+.PHONY: install_agent_pkg
 install_agent_pkg:
-	/opt/smartdc/agents/bin/agents-npm --no-registry install ./`ls -1 amon-agent*.tgz | tail -1`
+	/opt/smartdc/agents/bin/apm --no-registry install ./`ls -1 amon-agent*.tgz | tail -1`
+.PHONY: install_relay_pkg
 install_relay_pkg:
-	/opt/smartdc/agents/bin/agents-npm --no-registry install ./`ls -1 amon-relay*.tgz | tail -1`
+	/opt/smartdc/agents/bin/apm --no-registry install ./`ls -1 amon-relay*.tgz | tail -1`
 
-clean:
+clean::
 	([[ -d deps/node ]] && cd deps/node && $(MAKE) distclean || true)
-	rm -rf $(NODEDIR) agent/node_modules relay/node_modules \
-		master/node_modules common/node_modules plugins/node_modules \
-		./node_modules .pkg amon-*.tgz \
-		tmp/npm-cache amon-*.tar.bz2
-	rm -rf bin/amon-zwatch     # recently removed bits
+
+
+#
+# Includes
+#
+
+include ./Makefile.deps
+include ./Makefile.targ
