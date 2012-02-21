@@ -36,6 +36,8 @@ SL_STATUS=`svcs -H amon-relay | awk '{ print $1 }'`
 echo "Restarting amon-relay (status was $SL_STATUS)."
 if [ "$SL_STATUS" = 'online' ]; then
   svcadm restart amon-relay
+else if [ "$SL_STATUS" = 'maintenance' ]; then
+  svcadm clear amon-relay
 else
   svcadm enable amon-relay
 fi
