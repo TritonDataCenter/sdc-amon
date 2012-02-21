@@ -4,6 +4,7 @@ var fs = require('fs');
 var http = require('http');
 var path = require('path');
 var os = require('os');
+var Pipe = process.binding("pipe_wrap").Pipe;
 
 var restify = require('restify');
 var zsock = require('zsock');
@@ -230,8 +231,15 @@ App.prototype.listen = function(callback) {
         return self.sendOperatorEvent(msg, {zone: zonename}, callback);
       }
       self.log.debug('Opened zsock to zone "%s" on FD %d', zonename, fd);
-      self.server.listenFD(fd);
-      return callback();
+
+      // Backdoor to listen on `fd`.
+      var p = new Pipe(true);
+      p.open(fd);
+      p.readable = p.writable = true;
+      self.server._handle = p;
+      self.server.listen(function () {
+        callback();
+      });
     });
   });
 };
