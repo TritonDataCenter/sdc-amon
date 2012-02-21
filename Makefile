@@ -73,6 +73,7 @@ $(NODEDIR)/bin/npm: $(NODEDIR)/bin/node
 deps/node-sdc-clients/package.json: $(NODEDIR)/bin/npm
 	(GIT_SSL_NO_VERIFY=1 git submodule update --init deps/node-sdc-clients)
 	$(NPM) install
+	$(NPM) link   # make available for linking in 'dev' target
 
 deps/restdown/bin/restdown:
 	(GIT_SSL_NO_VERIFY=1 git submodule update --init deps/restdown)
