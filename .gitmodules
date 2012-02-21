@@ -3,7 +3,7 @@
 	url = git://github.com/joyent/node.git
 [submodule "deps/npm"]
 	path = deps/npm
-	url = git://github.com/isaacs/npm.git
+	url = git://github.com/trentm/npm.git
 [submodule "deps/restdown"]
 	path = deps/restdown
 	url = git://github.com/trentm/restdown.git
