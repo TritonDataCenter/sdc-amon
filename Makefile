@@ -70,8 +70,9 @@ $(NODEDIR)/bin/npm: $(NODEDIR)/bin/node
 	(GIT_SSL_NO_VERIFY=1 git submodule update --init deps/npm)
 	(cd deps/npm && $(NPM_ENV) $(MAKE) install)
 
-deps/node-sdc-clients/package.json:
+deps/node-sdc-clients/package.json: $(NODEDIR)/bin/npm
 	(GIT_SSL_NO_VERIFY=1 git submodule update --init deps/node-sdc-clients)
+	$(NPM) install
 
 deps/restdown/bin/restdown:
 	(GIT_SSL_NO_VERIFY=1 git submodule update --init deps/restdown)
@@ -104,7 +105,7 @@ master: $(NODEDIR)/bin/npm deps/node-sdc-clients/package.json common plugins
 dev: $(NODEDIR)/bin/npm deps/node-sdc-clients/package.json common
 	$(NPM) install
 	$(NPM) link amon-common
-	$(NPM) link deps/node-sdc-clients
+	$(NPM) link sdc-clients
 
 
 #
