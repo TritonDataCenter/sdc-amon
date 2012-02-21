@@ -20,12 +20,12 @@ var amonCommon = require('amon-common'),
 
 function headAgentProbes(req, res, next) {
   req.log.trace({params: req.params}, 'HeadAgentProbes');
-  // TODO: cache these md5's in memory. With 400 zones hitting this endpoint
+  // XXX:TODO: cache these md5's in memory. With 400 zones hitting this endpoint
   //    every 30 seconds (or whatever poll interval) we should avoid
   //    reading disk.
   var md5Path = path.resolve(req._dataDir,
     format("%s-%s.json.content-md5", req._targetType, req._targetUuid));
-  fs.readFile(md5Path, function (err, data) {
+  fs.readFile(md5Path, function (err, contentMD5) {
     if (err) {
       if (false && err.code === "ENOENT") {
         // We haven't retrieved any probes data from master for this zone
@@ -37,15 +37,8 @@ function headAgentProbes(req, res, next) {
       }
       return next();
     }
-    res.send({
-      code: 200,
-      headers: {
-        "Content-MD5": data,
-      },
-      // Note: This'll give false Content-Length. If we care, then we
-      // could cache content-length as well.
-      body: ""
-    });
+    res.header('Content-MD5', contentMD5);
+    res.send();
     return next();
   });
 }
