@@ -53,33 +53,28 @@ JSHINT := $(TOP)/node_modules/.bin/jshint
 # Targets
 #
 
-all:: deps common plugins agent relay master
+all:: common plugins agent relay master dev
 
-.PHONY: deps agent relay master common plugins test lint gjslint jshint pkg pkg_agent pkg_relay pkg_master publish
+.PHONY: common agent relay master common plugins test lint gjslint jshint pkg pkg_agent pkg_relay pkg_master publish
 
 
 #
 # deps
 #
 
-# TAP is a landmark for all dev/test deps.
-deps: $(NODEDIR)/bin/node $(NODEDIR)/bin/npm $(TAP)
-
-# Use 'Makefile' landmarks instead of the dir itself, because dir mtime
-# is that of the most recent file: results in unnecessary rebuilds.
-deps/node/Makefile deps/npm/Makefile deps/restdown/bin/restdown deps/node-sdc-clients/package.json:
-	(GIT_SSL_NO_VERIFY=1 git submodule update --init)
-
-$(NODEDIR)/bin/node: deps/node/Makefile
+$(NODEDIR)/bin/node:
+	(GIT_SSL_NO_VERIFY=1 git submodule update --init deps/node)
 	(cd deps/node && ./configure --prefix=$(NODEDIR) && $(MAKE) -j 4 && $(MAKE) install)
 
-$(NODEDIR)/bin/npm: $(NODEDIR)/bin/node deps/npm/Makefile
+$(NODEDIR)/bin/npm: $(NODEDIR)/bin/node
+	(GIT_SSL_NO_VERIFY=1 git submodule update --init deps/npm)
 	(cd deps/npm && $(NPM_ENV) $(MAKE) install)
 
-$(TAP): $(NODEDIR)/bin/npm deps/node-sdc-clients/package.json
-	$(NPM) install
-	$(NPM) link ./common
-	$(NPM) link deps/node-sdc-clients
+deps/node-sdc-clients/package.json:
+	(GIT_SSL_NO_VERIFY=1 git submodule update --init deps/node-sdc-clients)
+
+deps/restdown/bin/restdown:
+	(GIT_SSL_NO_VERIFY=1 git submodule update --init deps/restdown)
 
 
 
@@ -101,8 +96,16 @@ relay: $(NODEDIR)/bin/npm deps/node-sdc-clients/package.json common plugins
 	# Workaround https://github.com/isaacs/npm/issues/2144#issuecomment-4062165
 	(cd relay && rm -rf node_modules/zutil/build && $(NPM) rebuild zutil)
 
-master: $(NODEDIR)/bin/npm common plugins
+master: $(NODEDIR)/bin/npm deps/node-sdc-clients/package.json common plugins
 	(cd master && $(NPM) update && $(NPM) install ../deps/node-sdc-clients && $(NPM) link amon-common amon-plugins)
+
+# "dev" is the name for the top-level test/dev package
+.PHONY: dev
+dev: $(NODEDIR)/bin/npm deps/node-sdc-clients/package.json common
+	$(NPM) install
+	$(NPM) link amon-common
+	$(NPM) link deps/node-sdc-clients
+
 
 #
 # Packaging targets
@@ -223,7 +226,7 @@ publish: $(BITS_DIR)
 
 
 
-jshint: deps
+jshint:
 	$(JSHINT) common/lib plugins/lib master/main.js master/lib relay/main.js relay/lib agent/main.js agent/lib
 
 gjslint:
@@ -239,7 +242,7 @@ lint: jshint
 	@echo "* * *"
 endif
 
-doc:
+doc: deps/restdown/bin/restdown
 	$(RESTDOWN) -v -m docs docs/index.md
 apisummary:
 	@grep '^\(## \)' docs/index.md
