@@ -219,7 +219,7 @@ pkg_master:
 	find $(PKG_DIR)/pkg_master -name .lock-wscript | xargs rm -rf   # waf build file
 	find $(PKG_DIR)/pkg_master -name config.log | xargs rm -rf   # waf build file
 
-	(cd $(PKG_DIR)/pkg_master && $(TAR) cjf $(TOP)/amon-master-$(STAMP).tar.bz2 *)
+	(cd $(PKG_DIR)/pkg_master && $(TAR) cjf $(TOP)/amon-pkg-$(STAMP).tar.bz2 *)
 	@echo "Created 'amon-master-$(STAMP).tar.bz2'."
 
 
