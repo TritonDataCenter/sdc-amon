@@ -50,7 +50,7 @@ JS_FILES = $(shell ls master/*.js relay/*.js agent/*.js) \
 JSL_CONF_NODE    = tools/jsl.node.conf
 JSL_FILES_NODE   = $(JS_FILES)
 JSSTYLE_FILES    = $(JS_FILES)
-JSSTYLE_FLAGS    = -o indent=2,doxygen,unparenthesized-return=0
+JSSTYLE_FLAGS    = -f tools/jsstyle.conf
 SMF_MANIFESTS    = agent/smf/amon-agent.smf.in relay/smf/amon-relay.smf.in \
 	master/smf/amon-relay.smf.in
 

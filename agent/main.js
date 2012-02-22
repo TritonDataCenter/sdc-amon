@@ -57,6 +57,7 @@ var log = new Logger({
 
 //---- internal support functions
 
+/* BEGIN JSSTYLED */
 /**
  * Run async `fn` on each entry in `list`. Call `cb(error)` when all done.
  * `fn` is expected to have `fn(item, callback) -> callback(error)` signature.
@@ -75,6 +76,7 @@ function asyncForEach(list, fn, cb) {
     })
   })
 }
+/* END JSSTYLED */
 
 
 /**
@@ -85,20 +87,20 @@ function asyncForEach(list, fn, cb) {
  * @param callback {Function} `function (err, probeData)`
  */
 function getProbeData(force, callback) {
-  relay.agentProbesMD5(function(err, upstreamMD5) {
+  relay.agentProbesMD5(function (err, upstreamMD5) {
     if (err) {
-      log.warn(err, "error getting agent probes MD5 (continuing with cache)");
+      log.warn(err, 'error getting agent probes MD5 (continuing with cache)');
       return callback(err, probeDataCache);
     }
     log.trace("get probe data: md5: '%s' (cached) vs. '%s' (upstream), force=%s",
       probeDataCacheMD5, upstreamMD5, force);
 
     if (!force && upstreamMD5 === probeDataCacheMD5) {
-      log.trace("get probe data: no change and !force");
+      log.trace('get probe data: no change and !force');
       return callback(null, probeDataCache);
     }
 
-    relay.agentProbes(function(err, probeData, probeDataMD5) {
+    relay.agentProbes(function (err, probeData, probeDataMD5) {
       if (err || !probeData || !probeDataMD5) {
         log.warn(err, 'error getting agent probes (continuing with cache)');
         return callback(err, probeDataCache);
@@ -107,12 +109,12 @@ function getProbeData(force, callback) {
       var oldMD5 = probeDataCacheMD5;
       probeDataCache = probeData;
       probeDataCacheMD5 = probeDataMD5;
-      saveProbeDataCache(function(err) {
+      saveProbeDataCache(function (err) {
         if (err) {
-          log.warn(err, "unable to cache probe data to disk (continuing)");
+          log.warn(err, 'unable to cache probe data to disk (continuing)');
         }
-        log.info("Successfully updated probe data from relay (md5: %s -> %s).",
-          oldMD5 || "(none)", probeDataMD5);
+        log.info('Successfully updated probe data from relay (md5: %s -> %s).',
+          oldMD5 || '(none)', probeDataMD5);
         return callback(err, probeDataCache);
       });
     });
@@ -152,7 +154,7 @@ function createProbe(id, probeData, callback) {
  * @param probe {Object} The probe instance.
  */
 function onNewProbe(probe) {
-  probe.on("event", sendEvent);
+  probe.on('event', sendEvent);
 }
 
 
@@ -160,10 +162,10 @@ function onNewProbe(probe) {
  * Send the given event up to this agent's relay.
  */
 function sendEvent(event) {
-  log.info({event: event}, "sending event");
+  log.info({event: event}, 'sending event');
   relay.sendEvent(event, function (err) {
     if (err) {
-      log.error({event: event, err: err}, "error sending event");
+      log.error({event: event, err: err}, 'error sending event');
     }
   });
 }
@@ -181,7 +183,7 @@ function updateProbes(force) {
   // 1. Get probe data from relay (may be cached).
   getProbeData(force, function (err, probeData) {
     if (err) {
-      log.warn(err, "error getting probe data (continuing, presuming no probes)");
+      log.warn(err, 'error getting probe data (continuing, presuming no probes)');
       if (!probeData) {
         probeData = [];
       }
@@ -198,23 +200,23 @@ function updateProbes(force) {
     var todos = []; // [<action>, <probe-id>]
     Object.keys(probeFromId).forEach(function (id) {
       if (! probeDataFromId[id]) {
-        todos.push(["delete", id]); // Delete this probe.
+        todos.push(['delete', id]); // Delete this probe.
       }
     });
     Object.keys(probeDataFromId).forEach(function (id) {
       var probe = probeFromId[id];
       if (!probe) {
-        todos.push(["add", id]); // Add this probe.
+        todos.push(['add', id]); // Add this probe.
       } else {
         var pdString = JSON.stringify(probeDataFromId[id]);
         var pString = probe.json;
         //XXX Naive. Isn't this susceptible to key order?
         if (pdString !== pString) {
-          todos.push(["update", id]); // Update this probe.
+          todos.push(['update', id]); // Update this probe.
         }
       }
     });
-    log.trace({todos: todos}, "update probes: todos")
+    log.trace({todos: todos}, 'update probes: todos')
 
     // 4. Handle each of those todos and log when finished. `probeFromId`
     //    global is updated here.
@@ -229,12 +231,12 @@ function updateProbes(force) {
       var id = todo[1];
 
       switch (action) {
-      case "add":
+      case 'add':
         log.debug({id: id, probeData: probeDataFromId[id]},
-          "update probes: create probe");
+          'update probes: create probe');
         createProbe(id, probeDataFromId[id], function (err, probe) {
           if (err) {
-            log.error({err: err, id: id}, "could not create probe (skipping)");
+            log.error({err: err, id: id}, 'could not create probe (skipping)');
             stats.errors++;
           } else {
             probeFromId[id] = probe;
@@ -245,7 +247,7 @@ function updateProbes(force) {
         });
         break;
 
-      case "delete":
+      case 'delete':
         log.debug({id: id, probeData: probeFromId[id].json},
           'update probes: delete probe');
         probeFromId[id].stop();
@@ -254,17 +256,17 @@ function updateProbes(force) {
         cb();
         break;
 
-      case "update":
+      case 'update':
         // Changed probe.
         var probe = probeFromId[id];
         var probeData = probeDataFromId[id];
         log.debug({id: id, oldProbeData: probe.json, newProbeData: probeData},
-            "update probes: update probe");
+            'update probes: update probe');
         probe.stop();
         delete probeFromId[id];
         createProbe(id, probeDataFromId[id], function (err, probe) {
           if (err) {
-            log.error({id: id, err: err}, "could not create probe (skipping)");
+            log.error({id: id, err: err}, 'could not create probe (skipping)');
             stats.errors++;
           } else {
             probeFromId[id] = probe;
@@ -280,7 +282,7 @@ function updateProbes(force) {
       }
     }
     asyncForEach(todos, handleProbeTodo, function (err) {
-      log.info({stats: stats}, "updated probes");
+      log.info({stats: stats}, 'updated probes');
     });
   });
 }
@@ -339,27 +341,27 @@ function usage(code, msg) {
 
 
 function printHelp() {
-  console.log("Usage: node main.js [OPTIONS]");
-  console.log("");
-  console.log("The Amon agent.");
-  console.log("");
-  console.log("Options:");
-  console.log("  -h, --help     Print this help info and exit.");
-  console.log("  -v, --verbose  Once for DEBUG log output. Twice for TRACE.");
-  console.log("");
-  console.log("  -s PATH, --socket PATH");
-  console.log("       The Amon relay socket path on which to listen. In normal operation");
-  console.log("       this is the path to the Unix domain socket created by the Amon relay.");
-  console.log("       However, for development this can be a port number.")
-  console.log("       Default: " + DEFAULT_SOCKET);
-  console.log("  -D DIR, --data-dir DIR");
-  console.log("       Path to a directory to use for working data storage.");
-  console.log("       This is all cache data, i.e. can be restored. Typically ");
+  console.log('Usage: node main.js [OPTIONS]');
+  console.log('');
+  console.log('The Amon agent.');
+  console.log('');
+  console.log('Options:');
+  console.log('  -h, --help     Print this help info and exit.');
+  console.log('  -v, --verbose  Once for DEBUG log output. Twice for TRACE.');
+  console.log('');
+  console.log('  -s PATH, --socket PATH');
+  console.log('       The Amon relay socket path on which to listen. In normal operation');
+  console.log('       this is the path to the Unix domain socket created by the Amon relay.');
+  console.log('       However, for development this can be a port number.')
+  console.log('       Default: ' + DEFAULT_SOCKET);
+  console.log('  -D DIR, --data-dir DIR');
+  console.log('       Path to a directory to use for working data storage.');
+  console.log('       This is all cache data, i.e. can be restored. Typically ');
   console.log("       this is somewhere under '/var/run'.");
-  console.log("       Default: " + DEFAULT_DATA_DIR);
-  console.log("  -p SECONDS, --poll SECONDS");
-  console.log("       The frequency to poll the relay for probe data updates.");
-  console.log("       Default is " + DEFAULT_POLL + " seconds.");
+  console.log('       Default: ' + DEFAULT_DATA_DIR);
+  console.log('  -p SECONDS, --poll SECONDS');
+  console.log('       The frequency to poll the relay for probe data updates.');
+  console.log('       Default is ' + DEFAULT_POLL + ' seconds.');
 }
 
 
@@ -405,12 +407,12 @@ function main() {
 
   // Build the config (intentionally global).
   config = {
-    dataDir: rawOpts["data-dir"] || DEFAULT_DATA_DIR,
+    dataDir: rawOpts['data-dir'] || DEFAULT_DATA_DIR,
     poll: rawOpts.poll || DEFAULT_POLL,
     socket: rawOpts.socket || DEFAULT_SOCKET
   };
-  config.pdCachePath = path.resolve(config.dataDir, "probeData.json");
-  config.pdMD5CachePath = path.resolve(config.dataDir, "probeData.json.content-md5");
+  config.pdCachePath = path.resolve(config.dataDir, 'probeData.json');
+  config.pdMD5CachePath = path.resolve(config.dataDir, 'probeData.json.content-md5');
   log.debug({config: config}, 'config');
 
   // Create data dir, if necessary.

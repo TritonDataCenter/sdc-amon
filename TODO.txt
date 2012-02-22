@@ -6,6 +6,9 @@
     - sdc-amon: drop the x-api-version header
     - review and log.* with err, and others
     - amon-relay log too wordy [MON-42]
+  - jsstyle quotes:
+    "([^'\n]*?)"  -> '\1'
+    "([^'\n]*?)'([^'\n]*?)'([^'\n]*?)" ->  '\1"\2"\3'
   - restify migration:
     - no `restify.log`, carry your own log along
     - can use 'after' event on restify server instead of repeating 'after'
