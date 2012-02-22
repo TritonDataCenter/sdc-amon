@@ -90,20 +90,20 @@ all:: common plugins agent relay master dev
 #
 
 $(NODEDIR)/bin/node:
-	(GIT_SSL_NO_VERIFY=1 git submodule update --init deps/node)
+	([[ ! -d deps/node ]] && GIT_SSL_NO_VERIFY=1 git submodule update --init deps/node || true)
 	(cd deps/node && ./configure --prefix=$(NODEDIR) && $(MAKE) -j 4 && $(MAKE) install)
 
 $(NODEDIR)/bin/npm: $(NODEDIR)/bin/node
-	(GIT_SSL_NO_VERIFY=1 git submodule update --init deps/npm)
+	([[ ! -d deps/npm ]] && GIT_SSL_NO_VERIFY=1 git submodule update --init deps/npm || true)
 	(cd deps/npm && $(NPM_ENV) $(MAKE) install)
 
 deps/node-sdc-clients/package.json: $(NODEDIR)/bin/npm
-	(GIT_SSL_NO_VERIFY=1 git submodule update --init deps/node-sdc-clients)
+	([[ ! -d deps/node-sdc-clients ]] && GIT_SSL_NO_VERIFY=1 git submodule update --init deps/node-sdc-clients || true)
 	cd deps/node-sdc-clients && $(NPM) install
 	cd deps/node-sdc-clients && $(NPM) link   # make available for linking in 'dev' target
 
 deps/restdown/bin/restdown:
-	(GIT_SSL_NO_VERIFY=1 git submodule update --init deps/restdown)
+	([[ ! -d deps/restdown ]] && GIT_SSL_NO_VERIFY=1 git submodule update --init deps/restdown || true)
 
 
 
