@@ -220,7 +220,7 @@ pkg_master:
 	find $(PKG_DIR)/pkg_master -name config.log | xargs rm -rf   # waf build file
 
 	(cd $(PKG_DIR)/pkg_master && $(TAR) cjf $(TOP)/amon-pkg-$(STAMP).tar.bz2 *)
-	@echo "Created 'amon-master-$(STAMP).tar.bz2'."
+	@echo "Created 'amon-pkg-$(STAMP).tar.bz2'."
 
 
 # The "publish" target requires that "BITS_DIR" be defined.
@@ -231,7 +231,7 @@ publish: $(BITS_DIR)
 		exit 1; \
 	fi
 	mkdir -p $(BITS_DIR)/amon
-	cp amon-master-$(STAMP).tar.bz2 amon-relay-$(STAMP).tgz amon-agent-$(STAMP).tgz \
+	cp amon-pkg-$(STAMP).tar.bz2 amon-relay-$(STAMP).tgz amon-agent-$(STAMP).tgz \
 		$(BITS_DIR)/amon/
 
 
