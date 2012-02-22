@@ -1,5 +1,11 @@
 # higher-level prios
 
+- relay early stages case:
+    [2012-02-22T07:16:54.720Z] ERROR: amon-relay/2887 on headnode: Could not read '/var/db/amon-relay/server-564d3bd5-7176-ac53-9f26-5041160b2d8d.json.content-md5': Error: ENOENT, no such file or directory '/var/db/amon-relay/server-564d3bd5-7176-ac53-9f26-5041160b2d8d.json.content-md5' (req_id=4b57bdf3-6e22-4ca4-b972-a0d61145905e, route="HEAD /agentprobes")
+    [2012-02-22T07:16:54.723Z] INFO: amon-relay/audit/2887 on headnode: HEAD /agentprobes handled: 500 (req_id=4b57bdf3-6e22-4ca4-b972-a0d61145905e, audit=true, secure=false)
+  Don't 500 to agents when haven't gotten data from master yet. Just
+  return nothing for now.
+- get bunyan into agents/bin dir
 - node 0.6 & restify 1.x & bunyan
   - TODO:
     - add route names to all endpoints

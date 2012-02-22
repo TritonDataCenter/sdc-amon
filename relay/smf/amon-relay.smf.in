@@ -15,7 +15,7 @@
     <exec_method
       type="method"
       name="start"
-      exec="@@PREFIX@@/lib/node_modules/amon-relay/bin/amon-relay -v &amp;"
+      exec="@@PREFIX@@/lib/node_modules/amon-relay/bin/amon-relay -v -Z &amp;"
       timeout_seconds="10">
       <method_context>
         <method_credential user="root" group="staff"/>

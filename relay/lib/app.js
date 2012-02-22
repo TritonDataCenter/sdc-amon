@@ -236,7 +236,11 @@ App.prototype.listen = function(callback) {
       var p = new Pipe(true);
       p.open(fd);
       p.readable = p.writable = true;
-      self.server._handle = p;
+      // Need to set the `net.Server._handle` which gets closed on
+      // `net.Server.close()`. A Restify Server *has* a `net.Server`
+      // (actually http.Server or https.Server) as its `this.server`
+      // attribute rather than it *being* a `net.Server` subclass.
+      self.server.server._handle = p;
       self.server.listen(function () {
         callback();
       });
@@ -254,12 +258,15 @@ App.prototype.close = function(callback) {
   if (this._updatePollHandle) {
     clearInterval(this._updatePollHandle);
   }
-  this.server.on('close', callback);
+  this.log.info('close server for %s "%s"', this._targetType, this._targetUuid);
+  this.server.once('close', callback);
   try {
     this.server.close();
   } catch (err) {
     // A `net.Server` at least will throw if it hasn't reached a ready
     // state yet. We don't care.
+    this.log.warn(err, 'error closing server for %s "%s"', this._targetType,
+      this._targetUuid);
     callback();
   }
 };

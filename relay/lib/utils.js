@@ -39,7 +39,7 @@ function asyncForEach(list, fn, cb) {
  * <https://github.com/orlandov/node-zutil/commit/20cc87dc7ed800ad2ab4d8e03b137084ec766496>
  * XXX Time if this is fast enough to not need to be async.
  *
- * This will check once every 1-5 seconds (randomized).
+ * This will check once every 5-15 seconds (randomized).
  *
  * @param zonename {String}
  * @param svc {String} The SMF service or milestone name. E.g.
@@ -50,10 +50,10 @@ function asyncForEach(list, fn, cb) {
  * @param callback {Function} `function (err) {}`.
  */
 function waitForZoneSvc(zonename, svc, timeout, log, callback) {
-  // Return a random delay between 1000ms and 5000ms.
+  // Return a random delay between 5-15s.
   function getDelay() {
-    var min = 1000;
-    var max = 5000;
+    var min = 5000;
+    var max = 15000;
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
