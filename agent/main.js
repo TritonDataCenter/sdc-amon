@@ -92,11 +92,11 @@ function getProbeData(force, callback) {
       log.warn(err, 'error getting agent probes MD5 (continuing with cache)');
       return callback(err, probeDataCache);
     }
-    log.trace("get probe data: md5: '%s' (cached) vs. '%s' (upstream), force=%s",
+    log.trace('getProbeData: md5: "%s" (cached) vs. "%s" (upstream), force=%s',
       probeDataCacheMD5, upstreamMD5, force);
 
     if (!force && upstreamMD5 === probeDataCacheMD5) {
-      log.trace('get probe data: no change and !force');
+      log.trace('getProbeData: no change and !force');
       return callback(null, probeDataCache);
     }
 
@@ -105,7 +105,7 @@ function getProbeData(force, callback) {
         log.warn(err, 'error getting agent probes (continuing with cache)');
         return callback(err, probeDataCache);
       }
-      log.trace({probeData: probeData}, 'get probe data: retrieved agent probes');
+      log.trace({probeData: probeData}, 'getProbeData: retrieved agent probes');
       var oldMD5 = probeDataCacheMD5;
       probeDataCache = probeData;
       probeDataCacheMD5 = probeDataMD5;
@@ -133,7 +133,8 @@ function getProbeData(force, callback) {
 function createProbe(id, probeData, callback) {
   var ProbeType = plugins[probeData.type];
   if (! ProbeType) {
-    return callback(format("unknown amon probe plugin type: '%s'", probeData.type));
+    return callback(format('unknown amon probe plugin type: "%s"',
+      probeData.type));
   }
 
   try {
@@ -142,7 +143,8 @@ function createProbe(id, probeData, callback) {
     return callback(e);
   }
   probe.start(function (err) {
-    if (err) return callback(err);
+    if (err)
+      return callback(err);
     callback(null, probe);
   });
 }
@@ -183,7 +185,8 @@ function updateProbes(force) {
   // 1. Get probe data from relay (may be cached).
   getProbeData(force, function (err, probeData) {
     if (err) {
-      log.warn(err, 'error getting probe data (continuing, presuming no probes)');
+      log.warn(err,
+        'error getting probe data (continuing, presuming no probes)');
       if (!probeData) {
         probeData = [];
       }
@@ -278,7 +281,7 @@ function updateProbes(force) {
         break;
 
       default:
-        throw new Error(format("unknown probe todo action: '%s'", action));
+        throw new Error(format('unknown probe todo action: "%s"', action));
       }
     }
     asyncForEach(todos, handleProbeTodo, function (err) {
@@ -296,10 +299,12 @@ function updateProbes(force) {
 function saveProbeDataCache(callback) {
   fs.writeFile(config.pdCachePath, JSON.stringify(probeDataCache), 'utf8',
                function (err) {
-    if (err) return callback(err);
+    if (err)
+      return callback(err);
     fs.writeFile(config.pdMD5CachePath, probeDataCacheMD5, 'utf8',
                  function (err) {
-      if (err) return callback(err);
+      if (err)
+        return callback(err);
       return callback();
     });
   });
@@ -313,7 +318,7 @@ function loadProbeDataCacheSync() {
   if (path.existsSync(config.pdCachePath)) {
     try {
       probeDataCache = JSON.parse(fs.readFileSync(config.pdCachePath, 'utf8'));
-    } catch(e) {
+    } catch (e) {
       log.warn({err: e, pdCachePath: config.pdCachePath},
         'error loading probe data cache');
       probeDataCache = [];
@@ -322,7 +327,7 @@ function loadProbeDataCacheSync() {
   if (path.existsSync(config.pdMD5CachePath)) {
     try {
       probeDataCacheMD5 = fs.readFileSync(config.pdMD5CachePath, 'utf8');
-    } catch(e) {
+    } catch (e) {
       log.warn({err: e, pdMD5CachePath: config.pdMD5CachePath},
         'error loading probe data md5 cache');
       probeDataCacheMD5 = null;
@@ -350,14 +355,15 @@ function printHelp() {
   console.log('  -v, --verbose  Once for DEBUG log output. Twice for TRACE.');
   console.log('');
   console.log('  -s PATH, --socket PATH');
-  console.log('       The Amon relay socket path on which to listen. In normal operation');
-  console.log('       this is the path to the Unix domain socket created by the Amon relay.');
-  console.log('       However, for development this can be a port number.')
+  console.log('       The Amon relay socket path on which to listen. In ');
+  console.log('       normal operation this is the path to the Unix domain ');
+  console.log('       socket created by the Amon relay. However, for ');
+  console.log('       development this can be a port number.')
   console.log('       Default: ' + DEFAULT_SOCKET);
   console.log('  -D DIR, --data-dir DIR');
   console.log('       Path to a directory to use for working data storage.');
-  console.log('       This is all cache data, i.e. can be restored. Typically ');
-  console.log("       this is somewhere under '/var/run'.");
+  console.log('       This is all cache data, i.e. can be restored. Typically');
+  console.log('       this is somewhere under "/var/run".');
   console.log('       Default: ' + DEFAULT_DATA_DIR);
   console.log('  -p SECONDS, --poll SECONDS');
   console.log('       The frequency to poll the relay for probe data updates.');
@@ -412,7 +418,8 @@ function main() {
     socket: rawOpts.socket || DEFAULT_SOCKET
   };
   config.pdCachePath = path.resolve(config.dataDir, 'probeData.json');
-  config.pdMD5CachePath = path.resolve(config.dataDir, 'probeData.json.content-md5');
+  config.pdMD5CachePath = path.resolve(config.dataDir,
+    'probeData.json.content-md5');
   log.debug({config: config}, 'config');
 
   // Create data dir, if necessary.
@@ -421,7 +428,8 @@ function main() {
     fs.mkdirSync(config.dataDir, 0777)
   }
 
-  relay = new RelayClient({url: config.socket, log: log}); // intentionally global
+  // 'relay' is intentionally global
+  relay = new RelayClient({url: config.socket, log: log});
   loadProbeDataCacheSync();
 
   // Update probe data (from relay) every `poll` seconds. Also immediately
