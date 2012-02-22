@@ -4,21 +4,7 @@
 # Makefile for Amon
 #
 
-#
-# Mountain Gorilla-spec'd versioning.
-#
-# Need GNU awk for multi-char arg to "-F".
-AWK=$(shell (which gawk 2>/dev/null | grep -v "^no ") || (which nawk 2>/dev/null | grep -v "^no ") || which awk)
-BRANCH=$(shell git symbolic-ref HEAD | $(AWK) -F/ '{print $$3}')
-ifeq ($(TIMESTAMP),)
-	TIMESTAMP=$(shell date -u "+%Y%m%dT%H%M%SZ")
-endif
-DIRTY_ARG=--dirty
-ifeq ($(IGNORE_DIRTY), 1)
-	DIRTY_ARG=
-endif
-GITDESCRIBE=g$(shell git describe --all --long $(DIRTY_ARG) | $(AWK) -F'-g' '{print $$NF}')
-STAMP=$(BRANCH)-$(TIMESTAMP)-$(GITDESCRIBE)
+include ./Makefile.defs
 
 
 #
@@ -65,8 +51,8 @@ JSL_CONF_NODE    = tools/jsl.node.conf
 JSL_FILES_NODE   = $(JS_FILES)
 JSSTYLE_FILES    = $(JS_FILES)
 JSSTYLE_FLAGS    = -o indent=2,doxygen,unparenthesized-return=0
-#XXX
-#SMF_MANIFESTS    = smf/manifests/bapi.xml
+SMF_MANIFESTS    = agent/smf/amon-agent.smf.in relay/smf/amon-relay.smf.in \
+	master/smf/amon-relay.smf.in
 
 CLEAN_FILES += $(NODEDIR) agent/node_modules relay/node_modules \
        master/node_modules common/node_modules plugins/node_modules \
