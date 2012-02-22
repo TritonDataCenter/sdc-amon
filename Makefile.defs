@@ -20,6 +20,8 @@
 
 #
 # Mountain Gorilla-spec'd versioning.
+# See "Package Versioning" in MG's README.md:
+# <https://mo.joyent.com/mountain-gorilla/blob/master/README.md#L139-200>
 #
 # Need GNU awk for multi-char arg to "-F".
 _AWK := $(shell (which gawk >/dev/null && echo gawk) \
