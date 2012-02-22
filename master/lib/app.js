@@ -29,6 +29,7 @@ var events = require('./events');
 
 //---- globals
 
+/* JSSTYLED */
 var UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 // Ensure login doesn't have LDAP search meta chars.
 // Note: this regex should conform to `LOGIN_RE` in
@@ -41,15 +42,15 @@ var VALID_LOGIN_CHARS = /^[a-zA-Z][a-zA-Z0-9_\.@]+$/;
 
 function ping(req, res, next) {
   if (req.params.error !== undefined) {
-    var restCode = req.params.error || "InternalError";
-    if (restCode.slice(-5) !== "Error") {
-      restCode += "Error"
+    var restCode = req.params.error || 'InternalError';
+    if (restCode.slice(-5) !== 'Error') {
+      restCode += 'Error'
     }
-    var err = new restify[restCode]("pong");
+    var err = new restify[restCode]('pong');
     res.send(err);
   } else {
     var data = {
-      ping: "pong",
+      ping: 'pong',
       pid: process.pid  // used by test suite
     };
     res.send(200, data);
@@ -61,7 +62,7 @@ function ping(req, res, next) {
 //function listCaches(req, res, next) {
 //  var data = req._app._cacheFromScope;
 //  var data = {};
-//  Object.keys(req._app._cacheFromScope).forEach(function(k) {
+//  Object.keys(req._app._cacheFromScope).forEach(function (k) {
 //    data[k] = req._app._cacheFromScope[k].getAll()
 //  });
 //  res.send(200, data);
@@ -82,6 +83,7 @@ function getUser(req, res, next) {
 }
 
 
+/* BEGIN JSSTYLED */
 /**
  * Run async `fn` on each entry in `list`. Call `cb(error)` when all done.
  * `fn` is expected to have `fn(item, callback) -> callback(error)` signature.
@@ -94,13 +96,16 @@ function asyncForEach(list, fn, cb) {
     , errState = null
   list.forEach(function (item, i, list) {
    fn(item, function (er) {
-      if (errState) return
-      if (er) return cb(errState = er)
-      if (-- c === 0) return cb()
+      if (errState)
+        return
+      if (er)
+        return cb(errState = er)
+      if (-- c === 0)
+        return cb()
     })
   })
 }
-
+/* END JSSTYLED */
 
 
 //---- exports
@@ -126,14 +131,14 @@ function createApp(config, log, callback) {
   });
 
   log.trace({rootDn: config.ufds.rootDn}, 'bind to UFDS');
-  ufds.bind(config.ufds.rootDn, config.ufds.password, function(err) {
+  ufds.bind(config.ufds.rootDn, config.ufds.password, function (err) {
     if (err) {
       return callback(err);
     }
     var app;
     try {
       app = new App(config, ufds, mapi, log);
-    } catch(err) {
+    } catch (err) {
       return callback(err);
     }
     return callback(null, app);
@@ -143,7 +148,7 @@ function createApp(config, log, callback) {
 
 
 /**
- * Constructor for the amon "application".
+ * Constructor for the amon 'application'.
  *
  * @param config {Object} Config object.
  * @param ufds {ldapjs.Client} LDAP client to UFDS.
@@ -167,7 +172,7 @@ function App(config, ufds, mapi, log) {
   if (config.notificationPlugins) {
     Object.keys(config.notificationPlugins || {}).forEach(function (name) {
       var plugin = config.notificationPlugins[name];
-      log.info("Loading '%s' notification plugin.", name);
+      log.info('Loading "%s" notification plugin.', name);
       var NotificationType = require(plugin.path);
       self.notificationPlugins[name] = new NotificationType(log, plugin.config);
     });
@@ -175,26 +180,26 @@ function App(config, ufds, mapi, log) {
 
   // Cache of login/uuid (aka username) -> full user record.
   this.userCache = new Cache(config.userCache.size,
-    config.userCache.expiry, log, "user");
-  this.isOperatorCache = new Cache(100, 300, log, "isOperator");
-  this.mapiServersCache = new Cache(100, 300, log, "mapiServers");
+    config.userCache.expiry, log, 'user');
+  this.isOperatorCache = new Cache(100, 300, log, 'isOperator');
+  this.mapiServersCache = new Cache(100, 300, log, 'mapiServers');
 
   // Caches for server response caching. This is centralized on the app
   // because it allows the interdependant cache-invalidation to be
   // centralized.
   this._cacheFromScope = {
-    MonitorGet: new Cache(100, 300, log, "MonitorGet"),
-    MonitorList: new Cache(100, 300, log, "MonitorList"),
-    ProbeGet: new Cache(100, 300, log, "ProbeGet"),
-    ProbeList: new Cache(100, 300, log, "ProbeList"),
+    MonitorGet: new Cache(100, 300, log, 'MonitorGet'),
+    MonitorList: new Cache(100, 300, log, 'MonitorList'),
+    ProbeGet: new Cache(100, 300, log, 'ProbeGet'),
+    ProbeList: new Cache(100, 300, log, 'ProbeList'),
     // This is unbounded in size because (a) the data stored is small and (b)
     // we expect `headAgentProbes` calls for *all* machines (the key) regularly
     // so an LRU-cache is pointless.
-    headAgentProbes: new Cache(0, 300, log, "headAgentProbes"),
+    headAgentProbes: new Cache(0, 300, log, 'headAgentProbes'),
   };
 
   var server = this.server = restify.createServer({
-    name: "Amon Master/" + Constants.ApiVersion,
+    name: 'Amon Master/' + Constants.ApiVersion,
     log: log
   });
   server.use(restify.queryParser());
@@ -217,7 +222,7 @@ function App(config, ufds, mapi, log) {
           res.send(err);
         } else if (! user) {
           res.send(new restify.ResourceNotFoundError(
-            format("no such user: '%s'", userId)), true);
+            format('no such user: "%s"', userId)), true);
         } else {
           req._user = user;
         }
@@ -243,10 +248,14 @@ function App(config, ufds, mapi, log) {
   server.get('/pub/:user/monitors/:name', before, monitors.getMonitor);
   server.del('/pub/:user/monitors/:name', before, monitors.deleteMonitor);
 
-  server.get('/pub/:user/monitors/:monitor/probes', before, probes.listProbes);
-  server.put('/pub/:user/monitors/:monitor/probes/:name', before, probes.putProbe);
-  server.get('/pub/:user/monitors/:monitor/probes/:name', before, probes.getProbe);
-  server.del('/pub/:user/monitors/:monitor/probes/:name', before, probes.deleteProbe);
+  server.get('/pub/:user/monitors/:monitor/probes',
+    before, probes.listProbes);
+  server.put('/pub/:user/monitors/:monitor/probes/:name',
+    before, probes.putProbe);
+  server.get('/pub/:user/monitors/:monitor/probes/:name',
+    before, probes.getProbe);
+  server.del('/pub/:user/monitors/:monitor/probes/:name',
+    before, probes.deleteProbe);
 
   server.get('/agentprobes', before, agentprobes.listAgentProbes);
   server.head('/agentprobes', before, agentprobes.headAgentProbes);
@@ -259,60 +268,64 @@ function App(config, ufds, mapi, log) {
  * Gets Application up and listening.
  *
  * This method creates a zsock with the zone/path you passed in to the
- * constructor.  The callback is of the form function(error), where error
+ * constructor.  The callback is of the form function (error), where error
  * should be undefined.
  *
- * @param {Function} callback callback of the form function(error).
+ * @param {Function} callback callback of the form function (error).
  */
-App.prototype.listen = function(callback) {
+App.prototype.listen = function (callback) {
   this.server.listen(this.config.port, '0.0.0.0', callback);
 };
 
 
-App.prototype.cacheGet = function(scope, key) {
-  if (! this._ufdsCaching) return;
+App.prototype.cacheGet = function (scope, key) {
+  if (! this._ufdsCaching)
+    return;
   var hit = this._cacheFromScope[scope].get(key);
-  //this.log.trace("App.cacheGet scope='%s' key='%s': %s", scope, key,
-  //  (hit ? "hit" : "miss"));
+  //this.log.trace('App.cacheGet scope="%s" key="%s": %s', scope, key,
+  //  (hit ? 'hit' : "miss"));
   return hit
 }
-App.prototype.cacheSet = function(scope, key, value) {
-  if (! this._ufdsCaching) return;
-  //this.log.trace("App.cacheSet scope='%s' key='%s'", scope, key);
+App.prototype.cacheSet = function (scope, key, value) {
+  if (! this._ufdsCaching)
+    return;
+  //this.log.trace('App.cacheSet scope="%s" key="%s"', scope, key);
   this._cacheFromScope[scope].set(key, value);
 }
-App.prototype.cacheDel = function(scope, key) {
-  if (! this._ufdsCaching) return;
+App.prototype.cacheDel = function (scope, key) {
+  if (! this._ufdsCaching)
+    return;
   this._cacheFromScope[scope].del(key);
 }
 
 /**
  * Invalidate caches as appropriate for the given DB object create/update.
  */
-App.prototype.cacheInvalidatePut = function(modelName, item) {
-  if (! this._ufdsCaching) return;
+App.prototype.cacheInvalidatePut = function (modelName, item) {
+  if (! this._ufdsCaching)
+    return;
   var log = this.log;
 
   var dn = item.dn;
   assert.ok(dn);
-  log.trace("App.cacheInvalidatePut modelName='%s' dn='%s' machine=%s",
-    modelName, dn, (modelName === "Probe" ? item.machine : "(N/A)"));
+  log.trace('App.cacheInvalidatePut modelName="%s" dn="%s" machine=%s',
+    modelName, dn, (modelName === 'Probe' ? item.machine : '(N/A)'));
 
-  // Reset the "${modelName}List" cache.
+  // Reset the '${modelName}List' cache.
   // Note: This could be improved by only invalidating the item for this
   // specific user. We are being lazy for starters here.
-  var scope = modelName + "List"
+  var scope = modelName + 'List'
   this._cacheFromScope[scope].reset();
 
-  // Delete the "${modelName}Get" cache item with this dn (possible because
+  // Delete the '${modelName}Get' cache item with this dn (possible because
   // we cache error responses).
-  this._cacheFromScope[modelName + "Get"].del(dn);
+  this._cacheFromScope[modelName + 'Get'].del(dn);
 
   // Furthermore, if this is a probe, then need to invalidate the
   // `headAgentProbes` for this probe's machine/server.
-  if (modelName === "Probe") {
-    var cacheKey = (item.machine ? "machine:"+item.machine
-      : "server:"+item.server);
+  if (modelName === 'Probe') {
+    var cacheKey = (item.machine ? 'machine:'+item.machine
+      : 'server:'+item.server);
     this._cacheFromScope.headAgentProbes.del(cacheKey);
   }
 }
@@ -320,27 +333,28 @@ App.prototype.cacheInvalidatePut = function(modelName, item) {
 /**
  * Invalidate caches as appropriate for the given DB object delete.
  */
-App.prototype.cacheInvalidateDelete = function(modelName, item) {
-  if (! this._ufdsCaching) return;
+App.prototype.cacheInvalidateDelete = function (modelName, item) {
+  if (! this._ufdsCaching)
+    return;
   var log = this.log;
 
   var dn = item.dn;
   assert.ok(dn);
-  log.trace("App.cacheInvalidateDelete modelName='%s' dn='%s' machine=%s",
-    modelName, dn, (modelName === "Probe" ? item.machine : "(N/A)"));
+  log.trace('App.cacheInvalidateDelete modelName="%s" dn="%s" machine=%s',
+    modelName, dn, (modelName === 'Probe' ? item.machine : '(N/A)'));
 
-  // Reset the "${modelName}List" cache.
+  // Reset the '${modelName}List' cache.
   // Note: This could be improved by only invalidating the item for this
   // specific user. We are being lazy for starters here.
-  var scope = modelName + "List";
+  var scope = modelName + 'List';
   this._cacheFromScope[scope].reset();
 
-  // Delete the "${modelName}Get" cache item with this dn.
-  this._cacheFromScope[modelName + "Get"].del(dn);
+  // Delete the '${modelName}Get' cache item with this dn.
+  this._cacheFromScope[modelName + 'Get'].del(dn);
 
   // Furthermore, if this is a probe, then need to invalidate the
   // `headAgentProbes` for this probe's machine.
-  if (modelName === "Probe") {
+  if (modelName === 'Probe') {
     this._cacheFromScope.headAgentProbes.del(item.machine);
   }
 }
@@ -349,25 +363,25 @@ App.prototype.cacheInvalidateDelete = function(modelName, item) {
  * Facilitate getting user info (and caching it) from a login/username.
  *
  * @param userId {String} UUID or login (aka username) of the user to get.
- * @param callback {Function} `function (err, user)`. "err" is a restify
- *    RESTError instance if there is a problem. "user" is null if no
+ * @param callback {Function} `function (err, user)`. 'err' is a restify
+ *    RESTError instance if there is a problem. 'user' is null if no
  *    error, but no such user was found.
  */
-App.prototype.userFromId = function(userId, callback) {
+App.prototype.userFromId = function (userId, callback) {
   var log = this.log;
 
   // Validate args.
   if (!userId) {
-    log.error("userFromId: 'userId' is required");
+    log.error('userFromId: "userId" is required');
     return callback(new restify.InternalError());
   }
-  if (!callback || typeof(callback) !== 'function') {
-    log.error("userFromId: 'callback' must be a function: %s",
-      typeof(callback));
+  if (!callback || typeof (callback) !== 'function') {
+    log.error('userFromId: "callback" must be a function: %s',
+      typeof (callback));
     return callback(new restify.InternalError());
   }
 
-  // Check cache. "cached" is `{err: <error>, user: <user>}`.
+  // Check cache. 'cached' is `{err: <error>, user: <user>}`.
   var cached = this.userCache.get(userId);
   if (cached) {
     if (cached.err)
@@ -383,7 +397,7 @@ App.prototype.userFromId = function(userId, callback) {
     login = userId;
   } else {
     return callback(new restify.InvalidArgumentError(
-      format("user id is not a valid UUID or login: '%s'", userId)));
+      format('user id is not a valid UUID or login: "%s"', userId)));
   }
 
   var self = this;
@@ -406,25 +420,26 @@ App.prototype.userFromId = function(userId, callback) {
       : '(&(login=' + login + ')(objectclass=sdcperson))'),
     scope: 'one'
   };
-  log.trace("search for user: ldap filter: %s", searchOpts.filter)
-  this.ufds.search("ou=users, o=smartdc", searchOpts, function(err, result) {
-    if (err) return cacheAndCallback(err);
+  log.trace('search for user: ldap filter: %s', searchOpts.filter)
+  this.ufds.search('ou=users, o=smartdc', searchOpts, function (err, result) {
+    if (err)
+      return cacheAndCallback(err);
 
     var users = [];
-    result.on('searchEntry', function(entry) {
+    result.on('searchEntry', function (entry) {
       users.push(entry.object);
     });
 
-    result.on('error', function(err) {
+    result.on('error', function (err) {
       // `err` is an ldapjs error (<http://ldapjs.org/errors.html>) which is
       // currently compatible enough so that we don't bother wrapping it in
       // a `restify.RESTError`. (TODO: verify that)
       return cacheAndCallback(err);
     });
 
-    result.on('end', function(result) {
+    result.on('end', function (result) {
       if (result.status !== 0) {
-        return cacheAndCallback("non-zero status from LDAP search: "+result);
+        return cacheAndCallback('non-zero status from LDAP search: '+result);
       }
       switch (users.length) {
       case 0:
@@ -435,10 +450,10 @@ App.prototype.userFromId = function(userId, callback) {
         break;
       default:
         log.error({searchOpts: searchOpts, users: users},
-          "unexpected number of users (%d) matching user id '%s'",
+          'unexpected number of users (%d) matching user id "%s"',
           users.length, userId);
         return cacheAndCallback(new restify.InternalError(
-          format("error determining user for '%s'", userId)));
+          format('error determining user for "%s"', userId)));
       }
     });
   });
@@ -456,14 +471,14 @@ App.prototype.isOperator = function (userUuid, callback) {
   var log = this.log;
 
   // Validate args.
-  if (typeof(userUuid) !== 'string')
+  if (typeof (userUuid) !== 'string')
     throw new TypeError('userUuid (String) required');
   if (!UUID_REGEX.test(userUuid))
     throw new TypeError(format('userUuid is not a valid UUID: %s', userUuid));
-  if (typeof(callback) !== 'function')
+  if (typeof (callback) !== 'function')
     throw new TypeError('callback (Function) required');
 
-  // Check cache. "cached" is `{isOperator: <isOperator>}`.
+  // Check cache. 'cached' is `{isOperator: <isOperator>}`.
   var cached = this.isOperatorCache.get(userUuid);
   if (cached) {
     return callback(null, cached.isOperator);
@@ -483,27 +498,28 @@ App.prototype.isOperator = function (userUuid, callback) {
     scope: 'base',
     attributes: ['dn']
   };
-  log.trace("search if user is operator: search opts: %s",
+  log.trace('search if user is operator: search opts: %s',
     JSON.stringify(searchOpts));
-  this.ufds.search(base, searchOpts, function(err, result) {
-    if (err) return callback(err);
+  this.ufds.search(base, searchOpts, function (err, result) {
+    if (err)
+      return callback(err);
 
     var entries = [];
-    result.on('searchEntry', function(entry) {
+    result.on('searchEntry', function (entry) {
       entries.push(entry.object);
     });
 
-    result.on('error', function(err) {
+    result.on('error', function (err) {
       // `err` is an ldapjs error (<http://ldapjs.org/errors.html>) which is
       // currently compatible enough so that we don't bother wrapping it in
       // a `restify.RESTError`. (TODO: verify that)
       return callback(err);
     });
 
-    result.on('end', function(result) {
+    result.on('end', function (result) {
       if (result.status !== 0) {
         //XXX restify this error
-        return callback("non-zero status from LDAP search: "+result);
+        return callback('non-zero status from LDAP search: '+result);
       }
       var isOperator = (entries.length > 0);
       self.isOperatorCache.set(userUuid, {isOperator: isOperator});
@@ -523,15 +539,16 @@ App.prototype.serverExists = function (serverUuid, callback) {
   var log = this.log;
 
   // Validate args.
-  if (typeof(serverUuid) !== 'string')
+  if (typeof (serverUuid) !== 'string')
     throw new TypeError('serverUuid (String) required');
   if (!UUID_REGEX.test(serverUuid))
-    throw new TypeError(format('serverUuid is not a valid UUID: %s', serverUuid));
-  if (typeof(callback) !== 'function')
+    throw new TypeError(format('serverUuid is not a valid UUID: %s',
+      serverUuid));
+  if (typeof (callback) !== 'function')
     throw new TypeError('callback (Function) required');
 
-  // Check cache. "cached" is `{server-uuid-1: true, ...}`.
-  var cached = this.mapiServersCache.get("servers");
+  // Check cache. 'cached' is `{server-uuid-1: true, ...}`.
+  var cached = this.mapiServersCache.get('servers');
   if (cached) {
     return callback(null, (cached[serverUuid] !== undefined));
   }
@@ -546,7 +563,7 @@ App.prototype.serverExists = function (serverUuid, callback) {
     for (var i = 0; i < servers.length; i++) {
       serverMap[servers[i].uuid] = true;
     }
-    self.mapiServersCache.set("servers", serverMap);
+    self.mapiServersCache.set('servers', serverMap);
     callback(null, (serverMap[serverUuid] !== undefined));
   });
 }
@@ -558,23 +575,23 @@ App.prototype.serverExists = function (serverUuid, callback) {
  * @param ufds {ldapjs client} UFDS client.
  * @param event {Object} The event object.
  * @param callback {Function} `function (err) {}` called on completion.
- *    "err" is undefined (success) or an error message (failure).
+ *    'err' is undefined (success) or an error message (failure).
  *
  * An example event (beware this being out of date):
  *    {
- *      "probe": {
- *        "user": "7b23ae63-37c9-420e-bb88-8d4bf5e30455",
- *        "monitor": "whistle",
- *        "name": "whistlelog2",
- *        "type": "logscan"
+ *      'probe': {
+ *        'user': "7b23ae63-37c9-420e-bb88-8d4bf5e30455",
+ *        'monitor': "whistle",
+ *        'name': "whistlelog2",
+ *        'type': "logscan"
  *      },
- *      "type": "Integer",
- *      "value": 1,
- *      "data": {
- *        "match": "tweet tweet"
+ *      'type': "Integer",
+ *      'value': 1,
+ *      'data': {
+ *        'match': "tweet tweet"
  *      },
- *      "uuid": "3ab1336e-5453-45f9-be10-8686ba70e419",
- *      "version": "1.0.0"
+ *      'uuid': "3ab1336e-5453-45f9-be10-8686ba70e419",
+ *      'version': "1.0.0"
  *    }
  *
  * TODO: inability to send a notification should result in an alarm for
@@ -583,41 +600,43 @@ App.prototype.serverExists = function (serverUuid, callback) {
 App.prototype.processEvent = function (event, callback) {
   var self = this;
   var log = this.log;
-  log.debug({event: event}, "App.processEvent");
+  log.debug({event: event}, 'App.processEvent');
 
   // 1. Get the monitor for this probe, to get its list of contacts.
   var userUuid = event.probe.user;
   var monitorName = event.probe.monitor;
   Monitor.get(this, userUuid, monitorName, function (err, monitor) {
-    if (err) return callback(err);
+    if (err)
+      return callback(err);
     // 2. Notify each contact.
     function getAndNotifyContact(contactUrn, cb) {
-      log.debug("App.processEvent: notify contact '%s' (userUuid='%s', "
-        + "monitor='%s')", contactUrn, userUuid, monitorName);
+      log.debug('App.processEvent: notify contact "%s" (userUuid="%s", '
+        + 'monitor="%s")', contactUrn, userUuid, monitorName);
       Contact.get(self, userUuid, contactUrn, function (err, contact) {
         if (err) {
-          log.warn("could not resolve contact '%s' (user '%s'): %s",
+          log.warn('could not resolve contact "%s" (user "%s"): %s',
             contactUrn, userUuid, err)
           return cb();
         }
         if (!contact.address) {
-          log.info("no contact address (contactUrn='%s' monitor='%s' "
-            + "userUuid='%s'), alerting monitor owner", contactUrn,
+          log.info('no contact address (contactUrn="%s" monitor="%s" '
+            + 'userUuid="%s"), alerting monitor owner', contactUrn,
             monitorName, userUuid);
-          var msg = "XXX"; // TODO
+          var msg = 'XXX'; // TODO
           self.alarmConfig(monitor.user, msg, function (err) {
             if (err) {
-              log.error("could not alert monitor owner: %s", err);
+              log.error('could not alert monitor owner: %s', err);
             }
             return cb();
           });
         } else {
           self.notifyContact(userUuid, monitor, contact, event, function (err) {
             if (err) {
-              log.warn("could not notify contact: %s", err);
+              log.warn('could not notify contact: %s', err);
             } else {
-              log.debug("App.processEvent: contact '%s' notified (userUuid='%s', "
-                + "monitor='%s')", contactUrn, userUuid, monitorName);
+              log.debug('App.processEvent: contact "%s" notified '
+                + '(userUuid="%s", monitor="%s")', contactUrn, userUuid,
+                monitorName);
             }
             return cb();
           });
@@ -638,13 +657,13 @@ App.prototype.processEvent = function (event, callback) {
  * Because we are using the simple mechanism of
  * an LDAP field name/value pair on a user (objectClass=sdcPerson in UFDS)
  * for a contact, we need conventions on the field *name* to map to a
- * particular plugin for handling the notification. E.g. both "email"
- * and "secondaryEmail" will map to the "email" notification type.
+ * particular plugin for handling the notification. E.g. both 'email'
+ * and 'secondaryEmail' will map to the "email" notification type.
  *
  * @throws {restify.RESTError} if the no appropriate notification plugin could
  *    be determined.
  */
-App.prototype.notificationTypeFromMedium = function(medium) {
+App.prototype.notificationTypeFromMedium = function (medium) {
   var log = this.log;
   var self = this;
   var types = Object.keys(this.notificationPlugins);
@@ -676,7 +695,7 @@ App.prototype.notificationTypeFromMedium = function(medium) {
  */
 App.prototype.alarmConfig = function (userId, msg, callback) {
   var log = this.log;
-  log.error("TODO: implement App.alarmConfig")
+  log.error('TODO: implement App.alarmConfig')
   callback();
 }
 
@@ -689,14 +708,16 @@ App.prototype.alarmConfig = function (userId, msg, callback) {
  * ...
  * @param callback {Function} `function (err) {}`.
  */
-App.prototype.notifyContact = function (userUuid, monitor, contact, event, callback) {
+App.prototype.notifyContact = function (userUuid, monitor, contact, event,
+                                        callback) {
   var log = this.log;
   var plugin = this.notificationPlugins[contact.notificationType];
   if (!plugin) {
-    return callback("notification plugin '%s' not found", contact.notificationType);
+    return callback(format('notification plugin "%s" not found',
+      contact.notificationType));
   }
   plugin.notify(event.probe.name, contact.address,
-    JSON.stringify(event.data,null,2), //XXX obviously lame "message" to send
+    JSON.stringify(event.data, null, 2), //XXX obviously lame 'message' to send
     callback);
 }
 
@@ -706,11 +727,11 @@ App.prototype.notifyContact = function (userUuid, monitor, contact, event, callb
  *
  * @param {Function} callback called when closed. Takes no arguments.
  */
-App.prototype.close = function(callback) {
+App.prototype.close = function (callback) {
   var log = this.log;
   var self = this;
-  this.server.on('close', function() {
-    self.ufds.unbind(function() {
+  this.server.on('close', function () {
+    self.ufds.unbind(function () {
       return callback();
     });
   });

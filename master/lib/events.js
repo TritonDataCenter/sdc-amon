@@ -14,6 +14,7 @@ var Monitor = require('./monitors').Monitor;
 
 //---- internal support routines
 
+/* BEGIN JSSTYLED */
 /**
  * Run async `fn` on each entry in `list`. Call `cb(error)` when all done.
  * `fn` is expected to have `fn(item, callback) -> callback(error)` signature.
@@ -26,13 +27,16 @@ function asyncForEach(list, fn, cb) {
     , errState = null
   list.forEach(function (item, i, list) {
    fn(item, function (er) {
-      if (errState) return
-      if (er) return cb(errState = er)
-      if (-- c === 0) return cb()
+      if (errState)
+        return
+      if (er)
+        return cb(errState = er)
+      if (-- c === 0)
+        return cb()
     })
   })
 }
-
+/* END JSSTYLED */
 
 
 //---- controllers
@@ -53,7 +57,7 @@ function addEvents(req, res, next) {
   } else {
     events = [req.params];
   }
-  req.log.info({events: events}, "addEvents");
+  req.log.info({events: events}, 'addEvents');
 
   // Collect errors so first failure doesn't abort the others.
   var errs = [];
@@ -68,7 +72,7 @@ function addEvents(req, res, next) {
 
   asyncForEach(events, validateAndProcess, function (err) {
     if (errs.length > 0) {
-      res.send(new restify.InternalError(errs.join(", ")));
+      res.send(new restify.InternalError(errs.join(', ')));
     } else {
       res.send(202 /* Accepted */);
     }

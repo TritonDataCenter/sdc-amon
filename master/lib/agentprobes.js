@@ -18,6 +18,7 @@ var Probe = require('./probes').Probe;
 
 //---- globals
 
+/* JSSTYLED */
 var UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 
@@ -43,19 +44,20 @@ function findProbes(app, field, uuid, log, callback) {
   };
 
   log.trace({opts: opts}, 'findProbes UFDS search')
-  app.ufds.search("ou=users, o=smartdc", opts, function(err, result) {
-    if (err) return callback(err);
+  app.ufds.search('ou=users, o=smartdc', opts, function (err, result) {
+    if (err)
+      return callback(err);
 
     var probes = [];
-    result.on('searchEntry', function(entry) {
+    result.on('searchEntry', function (entry) {
       probes.push((new Probe(app, entry.object)).serialize());
     });
 
-    result.on('error', function(err) {
+    result.on('error', function (err) {
       return callback(err);
     });
 
-    result.on('end', function(result) {
+    result.on('end', function (result) {
       if (result.status !== 0) {
         return callback(
           format('Non-zero status from UFDS search: %s (opts: %s)',
@@ -75,7 +77,7 @@ function findProbes(app, field, uuid, log, callback) {
           return 0;
       });
 
-      log.trace({probes: probes}, "probes for %s '%s'", field, uuid);
+      log.trace({probes: probes}, 'probes for %s "%s"', field, uuid);
       return callback(null, probes);
     });
   });
@@ -89,21 +91,21 @@ function _parseReqParams(req) {
   var server = req.params.server;
   if (!machine && !server) {
     err = new restify.MissingParameterError(
-      "one of 'machine' or 'server' is a required parameter");
+      'one of "machine" or "server" is a required parameter');
   } else if (machine && server) {
     err = new restify.InvalidArgumentError(
-      "only one of 'machine' or 'server' parameters can be given");
+      'only one of "machine" or "server" parameters can be given');
   } else {
     if (machine) {
-      field = "machine";
+      field = 'machine';
       uuid = machine;
     } else if (server) {
-      field = "server"
+      field = 'server'
       uuid = server;
     }
     if (!UUID_REGEX.test(uuid)) {
       err = new restify.InvalidArgumentError(
-        format("'%s' is not a valid UUID: %s", field, uuid));
+        format('"%s" is not a valid UUID: %s', field, uuid));
     }
   }
 
@@ -134,7 +136,7 @@ function listAgentProbes(req, res, next) {
 
   findProbes(req._app, field, uuid, req.log, function (err, probes) {
     if (err) {
-      req.log.error("error getting probes for %s '%s'", field, uuid);
+      req.log.error('error getting probes for %s "%s"', field, uuid);
       res.send(500);
     } else {
       res.send(200, probes);
@@ -159,14 +161,14 @@ function headAgentProbes(req, res, next) {
   var uuid = parsed.uuid;
 
   function respond(contentMD5) {
-    res.header("Content-MD5", contentMD5);
+    res.header('Content-MD5', contentMD5);
     res.send();
     next();
   }
 
   // Check cache.
-  var cacheKey = format("%s:%s", field, uuid)
-  var contentMD5 = req._app.cacheGet("headAgentProbes", cacheKey);
+  var cacheKey = format('%s:%s', field, uuid)
+  var contentMD5 = req._app.cacheGet('headAgentProbes', cacheKey);
   if (contentMD5) {
     req.log.trace({contentMD5: contentMD5}, 'headAgentProbes respond (cached)');
     return respond(contentMD5);
@@ -174,7 +176,7 @@ function headAgentProbes(req, res, next) {
 
   findProbes(req._app, field, uuid, req.log, function (err, probes) {
     if (err) {
-      req.log.error("error getting probes for %s '%s': %s", field, uuid,
+      req.log.error('error getting probes for %s "%s": %s', field, uuid,
         (err.stack || err));
       return next(new restify.InternalError());
     } else {
@@ -183,7 +185,7 @@ function headAgentProbes(req, res, next) {
       var hash = crypto.createHash('md5');
       hash.update(data);
       var contentMD5 = hash.digest('base64');
-      req._app.cacheSet("headAgentProbes", cacheKey, contentMD5);
+      req._app.cacheSet('headAgentProbes', cacheKey, contentMD5);
       req.log.trace({contentMD5: contentMD5}, 'headAgentProbes respond');
       return respond(contentMD5);
     }

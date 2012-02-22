@@ -64,9 +64,9 @@ function listenInGlobalZoneSync() {
     masterUrl: config.masterUrl,
     poll: config.poll
   });
-  log.debug('Starting new amon-relay socket for global zone (server %s) at "%s".',
+  log.debug('Starting amon-relay socket for global zone (server %s) at "%s".',
     config.computeNodeUuid, config.socket);
-  app.listen(function(err) {
+  app.listen(function (err) {
     if (!err) {
       log.info('Amon-relay listening in global zone on socket "%s".',
         config.socket);
@@ -90,10 +90,11 @@ function listenInGlobalZoneSync() {
  *    args when listening or when errored out. No arguments are given.
  */
 function listenInZone(zone, callback) {
-  zutil.getZoneAttribute(zone, 'owner-uuid', function(error, attr) {
+  zutil.getZoneAttribute(zone, 'owner-uuid', function (error, attr) {
     if (error || !attr) {
       log.warn('No "owner-uuid" attribute found on zone %s. Skipping.', zone);
-      if (callback) return callback();
+      if (callback)
+        return callback();
     }
     appIndex[zone] = new App({
       log: log,
@@ -105,9 +106,9 @@ function listenInZone(zone, callback) {
       masterUrl: config.masterUrl,
       poll: config.poll
     });
-    log.debug('Starting new amon-relay socket for machine %s (owner=%s) on "%s".',
+    log.debug('Starting amon-relay socket for machine %s (owner=%s) on "%s".',
       zone, attr.value, config.socket);
-    appIndex[zone].listen(function(error) {
+    appIndex[zone].listen(function (error) {
       if (!error) {
         log.info('Amon-relay listening in zone %s on zsock "%s"', zone,
           config.socket);
@@ -133,19 +134,19 @@ function getMasterUrl(poll, callback) {
   var pollInterval = poll * 1000;  // seconds -> ms
 
   var missing = [];
-  ["MAPI_CLIENT_URL", "MAPI_HTTP_ADMIN_USER",
-   "MAPI_HTTP_ADMIN_PW", "UFDS_ADMIN_UUID"].forEach(function (name) {
+  ['MAPI_CLIENT_URL', 'MAPI_HTTP_ADMIN_USER',
+   'MAPI_HTTP_ADMIN_PW', 'UFDS_ADMIN_UUID'].forEach(function (name) {
     if (!process.env[name]) {
       missing.push(name);
     }
   });
   if (missing.length > 0) {
-    return callback("missing environment variables: '"
-      + missing.join("', '") + "'");
+    return callback('missing environment variables: "'
+      + missing.join('", "') + '"');
   }
 
   var clients = require('sdc-clients');
-  //clients.setLogLevel("trace");
+  //clients.setLogLevel('trace');
   var mapi = new clients.MAPI({
     url: process.env.MAPI_CLIENT_URL,
     username: process.env.MAPI_HTTP_ADMIN_USER,
@@ -154,37 +155,40 @@ function getMasterUrl(poll, callback) {
   var notAmonZoneUuids = []; // Ones with a `smartdc_role!=amon`.
 
   function pollMapi() {
-    log.info("Poll MAPI for Amon zone (admin uuid '%s').",
+    log.info('Poll MAPI for Amon zone (admin uuid "%s").',
       process.env.UFDS_ADMIN_UUID);
     var options = {
       tags: {
         smartdc_role: 'amon'
       }
     }
-    mapi.listMachines(process.env.UFDS_ADMIN_UUID, options, function (err, machines, headers) {
-      if (err) {
-        // Retry on error.
-        log.error("MAPI listZones error: '%s'",
-          String(err).slice(0, 100) + '...');
-        setTimeout(pollMapi, pollInterval);
-      } else if (machines.length === 0) {
-        log.error("No Amon Master zone (tag smartdc_role=amon).")
-        setTimeout(pollMapi, pollInterval);
-      } else {
-        // TODO: A start at handling HA is to accept multiple Amon zones here.
-        var amonZone = machines[0];
-        var amonIp = amonZone.ips && amonZone.ips[0] && amonZone.ips[0].address;
-        if (!amonIp) {
-          log.error("No Amon zone IP: amonZone.ips=%s",
-            JSON.stringify(amonZone.ips));
+    mapi.listMachines(process.env.UFDS_ADMIN_UUID, options,
+      function (err, machines, headers) {
+        if (err) {
+          // Retry on error.
+          log.error('MAPI listZones error: "%s"',
+            String(err).slice(0, 100) + '...');
+          setTimeout(pollMapi, pollInterval);
+        } else if (machines.length === 0) {
+          log.error('No Amon Master zone (tag smartdc_role=amon).')
           setTimeout(pollMapi, pollInterval);
         } else {
-          var amonMasterUrl = 'http://' + amonIp;
-          log.info("Found amon zone: %s <%s>", amonZone.name, amonMasterUrl);
-          callback(null, amonMasterUrl);
+          // TODO: A start at HA is to accept multiple Amon zones here.
+          var amonZone = machines[0];
+          var amonIp = amonZone.ips && amonZone.ips[0] &&
+            amonZone.ips[0].address;
+          if (!amonIp) {
+            log.error('No Amon zone IP: amonZone.ips=%s',
+              JSON.stringify(amonZone.ips));
+            setTimeout(pollMapi, pollInterval);
+          } else {
+            var amonMasterUrl = 'http://' + amonIp;
+            log.info('Found amon zone: %s <%s>', amonZone.name, amonMasterUrl);
+            callback(null, amonMasterUrl);
+          }
         }
       }
-    });
+    );
   }
 
   pollMapi();
@@ -203,16 +207,18 @@ function startZoneEventWatcher(callback) {
   }
 
   function handleZoneEvent(event) {
+    /* BEGIN JSSTYLED */
     // $ /usr/vm/sbin/zoneevent
-    // {"zonename": "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "shutting_down", "oldstate": "running", "zoneid": "18", "when": "4518649281252", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
-    // {"zonename": "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "shutting_down", "oldstate": "shutting_down", "zoneid": "18", "when": "4519667177096", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
-    // {"zonename": "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "shutting_down", "oldstate": "shutting_down", "zoneid": "18", "when": "4519789169375", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
-    // {"zonename": "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "shutting_down", "oldstate": "shutting_down", "zoneid": "18", "when": "4519886487860", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
-    // {"zonename": "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "uninitialized", "oldstate": "shutting_down", "zoneid": "18", "when": "4519887001569", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
-    // {"zonename": "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "initialized", "oldstate": "uninitialized", "zoneid": "19", "when": "4520268151381", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
-    // {"zonename": "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "ready", "oldstate": "initialized", "zoneid": "19", "when": "4520270413097", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
-    // {"zonename": "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "ready", "oldstate": "ready", "zoneid": "19", "when": "4520615339060", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
-    // {"zonename": "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "running", "oldstate": "ready", "zoneid": "19", "when": "4520616213191", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
+    // {'zonename': "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "shutting_down", "oldstate": "running", "zoneid": "18", "when": "4518649281252", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
+    // {'zonename': "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "shutting_down", "oldstate": "shutting_down", "zoneid": "18", "when": "4519667177096", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
+    // {'zonename': "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "shutting_down", "oldstate": "shutting_down", "zoneid": "18", "when": "4519789169375", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
+    // {'zonename': "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "shutting_down", "oldstate": "shutting_down", "zoneid": "18", "when": "4519886487860", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
+    // {'zonename': "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "uninitialized", "oldstate": "shutting_down", "zoneid": "18", "when": "4519887001569", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
+    // {'zonename': "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "initialized", "oldstate": "uninitialized", "zoneid": "19", "when": "4520268151381", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
+    // {'zonename': "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "ready", "oldstate": "initialized", "zoneid": "19", "when": "4520270413097", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
+    // {'zonename': "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "ready", "oldstate": "ready", "zoneid": "19", "when": "4520615339060", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
+    // {'zonename': "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "running", "oldstate": "ready", "zoneid": "19", "when": "4520616213191", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
+    /* END JSSTYLED */
     //
     // We care about:
     // 1. newstate=shutting_down, oldstate=running -> zone down
@@ -221,11 +227,11 @@ function startZoneEventWatcher(callback) {
     var oldstate = event.oldstate;
     var newstate = event.newstate;
     if (oldstate === 'running' && newstate === 'shutting_down') {
-      //XXX log.info({zoneevent: event}, "handle zone event")
+      //XXX log.info({zoneevent: event}, 'handle zone event')
       log.info('handle zone "%s" down event', zonename);
       var app = appIndex[zonename];
       if (app) {
-        app.close(function() {
+        app.close(function () {
           delete appIndex[zonename];
         });
       }
@@ -251,13 +257,13 @@ function startZoneEventWatcher(callback) {
   // we'll treat an unexpected end or error from `zoneevent` as fatal: let
   // SMF restarter sort it out.
   function handleZoneEventError(reason) {
-    log.fatal("unexpected zoneevent error, HUP'ing: %s", reason);
+    log.fatal('unexpected zoneevent error, HUP\'ing: %s', reason);
     process.exit(1);
   }
 
   var zoneevent = spawn('/usr/vm/sbin/zoneevent');
   zoneevent.stdout.setEncoding('utf8');
-  var leftover = "";  // Left-over partial line from last chunk.
+  var leftover = '';  // Left-over partial line from last chunk.
   zoneevent.stdout.on('data', function (chunk) {
     var lines = chunk.split(/\r\n|\n/);
     var length = lines.length;
@@ -270,7 +276,7 @@ function startZoneEventWatcher(callback) {
     }
     leftover = lines.pop();
     length -= 1;
-    for (var i=1; i < length; i++) {
+    for (var i = 1; i < length; i++) {
       handleZoneEventLine(lines[i]);
     }
   });
@@ -280,7 +286,7 @@ function startZoneEventWatcher(callback) {
       handleZoneEventLine(leftover);
       leftover = '';
     }
-    handleZoneEventError("zoneevent process ended")
+    handleZoneEventError('zoneevent process ended')
   });
 
   callback();
@@ -298,7 +304,7 @@ function startServers() {
       // usage).
       listenInGlobalZoneSync();
     } else {
-      zutil.listZones().forEach(function(z) {
+      zutil.listZones().forEach(function (z) {
         if (z.name === 'global') {
           listenInGlobalZoneSync();
         } else {
@@ -320,38 +326,38 @@ function usage(code, msg) {
 
 
 function printHelp() {
-  console.log("Usage: node main.js [OPTIONS]");
-  console.log("");
-  console.log("The Amon relay server.");
-  console.log("");
-  console.log("Options:");
-  console.log("  -h, --help     Print this help info and exit.");
-  console.log("  -v, --verbose  Once for DEBUG log output. Twice for TRACE.");
-  console.log("");
-  console.log("  -m MASTER-URL, --master-url MASTER-URL");
-  console.log("       The Amon Master API base url.")
-  console.log("  -n UUID, --compute-node-uuid UUID");
-  console.log("       UUID of the compute node on which this relay is");
-  console.log("       running. If not given, it will be determined from");
-  console.log("       `/usr/bin/sysinfo`.");
-  console.log("  -D DIR, --data-dir DIR");
-  console.log("       Path to a directory to use for working data storage.");
-  console.log("       This is all cache data, i.e. can be restored. Typically ");
-  console.log("       this is somewhere under '/var/run'.");
-  console.log("       Default: " + DEFAULT_DATA_DIR);
-  console.log("  -p SECONDS, --poll SECONDS");
-  console.log("       The frequency to poll the master for agent probes update.");
-  console.log("       Default is " + DEFAULT_POLL + " seconds.");
-  console.log("  -s PATH, --socket PATH");
-  console.log("       The socket path on which to listen. In normal operation this");
-  console.log("       is the path inside the target zone at which the zone will");
-  console.log("       listen on a 'zsock'. Default: " + DEFAULT_SOCKET);
-  console.log("       For development this may be a port *number* to facilitate");
-  console.log("       using curl and using off of SmartOS.")
-  console.log("  -Z, --all-zones");
-  console.log("       Setup socket in all zones. By default we only listen");
-  console.log("       in the current zone (presumed to be the global).");
-  console.log("       This is incompatible with a port number of '-s'.");
+  console.log('Usage: node main.js [OPTIONS]');
+  console.log('');
+  console.log('The Amon relay server.');
+  console.log('');
+  console.log('Options:');
+  console.log('  -h, --help     Print this help info and exit.');
+  console.log('  -v, --verbose  Once for DEBUG log output. Twice for TRACE.');
+  console.log('');
+  console.log('  -m MASTER-URL, --master-url MASTER-URL');
+  console.log('       The Amon Master API base url.')
+  console.log('  -n UUID, --compute-node-uuid UUID');
+  console.log('       UUID of the compute node on which this relay is');
+  console.log('       running. If not given, it will be determined from');
+  console.log('       `/usr/bin/sysinfo`.');
+  console.log('  -D DIR, --data-dir DIR');
+  console.log('       Path to a directory to use for working data storage.');
+  console.log('       This is all cache data, i.e. can be restored. Typically');
+  console.log('       this is somewhere under "/var/run".');
+  console.log('       Default: ' + DEFAULT_DATA_DIR);
+  console.log('  -p SECONDS, --poll SECONDS');
+  console.log('       Poll interval to the master for agent probes updates.');
+  console.log('       Default is ' + DEFAULT_POLL + ' seconds.');
+  console.log('  -s PATH, --socket PATH');
+  console.log('       The socket path on which to listen. Normally this is');
+  console.log('       the path inside the target zone at which the zone will');
+  console.log('       listen on a "zsock". Default: ' + DEFAULT_SOCKET);
+  console.log('       For dev this may be a port *number* to facilitate');
+  console.log('       using curl and using off of SmartOS.')
+  console.log('  -Z, --all-zones');
+  console.log('       Setup socket in all zones. By default we only listen');
+  console.log('       in the current zone (presumed to be the global).');
+  console.log('       This is incompatible with a port number of "-s".');
 }
 
 
@@ -402,21 +408,21 @@ function main() {
 
   // Build the config (intentionally global).
   config = {
-    dataDir: rawOpts["data-dir"] || DEFAULT_DATA_DIR,
-    masterUrl: rawOpts["master-url"],
+    dataDir: rawOpts['data-dir'] || DEFAULT_DATA_DIR,
+    masterUrl: rawOpts['master-url'],
     poll: rawOpts.poll || DEFAULT_POLL,
     socket: rawOpts.socket || DEFAULT_SOCKET,
-    allZones: rawOpts["all-zones"] || false,
-    computeNodeUuid: rawOpts["compute-node-uuid"]
+    allZones: rawOpts['all-zones'] || false,
+    computeNodeUuid: rawOpts['compute-node-uuid']
   };
-  if (config.allZones && typeof(config.socket) === 'number') {
-    usage(1, "cannot use '-Z' and a port number to '-s'");
+  if (config.allZones && typeof (config.socket) === 'number') {
+    usage(1, 'cannot use "-Z" and a port number to "-s"');
   }
 
   // Create data dir, if necessary.
   function ensureDataDir(next) {
     if (!path.existsSync(config.dataDir)) {
-      log.info("Create data dir: %s", config.dataDir);
+      log.info('Create data dir: %s', config.dataDir);
       fs.mkdirSync(config.dataDir, 0777)
     }
     next();
@@ -425,19 +431,19 @@ function main() {
   // Get the compute node UUID.
   function ensureComputeNodeUuid(next) {
     if (!config.computeNodeUuid) {
-      log.info("Getting compute node UUID from `sysinfo`.")
+      log.info('Getting compute node UUID from `sysinfo`.')
       execFile('/usr/bin/sysinfo', [], function (err, stdout, stderr) {
         if (err)
           return next(format(
-            "Error calling sysinfo: %s stdout='%s' stderr='%s'",
+            'Error calling sysinfo: %s stdout="%s" stderr="%s"',
             err, stdout, stderr));
         try {
           var sysinfo = JSON.parse(stdout);
         } catch (ex) {
-          return next(format("Error parsing sysinfo output: %s output='%s'",
+          return next(format('Error parsing sysinfo output: %s output="%s"',
             ex, stdout));
         }
-        log.info("Compute node UUID: %s", sysinfo.UUID);
+        log.info('Compute node UUID: %s', sysinfo.UUID);
         config.computeNodeUuid = sysinfo.UUID;
         next();
       });
@@ -447,7 +453,7 @@ function main() {
   }
 
   function logConfig(next) {
-    log.debug({config: config}, "config");
+    log.debug({config: config}, 'config');
     next();
   }
 
@@ -456,10 +462,11 @@ function main() {
   // from MAPI (with MAPI passed in on env: MAPI_CLIENT_URL, ...).
   function ensureMasterUrl(next) {
     if (!config.masterUrl) {
-      log.info("Getting master URL from MAPI.");
+      log.info('Getting master URL from MAPI.');
       getMasterUrl(config.poll, function (err, masterUrl) {
-        if (err) return next("Error getting Amon master URL from MAPI: "+err);
-        log.info("Got master URL (from MAPI): %s", masterUrl);
+        if (err)
+          return next('Error getting Amon master URL from MAPI: '+err);
+        log.info('Got master URL (from MAPI): %s', masterUrl);
         config.masterUrl = masterUrl;
         next();
       });

@@ -19,12 +19,12 @@ var objCopy = require('amon-common').utils.objCopy;
 //---- globals
 
 var log = restify.log;
-var UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 
 
 //---- Monitor model
-// Interface is as required by "ufdsmodel.js".
+// Interface is as required by 'ufdsmodel.js'.
 
 /**
  * Create a Monitor. `new Monitor(app, data)`.
@@ -36,7 +36,7 @@ var UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
  *        user: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
  *        contacts: ['fooEmail'] }
  *    or the raw response from UFDS, e.g.:
- *      { dn: 'amonmonitor=serverHealth, uuid=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa, ou=users, o=smartdc',
+ *      { dn: 'amonmonitor=serverHealth, uuid=aaa...aaa, ou=users, o=smartdc',
  *        amonmonitor: 'serverHealth',
  *        contact: 'fooEmail',    // this is an array for multiple contacts
  *        objectclass: 'amonmonitor' }
@@ -69,15 +69,15 @@ function Monitor(app, data) {
   this.raw = Monitor.validate(app, raw);
 
   var self = this;
-  this.__defineGetter__('name', function() {
+  this.__defineGetter__('name', function () {
     return self.raw.amonmonitor;
   });
-  this.__defineGetter__('contacts', function() {
+  this.__defineGetter__('contacts', function () {
     return self.raw.contact;
   });
 }
 
-Monitor.objectclass = "amonmonitor";
+Monitor.objectclass = 'amonmonitor';
 
 Monitor.parseDn = function (dn) {
   var parsed = ldap.parseDN(dn);
@@ -87,7 +87,7 @@ Monitor.parseDn = function (dn) {
   };
 }
 Monitor.dn = function (user, name) {
-  return format("amonmonitor=%s, uuid=%s, ou=users, o=smartdc",
+  return format('amonmonitor=%s, uuid=%s, ou=users, o=smartdc',
     name, user);
 }
 Monitor.dnFromRequest = function (req) {
@@ -126,9 +126,9 @@ Monitor.prototype.authorizePut = function (app, callback) {
  * @param callback {Function} `function (err, monitor)`
  */
 Monitor.get = function get(app, user, name, callback) {
-  if (! UUID_REGEX.test(user)) {
+  if (! UUID_RE.test(user)) {
     throw new restify.InvalidArgumentError(
-      format("invalid user UUID: '%s'", user));
+      format('invalid user UUID: "%s"', user));
   }
   Monitor.validateName(name);
   var dn = Monitor.dn(user, name);
@@ -148,13 +148,13 @@ Monitor.get = function get(app, user, name, callback) {
 Monitor.validate = function validate(app, raw) {
   var requiredFields = {
     // <raw field name>: <exported name>
-    "amonmonitor": "name",
-    "contact": "contacts",
+    'amonmonitor': 'name',
+    'contact': 'contacts',
   }
   Object.keys(requiredFields).forEach(function (field) {
     if (!raw[field]) {
       throw new restify.MissingParameterError(
-        format("'%s' is a required parameter", requiredFields[field]));
+        format('"%s" is a required parameter', requiredFields[field]));
     }
   });
 
@@ -178,11 +178,11 @@ Monitor.validate = function validate(app, raw) {
 Monitor.validateName = function validateName(name) {
   if (! Monitor._nameRegex.test(name)) {
     throw new restify.InvalidArgumentError(
-      format("%s name is invalid: '%s'", Monitor.name, name));
+      format('%s name is invalid: "%s"', Monitor.name, name));
   }
 }
 
-// Note: Should be in sync with "ufds/schema/amonmonitor.js".
+// Note: Should be in sync with 'ufds/schema/amonmonitor.js'.
 Monitor._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,31}$/;
 
 

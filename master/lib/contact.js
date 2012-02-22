@@ -1,16 +1,16 @@
 /*
  * Copyright 2011 Joyent, Inc.  All rights reserved.
  *
- * A "Contact" object. This module defines the "contact urn" structure.
+ * A 'Contact' object. This module defines the 'contact urn' structure.
  *
- * A "contact URN" is a URN string defining to whom and how to send a
+ * A 'contact URN' is a URN string defining to whom and how to send a
  * notification. A monitor stores a list of these contact URNs.
  * Formats:
  *    <scope>:<name>:<medium>         [*]
  *    my:<medium>
  *    <medium>
- * where <scope> is one of "my", "user" or "group". <name> is the sub-user
- * login or group name (only valid for scope "user" or "group"). <medium>
+ * where <scope> is one of 'my', 'user' or "group". <name> is the sub-user
+ * login or group name (only valid for scope 'user' or 'group'). <medium>
  * indicates how to contact the particular person. It is the field name on
  * the relevant user record from which to get the address to contact and
  * its name indicates the mechanism by which to contact.
@@ -60,11 +60,11 @@ function Contact(scope, medium, notificationType, address) {
  * @throws {restify.RESTError} if the given URN is invalid.
  */
 Contact.parseUrn = function (app, urn) {
-  // For now just: "<medium>" or "my:<medium>". When/if UFDS user mgmt is
+  // For now just: '<medium>' or 'my:<medium>'. When/if UFDS user mgmt is
   // added, then this will grow.
-  var scope = "my";
+  var scope = 'my';
   var medium;
-  if (urn.slice(0,3) === 'my:') {
+  if (urn.slice(0, 3) === 'my:') {
     medium = urn.slice(3);
   } else {
     medium = urn;
@@ -85,7 +85,7 @@ Contact.parseUrn = function (app, urn) {
  * Get a contact.
  *
  * Note: It is possible that `contact.address` is null/undefined on return,
- * e.g., for a contact field "fooEmail" on an sdcPerson with no such
+ * e.g., for a contact field 'fooEmail' on an sdcPerson with no such
  * attribute. It is up to the caller to handle this.
  *
  * @param app {App} The Amon Master App.
@@ -96,7 +96,8 @@ Contact.parseUrn = function (app, urn) {
 Contact.get = function (app, userUuid, urn, callback) {
   var bits = Contact.parseUrn(app, urn);
   app.userFromId(userUuid, function (err, user) {
-    if (err) return callback(err);
+    if (err)
+      return callback(err);
     var address = user[bits.medium];
     var contact = new Contact(bits.scope, bits.medium, bits.notificationType,
       address);

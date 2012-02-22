@@ -23,7 +23,7 @@ var createApp = require('./lib/app').createApp;
 
 //---- globals
 
-var DEFAULT_CONFIG_PATH = "./cfg/amon-master.json";
+var DEFAULT_CONFIG_PATH = './cfg/amon-master.json';
 
 var log = new Logger({
   name: 'amon-master',
@@ -48,37 +48,38 @@ function usage(code, msg) {
 }
 
 function printHelp() {
-  console.log("Usage: node main.js [OPTIONS]");
-  console.log("");
-  console.log("The Amon Master server.");
-  console.log("");
-  console.log("Options:");
-  console.log("  -h, --help     Print this help info and exit.");
-  console.log("  -v, --verbose  Once for DEBUG log output. Twice for TRACE.");
-  console.log("  -f, --file CONFIG-FILE-PATH");
-  console.log("                 Specify config file to load.");
+  console.log('Usage: node main.js [OPTIONS]');
+  console.log('');
+  console.log('The Amon Master server.');
+  console.log('');
+  console.log('Options:');
+  console.log('  -h, --help     Print this help info and exit.');
+  console.log('  -v, --verbose  Once for DEBUG log output. Twice for TRACE.');
+  console.log('  -f, --file CONFIG-FILE-PATH');
+  console.log('                 Specify config file to load.');
 }
 
 
 /**
  * Load config.
  *
- * This loads "factory-settings.json" and any given `configPath`.
+ * This loads 'factory-settings.json' and any given `configPath`.
  * Note that this is synchronous.
  *
  * @param configPath {String} Optional. Path to JSON config file to load.
  */
 function loadConfig(configPath) {
   var factorySettingsPath = __dirname + '/factory-settings.json';
-  log.info("Loading default config from '" + factorySettingsPath + "'.");
+  log.info('Loading default config from "%s".', factorySettingsPath);
   var config = JSON.parse(fs.readFileSync(factorySettingsPath, 'utf-8'));
 
   if (configPath) {
     if (! Path.existsSync(configPath)) {
-      usage("Config file not found: '" + configPath + "' does not exist. Aborting.");
+      usage('Config file not found: "' + configPath +
+        '" does not exist. Aborting.');
       return 1;
     }
-    log.info("Loading additional config from '" + configPath + "'.");
+    log.info('Loading additional config from "%s".', configPath);
     var extraConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     for (var name in extraConfig) {
       config[name] = extraConfig[name];
@@ -132,22 +133,22 @@ function main() {
 
   var config = loadConfig(rawOpts.file);
   // Log config (but don't put passwords in the log file).
-  var censorKeys = {"password": "***", "authToken": "***", "pass": "***"}
+  var censorKeys = {'password': '***', 'authToken': '***', 'pass': '***'}
   function censor(key, value) {
     var censored = censorKeys[key];
     return (censored === undefined ? value : censored);
   }
-  log.debug("config: %s", JSON.stringify(config, censor, 2));
+  log.debug('config: %s', JSON.stringify(config, censor, 2));
 
   // Create our app and start listening.
   var theApp;
-  createApp(config, log, function(err, app) {
+  createApp(config, log, function (err, app) {
     if (err) {
-      log.error(err, "Error creating app");
+      log.error(err, 'Error creating app');
       process.exit(1);
     }
     theApp = app;
-    app.listen(function() {
+    app.listen(function () {
       var addr = app.server.address();
       log.info('Amon Master listening on <http://%s:%s>.',
         addr.address, addr.port);
@@ -157,15 +158,15 @@ function main() {
   // Try to ensure we clean up properly on exit.
   function closeApp(callback) {
     if (theApp) {
-      log.info("Closing app.");
+      log.info('Closing app.');
       theApp.close(callback);
     } else {
-      log.debug("No app to close.");
+      log.debug('No app to close.');
       callback();
     }
   }
-  process.on("SIGINT", function() {
-    log.debug("SIGINT. Cleaning up.")
+  process.on('SIGINT', function () {
+    log.debug('SIGINT. Cleaning up.')
     closeApp(function () {
       process.exit(1);
     });
