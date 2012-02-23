@@ -30,7 +30,7 @@ SL_STATUS=`svcs -H amon-agent | awk '{ print $1 }'`
 echo "amon-agent status was $SL_STATUS"
 if [ "$SL_STATUS" = 'online' ]; then
   svcadm restart amon-agent
-else if [ "$SL_STATUS" = 'maintenance' ]; then
+elif [ "$SL_STATUS" = 'maintenance' ]; then
   svcadm clear amon-agent
 else
   svcadm enable amon-agent
