@@ -18,6 +18,9 @@
     "postinstall": "./npm/postinstall.sh",
     "preuninstall": "./npm/preuninstall.sh"
   },
+  "bin": {
+    "bunyan": "./node_modules/bunyan/bin/bunyan"
+  },
   "engines": {
     "node": ">=0.6"
   }
