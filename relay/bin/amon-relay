@@ -3,14 +3,6 @@
 OS=$(/usr/bin/uname -s)
 TOP=$(unset CDPATH; cd $(dirname $0)/../; pwd)
 
-# Check if we're a real install
-if [[ ! -f "${TOP}/main.js" && $OS -eq "SunOS" ]]; then
-    DIR=`/opt/smartdc/agents/bin/agents-npm -s explore amon-relay pwd 2>&1`
-    if [[ $? -eq 0 ]]; then
-	TOP=${DIR}
-    fi
-fi
-
 NODEDIR=${TOP}/deps/node-install
 if [[ ! -d "${NODEDIR}" && -d "${TOP}/../deps/node-install" ]]; then
     # Dev/repo layout.
