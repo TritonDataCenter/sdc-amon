@@ -98,9 +98,12 @@ var App = function App(options) {
   server.use(setup);
 
   // Routes.
-  this.server.head('/agentprobes', agentprobes.headAgentProbes);
-  this.server.get('/agentprobes', agentprobes.listAgentProbes);
-  this.server.post('/events', events.addEvents);
+  this.server.head({path: '/agentprobes', name: 'HeadAgentProbes'},
+    agentprobes.headAgentProbes);
+  this.server.get({path: '/agentprobes', name: 'ListAgentProbes'},
+    agentprobes.listAgentProbes);
+  this.server.post({path: '/events', name: 'PutEvents'},
+    events.putEvents);
 
   // Currently this is a testing-only option to avoid the updating getting
   // in the way.

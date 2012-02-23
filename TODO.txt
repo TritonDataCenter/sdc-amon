@@ -5,16 +5,9 @@
     [2012-02-22T07:16:54.723Z] INFO: amon-relay/audit/2887 on headnode: HEAD /agentprobes handled: 500 (req_id=4b57bdf3-6e22-4ca4-b972-a0d61145905e, audit=true, secure=false)
   Don't 500 to agents when haven't gotten data from master yet. Just
   return nothing for now.
-- get bunyan into agents/bin dir
 - node 0.6 & restify 1.x & bunyan
   - TODO:
     - add route names to all endpoints
-    - sdc-amon: drop the x-api-version header
-    - review and log.* with err, and others
-    - amon-relay log too wordy [MON-42]
-  - jsstyle quotes:
-    "([^'\n]*?)"  -> '\1'
-    "([^'\n]*?)'([^'\n]*?)'([^'\n]*?)" ->  '\1"\2"\3'
   - restify migration:
     - no `restify.log`, carry your own log along
     - can use 'after' event on restify server instead of repeating 'after'

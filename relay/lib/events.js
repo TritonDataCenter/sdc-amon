@@ -8,7 +8,7 @@ var restify = require('restify');
 var uuid = require('node-uuid');
 
 
-function addEvents(req, res, next) {
+function putEvents(req, res, next) {
   var event = req.params;
 
   //XXX This is where validation would be done.
@@ -41,5 +41,5 @@ function addEvents(req, res, next) {
 
 
 module.exports = {
-  addEvents: addEvents,
+  putEvents: putEvents,
 };

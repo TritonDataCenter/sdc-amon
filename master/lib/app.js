@@ -234,33 +234,40 @@ function App(config, ufds, mapi, log) {
   };
   server.use(setup);
 
-  //var before = [setup];
-  var before = [];
-
-  server.get('/ping', before, ping);
+  server.get({path: '/ping', name: 'Ping'}, ping);
   // Debugging:
-  //server.get('/caches', before, listCaches);
+  //server.get('/caches', listCaches);
 
-  server.get('/pub/:user', before, getUser);
+  server.get({path: '/pub/:user', name: 'GetUser'}, getUser);
 
-  server.get('/pub/:user/monitors', before, monitors.listMonitors);
-  server.put('/pub/:user/monitors/:name', before, monitors.putMonitor);
-  server.get('/pub/:user/monitors/:name', before, monitors.getMonitor);
-  server.del('/pub/:user/monitors/:name', before, monitors.deleteMonitor);
+  server.get({path: '/pub/:user/monitors', name: 'ListMonitors'},
+    monitors.listMonitors);
+  server.put({path: '/pub/:user/monitors/:name', name: 'PutMonitor'},
+    monitors.putMonitor);
+  server.get({path: '/pub/:user/monitors/:name', name: 'GetMonitor'},
+    monitors.getMonitor);
+  server.del({path: '/pub/:user/monitors/:name', name: 'DeleteMonitor'},
+    monitors.deleteMonitor);
 
-  server.get('/pub/:user/monitors/:monitor/probes',
-    before, probes.listProbes);
-  server.put('/pub/:user/monitors/:monitor/probes/:name',
-    before, probes.putProbe);
-  server.get('/pub/:user/monitors/:monitor/probes/:name',
-    before, probes.getProbe);
-  server.del('/pub/:user/monitors/:monitor/probes/:name',
-    before, probes.deleteProbe);
+  server.get(
+    {path: '/pub/:user/monitors/:monitor/probes', name: 'ListProbes'},
+    probes.listProbes);
+  server.put(
+    {path: '/pub/:user/monitors/:monitor/probes/:name', name: 'PutProbe'},
+    probes.putProbe);
+  server.get(
+    {path: '/pub/:user/monitors/:monitor/probes/:name', name: 'GetProbe'},
+    probes.getProbe);
+  server.del(
+    {path: '/pub/:user/monitors/:monitor/probes/:name', name: 'DeleteProbe'},
+    probes.deleteProbe);
 
-  server.get('/agentprobes', before, agentprobes.listAgentProbes);
-  server.head('/agentprobes', before, agentprobes.headAgentProbes);
+  server.get({path: '/agentprobes', name: 'ListAgentProbes'},
+    agentprobes.listAgentProbes);
+  server.head({path: '/agentprobes', name: 'HeadAgentProbes'},
+    agentprobes.headAgentProbes);
 
-  server.post('/events', before, events.addEvents);
+  server.post({path: '/events', name: 'PutEvents'}, events.putEvents);
 };
 
 
