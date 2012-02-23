@@ -18,7 +18,7 @@ var retry = require('retry');
  * @params config {Object}
  */
 function Twilio(log, config) {
-  if (!config || typeof(config) !== 'object')
+  if (!config || typeof (config) !== 'object')
     throw new TypeError('config must be an object');
   if (!config.accountSid)
     throw new TypeError('config.accountSid is required');
@@ -36,20 +36,20 @@ function Twilio(log, config) {
 }
 
 /**
- * This notification plugin will handle any contact fields named "phone"
- * or "*Phone" (e.g. "fooPhone", "workPhone", "bffPhone").
+ * This notification plugin will handle any contact fields named 'phone'
+ * or '*Phone' (e.g. 'fooPhone', "workPhone", "bffPhone").
  */
-Twilio.prototype.acceptsMedium = function(medium) {
+Twilio.prototype.acceptsMedium = function (medium) {
   var mediumLower = medium.toLowerCase();
-  return (mediumLower.slice(-5) === "phone");
+  return (mediumLower.slice(-5) === 'phone');
 }
 
 
 //XXX Change this API to throw error with details if invalid.
-Twilio.prototype.sanitizeAddress = function(data) {
+Twilio.prototype.sanitizeAddress = function (data) {
   var log = this.log;
 
-  if (!data || typeof(data) !== 'string') {
+  if (!data || typeof (data) !== 'string') {
     log.debug('Twilio.sanitizeAddress: data %s is not a string', data);
     return false;
   }
@@ -66,14 +66,14 @@ Twilio.prototype.sanitizeAddress = function(data) {
 };
 
 
-Twilio.prototype.notify = function(event, contactAddress, message, callback) {
-  if (!event || typeof(event) !== 'string')
+Twilio.prototype.notify = function (event, contactAddress, message, callback) {
+  if (!event || typeof (event) !== 'string')
     throw new TypeError('event must be a string');
-  if (!contactAddress || typeof(contactAddress) !== 'string')
+  if (!contactAddress || typeof (contactAddress) !== 'string')
     throw new TypeError('contactAddress must be a phone number');
-  if (typeof(message) !== 'string')
+  if (typeof (message) !== 'string')
     throw new TypeError('message must be a string');
-  if (!callback || typeof(callback) !== 'function')
+  if (!callback || typeof (callback) !== 'function')
     throw new TypeError('callback must be a function');
 
   var log = this.log.child({twilioEvent: event});
@@ -100,10 +100,10 @@ Twilio.prototype.notify = function(event, contactAddress, message, callback) {
 
   var operation = retry.operation();
   /*jsl:ignore*/
-  operation.try(function(currentAttempt) {
+  operation.try(function (currentAttempt) {
     /*jsl:end*/
     log.debug({twilioReq: options}, 'twilio request');
-    var req = https.request(options, function(res) {
+    var req = https.request(options, function (res) {
       if (res.statusCode >= 500) {
         log.warn({res: res}, 'twilio failure response (code %d), calling retry',
           res.statusCode);
@@ -112,10 +112,10 @@ Twilio.prototype.notify = function(event, contactAddress, message, callback) {
 
       res.body = '';
       res.setEncoding('utf8');
-      res.on('data', function(chunk) {
+      res.on('data', function (chunk) {
         res.body += chunk;
       });
-      res.on('end', function() {
+      res.on('end', function () {
         if (res.statusCode !== 201) {
           log.debug({twilioResBody: res.body || '(empty)'}, 'twilio error');
           log.warn({res: res}, 'failed to issue twilio notification to "%s"',
@@ -131,7 +131,7 @@ Twilio.prototype.notify = function(event, contactAddress, message, callback) {
       log.debug({res: res}, 'twilio response');
     });
 
-    req.on('error', function(err) {
+    req.on('error', function (err) {
       log.warn(err, 'twilio request error');
       operation.retry(err);
     });

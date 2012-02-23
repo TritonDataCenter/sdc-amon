@@ -18,28 +18,28 @@ var log = require('restify').log;
  */
 function Email(log, config) {
   this.log = log;
-  if (!config || typeof(config) !== 'object')
+  if (!config || typeof (config) !== 'object')
     throw new TypeError('config (object) is required');
-  if (config.smtp && typeof(config.smtp) === 'object') {
+  if (config.smtp && typeof (config.smtp) === 'object') {
     nodemailer.SMTP = config.smtp;
-  } else if (config.sendmail && typeof(config.sendmail) === 'string') {
+  } else if (config.sendmail && typeof (config.sendmail) === 'string') {
     nodemailer.sendmail = config.sendmail;
   } else {
     throw new TypeError('config.smtp or config.sendmail is required');
   }
-  if (!config.from || typeof(config.from) !== 'string')
+  if (!config.from || typeof (config.from) !== 'string')
     throw new TypeError('config.from is required (email)');
   this.from = config.from;
 }
 
 
 /**
- * This notification plugin will handle any contact fields named "email"
- * or "*Email" (e.g. "fooEmail", "workEmail", "bffEmail").
+ * This notification plugin will handle any contact fields named 'email'
+ * or '*Email' (e.g. 'fooEmail', "workEmail", "bffEmail").
  */
-Email.prototype.acceptsMedium = function(medium) {
+Email.prototype.acceptsMedium = function (medium) {
   var mediumLower = medium.toLowerCase();
-  return (mediumLower.slice(-5) === "email");
+  return (mediumLower.slice(-5) === 'email');
 }
 
 /**
@@ -48,12 +48,12 @@ Email.prototype.acceptsMedium = function(medium) {
  * @param address {String} Email address.
  * @returns {String} A sanitized email address.
  */
-Email.prototype.sanitizeAddress = function(address) {
+Email.prototype.sanitizeAddress = function (address) {
   return address;
 };
 
 
-Email.prototype.notify = function(event, contactAddress, message, callback) {
+Email.prototype.notify = function (event, contactAddress, message, callback) {
   var log = this.log;
 
   // TODO: add retries (retry module)
@@ -65,7 +65,7 @@ Email.prototype.notify = function(event, contactAddress, message, callback) {
     //html: '...',
     body: message
   };
-  log.debug("notify: email data: %j", data);
+  log.debug('notify: email data: %j', data);
   nodemailer.send_mail(
     {
       sender: this.from,
@@ -75,7 +75,7 @@ Email.prototype.notify = function(event, contactAddress, message, callback) {
       //html: '...',
       body: message
     },
-    function(err, success) {
+    function (err, success) {
       callback(err);
     }
   );

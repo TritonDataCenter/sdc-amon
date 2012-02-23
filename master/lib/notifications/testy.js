@@ -16,25 +16,25 @@ var log = require('restify').log;
  * @params config {Object}
  */
 function Testy(log, config) {
-  if (!config.logPath || typeof(config.logPath) !== 'string')
+  if (!config.logPath || typeof (config.logPath) !== 'string')
     throw new TypeError('config.logPath is required (path)');
   this.log = log;
   this.logPath = config.logPath;
   this.notifications = [];
 }
 
-Testy.prototype.acceptsMedium = function(medium) {
+Testy.prototype.acceptsMedium = function (medium) {
   var mediumLower = medium.toLowerCase();
-  return (mediumLower.slice(-5) === "email");
+  return (mediumLower.slice(-5) === 'email');
 }
 
-Testy.prototype.sanitizeAddress = function(data) {
+Testy.prototype.sanitizeAddress = function (data) {
   return data;
 };
 
-Testy.prototype.notify = function(event, contactAddress, message, callback) {
+Testy.prototype.notify = function (event, contactAddress, message, callback) {
   var log = this.log;
-  log.debug("Test.notify: event='%s', contactAddress='%s', message='%s'",
+  log.debug('Test.notify: event="%s", contactAddress="%s", message="%s"',
     event, contactAddress, message);
   this.notifications.push({
     contactAddress: contactAddress,
@@ -42,7 +42,7 @@ Testy.prototype.notify = function(event, contactAddress, message, callback) {
   });
   fs.writeFileSync(this.logPath,
     JSON.stringify(this.notifications, null, 2), 'utf8');
-  log.debug("Testy.notify: wrote '%s'", this.logPath)
+  log.debug('Testy.notify: wrote "%s"', this.logPath)
   callback();
 };
 
