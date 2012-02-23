@@ -27,7 +27,7 @@ function headAgentProbes(req, res, next) {
     format("%s-%s.json.content-md5", req._targetType, req._targetUuid));
   fs.readFile(md5Path, 'utf8', function (err, contentMD5) {
     if (err) {
-      if (false && err.code === "ENOENT") {
+      if (err.code === "ENOENT") {
         // We haven't retrieved any probes data from master for this zone
         // yet. Just use an empty list.
         res.send(200, []);
