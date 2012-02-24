@@ -311,6 +311,7 @@ function requestList(req, res, next, Model) {
       res.send(err);
     } else {
       var data = items.map(function (i) { return i.serialize() });
+      req.log.trace({data: data}, "items from modelList:", items)
       res.send(200, data);
     }
     return next();
@@ -352,7 +353,9 @@ function requestGet(req, res, next, Model) {
     if (err) {
       res.send(err);
     } else {
-      res.send(200, item.serialize());
+      var data = item.serialize();
+      req.log.trace({data: data}, "item from modelGet:", item)
+      res.send(200, data);
     }
     return next();
   });

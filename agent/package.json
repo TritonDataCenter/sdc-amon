@@ -5,8 +5,8 @@
   "private": true,
   "author": "Joyent (joyent.com)",
   "dependencies": {
-    "bunyan": "0.6.3",
-    "restify": "1.0.0",
+    "bunyan": "0.6.5",
+    "restify": "1.0.1",
     "nopt": "1.0.10"
   },
   "scripts": {

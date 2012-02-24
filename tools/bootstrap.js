@@ -302,7 +302,10 @@ function getAmonClient(next) {
   mapi.listMachines(adminUuid, options, function(err, machines) {
     if (err) return next(err);
     var amonMasterUrl = 'http://' + machines[0].ips[0].address;
-    amonClient = new Amon({url: amonMasterUrl});
+    amonClient = new Amon({
+      name: 'amon-client',
+      url: amonMasterUrl
+    });
     log("# Get Amon client (%s).", amonMasterUrl)
     next();
   });
@@ -318,6 +321,8 @@ function getAmonClient(next) {
 function loadAmonObject(obj, next) {
   if (obj.probe) {
     amonClient.listProbes(obj.user, obj.monitor, function(err, probes) {
+      if (err)
+        return next(err);
       var foundIt = false;
       for (var i = 0; i < probes.length; i++) {
         if (probes[i].name === obj.probe) {
@@ -336,6 +341,8 @@ function loadAmonObject(obj, next) {
     });
   } else if (obj.monitor) {
     amonClient.listMonitors(obj.user, function(err, monitors) {
+      if (err)
+        return next(err);
       var foundIt = false;
       for (var i = 0; i < monitors.length; i++) {
         if (monitors[i].name === obj.monitor) {

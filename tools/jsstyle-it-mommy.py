@@ -63,9 +63,14 @@ def space_keyword_and_paren(text):
     return text
 
 def if_test_return_oneliner(text):
-    """`if (test) return foo;` -> `if (test)\n<INDENT>return foo;`"""
+    """`if (test) return foo;` -> `if (test)\n<INDENT>return foo;`
+
+    Ditto for `if (test) throw ...;`
+    """
     text = re.compile(r'''^(\s*)(if \(.*?\)) return''', re.M) \
         .sub(r"\1\2\n\1%sreturn" % INDENT, text)
+    text = re.compile(r'''^(\s*)(if \(.*?\)) throw''', re.M) \
+        .sub(r"\1\2\n\1%sthrow" % INDENT, text)
     return text
 
 
