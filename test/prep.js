@@ -218,11 +218,11 @@ function createSulkyzone(next) {
           force: "true"  // XXX does MAPI client support `true -> "true"`
         },
         function (err, newZone) {
-          log("# Waiting up to ~90s for new zone %s to start up.", newZone.name);
+          log("# Waiting up to ~2min for new zone %s to start up.", newZone.name);
           if (err) return next(err);
           var zone = newZone;
           var zoneName = zone.name;
-          var sentinel = 30;
+          var sentinel = 40;
           async.until(
             function () {
               return zone.running_status === "running"
