@@ -1,6 +1,30 @@
 # higher-level prios
 
 - back on 'machine-up' probe type
+- script for a demo: Let's do Use Case "2. Operator SDC Zones monitor".
+  - show quick way to setup 'machine-up' probe for each smartdc_role zone
+  - then bring down cloudapi
+  - should get an email about that: put some basic templating in place
+    for this:
+      Subject: [{{cloudname}} 'sdczones' Monitor Alarm] 'cloudapi' machine is down
+
+      Your 'sdczones' monitor has alarmed.
+
+      Cloud: {{cloudname}}
+      Monitor: {{monitorname}}
+      Probe: {{probename}}
+      Machine: {{machinename}}  (... extra details on the machine ...)
+
+      --
+      {{some kind of templatable stock footer}}
+  - discuss missing pieces:
+    - persistent alarms (and events) and API endpoints to work with open
+      alarms (list, close, suppress alerts on this alarm)
+    - "clearing" via persistent alarm
+    - monitor suppression
+    - email improvements: Link to the alarm URL in the portal or adminui.
+      Link to the machine in the portal or adminui.
+    - Amon API in cloudapi and UIs in portal and adminui for working with Amon.
 - design use cases, assign a use case driver for each prio
 - probe type that runs in global targeting a machine (runInGlobal, notes below)
 - sysevent-based events: use case #2, machine-running-state probe type
@@ -63,11 +87,8 @@
 
 # someday/maybe
 
-- node 0.6 upgrade, npm 1.1 upgrade
-- Eng Guidelines "commit node_modules" update.
-- restify 1.x upgrade ("sdc-amon /pub/trent.mick" messes up on '.' in username -> restify upgrade)
-- Gut <https://hub.joyent.com/wiki/display/dev/SDC+Monitoring+and+Alarming>
-  and rename or remove it. Update ref in README.md.
+- "sdc-amon /pub/trent.mick" messes up on '.' in username -> restify upgrade
+  Check for this being fixed with restify 1.x
 - [Trent] master/config.json.in and use that in usb-headnode/zones/amon/setup
 - from master/lib/probes.js:
     //XXX validate the type is an existing probe type
@@ -77,7 +98,6 @@
 - Idea: have amon-master create event/alarm to operator if it cannot
   connect/work with UFDS.
 - [Trent] test suite for relay and agent
-- json logging
 - 'ping-agent' probe type. Basically this is a test that the amon-relay <->
   amon-agent socket is working and that the agent is responding.
 - from workflow/mapi talk: Amon should have the monitor skel for provisioning
@@ -248,7 +268,7 @@ model Alarm:  (a)
 
 
 
-# notes: runInGlobal
+# notes: runInGlobal, machine-up probe
 
 Dev Notes: Probes of this type run in the global zone, though. So, at some
 point a "server" needs to be attached. Perhaps the relay can co-ordinate
@@ -269,6 +289,10 @@ TODO:
 - Relay could just pull those (gz=true) out to separate file.
   Then when *it* is called by GZ agent, it merges the two. Only does this
   separation if *it* has an "App" for that "machine" value.
+
+    machine-UUID.json
+    machine-UUID-global.json
+    machine-UUID.content-md5
 
 - How does the MachineRunningStatusProbe get a stream of up/down events?
   - Agent spawns /usr/vm/sbin/zoneevent (GZ only)

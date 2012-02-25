@@ -35,6 +35,13 @@
  * Amon probe types should inherit from this base class -- see "logscan.js"
  * for an example -- and implement the following interface:
  *
+ *    Probe.prototype.type = <probe type string>;
+ *      This must match the name used in "./index.js".
+ *
+ *    Probe.runInGlobal = <boolean>;
+ *      Some Probe types must be run in the global. E.g. The "machine-up"
+ *      probe type works by watching for system sysevents in the GZ.
+ *
  *    Probe.validateConfig(config) {...}
  *      @param config {Object} The config data for a probe.
  *      @throws {TypeError} if invalid.
@@ -73,6 +80,7 @@ function Plugin(id, data, log) {
 }
 util.inherits(Plugin, events.EventEmitter);
 
+Plugin.runInGlobal = false;
 
 Plugin.prototype.emitEvent = function (type, value, data) {
   this.emit('event', {

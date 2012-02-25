@@ -15,13 +15,13 @@ var Monitor = require('./monitors').Monitor;
 var utils = require('amon-common').utils,
   objCopy = utils.objCopy,
   format = utils.format;
+var plugins = require('amon-plugins');
 
 
 
 //---- globals
 
-var log = restify.log;
-var UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 
 
@@ -69,9 +69,9 @@ function Probe(app, data) {
     raw = {
       amonprobe: data.name,
       type: data.type,
-      config: JSON.stringify(data.config),
       objectclass: Probe.objectclass
     };
+    if (data.config) raw.config = JSON.stringify(data.config);
     if (data.machine) raw.machine = data.machine;
     if (data.server) raw.server = data.server;
     this.user = data.user;
@@ -94,7 +94,13 @@ function Probe(app, data) {
   this.__defineGetter__('server', function() {
     return self.raw.server;
   });
+  this.__defineGetter__('global', function() {
+    return self.raw.global;
+  });
   this.__defineGetter__('config', function() {
+    if (!self.raw.config) {
+      return undefined;
+    }
     if (self._config === undefined) {
       self._config = JSON.parse(self.raw.config);
     }
@@ -131,18 +137,26 @@ Probe.parentDnFromRequest = function (req) {
 
 
 /**
- * Return the public API view of this Probe's data.
+ * Return the API view of this Probe's data.
+ *
+ * @param priv {Boolean} Default false. Set to true to include "private"
+ *    data. Private here means data that should be visible to Amon's
+ *    inner workings (e.g. the relays and agents), but not to the external
+ *    /pub/... APIs.
  */
-Probe.prototype.serialize = function serialize() {
+Probe.prototype.serialize = function serialize(priv) {
   var data = {
     user: this.user,
     monitor: this.monitor,
     name: this.name,
-    type: this.type,
-    config: this.config,
+    type: this.type
   };
+  if (this.config) data.config = this.config;
   if (this.machine) data.machine = this.machine;
   if (this.server) data.server = this.server;
+  if (priv) {
+    if (this.global) data.global = this.global;
+  }
   return data;
 }
 
@@ -168,7 +182,7 @@ Probe.prototype.authorizePut = function (app, callback) {
             "Invalid 'machine': machine '%s' does not exist or is not "
             + "owned by user '%s'.", self.machine, self.user)));
         } else {
-          log.error({err: err, probe: self.serialize()},
+          app.log.error({err: err, probe: self.serialize()},
             "unexpected error authorizing probe put against MAPI");
           return callback(new restify.InternalError(
             "Internal error authorizing probe put."));
@@ -180,7 +194,7 @@ Probe.prototype.authorizePut = function (app, callback) {
     // Must be an operator to add a probe to a GZ.
     app.isOperator(this.user, function (err, isOperator) {
       if (err) {
-        log.error("unexpected error authorizing probe put: "
+        app.log.error("unexpected error authorizing probe put: "
           + "probe=%s, error=%s", JSON.stringify(self.serialize()),
           err.stack || err);
         return callback(new restify.InternalError(
@@ -195,7 +209,7 @@ Probe.prototype.authorizePut = function (app, callback) {
       // Server must exist.
       app.serverExists(self.server, function (err, serverExists) {
         if (err) {
-          log.error({err: err, probe: self.serialize()},
+          app.log.error({err: err, probe: self.serialize()},
             "unexpected error authorizing probe put against MAPI");
           return callback(new restify.InternalError(
             "Internal error authorizing probe put."));
@@ -208,7 +222,7 @@ Probe.prototype.authorizePut = function (app, callback) {
       });
     });
   } else {
-    log.error("Attempting to authorize PUT on an invalid probe: "
+    app.log.error("Attempting to authorize PUT on an invalid probe: "
       + "no 'machine' or 'server' value: %s",
       JSON.stringify(this.serialize()));
     return callback(new restify.InternalError(
@@ -232,14 +246,14 @@ Probe.prototype.authorizeDelete = function (app, callback) {
  * @param callback {Function} `function (err, probe)`
  */
 Probe.get = function get(app, user, monitor, name, callback) {
-  if (! UUID_REGEX.test(user)) {
+  if (! UUID_RE.test(user)) {
     throw new restify.InvalidArgumentError(
       format("invalid user UUID: '%s'", user));
   }
   Probe.validateName(name);
   Monitor.validateName(monitor);
   var dn = Probe.dn(user, monitor, name);
-  ufdsmodel.modelGet(app, Probe, dn, log, callback);
+  ufdsmodel.modelGet(app, Probe, dn, app.log, callback);
 }
 
 
@@ -257,7 +271,6 @@ Probe.validate = function validate(app, raw) {
     // <raw field name>: <exported name>
     "amonprobe": "name",
     "type": "type",
-    "config": "config"
   }
   Object.keys(requiredFields).forEach(function (field) {
     if (!raw[field]) {
@@ -278,12 +291,12 @@ Probe.validate = function validate(app, raw) {
       format("must specify only one of 'machine' or 'server' for a "
         + "probe: %j", raw));
   } else if (raw.machine) {
-    if (! UUID_REGEX.test(raw.machine)) {
+    if (! UUID_RE.test(raw.machine)) {
       throw new restify.InvalidArgumentError(
         format("invalid probe machine UUID: '%s'", raw.machine));
     }
   } else if (raw.server) {
-    if (! UUID_REGEX.test(raw.server)) {
+    if (! UUID_RE.test(raw.server)) {
       throw new restify.InvalidArgumentError(
         format("invalid probe server UUID: '%s'", raw.server));
     }
@@ -293,22 +306,30 @@ Probe.validate = function validate(app, raw) {
         raw));
   }
 
-  //XXX validate the type is an existing probe type
-  //  var plugin = req._config.plugins[type];
-  //  if (!plugin) {
-  //    var e = new restify.InvalidArgumentError(
-  //      format('probe type is invalid: %s', msg));
-  //    return next(e);
-  //  }
-
-  //XXX validate data for that probe type
-  //  try {
-  //    plugin.validateConfig(raw.config);
-  //  } catch (e) {
-  //    var e = new restify.InvalidArgumentError(
-  //      format('probe config type is invalid: %s', msg));
-  //    return next(e);
-  //  }
+  // Validate the probe type and config.
+  var probeType = plugins[raw.type];
+  if (!probeType) {
+    throw new restify.InvalidArgumentError(
+      format('probe type is invalid: "%s"', raw.type));
+  }
+  if (raw.config) {
+    var config;
+    try {
+      config = JSON.parse(raw.config);
+    } catch (err) {
+      throw new restify.InvalidArgumentError(
+        format('probe config, %s, is invalid: %s', raw.config, err));
+    }
+    try {
+      probeType.validateConfig(config)
+    } catch (err) {
+      throw new restify.InvalidArgumentError(
+        format('probe config, %s, is invalid: "%s"', raw.config, err.message));
+    }
+  }
+  if (probeType.runInGlobal) {
+    raw.global = true;
+  }
 
   return raw;
 }

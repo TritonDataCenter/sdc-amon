@@ -44,6 +44,8 @@ var objCopy = require('amon-common').utils.objCopy;
  *    Model instances.
  */
 function modelList(app, Model, parentDn, log, callback) {
+  log.info({parentDn: parentDn}, 'modelList');
+
   // Check cache. "cached" is `{err: <error>, data: <data>}`.
   var cacheScope = Model.name + "List";
   var cacheKey = parentDn;
@@ -122,6 +124,8 @@ function modelList(app, Model, parentDn, log, callback) {
  *    instance.
  */
 function modelPut(app, Model, data, log, callback) {
+  log.info({data: data, modelName: Model.name}, 'modelPut');
+
   var item;
   try {
     item = new Model(app, data);
@@ -131,11 +135,13 @@ function modelPut(app, Model, data, log, callback) {
 
   // Access control check.
   item.authorizePut(app, function (err) {
-    log.trace("<%s> '%s' authorizePut: err: %s", Model.name, item.dn,
-      err || "(authorized)");
     if (err) {
+      log.debug({err: err, modelName: Model.name, dn: item.dn},
+        'authorizePut err');
       return callback(err);
     }
+    log.debug({modelName: Model.name, dn: item.dn},
+      'authorizePut: authorized');
 
     // Add it.
     var dn = item.dn;
@@ -156,6 +162,7 @@ function modelPut(app, Model, data, log, callback) {
           //  if (err) console.warn("client.modify err: %s", err)
           //  client.unbind(function(err) {});
           //});
+          //XXX Does replace work if have children?
         } else {
           log.error("Error saving to UFDS (dn='%s'): %s", dn, err.stack || err);
           return callback(
@@ -185,6 +192,8 @@ function modelPut(app, Model, data, log, callback) {
  *    instance.
  */
 function modelGet(app, Model, dn, log, skipCache, callback) {
+  log.info({dn: dn, modelName: Model.name}, 'modelGet');
+
   if (callback === undefined) {
     callback = skipCache
     skipCache = false;
@@ -275,6 +284,7 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
  *    restify.RESTError instance on error.
  */
 function modelDelete(app, Model, dn, log, callback) {
+  log.info({dn: dn, modelName: Model.name}, 'modelDelete');
   //TODO: could validate the 'dn'
 
   // We need to first get the item (we'll need it for proper cache
@@ -334,7 +344,9 @@ function requestPut(req, res, next, Model) {
     if (err) {
       res.send(err);
     } else {
-      res.send(200, item.serialize());
+      var data = item.serialize();
+      req.log.trace({data: data}, "item from modelPut:", item);
+      res.send(200, data);
     }
     return next();
   });
@@ -354,7 +366,7 @@ function requestGet(req, res, next, Model) {
       res.send(err);
     } else {
       var data = item.serialize();
-      req.log.trace({data: data}, "item from modelGet:", item)
+      req.log.trace({data: data}, "item from modelGet:", item);
       res.send(200, data);
     }
     return next();

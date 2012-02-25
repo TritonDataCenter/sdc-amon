@@ -7,7 +7,10 @@
 TOP=$(cd $(dirname $0)/../; pwd)
 COAL=root@10.99.99.7
 
-AMON_ZONE=$(ssh coal "/smartdc/bin/sdc-mapi /machines?tag.smartdc_role=amon | json -H 0.name" 2>/dev/null)
+if [[ -z "$AMON_ZONE" ]]; then
+    AMON_ZONE=$(ssh coal "/smartdc/bin/sdc-mapi /machines?tag.smartdc_role=amon | json -H 0.name" 2>/dev/null)
+fi
+echo "AMON_ZONE: $AMON_ZONE"
 
 rsync -av ${TOP}/master/ \
     $COAL:/zones/$AMON_ZONE/root/opt/smartdc/amon/master/ \

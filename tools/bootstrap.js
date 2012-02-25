@@ -389,6 +389,22 @@ function loadAmonObjects(next) {
       }
     },
     {
+      user: devbob.uuid,
+      monitor: 'isup',
+      body: {
+        contacts: ['email']
+      }
+    },
+    {
+      user: devbob.uuid,
+      monitor: 'isup',
+      probe: 'devzone',
+      body: {
+        "machine": devzone.name,
+        "type": "machine-up"
+      }
+    },
+    {
       user: devalice.uuid,
       monitor: 'gz',
       body: {

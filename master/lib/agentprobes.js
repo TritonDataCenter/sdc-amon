@@ -50,7 +50,11 @@ function findProbes(app, field, uuid, log, callback) {
 
     var probes = [];
     result.on('searchEntry', function (entry) {
-      probes.push((new Probe(app, entry.object)).serialize());
+      try {
+        probes.push((new Probe(app, entry.object)).serialize(true));
+      } catch (err) {
+        log.warn(err, "invalid probe in UFDS (ignoring)")
+      }
     });
 
     result.on('error', function (err) {
@@ -136,7 +140,7 @@ function listAgentProbes(req, res, next) {
 
   findProbes(req._app, field, uuid, req.log, function (err, probes) {
     if (err) {
-      req.log.error('error getting probes for %s "%s"', field, uuid);
+      req.log.error(err, 'error getting probes for %s "%s"', field, uuid);
       res.send(500);
     } else {
       res.send(200, probes);
@@ -176,8 +180,7 @@ function headAgentProbes(req, res, next) {
 
   findProbes(req._app, field, uuid, req.log, function (err, probes) {
     if (err) {
-      req.log.error('error getting probes for %s "%s": %s', field, uuid,
-        (err.stack || err));
+      req.log.error(err, 'error getting probes for %s "%s"', field, uuid);
       return next(new restify.InternalError());
     } else {
       req.log.trace({probes: probes}, 'found probes');

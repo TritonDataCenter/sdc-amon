@@ -29,6 +29,7 @@ function MachineUpProbe(id, data, log) {
 }
 util.inherits(MachineUpProbe, Plugin);
 
+MachineUpProbe.runInGlobal = true;
 MachineUpProbe.prototype.type = "machine-running-status";
 
 MachineUpProbe.validateConfig = function(config) {

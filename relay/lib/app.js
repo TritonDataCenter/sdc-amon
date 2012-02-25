@@ -67,10 +67,12 @@ var App = function App(options) {
   this.localMode = options.localMode || false;
   this.poll = options.poll || 30;
 
-  this._stageJsonPath = path.resolve(this.dataDir,
-    format("%s-%s.json", this._targetType, this._targetUuid));
+  this._stageLocalJsonPath = path.resolve(this.dataDir,
+    format("%s-%s-local.json", this._targetType, this._targetUuid));
+  this._stageGlobalJsonPath = path.resolve(this.dataDir,
+    format("%s-%s-global.json", this._targetType, this._targetUuid));
   this._stageMD5Path = path.resolve(this.dataDir,
-    format("%s-%s.json.content-md5", this._targetType, this._targetUuid));
+    format("%s-%s.content-md5", this._targetType, this._targetUuid));
 
   this._master = new RelayClient({
     url: options.masterUrl,
@@ -128,8 +130,8 @@ var App = function App(options) {
         }
         self._master.agentProbes(self._targetType, self._targetUuid, function(err, agentProbes, masterMD5) {
           if (err || !agentProbes || !masterMD5) {
-            log.warn('Error getting agent probes from master (%s=%s): %s',
-              self._targetType, self._targetUuid, err);
+            log.warn(err, 'Error getting agent probes from master (%s=%s)',
+              self._targetType, self._targetUuid);
             return;
           }
           log.trace('Retrieved agent probes from master (%s=%s): %s',
@@ -311,12 +313,24 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
     return callback();
   }
 
-  var jsonPath = this._stageJsonPath;
+  var localAgentProbes = [];
+  var globalAgentProbes = [];
+  for (var i = 0; i < agentProbes.length; i++) {
+    var p = agentProbes[i];
+    if (p.global) {
+      globalAgentProbes.push(p);
+    } else {
+      localAgentProbes.push(p);
+    }
+  }
+
+  var localJsonPath = this._stageLocalJsonPath;
+  var globalJsonPath = this._stageGlobalJsonPath;
   var md5Path = this._stageMD5Path;
 
   function backup(cb) {
     var backedUp = false;
-    utils.asyncForEach([jsonPath, md5Path], function (p, cb2) {
+    utils.asyncForEach([localJsonPath, globalJsonPath, md5Path], function (p, cb2) {
       path.exists(p, function (exists) {
         if (exists) {
           self.log.trace("Backup '%s' to '%s'.", p, p + ".bak");
@@ -331,24 +345,34 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
     });
   }
   function write(cb) {
-    var agentProbesStr = JSON.stringify(agentProbes, null, 2);
-    utils.asyncForEach([[jsonPath, agentProbesStr], [md5Path, md5]],
+    utils.asyncForEach(
+      [
+        [localJsonPath, JSON.stringify(localAgentProbes, null, 2)],
+        [globalJsonPath, JSON.stringify(globalAgentProbes, null, 2)],
+        [md5Path, md5]
+      ],
       function (item, cb2) {
         fs.writeFile(item[0], item[1], 'utf8', cb2);
       },
       cb);
   }
   function restore(cb) {
-    utils.asyncForEach([jsonPath, md5Path], function (p, cb2) {
-      self.log.trace("Restore backup '%s' to '%s'.", p + ".bak", p);
-      fs.rename(p + ".bak", p, cb2);
-    }, cb);
+    utils.asyncForEach(
+      [localJsonPath, globalJsonPath, md5Path],
+      function (p, cb2) {
+        self.log.trace("Restore backup '%s' to '%s'.", p + ".bak", p);
+        fs.rename(p + ".bak", p, cb2);
+      },
+      cb);
   }
   function cleanBackup(cb) {
-    utils.asyncForEach([jsonPath, md5Path], function (p, cb2) {
-      self.log.trace("Remove backup '%s'.", p + ".bak");
-      fs.unlink(p + ".bak", cb2);
-    }, cb);
+    utils.asyncForEach(
+      [localJsonPath, globalJsonPath, md5Path],
+      function (p, cb2) {
+        self.log.trace("Remove backup '%s'.", p + ".bak");
+        fs.unlink(p + ".bak", cb2);
+      },
+      cb);
   }
 
   backup(function (err1, backedUp) {
