@@ -25,6 +25,7 @@
     - email improvements: Link to the alarm URL in the portal or adminui.
       Link to the machine in the portal or adminui.
     - Amon API in cloudapi and UIs in portal and adminui for working with Amon.
+- update to and use npm shrinkwrap
 - design use cases, assign a use case driver for each prio
 - probe type that runs in global targeting a machine (runInGlobal, notes below)
 - sysevent-based events: use case #2, machine-running-state probe type

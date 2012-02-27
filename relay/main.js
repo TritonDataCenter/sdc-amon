@@ -27,6 +27,7 @@ if (process.platform === 'sunos') {
 var App = require('./lib/app');
 var amonCommon = require('amon-common'),
   format = amonCommon.utils.format;
+var ZoneEventWatcher = require('./lib/zoneeventwatcher');
 
 
 
@@ -38,7 +39,7 @@ var DEFAULT_DATA_DIR = '/var/db/amon-relay';
 var DEFAULT_SOCKET = '/var/run/.smartdc-amon.sock';
 
 var config; // set in `main()`
-var appIndex = {};
+var zoneApps = {};  // Mapping <zonename> -> <Relay app>.
 
 var log = new Logger({
   name: 'amon-relay',
@@ -53,71 +54,6 @@ var log = new Logger({
 
 
 //---- internal support functions
-
-function listenInGlobalZoneSync() {
-  var app = appIndex['global'] = new App({
-    log: log,
-    server: config.computeNodeUuid,
-    socket: config.socket,
-    dataDir: config.dataDir,
-    localMode: true,  // use a local socket, not a zsock
-    masterUrl: config.masterUrl,
-    poll: config.poll
-  });
-  log.debug('Starting amon-relay socket for global zone (server %s) at "%s".',
-    config.computeNodeUuid, config.socket);
-  app.listen(function (err) {
-    if (!err) {
-      log.info('Amon-relay listening in global zone on socket "%s".',
-        config.socket);
-    } else {
-      log.error(err, 'Unable to start amon-relay in global zone');
-      //XXX Shouldn't this be fatal?
-    }
-  });
-  return app;
-}
-
-
-/**
- * Start a relay App listening in the given zone.
- *
- * Side-effect: the `appIndex[zone]` global is updated.
- * TODO: Refactor this. Currently a failure during listening will still add.
- *
- * @param zone {String} The name of the zone in which to listen.
- * @param callback {Function} Optional. If given, will be called without
- *    args when listening or when errored out. No arguments are given.
- */
-function listenInZone(zone, callback) {
-  zutil.getZoneAttribute(zone, 'owner-uuid', function (error, attr) {
-    if (error || !attr) {
-      log.warn('No "owner-uuid" attribute found on zone %s. Skipping.', zone);
-      if (callback)
-        return callback();
-    }
-    appIndex[zone] = new App({
-      log: log,
-      machine: zone,
-      socket: config.socket,
-      owner: attr.value,
-      localMode: false,  // use a zsock, this isn't the current zone
-      dataDir: config.dataDir,
-      masterUrl: config.masterUrl,
-      poll: config.poll
-    });
-    log.debug('Starting amon-relay socket for machine %s (owner=%s) on "%s".',
-      zone, attr.value, config.socket);
-    appIndex[zone].listen(function (error) {
-      if (!error) {
-        log.info('Amon-relay listening in zone %s on zsock "%s"', zone,
-          config.socket);
-      }
-      if (callback) callback();
-    });
-  });
-}
-
 
 /**
  * Get the URL for the amon master from MAPI.
@@ -195,125 +131,207 @@ function getMasterUrl(poll, callback) {
 }
 
 
-/**
- * Start watching for zone up/down events to handle creating an App for
- * each.
- *
- * @param callback {Function} `function () {}` called when up and listening.
- */
-function startZoneEventWatcher(callback) {
-  if (!config.allZones) {
-    return callback();
+// Create data dir, if necessary.
+function ensureDataDir(next) {
+  if (!path.existsSync(config.dataDir)) {
+    log.info('Create data dir: %s', config.dataDir);
+    fs.mkdirSync(config.dataDir, 0777)
   }
+  next();
+}
 
-  function handleZoneEvent(event) {
-    /* BEGIN JSSTYLED */
-    // $ /usr/vm/sbin/zoneevent
-    // {'zonename': "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "shutting_down", "oldstate": "running", "zoneid": "18", "when": "4518649281252", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
-    // {'zonename': "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "shutting_down", "oldstate": "shutting_down", "zoneid": "18", "when": "4519667177096", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
-    // {'zonename': "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "shutting_down", "oldstate": "shutting_down", "zoneid": "18", "when": "4519789169375", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
-    // {'zonename': "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "shutting_down", "oldstate": "shutting_down", "zoneid": "18", "when": "4519886487860", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
-    // {'zonename': "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "uninitialized", "oldstate": "shutting_down", "zoneid": "18", "when": "4519887001569", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
-    // {'zonename': "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "initialized", "oldstate": "uninitialized", "zoneid": "19", "when": "4520268151381", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
-    // {'zonename': "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "ready", "oldstate": "initialized", "zoneid": "19", "when": "4520270413097", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
-    // {'zonename': "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "ready", "oldstate": "ready", "zoneid": "19", "when": "4520615339060", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
-    // {'zonename': "31128646-0233-4a7d-b99a-9cb8098f5f36", "newstate": "running", "oldstate": "ready", "zoneid": "19", "when": "4520616213191", "channel": "com.sun:zones:status", "class": "status", "subclass": "change"}
-    /* END JSSTYLED */
-    //
-    // We care about:
-    // 1. newstate=shutting_down, oldstate=running -> zone down
-    // 2. newstate=running, oldstate=ready -> zone up
-    var zonename = event.zonename;
-    var oldstate = event.oldstate;
-    var newstate = event.newstate;
-    if (oldstate === 'running' && newstate === 'shutting_down') {
-      //XXX log.info({zoneevent: event}, 'handle zone event')
-      log.info('handle zone "%s" down event', zonename);
-      var app = appIndex[zonename];
-      if (app) {
-        app.close(function () {
-          delete appIndex[zonename];
-        });
+// Get the compute node UUID.
+function ensureComputeNodeUuid(next) {
+  if (!config.computeNodeUuid) {
+    log.info('Getting compute node UUID from `sysinfo`.')
+    execFile('/usr/bin/sysinfo', [], function (err, stdout, stderr) {
+      if (err)
+        return next(format(
+          'Error calling sysinfo: %s stdout="%s" stderr="%s"',
+          err, stdout, stderr));
+      try {
+        var sysinfo = JSON.parse(stdout);
+      } catch (ex) {
+        return next(format('Error parsing sysinfo output: %s output="%s"',
+          ex, stdout));
       }
-    } else if (oldstate === 'ready' && newstate === 'running') {
-      log.info('handle zone "%s" up event', zonename);
-      listenInZone(zonename);
-    } else {
-      log.trace('ignore zone "%s" event', zonename);
-    }
+      log.info('Compute node UUID: %s', sysinfo.UUID);
+      config.computeNodeUuid = sysinfo.UUID;
+      next();
+    });
+  } else {
+    next();
   }
+}
 
-  function handleZoneEventLine(line) {
-    try {
-      var event = JSON.parse(line);
-    } catch (err) {
-      handleZoneEventError(err);
-    }
-    handleZoneEvent(event);
-  }
-
-  // Missing a 'zone down' event is bad: It means that amon-relay's open
-  // zsock into that zone can prevent the zone from shutting down. Therefore
-  // we'll treat an unexpected end or error from `zoneevent` as fatal: let
-  // SMF restarter sort it out.
-  function handleZoneEventError(reason) {
-    log.fatal('unexpected zoneevent error, HUP\'ing: %s', reason);
-    process.exit(1);
-  }
-
-  var zoneevent = spawn('/usr/vm/sbin/zoneevent');
-  zoneevent.stdout.setEncoding('utf8');
-  var leftover = '';  // Left-over partial line from last chunk.
-  zoneevent.stdout.on('data', function (chunk) {
-    var lines = chunk.split(/\r\n|\n/);
-    var length = lines.length;
-    if (length === 1) {
-      leftover += lines[0];
-      return;
-    }
-    if (length > 1) {
-      handleZoneEventLine(leftover + lines[0]);
-    }
-    leftover = lines.pop();
-    length -= 1;
-    for (var i = 1; i < length; i++) {
-      handleZoneEventLine(lines[i]);
-    }
-  });
-
-  zoneevent.stdout.on('end', function () {
-    if (leftover) {
-      handleZoneEventLine(leftover);
-      leftover = '';
-    }
-    handleZoneEventError('zoneevent process ended')
-  });
-
-  callback();
+function logConfig(next) {
+  log.debug({config: config}, 'config');
+  next();
 }
 
 
-function startServers() {
-  startZoneEventWatcher(function () {
-    // We wait until the zonevent watcher is started to avoid a baroque race
-    // with missing a 'zone down' event while initially setting up zsocks.
+/**
+ * Determine the master URL.
+ * Either 'config.masterUrl' is set (from '-m' option), or we get it
+ * from MAPI (with MAPI passed in on env: MAPI_CLIENT_URL, ...).
+ */
+function ensureMasterUrl(next) {
+  if (!config.masterUrl) {
+    log.info('Getting master URL from MAPI.');
+    getMasterUrl(config.poll, function (err, masterUrl) {
+      if (err)
+        return next('Error getting Amon master URL from MAPI: '+err);
+      log.info('Got master URL (from MAPI): %s', masterUrl);
+      config.masterUrl = masterUrl;
+      next();
+    });
+  } else {
+    next();
+  }
+}
 
-    // Now create the app(s).
-    if (!config.allZones) {
-      // Presuming local is the global zone (as it is in current production
-      // usage).
-      listenInGlobalZoneSync();
-    } else {
-      zutil.listZones().forEach(function (z) {
-        if (z.name === 'global') {
-          listenInGlobalZoneSync();
-        } else {
-          listenInZone(z.name);
-        }
-      });
-    }
+function createGlobalZoneApp() {
+  return new App({
+    log: log,
+    server: config.computeNodeUuid,
+    socket: config.socket,
+    dataDir: config.dataDir,
+    localMode: true,  // use a local socket, not a zsock
+    masterUrl: config.masterUrl,
+    poll: config.poll
   });
 }
+
+function createZoneApp(zonename) {
+  return new App({
+    log: log,
+    machine: zonename,
+    socket: config.socket,
+    localMode: false,  // use a zsock, this isn't the current zone
+    dataDir: config.dataDir,
+    masterUrl: config.masterUrl,
+    poll: config.poll
+  });
+}
+
+
+/**
+ * Start the given app listening.
+ *
+ * @param app {App} The app to start listening.
+ * @param zonename {String} Name of the zone.
+ * @param callback {Function} Optional. `function (err)`
+ */
+function appListen(app, zonename, callback) {
+  app.listen(function (err) {
+    if (!err)
+      log.info({zonename: zonename, owner: app.owner},
+        'Amon-relay listening socket "%s"', config.socket);
+    if (callback)
+      callback(err);
+  })
+}
+
+
+/**
+ * Start watching zones going up/down and updating `zoneApps` master list
+ * accordingly.
+ */
+function startZoneEventWatcher(next) {
+  log.info("startZoneEventWatcher")
+  if (!config.allZones) {
+    return next();
+  }
+  var zoneEventWatcher = new ZoneEventWatcher(log);
+  zoneEventWatcher.on('zoneUp', function (zonename) {
+    log.info({zonename: zonename}, 'handle zoneUp event');
+    var app = createZoneApp(zonename);
+    zoneApps[zonename] = app;
+    appListen(app, zonename);
+  });
+  zoneEventWatcher.on('zoneDown', function (zonename) {
+    log.info({zonename: zonename}, 'handle zoneDown event');
+    var app = zoneApps[zonename];
+    if (app) {
+      delete zoneApps[zonename]
+      app.close(function () {});
+    }
+  });
+  next();
+}
+
+
+/**
+ * Update the `zoneApps` global -- the master list of Apps for each running
+ * zone -- from current state on the box.
+ *
+ * @param next (Function) Hack: If this is set, then this is the first call
+ *  to this function during Relay initialization. Else, this is being
+ *  called in the "self-heal" `setInterval`.
+ */
+function updateZoneApps(next) {
+  log.info('updateZoneApps');
+  var isSelfHeal = (next === undefined);
+
+  // Handle dev-case of only listening in the current zone (presumed
+  // to be the global zone).
+  if (!config.allZones) {
+    if (! zoneApps['global']) {
+      var app = createGlobalZoneApp();
+      zoneApps['global'] = app;
+      appListen(app, 'global');
+    }
+    return (next && next());
+  }
+
+  var existingZonenames = Object.keys(zoneApps);
+  var actualZones = zutil.listZones();
+
+  // Find new zonenames and create a `zoneApps` entry for each.
+  for (var i = 0; i < actualZones.length; i++) {
+    var zonename = actualZones[i].name;
+    if (! zoneApps[zonename]) {
+      if (isSelfHeal) {
+        log.warn({zonename: zonename}, 'self-healing zone list: add zone');
+      }
+      var app = (zonename === 'global' ?
+        createGlobalZoneApp() : createZoneApp(zonename));
+      zoneApps[zonename] = app;
+      appListen(app, zonename);
+    } else {
+      delete existingZonenames[zonename];
+    }
+  };
+
+  // Remove obsolete `zoneApps` entries.
+  for (var i = 0; i < existingZonenames.length; i++) {
+    var zonename = existingZonenames[i];
+    var app = zoneApps[zonename];
+    if (app) {
+      if (isSelfHeal) {
+        log.warn({zonename: zonename}, 'self-healing zone list: remove zone');
+      }
+      delete zoneApps[zonename]
+      app.close(function () {});
+    }
+  }
+
+  next && next();
+}
+
+
+/**
+ * Infrequent self-healing of `zoneApps`.
+ *
+ * TODO: Monitor log.warn's from `updateZoneApps` intervals to trap cases
+ * where we are not keeping the zone list up to date.
+ */
+function startZoneAppsSelfHeal(next) {
+  var SELF_HEAL_INTERVAL = 5 * 60 * 1000; // every 5 minutes
+  setInterval(updateZoneApps, SELF_HEAL_INTERVAL);
+  //XXX Need to clear this interval on exit?
+}
+
 
 
 function usage(code, msg) {
@@ -419,73 +437,20 @@ function main() {
     usage(1, 'cannot use "-Z" and a port number to "-s"');
   }
 
-  // Create data dir, if necessary.
-  function ensureDataDir(next) {
-    if (!path.existsSync(config.dataDir)) {
-      log.info('Create data dir: %s', config.dataDir);
-      fs.mkdirSync(config.dataDir, 0777)
-    }
-    next();
-  }
-
-  // Get the compute node UUID.
-  function ensureComputeNodeUuid(next) {
-    if (!config.computeNodeUuid) {
-      log.info('Getting compute node UUID from `sysinfo`.')
-      execFile('/usr/bin/sysinfo', [], function (err, stdout, stderr) {
-        if (err)
-          return next(format(
-            'Error calling sysinfo: %s stdout="%s" stderr="%s"',
-            err, stdout, stderr));
-        try {
-          var sysinfo = JSON.parse(stdout);
-        } catch (ex) {
-          return next(format('Error parsing sysinfo output: %s output="%s"',
-            ex, stdout));
-        }
-        log.info('Compute node UUID: %s', sysinfo.UUID);
-        config.computeNodeUuid = sysinfo.UUID;
-        next();
-      });
-    } else {
-      next();
-    }
-  }
-
-  function logConfig(next) {
-    log.debug({config: config}, 'config');
-    next();
-  }
-
-  // Determine the master URL.
-  // Either 'config.masterUrl' is set (from '-m' option), or we get it
-  // from MAPI (with MAPI passed in on env: MAPI_CLIENT_URL, ...).
-  function ensureMasterUrl(next) {
-    if (!config.masterUrl) {
-      log.info('Getting master URL from MAPI.');
-      getMasterUrl(config.poll, function (err, masterUrl) {
-        if (err)
-          return next('Error getting Amon master URL from MAPI: '+err);
-        log.info('Got master URL (from MAPI): %s', masterUrl);
-        config.masterUrl = masterUrl;
-        next();
-      });
-    } else {
-      next();
-    }
-  }
-
   async.series([
     ensureDataDir,
     ensureComputeNodeUuid,
     logConfig,
-    ensureMasterUrl
+    ensureMasterUrl,
+    startZoneEventWatcher,
+    updateZoneApps,
+    startZoneAppsSelfHeal
   ], function (err) {
     if (err) {
       log.error(err);
       process.exit(2);
     }
-    startServers();
+    log.info("startup complete")
   });
 }
 

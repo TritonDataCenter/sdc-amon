@@ -8,6 +8,10 @@ var Pipe = process.binding("pipe_wrap").Pipe;
 
 var restify = require('restify');
 var zsock = require('zsock');
+var zutil;
+if (process.platform === 'sunos') {
+  zutil = require('zutil');
+}
 
 var amonCommon = require('amon-common'),
   Constants = amonCommon.Constants,
@@ -33,7 +37,6 @@ var utils = require('./utils');
  *  - log {Bunyan Logger instance}
  *  - server {String} (for a GZ only) the server (aka compute node) UUID
  *  - machine {String} (for non-GZ only) the machine this should be bound to.
- *  - owner {String} (for non-GZ only) the user uuid for that owns said machine.
  *  - socket  {String} the socket to open/close (zsock).
  *  - dataDir {String} root of agent probes tree.
  *  - masterUrl {String} location of the amon-master.
@@ -53,8 +56,6 @@ var App = function App(options) {
     throw TypeError('cannot specify both options.machine and options.server');
   } else if (!options.machine && !options.server) {
     throw TypeError('either options.machine and options.server is required');
-  } else if (options.machine && !options.owner) {
-    throw TypeError('options.owner is require if options.machine is used');
   }
   var self = this;
 
@@ -182,6 +183,31 @@ App.prototype.sendOperatorEvent = function (msg, details, callback) {
 
 
 /**
+ * Get and set `this.owner`.
+ *
+ * Note: Owner isn't set if this is on the global zone.
+ */
+App.prototype._retrieveOwner = function (callback) {
+  if (this.owner || this._targetType === 'server') {
+    return callback();
+  }
+
+  var self = this;
+  var zonename = this._targetUuid;
+  zutil.getZoneAttribute(zonename, 'owner-uuid', function (err, attr) {
+    if (err) {
+      return callback(err);
+    }
+    if (!attr) {
+      return callback('no "owner-uuid" attribute found on zone ' + zonename);
+    }
+    self.owner = attr;
+    callback();
+  });
+}
+
+
+/**
  * Gets Application up and listening.
  *
  * This method creates a zsock with the zone/path you passed in to the
@@ -204,53 +230,63 @@ App.prototype.listen = function(callback) {
   }
 
   // Production mode: using a zsocket into the target zone.
+  // 0. Get the owner of this machine.
   // 1. Wait until the zone is ready.
   //    A zsock creation *immediately* after sysevent reports the zone is
   //    running, will fail. A solution (haven't really dug into what the
   //    actual requisite milestone is) is to wait for the 'multi-user'
   //    SMF milestone in the zone.
   // 2. Create the zsock and listen.
-  var zonename = self._targetUuid;
-  var timeout = 5 * 60 * 1000; // 5 minutes
-  utils.waitForZoneSvc(zonename, 'milestone/multi-user', timeout, self.log,
-                       function (err) {
+  self._retrieveOwner(function (err) {
+    var zonename = self._targetUuid;
     if (err) {
-      // Note: We get a spurious timeout here for a zone that was mid
-      // going down when amon-relay was started. An improvement would be
-      // to not error/event for that.
-      var msg = format('Relay could not setup socket to zone "%s": %s',
-        zonename, err.stack || err);
-      self.log.error(msg);
-      return self.sendOperatorEvent(msg, {zone: zonename}, callback);
+      self.log.error(err);
+      return self.sendOperatorEvent('couldn\'t get zone owner',
+        {zone: zonename}, callback);
     }
 
-    var opts = {
-      zone: zonename,
-      path: self.socket
-    };
-    zsock.createZoneSocket(opts, function(err, fd) {
+    var timeout = 5 * 60 * 1000; // 5 minutes
+    utils.waitForZoneSvc(zonename, 'milestone/multi-user', timeout, self.log,
+                         function (err) {
       if (err) {
-        var msg = format('Relay could not open zsock in zone "%s": %s',
-          zonename, err.stack);
+        // Note: We get a spurious timeout here for a zone that was mid
+        // going down when amon-relay was started. An improvement would be
+        // to not error/event for that.
+        var msg = format('Relay could not setup socket to zone "%s": %s',
+          zonename, err.stack || err);
         self.log.error(msg);
         return self.sendOperatorEvent(msg, {zone: zonename}, callback);
       }
-      self.log.debug('Opened zsock to zone "%s" on FD %d', zonename, fd);
 
-      // Backdoor to listen on `fd`.
-      var p = new Pipe(true);
-      p.open(fd);
-      p.readable = p.writable = true;
-      // Need to set the `net.Server._handle` which gets closed on
-      // `net.Server.close()`. A Restify Server *has* a `net.Server`
-      // (actually http.Server or https.Server) as its `this.server`
-      // attribute rather than it *being* a `net.Server` subclass.
-      self.server.server._handle = p;
-      self.server.listen(function () {
-        callback();
+      var opts = {
+        zone: zonename,
+        path: self.socket
+      };
+      zsock.createZoneSocket(opts, function(err, fd) {
+        if (err) {
+          var msg = format('Relay could not open zsock in zone "%s": %s',
+            zonename, err.stack);
+          self.log.error(msg);
+          return self.sendOperatorEvent(msg, {zone: zonename}, callback);
+        }
+        self.log.debug('Opened zsock to zone "%s" on FD %d', zonename, fd);
+
+        // Backdoor to listen on `fd`.
+        var p = new Pipe(true);
+        p.open(fd);
+        p.readable = p.writable = true;
+        // Need to set the `net.Server._handle` which gets closed on
+        // `net.Server.close()`. A Restify Server *has* a `net.Server`
+        // (actually http.Server or https.Server) as its `this.server`
+        // attribute rather than it *being* a `net.Server` subclass.
+        self.server.server._handle = p;
+        self.server.listen(function () {
+          callback();
+        });
       });
     });
   });
+
 };
 
 
