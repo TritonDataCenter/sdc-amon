@@ -144,7 +144,7 @@ RelayClient.prototype.agentProbes = function (type, uuid, callback) {
   this._request("GET", path, function(err, res) {
     if (err) return callback(err);
     if (res.statusCode !== 200) {
-      this.log.warn('Bad status code for checksum: %d', res.statusCode);
+      self.log.warn('Bad status code for checksum: %d', res.statusCode);
       return callback(new Error('HttpError: ' + res.statusCode));
     }
     return callback(null, res.params, res.headers['content-md5']);

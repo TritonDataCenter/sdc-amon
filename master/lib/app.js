@@ -58,17 +58,6 @@ function ping(req, res, next) {
   return next();
 }
 
-// Debugging.
-//function listCaches(req, res, next) {
-//  var data = req._app._cacheFromScope;
-//  var data = {};
-//  Object.keys(req._app._cacheFromScope).forEach(function (k) {
-//    data[k] = req._app._cacheFromScope[k].getAll()
-//  });
-//  res.send(200, data);
-//  return next();
-//}
-
 function getUser(req, res, next) {
   user = req._user;
   var data = {
@@ -207,6 +196,9 @@ function App(config, ufds, mapi, log) {
   server.on('after', restify.auditLogger({
     log: log.child({component: 'audit'})
   }));
+  //server.on('after', function (req, res, route) {
+  //  req.log.info({snapshot: self.getStateSnapshot()}, "state snapshot")
+  //});
 
   function setup(req, res, next) {
     req._app = self;
@@ -236,7 +228,11 @@ function App(config, ufds, mapi, log) {
 
   server.get({path: '/ping', name: 'Ping'}, ping);
   // Debugging:
-  //server.get('/caches', listCaches);
+  // XXX Conform with Dap's spec and document this.
+  server.get('/state', function (req, res, next) {
+    res.send(self.getStateSnapshot())
+    next();
+  });
 
   server.get({path: '/pub/:user', name: 'GetUser'}, getUser);
 
@@ -362,8 +358,32 @@ App.prototype.cacheInvalidateDelete = function (modelName, item) {
   // Furthermore, if this is a probe, then need to invalidate the
   // `headAgentProbes` for this probe's machine.
   if (modelName === 'Probe') {
-    this._cacheFromScope.headAgentProbes.del(item.machine);
+    var cacheKey = (item.machine ? 'machine:'+item.machine
+      : 'server:'+item.server);
+    this._cacheFromScope.headAgentProbes.del(cacheKey);
   }
+}
+
+
+/**
+ * Gather JSON repr of live state.
+ */
+App.prototype.getStateSnapshot = function () {
+  var self = this;
+  var snapshot = {
+    cache: {
+      user: this.userCache.dump(),
+      isOperator: this.isOperatorCache.dump(),
+      mapiServers: this.mapiServersCache.dump(),
+    },
+    log: { level: this.log.level() }
+  };
+
+  Object.keys(this._cacheFromScope).forEach(function (scope) {
+    snapshot.cache[scope] = self._cacheFromScope[scope].dump();
+  });
+
+  return snapshot;
 }
 
 /**

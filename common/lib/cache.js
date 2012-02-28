@@ -39,10 +39,22 @@ function Cache(size, expiry, log, name) {
   this.items = LRU(this.size);
 }
 
-// Debugging stuff: .getAll isn't in official lru-cache
-//Cache.prototype.getAll = function getAll() {
-//  return this.items.getAll();
-//}
+// Debugging stuff: `.dump()` isn't yet in official lru-cache.
+// Add this to lru-cache.js to get it:
+//      this.dump = function () {
+//        return cache;
+//      }
+Cache.prototype.dump = function dump() {
+  var data = {
+    name: this.name,
+    expiry: this.expiry,
+    items: '(LRU.dump() not implemented)'
+  }
+  try {
+    data.lru = this.items.dump();
+  } catch (err) {}
+  return data;
+}
 
 Cache.prototype.reset = function reset() {
   if (this.log) {

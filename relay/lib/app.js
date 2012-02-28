@@ -60,7 +60,7 @@ var App = function App(options) {
 
   this.targetType = (options.server ? "server" : "machine");
   this.targetUuid = (options.server || options.machine);
-  this.target = format('%s-%s', this.targetType, this.targetUuid);
+  this.target = format('%s:%s', this.targetType, this.targetUuid);
   var log = this.log = options.log.child({target: this.target}, true);
   this.socket = options.socket;
   this.dataDir = options.dataDir;
@@ -354,7 +354,7 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
           return callback(err2);
         }
       }
-      this.agentProbesMD5 = md5;
+      self.agentProbesMD5 = md5;
       if (backedUp) {
         cleanBackup(function (err4) {
           if (err4) return callback(err4);

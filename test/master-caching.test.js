@@ -411,6 +411,10 @@ test('probes: delete', function(t) {
   });
 });
 
+
+//TODO: test probe deletion from cache here.
+
+
 test('monitors: delete', function(t) {
   async.forEach(Object.keys(FIXTURES.sulkybob.monitors), function(name, next) {
     var data = FIXTURES.sulkybob.monitors[name];
