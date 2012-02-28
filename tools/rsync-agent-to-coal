@@ -9,7 +9,7 @@ AGENT_DIR=$TOP/agent
 COAL=root@10.99.99.7
 
 rsync -av ${AGENT_DIR}/ \
-    $COAL:/opt/smartdc/agents/lib/node_modules/amon-agents/ \
+    $COAL:/opt/smartdc/agents/lib/node_modules/amon-agent/ \
     --exclude deps/ \
     --exclude "*.node" \
     --exclude amon-common \
