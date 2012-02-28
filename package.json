@@ -5,7 +5,7 @@
   "author": "Joyent (joyent.com)",
   "private": true,
   "devDependencies": {
-    "bunyan": "0.6.5",
+    "bunyan": "0.6.8",
     "restify": "1.0.1",
     "jshint": "0.5.8",
     "ldapjs": "0.4.8",

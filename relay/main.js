@@ -26,7 +26,9 @@ if (process.platform === 'sunos') {
 
 var App = require('./lib/app');
 var amonCommon = require('amon-common'),
+  RelayClient = amonCommon.RelayClient,
   format = amonCommon.utils.format;
+
 var ZoneEventWatcher = require('./lib/zoneeventwatcher');
 
 
@@ -38,8 +40,9 @@ var DEFAULT_POLL = 30;
 var DEFAULT_DATA_DIR = '/var/db/amon-relay';
 var DEFAULT_SOCKET = '/var/run/.smartdc-amon.sock';
 
-var config; // set in `main()`
+var config;         // set in `main()`
 var zoneApps = {};  // Mapping <zonename> -> <Relay app>.
+var masterClient;   // Client to Relay API on Amon master.
 
 var log = new Logger({
   name: 'amon-relay',
@@ -54,6 +57,29 @@ var log = new Logger({
 
 
 //---- internal support functions
+
+function createGlobalZoneApp() {
+  return new App({
+    log: log,
+    server: config.computeNodeUuid,
+    socket: config.socket,
+    dataDir: config.dataDir,
+    localMode: true,  // use a local socket, not a zsock
+    masterClient: masterClient
+  });
+}
+
+function createZoneApp(zonename) {
+  return new App({
+    log: log,
+    machine: zonename,
+    socket: config.socket,
+    localMode: false,  // use a zsock, this isn't the current zone
+    dataDir: config.dataDir,
+    masterClient: masterClient
+  });
+}
+
 
 /**
  * Get the URL for the amon master from MAPI.
@@ -140,6 +166,7 @@ function ensureDataDir(next) {
   next();
 }
 
+
 // Get the compute node UUID.
 function ensureComputeNodeUuid(next) {
   if (!config.computeNodeUuid) {
@@ -163,6 +190,7 @@ function ensureComputeNodeUuid(next) {
     next();
   }
 }
+
 
 function logConfig(next) {
   log.debug({config: config}, 'config');
@@ -190,43 +218,26 @@ function ensureMasterUrl(next) {
   }
 }
 
-function createGlobalZoneApp() {
-  return new App({
-    log: log,
-    server: config.computeNodeUuid,
-    socket: config.socket,
-    dataDir: config.dataDir,
-    localMode: true,  // use a local socket, not a zsock
-    masterUrl: config.masterUrl,
-    poll: config.poll
-  });
-}
 
-function createZoneApp(zonename) {
-  return new App({
-    log: log,
-    machine: zonename,
-    socket: config.socket,
-    localMode: false,  // use a zsock, this isn't the current zone
-    dataDir: config.dataDir,
-    masterUrl: config.masterUrl,
-    poll: config.poll
+function createMasterClient(next) {
+  masterClient = new RelayClient({   // Intentionally global.
+    url: config.masterUrl,
+    log: log
   });
+  next();
 }
 
 
 /**
- * Start the given app listening.
+ * Start the given app.
  *
- * @param app {App} The app to start listening.
- * @param zonename {String} Name of the zone.
+ * @param app {App} The app to start.
  * @param callback {Function} Optional. `function (err)`
  */
-function appListen(app, zonename, callback) {
-  app.listen(function (err) {
+function startApp(app, callback) {
+  app.start(function (err) {
     if (!err)
-      log.info({zonename: zonename, owner: app.owner},
-        'Amon-relay listening socket "%s"', config.socket);
+      app.log.info({owner: app.owner}, 'Amon-relay started');
     if (callback)
       callback(err);
   })
@@ -247,7 +258,7 @@ function startZoneEventWatcher(next) {
     log.info({zonename: zonename}, 'handle zoneUp event');
     var app = createZoneApp(zonename);
     zoneApps[zonename] = app;
-    appListen(app, zonename);
+    startApp(app);
   });
   zoneEventWatcher.on('zoneDown', function (zonename) {
     log.info({zonename: zonename}, 'handle zoneDown event');
@@ -279,12 +290,16 @@ function updateZoneApps(next) {
     if (! zoneApps['global']) {
       var app = createGlobalZoneApp();
       zoneApps['global'] = app;
-      appListen(app, 'global');
+      startApp(app);
     }
     return (next && next());
   }
 
   var existingZonenames = Object.keys(zoneApps);
+  var existingZonenamesMap = {};
+  for (var i = 0; i < existingZonenames.length; i++) {
+    existingZonenamesMap[existingZonenames[i]] = true;
+  }
   var actualZones = zutil.listZones();
 
   // Find new zonenames and create a `zoneApps` entry for each.
@@ -297,15 +312,16 @@ function updateZoneApps(next) {
       var app = (zonename === 'global' ?
         createGlobalZoneApp() : createZoneApp(zonename));
       zoneApps[zonename] = app;
-      appListen(app, zonename);
+      startApp(app);
     } else {
-      delete existingZonenames[zonename];
+      delete existingZonenamesMap[zonename];
     }
-  };
+  }
 
   // Remove obsolete `zoneApps` entries.
-  for (var i = 0; i < existingZonenames.length; i++) {
-    var zonename = existingZonenames[i];
+  var obsoleteZonenames = Object.keys(existingZonenamesMap);
+  for (var i = 0; i < obsoleteZonenames.length; i++) {
+    var zonename = obsoleteZonenames[i];
     var app = zoneApps[zonename];
     if (app) {
       if (isSelfHeal) {
@@ -326,12 +342,78 @@ function updateZoneApps(next) {
  * TODO: Monitor log.warn's from `updateZoneApps` intervals to trap cases
  * where we are not keeping the zone list up to date.
  */
-function startZoneAppsSelfHeal(next) {
+function startUpdateZoneAppsInterval(next) {
   var SELF_HEAL_INTERVAL = 5 * 60 * 1000; // every 5 minutes
   setInterval(updateZoneApps, SELF_HEAL_INTERVAL);
   //XXX Need to clear this interval on exit?
+  next();
 }
 
+
+
+/**
+ * Update the agent probes for all running zones from the master
+ *
+ * @param next (Function) Optional. `function (err) {}`.
+ */
+function updateAgentProbes(next) {
+  function updateForOneZone(zonename, nextOne) {
+    var app = zoneApps[zonename];
+    if (!app)
+      return nextOne();
+
+    //XXX Update the following to bulk query against master.
+    var log = app.log;
+    log.debug('updateAgentProbes')
+    masterClient.agentProbesMD5(app.targetType, app.targetUuid, function(err, masterMD5) {
+      if (err) {
+        log.warn('Error getting master agent probes MD5: %s', err);
+        return nextOne();
+      }
+      var currMD5 = app.agentProbesMD5;
+      log.trace('Agent probes md5: "%s" (from master) vs "%s" (curr)',
+        masterMD5, currMD5);
+      if (masterMD5 === currMD5) {
+        log.trace('No agent probes update.')
+        return nextOne();
+      }
+      masterClient.agentProbes(app.targetType, app.targetUuid, function(err, agentProbes, masterMD5) {
+        if (err || !agentProbes || !masterMD5) {
+          log.warn(err, 'Error getting agent probes from master (%s=%s)',
+            app.targetType, app.targetUuid);
+          return nextOne();
+        }
+        log.trace({agentProbes: agentProbes},
+          'Retrieved agent probes from master')
+        app.writeAgentProbes(agentProbes, masterMD5, function(err) {
+          if (err) {
+            log.warn('Unable to save new agent probes: ' + err);
+          } else {
+            log.info('Successfully updated agent probes from master '
+              + '(md5: %s -> %s).', currMD5 || "(none)", masterMD5);
+          }
+          return nextOne();
+        });
+      });
+    });
+  }
+
+  var zonenames = Object.keys(zoneApps);
+  log.info("Checking for agent probe updates (%d zones).", zonenames.length);
+  async.forEachSeries(zonenames, updateForOneZone, function (err) {
+    next && next();
+  });
+}
+
+
+/**
+ * Update the agent probes for all running zones from the master
+ */
+function startUpdateAgentProbesInterval(next) {
+  setInterval(updateAgentProbes, config.poll * 1000);
+  //XXX Need to clear this interval on exit?
+  next();
+}
 
 
 function usage(code, msg) {
@@ -442,9 +524,12 @@ function main() {
     ensureComputeNodeUuid,
     logConfig,
     ensureMasterUrl,
+    createMasterClient,
     startZoneEventWatcher,
     updateZoneApps,
-    startZoneAppsSelfHeal
+    startUpdateZoneAppsInterval,
+    updateAgentProbes,
+    startUpdateAgentProbesInterval
   ], function (err) {
     if (err) {
       log.error(err);

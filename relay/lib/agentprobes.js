@@ -25,7 +25,7 @@ function headAgentProbes(req, res, next) {
   //    every 30 seconds (or whatever poll interval) we should avoid
   //    reading disk.
   var md5Path = path.resolve(req._dataDir,
-    format("%s-%s.content-md5", req._targetType, req._targetUuid));
+    format("%s-%s.content-md5", req.targetType, req.targetUuid));
   fs.readFile(md5Path, 'utf8', function (err, contentMD5) {
     if (err) {
       if (err.code === "ENOENT") {
@@ -47,7 +47,7 @@ function headAgentProbes(req, res, next) {
 
 function listAgentProbes(req, res, next) {
   req.log.trace({params: req.params}, 'ListAgentProbes');
-  if (req._targetType === 'server') {
+  if (req.targetType === 'server') {
     //XXX:TODO
     // server-%s-local.json
     // {allzones}-global.json   <--- not for machines that don't exist
@@ -59,10 +59,10 @@ function listAgentProbes(req, res, next) {
     // - pull probe updating from master up to 'main.js' level (out of app)
     // - do that for *all* zones (what does zutil.listZones() return?)
     var jsonPath = path.resolve(req._dataDir,
-      format("%s-%s-local.json", req._targetType, req._targetUuid));
+      format("%s-%s-local.json", req.targetType, req.targetUuid));
   } else {
     var jsonPath = path.resolve(req._dataDir,
-      format("%s-%s-local.json", req._targetType, req._targetUuid));
+      format("%s-%s-local.json", req.targetType, req.targetUuid));
 
   }
   fs.readFile(jsonPath, 'utf-8', function (err, data) {

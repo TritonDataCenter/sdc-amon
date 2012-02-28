@@ -6,7 +6,7 @@
   "private": true,
   "main": "lib/index.js",
   "dependencies": {
-    "bunyan": "0.6.5",
+    "bunyan": "0.6.8",
     "restify": "1.0.1"
   },
   "engines": {

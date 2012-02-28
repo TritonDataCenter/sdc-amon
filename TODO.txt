@@ -1,6 +1,10 @@
 # higher-level prios
 
-- back on 'machine-up' probe type
+- back on 'machine-up' probe type:
+  - bootstrap.js: update 'isup/devzone' probe if for wrong machine (if
+    the machine devzone has been re-created)
+  - using the agentProbesMD5 cache?
+  - runInGlobal relay save changes below
 - script for a demo: Let's do Use Case "2. Operator SDC Zones monitor".
   - show quick way to setup 'machine-up' probe for each smartdc_role zone
   - then bring down cloudapi

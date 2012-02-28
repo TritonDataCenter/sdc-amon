@@ -23,14 +23,14 @@ function putEvents(req, res, next) {
 
   // Add data known by the relay (this is info the master can trust more
   // because the relay is always in the hands of the operator).
-  if (req._targetType === "server") {
-    event.server = req._targetUuid;
+  if (req.targetType === "server") {
+    event.server = req.targetUuid;
   } else {
-    event.machine = req._targetUuid;
+    event.machine = req.targetUuid;
   }
 
   req.log.debug({event: event}, "relaying event");
-  req._master.sendEvent(event, function(err) {
+  req._masterClient.sendEvent(event, function(err) {
     if (err) {
       return next(err);
     }

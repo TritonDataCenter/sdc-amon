@@ -508,7 +508,7 @@ test('relay api: AddEvents', function(t) {
 
   masterClient.post("/events", event,
     function (err, req, res, obj) {
-      t.equal(res.statusCode, 202, 'expect 202')
+      t.equal(res.statusCode, 202, 'expect 202, actual '+res.statusCode)
       t.ifError(err);
       fs.readFile(testyLogPath, 'utf8', function (err, content) {
         t.ifError(err);

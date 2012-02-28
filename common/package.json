@@ -6,7 +6,7 @@
   "author": "Joyent (joyent.com)",
   "main": "lib/index.js",
   "dependencies": {
-    "bunyan": "0.6.5",
+    "bunyan": "0.6.8",
     "restify": "1.0.1",
     "node-uuid": "1.2.0",
     "lru-cache": "1.0.5"

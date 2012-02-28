@@ -132,7 +132,7 @@ Monitor.get = function get(app, user, name, callback) {
   }
   Monitor.validateName(name);
   var dn = Monitor.dn(user, name);
-  ufdsmodel.modelGet(app, Monitor, dn, log, callback);
+  ufdsmodel.modelGet(app, Monitor, dn, app.log, callback);
 }
 
 

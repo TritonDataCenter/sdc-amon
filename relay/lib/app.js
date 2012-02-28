@@ -12,10 +12,10 @@ var zutil;
 if (process.platform === 'sunos') {
   zutil = require('zutil');
 }
+var async = require('async');
 
 var amonCommon = require('amon-common'),
   Constants = amonCommon.Constants,
-  RelayClient = amonCommon.RelayClient,
   format = amonCommon.utils.format;
 
 var agentprobes = require('./agentprobes');
@@ -39,9 +39,8 @@ var utils = require('./utils');
  *  - machine {String} (for non-GZ only) the machine this should be bound to.
  *  - socket  {String} the socket to open/close (zsock).
  *  - dataDir {String} root of agent probes tree.
- *  - masterUrl {String} location of the amon-master.
+ *  - masterClient {amon-common.RelayClient} client to Relay API on the master.
  *  - localMode {Boolean} to zsock or not to zsock (optional, default: false).
- *  - poll {Number} update polling interval in seconds (optional, default: 30).
  *
  * @param {Object} options The usual.
  *
@@ -51,7 +50,7 @@ var App = function App(options) {
   if (!options.log) throw TypeError('options.log is required');
   if (!options.socket) throw TypeError('options.socket is required');
   if (!options.dataDir) throw TypeError('options.dataDir is required');
-  if (!options.masterUrl) throw TypeError('options.masterUrl is required');
+  if (!options.masterClient) throw TypeError('options.masterClient is required');
   if (options.machine && options.server) {
     throw TypeError('cannot specify both options.machine and options.server');
   } else if (!options.machine && !options.server) {
@@ -59,26 +58,21 @@ var App = function App(options) {
   }
   var self = this;
 
-  var log = this.log = options.log;
-  this._targetType = (options.server ? "server" : "machine");
-  this._targetUuid = (options.server || options.machine);
-  this.owner = options.owner;
+  this.targetType = (options.server ? "server" : "machine");
+  this.targetUuid = (options.server || options.machine);
+  this.target = format('%s-%s', this.targetType, this.targetUuid);
+  var log = this.log = options.log.child({target: this.target}, true);
   this.socket = options.socket;
   this.dataDir = options.dataDir;
+  this.masterClient = options.masterClient;
   this.localMode = options.localMode || false;
-  this.poll = options.poll || 30;
 
   this._stageLocalJsonPath = path.resolve(this.dataDir,
-    format("%s-%s-local.json", this._targetType, this._targetUuid));
+    format("%s-%s-local.json", this.targetType, this.targetUuid));
   this._stageGlobalJsonPath = path.resolve(this.dataDir,
-    format("%s-%s-global.json", this._targetType, this._targetUuid));
+    format("%s-%s-global.json", this.targetType, this.targetUuid));
   this._stageMD5Path = path.resolve(this.dataDir,
-    format("%s-%s.content-md5", this._targetType, this._targetUuid));
-
-  this._master = new RelayClient({
-    url: options.masterUrl,
-    log: log
-  });
+    format("%s-%s.content-md5", this.targetType, this.targetUuid));
 
   // Server setup.
   var server = this.server = restify.createServer({
@@ -91,11 +85,11 @@ var App = function App(options) {
     log: log.child({component: 'audit'})
   }));
   function setup(req, res, next) {
-    req._targetType = self._targetType;
-    req._targetUuid = self._targetUuid;
+    req.targetType = self.targetType;
+    req.targetUuid = self.targetUuid;
     req._zsock = self.socket;
     req._dataDir = self.dataDir;
-    req._master = self._master;
+    req._masterClient = self.masterClient;
     return next();
   };
   server.use(setup);
@@ -107,51 +101,6 @@ var App = function App(options) {
     agentprobes.listAgentProbes);
   this.server.post({path: '/events', name: 'PutEvents'},
     events.putEvents);
-
-  // Currently this is a testing-only option to avoid the updating getting
-  // in the way.
-  if (options._noAgentProbesUpdating) return;
-
-  // Register the agent probes watcher.
-  function _updateAgentProbes() {
-    log.debug("Checking for agent probe updates (%s=%s).", self._targetType, self._targetUuid);
-    self._master.agentProbesMD5(self._targetType, self._targetUuid, function(err, masterMD5) {
-      if (err) {
-        log.warn('Error getting master agent probes MD5 (%s=%s): %s',
-          self._targetType, self._targetUuid, err);
-        return;
-      }
-      self._getCurrMD5(function(currMD5) {
-        log.trace('Agent probes md5 for %s "%s": "%s" (from master) '
-          + 'vs "%s" (curr)', self._targetType, self._targetUuid, masterMD5, currMD5);
-
-        if (masterMD5 === currMD5) {
-          log.trace('No agent probes update.')
-          return;
-        }
-        self._master.agentProbes(self._targetType, self._targetUuid, function(err, agentProbes, masterMD5) {
-          if (err || !agentProbes || !masterMD5) {
-            log.warn(err, 'Error getting agent probes from master (%s=%s)',
-              self._targetType, self._targetUuid);
-            return;
-          }
-          log.trace('Retrieved agent probes from master (%s=%s): %s',
-            self._targetType, self._targetUuid, agentProbes);
-          self.writeAgentProbes(agentProbes, masterMD5, function(err) {
-            if (err) {
-              log.warn('Unable to save new agent probes: ' + err);
-            }
-            log.info('Successfully updated agent probes from master '
-              + '(%s: %s, md5: %s -> %s).', self._targetType, self._targetUuid,
-              currMD5 || "(none)", masterMD5);
-            return;
-          });
-        });
-      });
-    });
-  }
-  self._updatePollHandle = setInterval(_updateAgentProbes, this.poll * 1000);
-  return _updateAgentProbes();
 };
 
 
@@ -178,115 +127,120 @@ App.prototype.sendOperatorEvent = function (msg, details, callback) {
       details: details
     }
   };
-  this._master.sendEvent(event, callback);
+  this.masterClient.sendEvent(event, callback);
 }
 
 
 /**
- * Get and set `this.owner`.
+ * Start the app: gather needed info, create zsock in zone.
  *
- * Note: Owner isn't set if this is on the global zone.
+ * @param callback {Function} `function (err) {}` called when complete.
  */
-App.prototype._retrieveOwner = function (callback) {
-  if (this.owner || this._targetType === 'server') {
-    return callback();
-  }
-
+App.prototype.start = function(callback) {
   var self = this;
-  var zonename = this._targetUuid;
-  zutil.getZoneAttribute(zonename, 'owner-uuid', function (err, attr) {
-    if (err) {
-      return callback(err);
-    }
-    if (!attr) {
-      return callback('no "owner-uuid" attribute found on zone ' + zonename);
-    }
-    self.owner = attr;
-    callback();
-  });
-}
+  var zonename = this.targetUuid;
+  var log = this.log;
 
-
-/**
- * Gets Application up and listening.
- *
- * This method creates a zsock with the zone/path you passed in to the
- * constructor.  The callback is of the form function(error), where error
- * should be undefined.
- *
- * @param {Function} callback callback of the form function(error).
- */
-App.prototype.listen = function(callback) {
-  var self = this;
-
+  // Early out for developer mode.
   if (typeof(self.socket) === 'number') {
-    self.log.debug("Starting app on <http://127.0.0.1:%d> (developer mode)",
+    log.debug("Starting app on <http://127.0.0.1:%d> (developer mode)",
       self.socket);
     return self.server.listen(self.socket, '127.0.0.1', callback);
   }
-  if (self.localMode) {
-    self.log.debug('Starting app on local UDS "%s".', self.socket);
-    return self.server.listen(self.socket, callback);
+
+  function loadCache(next) {
+    fs.readFile(self._stageMD5Path, 'utf8', function(err, data) {
+      if (err && err.code !== 'ENOENT') {
+        log.warn('Unable to read file ' + self._stageMD5Path + ': ' + err);
+      }
+      if (data) {
+        // We trim whitespace to not bork if someone adds a trailing newline
+        // in an editor (which some editors will do by default on save).
+        data = data.trim();
+      }
+      self.agentProbesMD5 = data;
+      next();
+    });
   }
 
-  // Production mode: using a zsocket into the target zone.
-  // 0. Get the owner of this machine.
-  // 1. Wait until the zone is ready.
-  //    A zsock creation *immediately* after sysevent reports the zone is
-  //    running, will fail. A solution (haven't really dug into what the
-  //    actual requisite milestone is) is to wait for the 'multi-user'
-  //    SMF milestone in the zone.
-  // 2. Create the zsock and listen.
-  self._retrieveOwner(function (err) {
-    var zonename = self._targetUuid;
-    if (err) {
-      self.log.error(err);
-      return self.sendOperatorEvent('couldn\'t get zone owner',
-        {zone: zonename}, callback);
+  function retrieveOwner(next) {
+    if (self.owner || self.targetType === 'server') {
+      return next();
     }
-
-    var timeout = 5 * 60 * 1000; // 5 minutes
-    utils.waitForZoneSvc(zonename, 'milestone/multi-user', timeout, self.log,
-                         function (err) {
+    zutil.getZoneAttribute(zonename, 'owner-uuid', function (err, attr) {
       if (err) {
-        // Note: We get a spurious timeout here for a zone that was mid
-        // going down when amon-relay was started. An improvement would be
-        // to not error/event for that.
-        var msg = format('Relay could not setup socket to zone "%s": %s',
-          zonename, err.stack || err);
-        self.log.error(msg);
-        return self.sendOperatorEvent(msg, {zone: zonename}, callback);
+        return next(err);
       }
+      if (!attr) {
+        return next('no "owner-uuid" attribute found on zone ' + zonename);
+      }
+      self.owner = attr.value;
+      next();
+    });
+  }
 
-      var opts = {
-        zone: zonename,
-        path: self.socket
-      };
-      zsock.createZoneSocket(opts, function(err, fd) {
-        if (err) {
-          var msg = format('Relay could not open zsock in zone "%s": %s',
-            zonename, err.stack);
-          self.log.error(msg);
-          return self.sendOperatorEvent(msg, {zone: zonename}, callback);
-        }
-        self.log.debug('Opened zsock to zone "%s" on FD %d', zonename, fd);
+  function waitForMultiUser(next) {
+    if (self.localMode) {
+      return next();
+    }
+    var timeout = 5 * 60 * 1000; // 5 minutes
+    utils.waitForZoneSvc(zonename, 'milestone/multi-user', timeout, log,
+                         function (err) {
+      // Note: We get a spurious timeout here for a zone that was mid
+      // going down when amon-relay was started. An improvement would be
+      // to not error/event for that.
+      // XXX The problem here is that `zutil.listZones()` includes zones
+      //     currently shutting_down. TODO: Ticket this and find out why and
+      //     if can be avoided. We only want zones in 'running' state. Others
+      //     will get picked up on next self-heal.
+      return next(err);
+    });
+  }
 
-        // Backdoor to listen on `fd`.
-        var p = new Pipe(true);
-        p.open(fd);
-        p.readable = p.writable = true;
-        // Need to set the `net.Server._handle` which gets closed on
-        // `net.Server.close()`. A Restify Server *has* a `net.Server`
-        // (actually http.Server or https.Server) as its `this.server`
-        // attribute rather than it *being* a `net.Server` subclass.
-        self.server.server._handle = p;
-        self.server.listen(function () {
-          callback();
-        });
+  function createSocket(next) {
+    if (self.localMode) {
+      log.debug('Starting app on local socket "%s".', self.socket);
+      return self.server.listen(self.socket, next);
+    }
+    var opts = {
+      zone: zonename,
+      path: self.socket
+    };
+    zsock.createZoneSocket(opts, function(err, fd) {
+      if (err) {
+        return next(err);
+      }
+      log.debug('Opened zsock to zone "%s" on FD %d', zonename, fd);
+
+      // Backdoor to listen on `fd`.
+      var p = new Pipe(true);
+      p.open(fd);
+      p.readable = p.writable = true;
+      // Need to set the `net.Server._handle` which gets closed on
+      // `net.Server.close()`. A Restify Server *has* a `net.Server`
+      // (actually http.Server or https.Server) as its `this.server`
+      // attribute rather than it *being* a `net.Server` subclass.
+      self.server.server._handle = p;
+      self.server.listen(function () {
+        callback();
       });
     });
-  });
+  }
 
+  async.series([
+    loadCache,
+    retrieveOwner,
+    waitForMultiUser,
+    createSocket
+  ], function (err) {
+    if (err) {
+      var msg = 'error starting relay'
+      log.error({err: err, zonename: zonename}, msg);
+      return self.sendOperatorEvent(msg, {zonename: zonename}, callback);
+    } else {
+      callback();
+    }
+  });
 };
 
 
@@ -296,43 +250,17 @@ App.prototype.listen = function(callback) {
  * @param {Function} callback called when closed. Takes no arguments.
  */
 App.prototype.close = function(callback) {
-  if (this._updatePollHandle) {
-    clearInterval(this._updatePollHandle);
-  }
-  this.log.info('close server for %s "%s"', this._targetType, this._targetUuid);
+  this.log.info('close app for %s "%s"', this.targetType, this.targetUuid);
   this.server.once('close', callback);
   try {
     this.server.close();
   } catch (err) {
     // A `net.Server` at least will throw if it hasn't reached a ready
     // state yet. We don't care.
-    this.log.warn(err, 'error closing server for %s "%s"', this._targetType,
-      this._targetUuid);
+    this.log.warn(err, 'error closing server for %s "%s"', this.targetType,
+      this.targetUuid);
     callback();
   }
-};
-
-
-/**
- * Reads in the stored MD5 for this machine (or server).
- *
- * Callback data is null on error, so check it.
- *
- * @param callback {Function} `function (md5)`
- */
-App.prototype._getCurrMD5 = function(callback) {
-  var self = this;
-  fs.readFile(this._stageMD5Path, 'utf8', function(err, data) {
-    if (err && err.code !== 'ENOENT') {
-      self.log.warn('Unable to read file ' + self._stageMD5Path + ': ' + err);
-    }
-    if (data) {
-      // We trim whitespace to not bork if someone adds a trailing newline
-      // in an editor (which some editors will do by default on save).
-      data = data.trim();
-    }
-    return callback(data);
-  });
 };
 
 
@@ -345,7 +273,7 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
 
   if (!agentProbes || !md5) {
     self.log.debug('No agentProbes (%s) or md5 (%s) given (%s=%s). No-op',
-      agentProbes, md5, self._targetType, self._targetUuid);
+      agentProbes, md5, self.targetType, self.targetUuid);
     return callback();
   }
 
@@ -426,6 +354,7 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
           return callback(err2);
         }
       }
+      this.agentProbesMD5 = md5;
       if (backedUp) {
         cleanBackup(function (err4) {
           if (err4) return callback(err4);
