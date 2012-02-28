@@ -14,19 +14,13 @@
  */
 
 var fs = require('fs');
-var http = require('http');
-var assert = require('assert');
 var path = require('path');
-var util = require('util');
 
 var nopt = require('nopt');
 var Logger = require('bunyan');
 var restify = require('restify');
 
-var amonCommon = require('amon-common'),
-  RelayClient = amonCommon.RelayClient,
-  format = amonCommon.utils.format;
-var plugins = require('amon-plugins');
+var App = require('./lib/app');
 
 
 
@@ -37,16 +31,6 @@ var DEFAULT_SOCKET = '/var/run/.smartdc-amon.sock';
 var DEFAULT_DATA_DIR = '/var/db/amon-agent';
 
 var config; // Agent configuration settings. Set in `main()`.
-var relayClient;  // Relay client.
-
-// Active probe instances. Controlled in `updateProbes`.
-// Maps probe id, '$user/$monitorName/$probeName', to either a Probe
-// instance or a `ProbeError` instance.
-var probeFromId = {};
-
-// A cache for `getProbeData`.
-var probeDataCache;
-var probeDataCacheMD5;
 
 var log = new Logger({
   name: 'amon-agent',
@@ -61,308 +45,6 @@ var log = new Logger({
 
 
 //---- internal support functions
-
-
-/**
- * Error class indicating a probe that failed to be created.
- *
- * @param err {Error} The creation error.
- * @param probeData {Object} The probe data with which probe creation failed.
- */
-function ProbeError(err, probeData) {
-  this.err = err;
-  this.json = JSON.stringify(probeData);  // Copy `Probe.json` property.
-}
-util.inherits(ProbeError, Error);
-
-
-/* BEGIN JSSTYLED */
-/**
- * Run async `fn` on each entry in `list`. Call `cb(error)` when all done.
- * `fn` is expected to have `fn(item, callback) -> callback(error)` signature.
- *
- * From Isaac's rimraf.js.
- */
-function asyncForEach(list, fn, cb) {
-  if (!list.length) cb()
-  var c = list.length
-    , errState = null
-  list.forEach(function (item, i, list) {
-   fn(item, function (er) {
-      if (errState) return
-      if (er) return cb(errState = er)
-      if (-- c === 0) return cb()
-    })
-  })
-}
-/* END JSSTYLED */
-
-
-/**
- * Get (and cache) probe data from relay.
- *
- * @param force {Boolean} Set to true to force retrieving the probe data
- *    even if an MD5 check against the cache says it is up-to-date.
- * @param callback {Function} `function (err, probeData)`
- */
-function getProbeData(force, callback) {
-  relayClient.agentProbesMD5(function (err, upstreamMD5) {
-    if (err) {
-      log.warn(err, 'error getting agent probes MD5 (continuing with cache)');
-      return callback(err, probeDataCache);
-    }
-    log.trace('getProbeData: md5: "%s" (cached) vs. "%s" (upstream), force=%s',
-      probeDataCacheMD5, upstreamMD5, force);
-
-    if (!force && upstreamMD5 === probeDataCacheMD5) {
-      log.trace('getProbeData: no change and !force');
-      return callback(null, probeDataCache);
-    }
-
-    relayClient.agentProbes(function (err, probeData, probeDataMD5) {
-      if (err || !probeData || !probeDataMD5) {
-        log.warn(err, 'error getting agent probes (continuing with cache)');
-        return callback(err, probeDataCache);
-      }
-      log.trace({probeData: probeData}, 'getProbeData: retrieved agent probes');
-      var oldMD5 = probeDataCacheMD5;
-      probeDataCache = probeData;
-      probeDataCacheMD5 = probeDataMD5;
-      saveProbeDataCache(function (err) {
-        if (err) {
-          log.warn(err, 'unable to cache probe data to disk (continuing)');
-        }
-        log.info('Successfully updated probe data from relay (md5: %s -> %s).',
-          oldMD5 || '(none)', probeDataMD5);
-        return callback(err, probeDataCache);
-      });
-    });
-  });
-}
-
-
-/**
- * Create a new probe and start it.
- *
- * @param id {String} The probe id.
- * @param probeData {Object} The probe data.
- * @param callback {Function} `function (err, probe)` called with the
- *    started probe instance. On failure `err` is `ProbeError` instance.
- */
-function createProbe(id, probeData, callback) {
-  var ProbeType = plugins[probeData.type];
-  if (! ProbeType) {
-    return callback(format('unknown amon probe plugin type: "%s"',
-      probeData.type));
-  }
-
-  try {
-    var probe = new ProbeType(id, probeData, log);
-  } catch (e) {
-    return callback(new ProbeError(e, probeData));
-  }
-  probe.start(function (e) {
-    if (e)
-      return callback(new ProbeError(e, probeData));
-    callback(null, probe);
-  });
-}
-
-
-/**
- * Called for each new started probe, to setup listeners to its event stream.
- *
- * @param probe {Object} The probe instance.
- */
-function onNewProbe(probe) {
-  probe.on('event', sendEvent);
-}
-
-
-/**
- * Send the given event up to this agent's relay.
- */
-function sendEvent(event) {
-  log.info({event: event}, 'sending event');
-  relayClient.sendEvent(event, function (err) {
-    if (err) {
-      log.error({event: event, err: err}, 'error sending event');
-    }
-  });
-}
-
-
-/**
- * Update probe info from relay (if any) and do necessary update of live
- * probe instances.
- *
- * @param force {Boolean} Force update.
- */
-function updateProbes(force) {
-  log.trace('updateProbes entered');
-
-  // 1. Get probe data from relay (may be cached).
-  getProbeData(force, function (err, probeData) {
-    if (err) {
-      log.warn(err,
-        'error getting probe data (continuing, presuming no probes)');
-      if (!probeData) {
-        probeData = [];
-      }
-    }
-
-    // 2. Transform that to {id -> probe} mapping.
-    var probeDataFromId = {};
-    probeData.forEach(function (pd) {
-      var id = [pd.user, pd.monitor, pd.name].join('/');
-      probeDataFromId[id] = pd;
-    });
-
-    // 3. Gather list of changes (updates/adds/removes) of probes to do.
-    var todos = []; // [<action>, <probe-id>]
-    Object.keys(probeFromId).forEach(function (id) {
-      if (! probeDataFromId[id]) {
-        todos.push(['delete', id]); // Delete this probe.
-      }
-    });
-    Object.keys(probeDataFromId).forEach(function (id) {
-      var probe = probeFromId[id];
-      if (!probe) {
-        todos.push(['add', id]); // Add this probe.
-      } else {
-        var oldDataStr = probe.json;  // `Probe.json` or `ProbeError.json`
-        var newDataStr = JSON.stringify(probeDataFromId[id]);
-        // Note: This is presuming stable key order.
-        if (newDataStr !== oldDataStr) {
-          todos.push(['update', id]); // Update this probe.
-        }
-      }
-    });
-    log.trace({todos: todos}, 'update probes: todos')
-
-    // 4. Handle each of those todos and log when finished. `probeFromId`
-    //    global is updated here.
-    var stats = {
-      added: 0,
-      deleted: 0,
-      updated: 0,
-      errors: 0
-    }
-    function handleProbeTodo(todo, cb) {
-      var action = todo[0];
-      var id = todo[1];
-
-      switch (action) {
-      case 'add':
-        log.debug({id: id, probeData: probeDataFromId[id]},
-          'update probes: create probe');
-        createProbe(id, probeDataFromId[id], function (err, probe) {
-          if (err) {
-            log.error({id: id, err: err}, 'could not create probe (continuing)');
-            probeFromId[id] = err;
-            stats.errors++;
-          } else {
-            probeFromId[id] = probe;
-            onNewProbe(probe);
-            stats.added++;
-          }
-          cb();
-        });
-        break;
-
-      case 'delete':
-        var probe = probeFromId[id];
-        var isProbeError = (probe instanceof ProbeError);
-        log.debug({id: id, isProbeError: isProbeError, probeData: probe.json},
-          'update probes: delete probe');
-        if (!isProbeError) {
-          probe.stop();
-        }
-        delete probeFromId[id];
-        stats.deleted++;
-        cb();
-        break;
-
-      case 'update':
-        // Changed probe.
-        var probe = probeFromId[id];
-        var isProbeError = (probe instanceof ProbeError);
-        var probeData = probeDataFromId[id];
-        log.debug({id: id, oldProbeData: probe.json, isProbeError: isProbeError,
-            newProbeData: probeData}, 'update probes: update probe');
-        if (!isProbeError) {
-          probe.stop();
-        }
-        delete probeFromId[id];
-        createProbe(id, probeDataFromId[id], function (err, probe) {
-          if (err) {
-            log.error({id: id, err: err}, 'could not create probe (continuing)');
-            probeFromId[id] = err;
-            stats.errors++;
-          } else {
-            probeFromId[id] = probe;
-            onNewProbe(probe);
-            stats.updated++;
-          }
-          cb();
-        });
-        break;
-
-      default:
-        throw new Error(format('unknown probe todo action: "%s"', action));
-      }
-    }
-    asyncForEach(todos, handleProbeTodo, function (err) {
-      log.info({stats: stats}, 'updated probes');
-    });
-  });
-}
-
-
-/**
- * Cache probe data to disk.
- *
- * @param callback {Function} `function (err)`
- */
-function saveProbeDataCache(callback) {
-  fs.writeFile(config.pdCachePath, JSON.stringify(probeDataCache), 'utf8',
-               function (err) {
-    if (err)
-      return callback(err);
-    fs.writeFile(config.pdMD5CachePath, probeDataCacheMD5, 'utf8',
-                 function (err) {
-      if (err)
-        return callback(err);
-      return callback();
-    });
-  });
-}
-
-
-/**
- * Load cached data into a couple global vars.
- */
-function loadProbeDataCacheSync() {
-  if (path.existsSync(config.pdCachePath)) {
-    try {
-      probeDataCache = JSON.parse(fs.readFileSync(config.pdCachePath, 'utf8'));
-    } catch (e) {
-      log.warn({err: e, pdCachePath: config.pdCachePath},
-        'error loading probe data cache');
-      probeDataCache = [];
-    }
-  }
-  if (path.existsSync(config.pdMD5CachePath)) {
-    try {
-      probeDataCacheMD5 = fs.readFileSync(config.pdMD5CachePath, 'utf8');
-    } catch (e) {
-      log.warn({err: e, pdMD5CachePath: config.pdMD5CachePath},
-        'error loading probe data md5 cache');
-      probeDataCacheMD5 = null;
-    }
-  }
-}
-
 
 function usage(code, msg) {
   if (msg) {
@@ -456,14 +138,19 @@ function main() {
     fs.mkdirSync(config.dataDir, 0777)
   }
 
-  // 'relayClient' is intentionally global
-  relayClient = new RelayClient({url: config.socket, log: log});
-  loadProbeDataCacheSync();
-
-  // Update probe data (from relay) every `poll` seconds. Also immediately
-  // at startup.
-  setInterval(updateProbes, config.poll * 1000);
-  updateProbes(true);
+  var app = new App({
+    log: log,
+    config: config,
+  });
+  app.start(function (err) {
+    if (err) {
+      log.error(err, 'error starting app');
+    }
+    log.info('started agent');
+    process.on('exit', function () {
+      app.stop();
+    });
+  })
 }
 
 main();
