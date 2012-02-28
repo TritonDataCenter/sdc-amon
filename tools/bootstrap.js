@@ -326,11 +326,19 @@ function loadAmonObject(obj, next) {
       var foundIt = false;
       for (var i = 0; i < probes.length; i++) {
         if (probes[i].name === obj.probe) {
-          foundIt = true;
+          foundIt = probes[i];
           break;
         }
       }
       if (foundIt) {
+        if (foundIt.machine !== obj.body.machine) {
+          log("# Amon probe conflict (%s != %s): delete old one",
+            foundIt.machine, obj.body.machine)
+          amonClient.deleteProbe(obj.user, obj.monitor, obj.probe, function (err) {
+            if (err) return next(err);
+            loadAmonObject(obj, next);
+          });
+        }
         log("# Amon object already exists: /pub/%s/monitors/%s/probes/%s",
           obj.user, obj.monitor, obj.probe);
         return next();
