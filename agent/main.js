@@ -17,6 +17,7 @@ var fs = require('fs');
 var http = require('http');
 var assert = require('assert');
 var path = require('path');
+var util = require('util');
 
 var nopt = require('nopt');
 var Logger = require('bunyan');
@@ -36,8 +37,12 @@ var DEFAULT_SOCKET = '/var/run/.smartdc-amon.sock';
 var DEFAULT_DATA_DIR = '/var/db/amon-agent';
 
 var config; // Agent configuration settings. Set in `main()`.
-var probeFromId = {}; // Active probe instances. Controlled in `updateProbes`.
-var relay;  // Relay client.
+var relayClient;  // Relay client.
+
+// Active probe instances. Controlled in `updateProbes`.
+// Maps probe id, '$user/$monitorName/$probeName', to either a Probe
+// instance or a `ProbeError` instance.
+var probeFromId = {};
 
 // A cache for `getProbeData`.
 var probeDataCache;
@@ -56,6 +61,20 @@ var log = new Logger({
 
 
 //---- internal support functions
+
+
+/**
+ * Error class indicating a probe that failed to be created.
+ *
+ * @param err {Error} The creation error.
+ * @param probeData {Object} The probe data with which probe creation failed.
+ */
+function ProbeError(err, probeData) {
+  this.err = err;
+  this.json = JSON.stringify(probeData);  // Copy `Probe.json` property.
+}
+util.inherits(ProbeError, Error);
+
 
 /* BEGIN JSSTYLED */
 /**
@@ -87,7 +106,7 @@ function asyncForEach(list, fn, cb) {
  * @param callback {Function} `function (err, probeData)`
  */
 function getProbeData(force, callback) {
-  relay.agentProbesMD5(function (err, upstreamMD5) {
+  relayClient.agentProbesMD5(function (err, upstreamMD5) {
     if (err) {
       log.warn(err, 'error getting agent probes MD5 (continuing with cache)');
       return callback(err, probeDataCache);
@@ -100,7 +119,7 @@ function getProbeData(force, callback) {
       return callback(null, probeDataCache);
     }
 
-    relay.agentProbes(function (err, probeData, probeDataMD5) {
+    relayClient.agentProbes(function (err, probeData, probeDataMD5) {
       if (err || !probeData || !probeDataMD5) {
         log.warn(err, 'error getting agent probes (continuing with cache)');
         return callback(err, probeDataCache);
@@ -128,7 +147,7 @@ function getProbeData(force, callback) {
  * @param id {String} The probe id.
  * @param probeData {Object} The probe data.
  * @param callback {Function} `function (err, probe)` called with the
- *    started probe instance.
+ *    started probe instance. On failure `err` is `ProbeError` instance.
  */
 function createProbe(id, probeData, callback) {
   var ProbeType = plugins[probeData.type];
@@ -140,11 +159,11 @@ function createProbe(id, probeData, callback) {
   try {
     var probe = new ProbeType(id, probeData, log);
   } catch (e) {
-    return callback(e);
+    return callback(new ProbeError(e, probeData));
   }
-  probe.start(function (err) {
-    if (err)
-      return callback(err);
+  probe.start(function (e) {
+    if (e)
+      return callback(new ProbeError(e, probeData));
     callback(null, probe);
   });
 }
@@ -165,7 +184,7 @@ function onNewProbe(probe) {
  */
 function sendEvent(event) {
   log.info({event: event}, 'sending event');
-  relay.sendEvent(event, function (err) {
+  relayClient.sendEvent(event, function (err) {
     if (err) {
       log.error({event: event, err: err}, 'error sending event');
     }
@@ -211,10 +230,10 @@ function updateProbes(force) {
       if (!probe) {
         todos.push(['add', id]); // Add this probe.
       } else {
-        var pdString = JSON.stringify(probeDataFromId[id]);
-        var pString = probe.json;
-        //XXX Naive. Isn't this susceptible to key order?
-        if (pdString !== pString) {
+        var oldDataStr = probe.json;  // `Probe.json` or `ProbeError.json`
+        var newDataStr = JSON.stringify(probeDataFromId[id]);
+        // Note: This is presuming stable key order.
+        if (newDataStr !== oldDataStr) {
           todos.push(['update', id]); // Update this probe.
         }
       }
@@ -239,7 +258,8 @@ function updateProbes(force) {
           'update probes: create probe');
         createProbe(id, probeDataFromId[id], function (err, probe) {
           if (err) {
-            log.error({err: err, id: id}, 'could not create probe (skipping)');
+            log.error({id: id, err: err}, 'could not create probe (continuing)');
+            probeFromId[id] = err;
             stats.errors++;
           } else {
             probeFromId[id] = probe;
@@ -251,9 +271,13 @@ function updateProbes(force) {
         break;
 
       case 'delete':
-        log.debug({id: id, probeData: probeFromId[id].json},
+        var probe = probeFromId[id];
+        var isProbeError = (probe instanceof ProbeError);
+        log.debug({id: id, isProbeError: isProbeError, probeData: probe.json},
           'update probes: delete probe');
-        probeFromId[id].stop();
+        if (!isProbeError) {
+          probe.stop();
+        }
         delete probeFromId[id];
         stats.deleted++;
         cb();
@@ -262,14 +286,18 @@ function updateProbes(force) {
       case 'update':
         // Changed probe.
         var probe = probeFromId[id];
+        var isProbeError = (probe instanceof ProbeError);
         var probeData = probeDataFromId[id];
-        log.debug({id: id, oldProbeData: probe.json, newProbeData: probeData},
-            'update probes: update probe');
-        probe.stop();
+        log.debug({id: id, oldProbeData: probe.json, isProbeError: isProbeError,
+            newProbeData: probeData}, 'update probes: update probe');
+        if (!isProbeError) {
+          probe.stop();
+        }
         delete probeFromId[id];
         createProbe(id, probeDataFromId[id], function (err, probe) {
           if (err) {
-            log.error({id: id, err: err}, 'could not create probe (skipping)');
+            log.error({id: id, err: err}, 'could not create probe (continuing)');
+            probeFromId[id] = err;
             stats.errors++;
           } else {
             probeFromId[id] = probe;
@@ -428,8 +456,8 @@ function main() {
     fs.mkdirSync(config.dataDir, 0777)
   }
 
-  // 'relay' is intentionally global
-  relay = new RelayClient({url: config.socket, log: log});
+  // 'relayClient' is intentionally global
+  relayClient = new RelayClient({url: config.socket, log: log});
   loadProbeDataCacheSync();
 
   // Update probe data (from relay) every `poll` seconds. Also immediately
