@@ -65,7 +65,8 @@ function createGlobalZoneApp() {
     socket: config.socket,
     dataDir: config.dataDir,
     localMode: true,  // use a local socket, not a zsock
-    masterClient: masterClient
+    masterClient: masterClient,
+    zoneApps: zoneApps
   });
 }
 
@@ -301,6 +302,11 @@ function updateZoneApps(next) {
     existingZonenamesMap[existingZonenames[i]] = true;
   }
   var actualZones = zutil.listZones();
+  //XXX
+  //var actualZones = [
+  //  { name: 'global' },
+  //  { name: 'f01ceb53-f132-4980-871b-b23628229b54' }
+  //  ]
 
   // Find new zonenames and create a `zoneApps` entry for each.
   for (var i = 0; i < actualZones.length; i++) {
@@ -370,7 +376,7 @@ function updateAgentProbes(next) {
         log.warn('Error getting master agent probes MD5: %s', err);
         return nextOne();
       }
-      var currMD5 = app.agentProbesMD5;
+      var currMD5 = app.upstreamAgentProbesMD5;
       log.trace('Agent probes md5: "%s" (from master) vs "%s" (curr)',
         masterMD5, currMD5);
       if (masterMD5 === currMD5) {
@@ -385,10 +391,13 @@ function updateAgentProbes(next) {
         }
         log.trace({agentProbes: agentProbes},
           'Retrieved agent probes from master')
-        app.writeAgentProbes(agentProbes, masterMD5, function(err) {
+        app.writeAgentProbes(agentProbes, masterMD5, function(err, isGlobalChange) {
           if (err) {
-            log.warn('Unable to save new agent probes: ' + err);
+            log.error(err, 'unable to save new agent probes');
           } else {
+            if (isGlobalChange) {
+              zoneApps['global'].cacheInvalidateDownstream();
+            }
             log.info('Successfully updated agent probes from master '
               + '(md5: %s -> %s).', currMD5 || "(none)", masterMD5);
           }
@@ -492,6 +501,7 @@ function main() {
   if (rawOpts.verbose) {
     log.level(rawOpts.verbose.length > 1 ? 'trace' : 'debug');
   }
+  //log.level('trace');
   log.trace({opts: rawOpts}, 'opts');
 
   // Die on unknown opts.

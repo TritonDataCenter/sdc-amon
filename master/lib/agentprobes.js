@@ -11,7 +11,8 @@ var HttpCodes = restify.HttpCodes;
 var RestCodes = restify.RestCodes;
 
 var amonCommon = require('amon-common'),
-  format = amonCommon.utils.format;
+  format = amonCommon.utils.format,
+  compareProbes = amonCommon.compareProbes;
 var Probe = require('./probes').Probe;
 
 
@@ -70,16 +71,7 @@ function findProbes(app, field, uuid, log, callback) {
 
       // To enable meaningful usage of Content-MD5 we need a stable order
       // of results here.
-      probes.sort(function (a, b) {
-        aId = [a.user, a.monitor, a.name].join('/');
-        bId = [b.user, b.monitor, b.name].join('/');
-        if (aId < bId)
-          return -1;
-        else if (aId > bId)
-          return 1;
-        else
-          return 0;
-      });
+      probes.sort(compareProbes);
 
       log.trace({probes: probes}, 'probes for %s "%s"', field, uuid);
       return callback(null, probes);

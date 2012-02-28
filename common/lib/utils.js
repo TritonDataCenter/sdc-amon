@@ -55,3 +55,19 @@ if (util.format) {
     return str;
   };
 }
+
+/**
+ * To enable meaningful usage of Content-MD5 for '/agentprobes' end points,
+ * a stable order or probes is needed. This compare function is intended
+ * for use with `Array.sort()`.
+ */
+module.exports.compareProbes = function compareProbes(a, b) {
+  aId = [a.user, a.monitor, a.name].join('/');
+  bId = [b.user, b.monitor, b.name].join('/');
+  if (aId < bId)
+    return -1;
+  else if (aId > bId)
+    return 1;
+  else
+    return 0;
+}

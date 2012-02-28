@@ -5,6 +5,7 @@ var http = require('http');
 var path = require('path');
 var os = require('os');
 var Pipe = process.binding("pipe_wrap").Pipe;
+var crypto = require('crypto');
 
 var restify = require('restify');
 var zsock = require('zsock');
@@ -15,12 +16,52 @@ if (process.platform === 'sunos') {
 var async = require('async');
 
 var amonCommon = require('amon-common'),
+  Cache = amonCommon.Cache,
   Constants = amonCommon.Constants,
-  format = amonCommon.utils.format;
+  format = amonCommon.utils.format,
+  compareProbes = amonCommon.compareProbes;
 
 var agentprobes = require('./agentprobes');
 var events = require('./events');
 var utils = require('./utils');
+
+
+
+//---- internal support stuff
+
+/**
+ * Return MD5 hex digest of the given *UTF-8* file.
+ *
+ * Note: This reads the file as *UTF-8*. This is for the particular use case
+ * in this file (comparing to UTF-8 JSON.stringify'd data), so this isn't
+ * a good generic function.
+ *
+ * @param filePath {String} Path to the file.
+ * @param cb {Function} `function (err, md5)`, where `err` and `md5` are
+ *    null if the file doesn't exist.
+ */
+function md5FromPath(filePath, cb) {
+  fs.readFile(filePath, 'utf8', function(err, data) {
+    if (err) {
+      if (err.code !== 'ENOENT') {
+        return cb(null, null);
+      }
+      return cb(err);
+    }
+    cb(null, md5FromDataSync(data));
+  });
+}
+
+/**
+ * Return MD5 hex digest of the given data (synchronous)
+ *
+ * @param data {String}
+ */
+function md5FromDataSync(data) {
+  var hash = crypto.createHash('md5');
+  hash.update(data);
+  return hash.digest('hex');
+}
 
 
 
@@ -41,6 +82,10 @@ var utils = require('./utils');
  *  - dataDir {String} root of agent probes tree.
  *  - masterClient {amon-common.RelayClient} client to Relay API on the master.
  *  - localMode {Boolean} to zsock or not to zsock (optional, default: false).
+ *  - zoneApps {Object} A reference to the top-level `zoneApps` master set
+ *      of apps for each running zone. This is only passed in for the
+ *      global zone App, because it needs the list of running zones
+ *      (the keys) to gather downstream agent probes.
  *
  * @param {Object} options The usual.
  *
@@ -66,6 +111,13 @@ var App = function App(options) {
   this.dataDir = options.dataDir;
   this.masterClient = options.masterClient;
   this.localMode = options.localMode || false;
+  this.zoneApps = options.zoneApps;
+
+  // Cached current Content-MD5 for agentprobes from upstream (master).
+  this.upstreamAgentProbesMD5 = null;
+  // Cached current Content-MD5 for downstream agent probes (for agent).
+  this.downstreamAgentProbesMD5 = null;
+  this.downstreamAgentProbes = null;
 
   this._stageLocalJsonPath = path.resolve(this.dataDir,
     format("%s-%s-local.json", this.targetType, this.targetUuid));
@@ -87,8 +139,7 @@ var App = function App(options) {
   function setup(req, res, next) {
     req.targetType = self.targetType;
     req.targetUuid = self.targetUuid;
-    req._zsock = self.socket;
-    req._dataDir = self.dataDir;
+    req._app = self;
     req._masterClient = self.masterClient;
     return next();
   };
@@ -158,7 +209,7 @@ App.prototype.start = function(callback) {
         // in an editor (which some editors will do by default on save).
         data = data.trim();
       }
-      self.agentProbesMD5 = data;
+      self.upstreamAgentProbesMD5 = data;
       next();
     });
   }
@@ -265,14 +316,122 @@ App.prototype.close = function(callback) {
 
 
 /**
+ * Invalidate 'downstream' agent probes cached values.
+ * This is called in response to changes in agent probes from upstream.
+ */
+App.prototype.cacheInvalidateDownstream = function () {
+  this.log.trace('cacheInvalidateDownstream');
+  this.downstreamAgentProbesMD5 = null;
+  this.downstreamAgentProbes = null;
+}
+
+
+/**
+ * Get 'Content-MD5' of agent probes for downstream (i.e. for the agent).
+ *
+ * @param callback (Function) `function (err, md5)`
+ */
+App.prototype.getDownstreamAgentProbesMD5 = function(callback) {
+  var self = this;
+  if (self.downstreamAgentProbesMD5) {
+    self.log.trace({md5: self.downstreamAgentProbesMD5},
+      'getDownstreamAgentProbesMD5 (cached)');
+    return callback(null, self.downstreamAgentProbesMD5);
+  }
+
+  self.getDownstreamAgentProbes(function (err, agentProbes) {
+    if (err) return callback(err);
+    var data = JSON.stringify(agentProbes);
+    var hash = crypto.createHash('md5');
+    hash.update(data);
+    var md5 = self.downstreamAgentProbesMD5 = hash.digest('base64');
+    self.log.trace({md5: md5}, 'getDownstreamAgentProbesMD5');
+    callback(null, md5);
+  });
+}
+
+
+/**
+ * Gather agent probes for downstream (i.e. for the agent).
+ *
+ * @param callback (Function) `function (err, agentProbes)`
+ */
+App.prototype.getDownstreamAgentProbes = function(callback) {
+  var self = this;
+  if (self.downstreamAgentProbes) {
+    self.log.trace({agentProbes: self.downstreamAgentProbes},
+      'getDownstreamAgentProbes (cached)');
+    return callback(null, self.downstreamAgentProbes);
+  }
+
+  var log = self.log;
+  var files = [];
+  if (self.targetType === 'server') {
+    files.push(format("server-%s-local.json", self.targetUuid));
+    files.push(format("server-%s-global.json", self.targetUuid));
+    var zonenames = Object.keys(self.zoneApps);
+    for (var i = 0; i < zonenames.length; i++) {
+      files.push(format("machine-%s-global.json", zonenames[i]));
+    }
+  } else {
+    files.push(format("%s-%s-local.json", self.targetType, self.targetUuid));
+  }
+  var agentProbes = [];
+  async.forEachSeries(files,
+    function (file, next) {
+      var filePath = path.join(self.dataDir, file);
+      log.trace({file: file}, 'read file for downstreamAgentProbes');
+      fs.readFile(filePath, 'utf8', function(err, content) {
+        if (err) {
+          if (err.code !== 'ENOENT') {
+            log.warn({err: err, path: filePath}, 'unable to read db file');
+          }
+          return next();
+        }
+        var data;
+        try {
+          data = JSON.parse(content);
+        } catch (err) {
+          log.warn({err: err, path: filePath}, 'err parsing db file');
+          return next();
+        }
+        agentProbes = agentProbes.concat(data);
+        next();
+      });
+    },
+    function (err) {
+      if (err) {
+        callback(err)
+      } else {
+        agentProbes.sort(compareProbes);  // Stable order for Content-MD5.
+        self.downstreamAgentProbes = agentProbes;
+        self.log.trace({agentProbes: agentProbes}, 'getDownstreamAgentProbes');
+        callback(err, agentProbes);
+      }
+    }
+  );
+}
+
+
+
+/**
  * Write out the given agent probe data (just retrieved from the master)
  * to the relay's data dir.
+ *
+ * @param agentProbes {Object} The agent probe data to write out.
+ * @param md5 {String} The content-md5 for the agent probe data.
+ * @param callback {Function} `function (err, isGlobalChange)`. `err` is
+ *    null on success. `isGlobalChange` is a boolean indicating if the
+ *    written agent probes involved a change in 'global' probes (those
+ *    for which `global: true`). This boolean is used to assist with
+ *    cache invalidation.
  */
 App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
   var self = this;
+  var log = self.log;
 
   if (!agentProbes || !md5) {
-    self.log.debug('No agentProbes (%s) or md5 (%s) given (%s=%s). No-op',
+    log.debug('No agentProbes (%s) or md5 (%s) given (%s=%s). No-op',
       agentProbes, md5, self.targetType, self.targetUuid);
     return callback();
   }
@@ -292,20 +451,32 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
   var globalJsonPath = this._stageGlobalJsonPath;
   var md5Path = this._stageMD5Path;
 
+  // Before and after md5sums of the 'global' json data: for `isGlobalChange`.
+  var oldGlobalMD5 = null;
+  var newGlobalMD5 = null;
+
   function backup(cb) {
-    var backedUp = false;
+    var backedUpPaths = [];
     utils.asyncForEach([localJsonPath, globalJsonPath, md5Path], function (p, cb2) {
       path.exists(p, function (exists) {
         if (exists) {
-          self.log.trace("Backup '%s' to '%s'.", p, p + ".bak");
-          fs.rename(p, p + ".bak", cb2);
-          backedUp = true;
+          log.trace("Backup '%s' to '%s'.", p, p + ".bak");
+          backedUpPaths.push([p, p + '.bak']);
+          if (p === globalJsonPath) {
+            md5FromPath(p, function (err, globalMD5) {
+              if (err) return cb2(err);
+              oldGlobalMD5 = globalMD5;
+              fs.rename(p, p + ".bak", cb2);
+            });
+          } else {
+            fs.rename(p, p + ".bak", cb2);
+          }
         } else {
           cb2();
         }
       });
     }, function (err) {
-      cb(err, backedUp);
+      cb(err, backedUpPaths);
     });
   }
   function write(cb) {
@@ -316,35 +487,40 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
         [md5Path, md5]
       ],
       function (item, cb2) {
-        fs.writeFile(item[0], item[1], 'utf8', cb2);
+        var p = item[0];  // path
+        var d = item[1];  // data
+        if (p === globalJsonPath) {
+          newGlobalMD5 = md5FromDataSync(d);
+        }
+        fs.writeFile(p, d, 'utf8', cb2);
       },
       cb);
   }
-  function restore(cb) {
+  function restore(backedUpPaths, cb) {
     utils.asyncForEach(
-      [localJsonPath, globalJsonPath, md5Path],
-      function (p, cb2) {
-        self.log.trace("Restore backup '%s' to '%s'.", p + ".bak", p);
-        fs.rename(p + ".bak", p, cb2);
+      backedUpPaths,
+      function (ps, cb2) {
+        log.trace("Restore backup '%s' to '%s'.", ps[1], ps[0]);
+        fs.rename(ps[1], ps[0], cb2);
       },
       cb);
   }
-  function cleanBackup(cb) {
+  function cleanBackup(backedUpPaths, cb) {
     utils.asyncForEach(
-      [localJsonPath, globalJsonPath, md5Path],
-      function (p, cb2) {
-        self.log.trace("Remove backup '%s'.", p + ".bak");
-        fs.unlink(p + ".bak", cb2);
+      backedUpPaths,
+      function (ps, cb2) {
+        log.trace("Remove backup '%s'.", ps[1]);
+        fs.unlink(ps[1], cb2);
       },
       cb);
   }
 
-  backup(function (err1, backedUp) {
+  backup(function (err1, backedUpPaths) {
     if (err1) return callback(err1);
     write(function (err2) {
       if (err2) {
-        if (backedUp) {
-          return restore(function (err3) {
+        if (backedUpPaths.length) {
+          return restore(backedUpPaths, function (err3) {
             if (err3) {
               return callback(format("%s (also: %s)", err2, err3));
             }
@@ -354,14 +530,18 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
           return callback(err2);
         }
       }
-      self.agentProbesMD5 = md5;
-      if (backedUp) {
-        cleanBackup(function (err4) {
+      self.upstreamAgentProbesMD5 = md5;  // upstream cache
+      self.cacheInvalidateDownstream();   // downstream cache
+      var isGlobalChange = (oldGlobalMD5 !== newGlobalMD5);
+      log.trace({isGlobalChange: isGlobalChange, oldGlobalMD5: oldGlobalMD5,
+        newGlobalMD5: newGlobalMD5}, 'isGlobalChange in writeAgentProbes');
+      if (backedUpPaths.length) {
+        cleanBackup(backedUpPaths, function (err4) {
           if (err4) return callback(err4);
-          return callback();
+          return callback(null, isGlobalChange);
         });
       } else {
-        return callback();
+        return callback(null, isGlobalChange);
       }
     });
   });

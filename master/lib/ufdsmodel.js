@@ -95,8 +95,7 @@ function modelList(app, Model, parentDn, log, callback) {
       }
     });
     result.on('error', function(err) {
-      log.error("Error searching UFDS: %s (opts: %s)",
-          err, JSON.stringify(opts));
+      log.error(err, "Error searching UFDS (opts: %s)", JSON.stringify(opts));
       return callback(new restify.InternalError());
     });
     result.on('end', function(result) {
@@ -164,7 +163,7 @@ function modelPut(app, Model, data, log, callback) {
           //});
           //XXX Does replace work if have children?
         } else {
-          log.error("Error saving to UFDS (dn='%s'): %s", dn, err.stack || err);
+          log.error(err, "Error saving to UFDS (dn='%s')", dn);
           return callback(
             new restify.InternalError("Error saving "+Model.name));
         }
@@ -249,8 +248,7 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
       if (err instanceof ldap.NoSuchObjectError) {
         return cacheAndCallback(new restify.ResourceNotFoundError());
       } else {
-        log.error("Error searching UFDS: %s (opts: %s)",
-            err, JSON.stringify(opts));
+        log.error(err, "Error searching UFDS (opts: %s)", JSON.stringify(opts));
         return callback(new restify.InternalError());
       }
     });
@@ -298,7 +296,7 @@ function modelDelete(app, Model, dn, log, callback) {
         if (err instanceof ldap.NoSuchObjectError) {
           return callback(new restify.ResourceNotFoundError());
         } else {
-          log.error("Error deleting '%s' from UFDS: %s", dn, err);
+          log.error(err, "Error deleting '%s' from UFDS", dn);
           return callback(new restify.InternalError());
         }
       } else {
