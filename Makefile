@@ -173,7 +173,8 @@ pkg_agent:
 	# '-H' to follow symlink for amon-common and amon-plugins node modules.
 	mkdir -p $(PKG_DIR)/agent/node_modules
 	ls -d agent/node_modules/* | xargs -n1 -I{} cp -HR {} $(PKG_DIR)/agent/node_modules/
-	cp -PR agent/main.js \
+	cp -PR agent/lib \
+		agent/main.js \
 		agent/package.json \
 		agent/smf \
 		agent/npm \
