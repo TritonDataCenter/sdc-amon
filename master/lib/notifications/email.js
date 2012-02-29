@@ -66,19 +66,24 @@ Email.prototype.notify = function (event, contactAddress, message, callback) {
     body: message
   };
   log.debug('notify: email data: %j', data);
-  nodemailer.send_mail(
-    {
-      sender: this.from,
-      to: contactAddress,
-      // TODO: templating of these values
-      subject: 'Monitoring alert',
-      //html: '...',
-      body: message
-    },
-    function (err, success) {
-      callback(err);
-    }
-  );
+  try {
+    nodemailer.send_mail(
+      {
+        sender: this.from,
+        to: contactAddress,
+        // TODO: templating of these values
+        subject: 'Monitoring alert',
+        //html: '...',
+        body: message
+      },
+      function (err, success) {
+        callback(err);
+      }
+    );
+  } catch (err) {
+    log.error(err, 'exception in `nodemailer.send_mail`')
+    callback(err);
+  }
 };
 
 

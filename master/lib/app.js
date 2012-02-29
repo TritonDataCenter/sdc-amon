@@ -263,7 +263,7 @@ function App(config, ufds, mapi, log) {
   server.head({path: '/agentprobes', name: 'HeadAgentProbes'},
     agentprobes.headAgentProbes);
 
-  server.post({path: '/events', name: 'PutEvents'}, events.putEvents);
+  server.post({path: '/events', name: 'AddEvents'}, events.addEvents);
 };
 
 

@@ -1,10 +1,6 @@
 # higher-level prios
 
 - back on 'machine-up' probe type:
-  - agent: could not create probe (skipping) -> TICKET
-    - keeps retrying everytime. That is pointless and unneeded noise in
-      the docs. Want to not retry if nothing has changed.
-  - runInGlobal relay save changes below
 - script for a demo: Let's do Use Case "2. Operator SDC Zones monitor".
   - show quick way to setup 'machine-up' probe for each smartdc_role zone
   - then bring down cloudapi
@@ -290,14 +286,6 @@ could support it, that would be nice. Not easy tho.
         ]
 
 TODO:
-
-- Relay could just pull those (gz=true) out to separate file.
-  Then when *it* is called by GZ agent, it merges the two. Only does this
-  separation if *it* has an "App" for that "machine" value.
-
-    machine-UUID.json
-    machine-UUID-global.json
-    machine-UUID.content-md5
 
 - How does the MachineRunningStatusProbe get a stream of up/down events?
   - Agent spawns /usr/vm/sbin/zoneevent (GZ only)

@@ -50,14 +50,14 @@ function asyncForEach(list, fn, cb) {
  * TODO: Improve the error story here. Everything is a 500, even for invalid
  *    event fields. That is lame.
  */
-function putEvents(req, res, next) {
+function addEvents(req, res, next) {
   var events;
   if (Array.isArray(req.params)) {
     events = req.params;
   } else {
     events = [req.params];
   }
-  req.log.info({events: events}, 'putEvents');
+  req.log.info({events: events}, 'addEvents');
 
   // Collect errors so first failure doesn't abort the others.
   var errs = [];
@@ -82,5 +82,5 @@ function putEvents(req, res, next) {
 
 
 module.exports = {
-  putEvents: putEvents
+  addEvents: addEvents
 };

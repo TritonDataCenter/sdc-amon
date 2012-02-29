@@ -54,7 +54,6 @@
  *
  */
 
-var events = require('events');
 var util = require('util');
 
 var PROBE_EVENT_VERSION = '1.0.0';
@@ -64,7 +63,7 @@ var PROBE_EVENT_VERSION = '1.0.0';
 //---- plugin class
 
 function Plugin(id, data, log) {
-  events.EventEmitter.call(this);
+  process.EventEmitter.call(this);
 
   this.id = id;
   this.json = JSON.stringify(data);
@@ -78,7 +77,7 @@ function Plugin(id, data, log) {
   };
   this.config = data.config;
 }
-util.inherits(Plugin, events.EventEmitter);
+util.inherits(Plugin, process.EventEmitter);
 
 Plugin.runInGlobal = false;
 

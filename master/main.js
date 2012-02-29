@@ -117,6 +117,7 @@ function main() {
   if (! rawOpts.file) {
     rawOpts.file = DEFAULT_CONFIG_PATH;
   }
+  //log.level('trace');
   log.trace({opts: rawOpts}, 'opts');
 
   // Die on unknown opts.

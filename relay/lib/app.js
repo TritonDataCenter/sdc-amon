@@ -371,6 +371,8 @@ App.prototype.getDownstreamAgentProbes = function(callback) {
     files.push(format("server-%s-global.json", self.targetUuid));
     var zonenames = Object.keys(self.zoneApps);
     for (var i = 0; i < zonenames.length; i++) {
+      if (zonenames[i] === 'global')
+        continue;
       files.push(format("machine-%s-global.json", zonenames[i]));
     }
   } else {

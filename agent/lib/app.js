@@ -302,7 +302,7 @@ App.prototype.updateProbes = function updateProbes(force) {
       }
     }
     asyncForEach(todos, handleProbeTodo, function (err) {
-      log.info({stats: stats}, 'updated probes');
+      log.info({changes: stats, numProbes: probeData.length}, 'updated probes');
     });
   });
 }
@@ -315,8 +315,10 @@ App.prototype.updateProbes = function updateProbes(force) {
  * @param probe {Object} The probe instance.
  */
 App.prototype.onNewProbe = function onNewProbe(probe) {
-  //XXX `this` work there?
-  probe.on('event', this.sendEvent);
+  var self = this;
+  probe.on('event', function (event) {
+    self.sendEvent(event)
+  });
 }
 
 
