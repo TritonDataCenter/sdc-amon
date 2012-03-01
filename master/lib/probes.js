@@ -307,8 +307,8 @@ Probe.validate = function validate(app, raw) {
   }
 
   // Validate the probe type and config.
-  var probeType = plugins[raw.type];
-  if (!probeType) {
+  var ProbeType = plugins[raw.type];
+  if (!ProbeType) {
     throw new restify.InvalidArgumentError(
       format('probe type is invalid: "%s"', raw.type));
   }
@@ -321,13 +321,13 @@ Probe.validate = function validate(app, raw) {
         format('probe config, %s, is invalid: %s', raw.config, err));
     }
     try {
-      probeType.validateConfig(config)
+      ProbeType.validateConfig(config)
     } catch (err) {
       throw new restify.InvalidArgumentError(
         format('probe config, %s, is invalid: "%s"', raw.config, err.message));
     }
   }
-  if (probeType.runInGlobal) {
+  if (ProbeType.runInGlobal) {
     raw.global = true;
   }
 

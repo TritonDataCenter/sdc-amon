@@ -19,6 +19,15 @@ Each of the notification type modules here should export the following interface
      */
     FooNotificationType.prototype.acceptsMedium = function (medium) { ... };
 
-    FooNotificationType.prototype.notify = function(event, contactAddress, message, callback) { ... };
+    /**
+     * Notify.
+     *
+     * @param user {Object} UFDS sdcPerson being notified.
+     * @param contactAddress {String}
+     * @param event {Object} The probe event.
+     * @param callback {Function} `function (err)` called on completion.
+     */
+    FooNotificationType.prototype.notify = function(
+        user, contactAddress, event, callback) { ... };
 
     module.exports = FooNotificationType;

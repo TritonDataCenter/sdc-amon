@@ -13,6 +13,7 @@ var amonCommon = require('amon-common'),
   RelayClient = amonCommon.RelayClient,
   format = amonCommon.utils.format;
 var plugins = require('amon-plugins');
+var ZoneEventWatcher = require('./zoneeventwatcher');
 
 
 
@@ -67,10 +68,11 @@ util.inherits(ProbeError, Error);
  * @param id {String} The probe id.
  * @param probeData {Object} The probe data.
  * @param log {Bunyan Logger} Log to pass to the probe instance.
+ * @param app {App}
  * @param callback {Function} `function (err, probe)` called with the
  *    started probe instance. On failure `err` is `ProbeError` instance.
  */
-function createProbe(id, probeData, log, callback) {
+function createProbe(id, probeData, log, app, callback) {
   var ProbeType = plugins[probeData.type];
   if (! ProbeType) {
     return callback(format('unknown amon probe plugin type: "%s"',
@@ -78,7 +80,12 @@ function createProbe(id, probeData, log, callback) {
   }
 
   try {
-    var probe = new ProbeType(id, probeData, log);
+    var probe = new ProbeType({
+      id: id,
+      data: probeData,
+      log: log,
+      app: app
+    });
   } catch (e) {
     return callback(new ProbeError(e, probeData));
   }
@@ -95,6 +102,12 @@ function createProbe(id, probeData, log, callback) {
 
 /**
  * Create App.
+ *
+ * The app is an EventEmitter. Events:
+ * - `zoneUp:$uuid` when at least one "machine-up" probe is running, where
+ *   '$uuid' is the machine uuid (i.e. the zonename).
+ * - `zoneDown:$uuid` when at least one "machine-up" probe is running, where
+ *   '$uuid' is the machine uuid (i.e. the zonename).
  *
  * @param options {Object}
  *    - `log` {Bunyan logger} Required.
@@ -121,7 +134,17 @@ function App(options) {
   // Maps probe id, '$user/$monitorName/$probeName', to either a Probe
   // instance or a `ProbeError` instance.
   this.probeFromId = {};
+
+  // If needed by a probe, the App will watch zoneevents and emit
+  // events the relevant probes can watch.
+  this.zwatcher = null;
+
+  var self = this;
+  self.on('newListener', function (event, listener) {
+    self.log.debug({event: event}, 'newListener')
+  })
 }
+util.inherits(App, process.EventEmitter);
 
 
 /**
@@ -149,8 +172,13 @@ App.prototype.stop = function(callback) {
     clearInterval(this.updaterInterval);
     this.updaterInterval = null;
   }
+  if (this.zwatcher) {
+    this.zwatcher.stop();
+    this.zwatcher = null;
+  }
   callback(null);
 }
+
 
 /**
  * Load cached data into a couple global vars.
@@ -245,7 +273,7 @@ App.prototype.updateProbes = function updateProbes(force) {
       case 'add':
         log.debug({id: id, probeData: probeDataFromId[id]},
           'update probes: create probe');
-        createProbe(id, probeDataFromId[id], log, function (err, probe) {
+        createProbe(id, probeDataFromId[id], log, self, function (err, probe) {
           if (err) {
             log.error({id: id, err: err}, 'could not create probe (continuing)');
             self.probeFromId[id] = err;
@@ -283,7 +311,7 @@ App.prototype.updateProbes = function updateProbes(force) {
           probe.stop();
         }
         delete self.probeFromId[id];
-        createProbe(id, probeDataFromId[id], log, function (err, probe) {
+        createProbe(id, probeDataFromId[id], log, self, function (err, probe) {
           if (err) {
             log.error({id: id, err: err}, 'could not create probe (continuing)');
             self.probeFromId[id] = err;
@@ -303,10 +331,10 @@ App.prototype.updateProbes = function updateProbes(force) {
     }
     asyncForEach(todos, handleProbeTodo, function (err) {
       log.info({changes: stats, numProbes: probeData.length}, 'updated probes');
+      self.onProbesUpdated();
     });
   });
 }
-
 
 
 /**
@@ -319,6 +347,49 @@ App.prototype.onNewProbe = function onNewProbe(probe) {
   probe.on('event', function (event) {
     self.sendEvent(event)
   });
+}
+
+
+/**
+ * Called after probes have been updated.
+ */
+App.prototype.onProbesUpdated = function () {
+  var self = this;
+  var log = self.log;
+
+  // Start/stop zoneevent watcher as necessary.
+  var needZoneEvents = false;
+  var ids = Object.keys(self.probeFromId);
+  for (var i = 0; i < ids.length; i++) {
+    var probe = self.probeFromId[ids[i]];
+    if (!probe) continue;
+    if (probe instanceof ProbeError) continue;
+    if (probe.type === 'machine-up') {
+      needZoneEvents = true;
+      break;
+    }
+  }
+  log.trace('onProbesUpdated: needZoneEvents=%s', needZoneEvents);
+  if (needZoneEvents && !self.zwatcher) {
+    log.info('one or more probes need zoneevents, starting zwatcher');
+    self.zwatcher = new ZoneEventWatcher(log);
+    self.zwatcher.on('zoneUp', function (zonename) {
+      log.debug('event: zoneUp:%s', zonename)
+      self.emit('zoneUp:' + zonename);
+    });
+    self.zwatcher.on('zoneDown', function (zonename) {
+      log.debug('event: zoneDown:%s', zonename);
+      self.emit('zoneDown:' + zonename);
+    });
+    self.zwatcher.on('error', function (err) {
+      log.error(err, 'error in zone event watcher (stopped=%s)',
+        self.zwatcher.stopped);
+    });
+  } else if (!needZoneEvents && self.zwatcher) {
+    log.info('no probes need zoneevents, stopping zwatcher')
+    self.zwatcher.stop();
+    self.zwatcher = null;
+  }
 }
 
 

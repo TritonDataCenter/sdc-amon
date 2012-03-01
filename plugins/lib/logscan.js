@@ -8,7 +8,8 @@
 var events = require('events');
 var fs = require('fs');
 var spawn = require('child_process').spawn;
-var util = require('util');
+var util = require('util'),
+  format = util.format;
 
 var log = require('restify').log;
 var Plugin = require('./plugin');
@@ -28,14 +29,28 @@ function _trim(s) {
 
 //---- plugin class
 
-function LogScanProbe(id, data, log) {
-  Plugin.call(this, id, data, log);
+/**
+ * Create a LogScan probe.
+ *
+ * @param options {Object}
+ *    - `id` {String}
+ *    - `data` {Object} The probe data, including its `config`.
+ *    - `log` {Buyan Logger}
+ */
+function LogScanProbe(options) {
+  Plugin.call(this, options);
   LogScanProbe.validateConfig(this.config);
 
   this.path = this.config.path;
   this.period = this.config.period;
   this.regex = new RegExp(this.config.regex);
   this.threshold = this.config.threshold;
+  if (this.threshold > 1) {
+    this.message = format('Log "%s" matched %s >=%d times in %d seconds.',
+      this.path, this.regex, self.threshold, this.period);
+  } else {
+    this.message = format('Log "%s" matched %s.', this.path, this.regex);
+  }
 
   this._count = 0;
   this._running = false;
@@ -60,7 +75,7 @@ LogScanProbe.prototype.start = function(callback) {
   this.timer = setInterval(function() {
     if (!self._running)
       return;
-    log.debug('Clearing logscan counter for %s', self.id);
+    log.trace('clear logscan counter');
     self._count = 0;
   }, this.period * 1000);
 
@@ -70,12 +85,12 @@ LogScanProbe.prototype.start = function(callback) {
     if (!self._running) return;
 
     var line = _trim('' + data);
-    log.debug('logscan tail.stdout (id=%s, threshold=%d, count=%d): %s',
-      self.id, self.threshold, self._count, line);
     if (self.regex.test(line)) {
+      log.trace({line: line, threshold: self.threshold, count: self._count},
+        'logscan regex hit');
       if (++self._count >= self.threshold) {
-        log.debug('logscan event (id=%s): %s', self.id, line);
-        self.emitEvent('Integer', self._count, {match: line});
+        log.info({match: line}, 'logscan event');
+        self.emitEvent(self.message, self._count, {match: line});
       }
     }
   });
@@ -83,7 +98,7 @@ LogScanProbe.prototype.start = function(callback) {
   this.tail.on('exit', function(code) {
     if (!self._running)
       return;
-    log.fatal('logscan (id=%s): tail exited (code=%d)', self.id, code);
+    log.fatal('logscan: tail exited (code=%d)', code);
     clearInterval(self.timer);
   });
 

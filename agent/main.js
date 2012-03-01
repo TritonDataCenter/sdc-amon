@@ -107,6 +107,7 @@ function main() {
   if (rawOpts.verbose) {
     log.level(rawOpts.verbose.length > 1 ? 'trace' : 'debug');
   }
+  //log.level('trace');
   log.trace({opts: rawOpts}, 'opts');
 
   // Die on unknown opts.

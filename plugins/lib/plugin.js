@@ -15,7 +15,7 @@
  *    <probe>.config
  *      The config object given at probe creation.
  *
- *    <probe>.emitEvent(type, value, data)
+ *    <probe>.emitEvent(message, value, details)
  *      Method for the base classes to call to emit an event.
  *      XXX Signature and event format is still fluid.
  *
@@ -55,40 +55,83 @@
  */
 
 var util = require('util');
+var assert = require('assert');
 
-var PROBE_EVENT_VERSION = '1.0.0';
+var AMON_EVENT_VERSION = 1;
 
 
 
 //---- plugin class
 
-function Plugin(id, data, log) {
+/**
+ * Create a Probe instance.
+ *
+ * @param options {Object}
+ *    - `id` {String}
+ *    - `data` {Object} The probe data, including its `config`.
+ *    - `log` {Buyan Logger}
+ */
+function Plugin(options) {
   process.EventEmitter.call(this);
 
-  this.id = id;
-  this.json = JSON.stringify(data);
-  this.log = log;
+  if (!options) throw new TypeError('"options" is required');
+  if (!options.id) throw new TypeError('"options.id" is required');
+  if (!options.data) throw new TypeError('"options.data" is required');
+  if (!options.log) throw new TypeError('"options.log" is required');
 
-  this._idObject = {
+  this.id = options.id;
+  this.json = JSON.stringify(options.data);
+  this.log = options.log.child(
+    {probe_id: this.id, probe_type: this.type}, true);
+
+  var data = options.data;
+  this._probeId = {
     user: data.user,
     monitor: data.monitor,
     name: data.name,
     type: this.type
   };
+  if (data.machine) {
+    this.targetType = 'machine';
+    this.targetUuid = data.machine;
+  } else {
+    assert.ok(data.server);
+    this.targetType = 'server';
+    this.targetUuid = data.server;
+  }
+
   this.config = data.config;
 }
 util.inherits(Plugin, process.EventEmitter);
 
 Plugin.runInGlobal = false;
 
-Plugin.prototype.emitEvent = function (type, value, data) {
-  this.emit('event', {
-    version: PROBE_EVENT_VERSION,
-    probe: this._idObject,
-    type: type,
-    value: value,
-    data: data
-  });
+/**
+ * Emit a probe event.
+ *
+ * @param message {String} Short message describing the event.
+ * @param value {Number|String|Boolean|null} A value for this event.
+ *    Interpretation of the value is probe-type-dependent. Use `null` if
+ *    not meaningful for this probe type.
+ * @param details {Object} Extra details pertinent to this event. Use `null`
+ *    if none.
+ */
+Plugin.prototype.emitEvent = function (message, value, details) {
+  if (!message) throw new TypeError('"message" is required')
+  if (value === undefined) throw new TypeError('"value" is required')
+  if (details === undefined) throw new TypeError('"details" is required')
+  var event = {
+    v: AMON_EVENT_VERSION,
+    probe: this._probeId,
+    time: (new Date()),
+    data: {
+      message: message,
+      value: value,
+      details: details
+    }
+  };
+  event[this.targetType] = this.targetUuid;
+  this.emit('event', event);
 };
 
 module.exports = Plugin;

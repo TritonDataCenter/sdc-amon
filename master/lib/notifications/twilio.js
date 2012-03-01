@@ -66,17 +66,22 @@ Twilio.prototype.sanitizeAddress = function (data) {
 };
 
 
-Twilio.prototype.notify = function (event, contactAddress, message, callback) {
-  if (!event || typeof (event) !== 'string')
-    throw new TypeError('event must be a string');
+/**
+ * Notify.
+ *
+ * @param user {Object} UFDS sdcPerson being notified.
+ * @param contactAddress {String}
+ * @param event {Object} The probe event.
+ * @param callback {Function} `function (err)` called on completion.
+ */
+Twilio.prototype.notify = function (user, contactAddress, event, callback) {
+  if (!user) throw new TypeError('"user" required');
   if (!contactAddress || typeof (contactAddress) !== 'string')
     throw new TypeError('contactAddress must be a phone number');
-  if (typeof (message) !== 'string')
-    throw new TypeError('message must be a string');
-  if (!callback || typeof (callback) !== 'function')
-    throw new TypeError('callback must be a function');
+  if (!event) throw new TypeError('"event" required');
+  if (!callback) throw new TypeError('"callback" required');
 
-  var log = this.log.child({twilioEvent: event});
+  var log = this.log.child({twilioEvent: event.probe.name});
   var self = this;
   var auth = 'Basic ' +
     new Buffer(self.accountSid + ':' + self.authToken).toString('base64');

@@ -5,11 +5,13 @@
  *
  * A 'contact URN' is a URN string defining to whom and how to send a
  * notification. A monitor stores a list of these contact URNs.
+ *
  * Formats:
- *    <scope>:<name>:<medium>         [*]
+ *    <scope>:<name>:<medium>         [*] Not implemented
  *    my:<medium>
- *    <medium>
- * where <scope> is one of 'my', 'user' or "group". <name> is the sub-user
+ *    <medium>                        scope 'my' is implied
+ *
+ * where <scope> is one of 'my', 'user' or 'group'. <name> is the sub-user
  * login or group name (only valid for scope 'user' or 'group'). <medium>
  * indicates how to contact the particular person. It is the field name on
  * the relevant user record from which to get the address to contact and
@@ -27,8 +29,8 @@
  *                    in that group, the 'pager' field is used.
  *
  * The forms marked with the asterisk (`[*]`) will not be implemented until
- * SDC's UFDS supports user management. Here "user management" is support
- * for users and groups *under* a particular "uuid=:uuid, ou=users,
+ * SDC's UFDS supports user/group management. Here "user management" is
+ * support for users and groups *under* a particular "uuid=:uuid, ou=users,
  * o=smartdc" node in UFDS.
  */
 
@@ -43,7 +45,17 @@ var restify = require('restify');
 //---- Contact model
 
 /**
- * Create a new contact.
+ * Create a new contact. Typically a new instance is created
+ * via `Contact.get(...)`.
+ *
+ * @param scope {String} One of 'my', 'user' [*NYI], 'group' [*NYI].
+ *    See discussion above.
+ * @param medium {String} The UFDS sdcPerson field name containing the
+ *    contact details.
+ * @param notificationType {String} The name of a registered notification
+ *    plugin. See `App.notificationTypeFromMedium()` for resolution from
+ *    `medium`.
+ * @param address {String} The UFDS sdcPerson field *value*.
  */
 function Contact(scope, medium, notificationType, address) {
   this.scope = scope

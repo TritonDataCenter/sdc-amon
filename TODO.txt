@@ -1,6 +1,7 @@
 # higher-level prios
 
 - back on 'machine-up' probe type:
+  - TICKET for adding support for probes for down zones on startup
 - script for a demo: Let's do Use Case "2. Operator SDC Zones monitor".
   - show quick way to setup 'machine-up' probe for each smartdc_role zone
   - then bring down cloudapi

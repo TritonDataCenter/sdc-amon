@@ -163,7 +163,8 @@ function App(config, ufds, mapi, log) {
       var plugin = config.notificationPlugins[name];
       log.info('Loading "%s" notification plugin.', name);
       var NotificationType = require(plugin.path);
-      self.notificationPlugins[name] = new NotificationType(log, plugin.config);
+      self.notificationPlugins[name] = new NotificationType(
+        log.child({notification_type: name}, true), plugin.config);
     });
   }
 
@@ -728,11 +729,13 @@ App.prototype.alarmConfig = function (userId, msg, callback) {
 
 
 /**
- * XXX clarify error handling
- * TODO:XXX Get this to take the full account object to allow improving the
- *    recipient, e.g. 'joe@example.com' -> '"Joe Smith" <joe@example.com>'
+ * Send a notification for a probe event.
  *
- * ...
+ * @param userUuid {String} UUID of the user.
+ * @param monitor {Monitor} Monitor for which this notification is being sent.
+ * @param event {Object} The probe event object.
+ * @param contact {Contact} The contact to notify. A contact is relative
+ *    to a user. See 'contact.js' for details.
  * @param callback {Function} `function (err) {}`.
  */
 App.prototype.notifyContact = function (userUuid, monitor, contact, event,
@@ -740,12 +743,13 @@ App.prototype.notifyContact = function (userUuid, monitor, contact, event,
   var log = this.log;
   var plugin = this.notificationPlugins[contact.notificationType];
   if (!plugin) {
-    return callback(format('notification plugin "%s" not found',
-      contact.notificationType));
+    return callback(new Error(format('notification plugin "%s" not found',
+      contact.notificationType)));
   }
-  plugin.notify(event.probe.name, contact.address,
-    JSON.stringify(event.data, null, 2), //XXX obviously lame 'message' to send
-    callback);
+  this.userFromId(userUuid, function (err, user) {
+    if (err) return callback(err);
+    plugin.notify(user, contact.address, event, callback);
+  });
 }
 
 

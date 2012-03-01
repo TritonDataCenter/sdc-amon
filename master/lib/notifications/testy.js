@@ -32,17 +32,26 @@ Testy.prototype.sanitizeAddress = function (data) {
   return data;
 };
 
-Testy.prototype.notify = function (event, contactAddress, message, callback) {
-  var log = this.log;
-  log.debug('Test.notify: event="%s", contactAddress="%s", message="%s"',
-    event, contactAddress, message);
+/**
+ * Notify.
+ *
+ * @param user {Object} UFDS sdcPerson being notified.
+ * @param contactAddress {String}
+ * @param event {Object} The probe event.
+ * @param callback {Function} `function (err)` called on completion.
+ */
+Testy.prototype.notify = function (user, contactAddress, event, callback) {
+  var probeName = event.probe.name;
+  var message = JSON.stringify(event);
+  this.log.debug('Test.notify: probeName="%s", contactAddress="%s", message="%s"',
+    probeName, contactAddress, message);
   this.notifications.push({
     contactAddress: contactAddress,
     message: message
   });
   fs.writeFileSync(this.logPath,
     JSON.stringify(this.notifications, null, 2), 'utf8');
-  log.debug('Testy.notify: wrote "%s"', this.logPath)
+  this.log.debug('Testy.notify: wrote "%s"', this.logPath)
   callback();
 };
 
