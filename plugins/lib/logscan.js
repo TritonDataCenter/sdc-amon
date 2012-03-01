@@ -12,7 +12,7 @@ var util = require('util'),
   format = util.format;
 
 var log = require('restify').log;
-var Plugin = require('./plugin');
+var Probe = require('./probe');
 
 
 
@@ -27,7 +27,7 @@ function _trim(s) {
 
 
 
-//---- plugin class
+//---- probe class
 
 /**
  * Create a LogScan probe.
@@ -38,7 +38,7 @@ function _trim(s) {
  *    - `log` {Buyan Logger}
  */
 function LogScanProbe(options) {
-  Plugin.call(this, options);
+  Probe.call(this, options);
   LogScanProbe.validateConfig(this.config);
 
   this.path = this.config.path;
@@ -55,7 +55,7 @@ function LogScanProbe(options) {
   this._count = 0;
   this._running = false;
 }
-util.inherits(LogScanProbe, Plugin);
+util.inherits(LogScanProbe, Probe);
 
 LogScanProbe.prototype.type = "logscan";
 

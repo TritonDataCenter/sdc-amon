@@ -71,7 +71,7 @@ var AMON_EVENT_VERSION = 1;
  *    - `data` {Object} The probe data, including its `config`.
  *    - `log` {Buyan Logger}
  */
-function Plugin(options) {
+function Probe(options) {
   process.EventEmitter.call(this);
 
   if (!options) throw new TypeError('"options" is required');
@@ -102,9 +102,9 @@ function Plugin(options) {
 
   this.config = data.config;
 }
-util.inherits(Plugin, process.EventEmitter);
+util.inherits(Probe, process.EventEmitter);
 
-Plugin.runInGlobal = false;
+Probe.runInGlobal = false;
 
 /**
  * Emit a probe event.
@@ -116,7 +116,7 @@ Plugin.runInGlobal = false;
  * @param details {Object} Extra details pertinent to this event. Use `null`
  *    if none.
  */
-Plugin.prototype.emitEvent = function (message, value, details) {
+Probe.prototype.emitEvent = function (message, value, details) {
   if (!message) throw new TypeError('"message" is required')
   if (value === undefined) throw new TypeError('"value" is required')
   if (details === undefined) throw new TypeError('"details" is required')
@@ -134,4 +134,4 @@ Plugin.prototype.emitEvent = function (message, value, details) {
   this.emit('event', event);
 };
 
-module.exports = Plugin;
+module.exports = Probe;

@@ -1,7 +1,7 @@
 /*
  * Copyright 2012 Joyent, Inc.  All rights reserved.
  *
- * An Amon probe plugin for reporting on whether a machine is up or down.
+ * An Amon probe type for reporting on whether a machine is up or down.
  */
 
 var events = require('events');
@@ -10,11 +10,11 @@ var spawn = require('child_process').spawn;
 var util = require('util'),
   format = util.format;
 
-var Plugin = require('./plugin');
+var Probe = require('./probe');
 
 
 
-//---- plugin class
+//---- probe class
 
 /**
  * Create a MachineUp probe.
@@ -27,7 +27,7 @@ var Plugin = require('./plugin');
  *      'zoneDown' events.
  */
 function MachineUpProbe(options) {
-  Plugin.call(this, options);
+  Probe.call(this, options);
   if (!options.app) throw new TypeError('"options.app" is required');
   MachineUpProbe.validateConfig(this.config);
 
@@ -45,7 +45,7 @@ function MachineUpProbe(options) {
       false, {machine: self.machine});
   }
 }
-util.inherits(MachineUpProbe, Plugin);
+util.inherits(MachineUpProbe, Probe);
 
 
 MachineUpProbe.runInGlobal = true;

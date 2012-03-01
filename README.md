@@ -54,9 +54,8 @@ to install and manage in their VMs on their own.
     master/         Amon master (node.js package)
     relay/          Amon relay (node.js package)
     agent/          Amon agent (node.js package)
-    plugins/        "amon-plugins" node.js package that holds probe type
-                    plugins (e.g. "logscan.js" implements the "logscan"
-                    probe type).
+    plugins/        "amon-plugins" node.js package that holds probe types
+                    (e.g. "logscan.js" implements the "logscan" probe type).
     common/         "amon-common" node.js module to share code between the
                     above packages.
     bin/            Some convenience scripts to run local builds of node, etc.
