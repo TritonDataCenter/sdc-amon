@@ -82,6 +82,7 @@ Get the source and build:
 
     git clone git@git.joyent.com:amon.git
     cd amon
+    git submodule update --init
     make all
 
 And start running (see section below).

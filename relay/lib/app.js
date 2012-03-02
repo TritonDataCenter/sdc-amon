@@ -167,10 +167,10 @@ App.prototype.sendOperatorEvent = function (msg, details, callback) {
   //XXX Not really sure what this event should look like. Event format
   //    isn't well defined.
   var event = {
-    //XXX Currently 'PROBE_EVENT_VERSION' hardcoded in plugin.js. Can't stay
+    //XXX Currently 'AMON_EVENT_VERSION' hardcoded in plugin.js. Can't stay
     //    that way. Spec must now be "Amon Events" rather than "Probe
     //    events". This kind isn't about a probe.
-    version: '1.0.0',
+    v: 1,
     type: 'operator',
     //XXX Include uuid for this CN in this event. "Which relay is this? --Op"
     data: {
