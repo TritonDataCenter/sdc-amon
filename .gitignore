@@ -12,6 +12,7 @@ node_modules
 /test/config.json
 /test/prep.json
 /master/config.json
+/screencasts
 
 # built docs (ignore for now)
 /docs/media
