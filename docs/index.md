@@ -110,7 +110,7 @@ TODO
     Access-Control-Allow-Methods: OPTIONS, GET
     Access-Control-Allow-Headers: Accept, Content-Type, Content-Length, Date, X-Api-Version
     Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
-    
+
     [
       {
         "name": "mysql",
@@ -161,7 +161,7 @@ TODO
     Access-Control-Allow-Methods: OPTIONS, GET
     Access-Control-Allow-Headers: Accept, Content-Type, Content-Length, Date, X-Api-Version
     Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
-    
+
     [
       {
         "name": "whistlelog",
@@ -251,7 +251,7 @@ the Amon master server process. This is helpful for the test suite.
     Access-Control-Allow-Methods: OPTIONS, GET
     Access-Control-Allow-Headers: Accept, Content-Type, Content-Length, Date, X-Api-Version
     Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
-    
+
     {
       "ping": "pong"
       "pid": 1234
@@ -274,7 +274,7 @@ Ping can also be used to simulate error responses from Amon master:
     Access-Control-Allow-Methods: OPTIONS, GET
     Access-Control-Allow-Headers: Accept, Content-Type, Content-Length, Date, X-Api-Version
     Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
-    
+
     {
       "code": "ResourceNotFound",
       "message": "pong"
@@ -301,7 +301,7 @@ if not useful.
     $ sdc-amon /pub/7b23ae63-37c9-420e-bb88-8d4bf5e30455
     HTTP/1.1 200 OK
     ...
-    
+
     {
       "login": "hamish",
       "email": "hamish@joyent.com",
@@ -436,7 +436,7 @@ Probes for watching relevant SDC log files for, say, "ERROR".
     sdc-amon /pub/devalice/monitors/sdclogs -X PUT -d- < '{
         "contacts": ["email"]
     }'
-    
+
     # GZ probes
     sdc-amon /pub/devalice/monitors/sdclogs/probes/headnode-ur -X PUT -d- < '{
         "type": "logscan",
@@ -460,7 +460,7 @@ Probes for watching relevant SDC log files for, say, "ERROR".
         }
     }'
     ...
-    
+
     # SDC zones probes
     # Where 'ea3898cd-4ca9-410a-bfa6-0152ba07b1d7' is the ufds0 zone name.
     sdc-amon /pub/devalice/monitors/sdclogs/probes/ufds0-ufds-server -X PUT -d- < '{
@@ -481,21 +481,22 @@ Probes for watching relevant SDC log files for, say, "ERROR".
 
 Probe for SDC zones going up and down. Separate from "SDC Log monitor"
 because zone up/down alarms can clear.
+See <https://stuff.joyent.us/stuff/trent/screencasts/amon1.mov> for a
+screencast demonstrating this use case.
 
-    sdc-amon /pub/devalice/monitors/sdczones -X PUT -d- < '{
+    echo '{
         "contacts": ["email"]
-    }'
+    }' | sdc-amon /pub/SOME-OPERATOR/monitors/sdczones -X PUT -d @-
 
     # Where 'ea3898cd-4ca9-410a-bfa6-0152ba07b1d7' is the ufds0 zone name.
-    sdc-amon /pub/devalice/monitors/sdczones/probes/ufds0 -X PUT -d- < '{
+    echo '{
         "type": "machine-up",
         "machine": "ea3898cd-4ca9-410a-bfa6-0152ba07b1d7"
-    }'
-    ... one for each sdc zone (sdc-mapi /machines?tag.smartdc_role=*)
+    }' | sdc-amon /pub/SOME-OPERATOR/monitors/sdczones/probes/ufds0 -X PUT -d @-
 
+    # ... one for each sdc zone (sdc-mapi /machines?tag.smartdc_role=*)
+    # See "sdczones.sh" in <https://stuff.joyent.us/stuff/trent/screencasts/amon1-notes.txt>
 
-
-    
 
 
 ## 3. Operator SDC Services monitor
@@ -548,7 +549,7 @@ For example:
 ## 4. Customer "Machine up" monitor
 
 Probe for each of my machines going up and down.
-   
+
 Portal UX: This monitor is likely often wanted for *all* my zones.
 However, don't want it on by default. Should portal's page after
 "create new machine" have a big button (or a checkbox) to add this
@@ -561,7 +562,7 @@ monitor) will be a pain, need to include machine UUID in the name?
 
 Cloud API: You have to add these separately per-machine. That shouldn't
 be so bad.
-    
+
     PUT /my/monitors/machine-up < {
             "contacts": ["email"]
         }
@@ -595,7 +596,7 @@ Probe to "GET /canary" on the site from some other source location.
 
 Operator wants to run a particular "mdb -k" goober (Bryan's words) to run a
 healthcheck on KVM.
-    
+
     PUT /my/monitors/kvmcheck < {
             "contacts": ["email"]
         }
@@ -612,7 +613,3 @@ healthcheck on KVM.
                 "period": 60  // how frequently to check.
             }
         }
-
-
-
-

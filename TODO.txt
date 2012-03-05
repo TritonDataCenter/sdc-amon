@@ -2,11 +2,32 @@
 
 - back on 'machine-up' probe type:
   - TICKET for adding support for probes for down zones on startup
-- script for a demo: Let's do Use Case "2. Operator SDC Zones monitor".
-  - show quick way to setup 'machine-up' probe for each smartdc_role zone
-  - then bring down cloudapi
-  - should get an email about that: put some basic templating in place
-    for this:
+  - TICKET: tool to crash a zone: does zonecfg_notify event for leaving "running" get sent?
+- put in readme/dev notes:
+
+      PS1='\[\033[0;34m\][\u@\h (${DC_NAME}:${DC_HEADNODE_ID}) \w]\$\[\033[0m\] '
+
+      [root@headnode (coal:0) /var/tmp]# cat admin-change.ldif
+      dn: uuid=930896af-bf8c-48d4-885c-6573a94b1853, ou=users, o=smartdc
+      changetype: modify
+      replace: email
+      email: trentm+coaladmin@gmail.com
+      [root@headnode (coal:0) /var/tmp]# sdc-ldap modify -f admin-change.ldif
+      ...
+
+- missing pieces represented?
+  - persistent alarms (and events) and API endpoints to work with open
+    alarms (list, close, suppress alerts on this alarm)
+  - "clearing" via persistent alarm
+  - monitor suppression
+  - agents running in every zone (and eventually in VMs)
+  - Amon API in cloudapi and UIs in portal and adminui for working with Amon.
+  - email improvements: Link to the alarm URL in the portal or adminui.
+    Link to the machine in the portal or adminui.
+  - More probe types
+  - Experience, robustness.
+- should get an email about that: put some basic templating in place
+  for this:
       Subject: [{{cloudname}} 'sdczones' Monitor Alarm] 'cloudapi' machine is down
 
       Your 'sdczones' monitor has alarmed.
@@ -18,20 +39,13 @@
 
       --
       {{some kind of templatable stock footer}}
-  - discuss missing pieces:
-    - persistent alarms (and events) and API endpoints to work with open
-      alarms (list, close, suppress alerts on this alarm)
-    - "clearing" via persistent alarm
-    - monitor suppression
-    - email improvements: Link to the alarm URL in the portal or adminui.
-      Link to the machine in the portal or adminui.
-    - Amon API in cloudapi and UIs in portal and adminui for working with Amon.
 - update to and use npm shrinkwrap
 - design use cases, assign a use case driver for each prio
-- probe type that runs in global targeting a machine (runInGlobal, notes below)
 - sysevent-based events: use case #2, machine-running-state probe type
 - agent in all zones
 - persistent alarms/events
+  - see http://circonus.com/resources/api/rules
+    'dashboard' option to show active alerts + those recnetly cleared
 - authorizeDelete finish
 - finish CRUD on UFDS objects
 - sdc-healthcheck
@@ -41,7 +55,7 @@
   with older agents in the wild. Upgrading Agent versions? What about
   an old amon-agent? old amon-relay?
 - cloud api
-- portal
+- portal (c.f. http://circonus.com/resources/videos#play-video-check-creation)
 - adminui
 - load testing (hook into mock cloud for this?). Estimate of design-limit on
   number of probes/notifications/events
@@ -85,6 +99,13 @@
 - name fields in Master API: percent escaping
 - walk through a server boot (and boot of all its zones): does Amon eventing
   go crazy?
+- notification types to consider (http://circonus.com/why-us/features/notifications):
+    Email
+    AOL and XMPP (Jabber, Google Talk, etc.) Instant Messages
+    Twitter (direct messages from @circonusops)
+    SMS
+    HTTP WebHooks
+
 
 
 # someday/maybe
@@ -127,6 +148,7 @@
 - edge-triggered alarms in master for probes
 - CA probe type
 - HTTP probe type
+- probe types: http://circonus.com/why-us/features/monitoring
 - revive twilio notification backend as "sms"
 - more probe types: run cmd, http check, zone list, ping, disk free, disk
   iops, cpu, mem, ps (aka "top")
