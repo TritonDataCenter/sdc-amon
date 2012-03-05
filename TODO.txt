@@ -149,6 +149,12 @@
 - SNMP traps (per Mark).
   http://tools.ietf.org/html/rfc3877  Alarm MIB
   http://tools.ietf.org/html/rfc3014  Notification Log MIB
+  Traps not in snmpjs yet. Keith: """you can however use snmptrapgen, which
+  comes with Net-SNMP on our systems it's just a binary program that
+  generates traps and directs them somewhere of your choosing. So you can see
+  what they look like. That may help you start writing the MIB you want to
+  use (definitions of data objects, types, and structures)"""
+
 - edge-triggered alarms in master for probes
 - CA probe type
 - HTTP probe type
