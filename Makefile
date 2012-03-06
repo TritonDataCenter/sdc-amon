@@ -241,9 +241,6 @@ install_agent_pkg:
 install_relay_pkg:
 	/opt/smartdc/agents/bin/apm --no-registry install ./`ls -1 amon-relay*.tgz | tail -1`
 
-distclean::
-	([[ -d deps/node ]] && cd deps/node && $(MAKE) distclean || true)
-
 
 #
 # Includes
