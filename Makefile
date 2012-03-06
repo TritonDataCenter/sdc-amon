@@ -6,11 +6,6 @@
 
 
 #
-# Directories
-#
-TOP := $(shell pwd)
-
-#
 # Tools
 #
 NODE_DEV := ./node_modules/.bin/node-dev
@@ -32,9 +27,9 @@ SMF_MANIFESTS_IN = agent/smf/amon-agent.smf.in relay/smf/amon-relay.smf.in \
 	master/smf/amon-relay.smf.in
 CLEAN_FILES += agent/node_modules relay/node_modules \
 	master/node_modules common/node_modules plugins/node_modules \
-	./node_modules amon-*.tgz \
-	tmp/npm-cache amon-*.tar.bz2 \
-	bin/amon-zwatch     # recently removed bits
+	./node_modules build/amon-*.tgz \
+	tmp/npm-cache build/amon-*.tar.bz2 \
+	lib
 
 #
 # Included definitions
@@ -71,6 +66,7 @@ lib/node_modules/sdc-clients: | deps/node-sdc-clients/.git $(NPM_EXEC)
 .PHONY: common
 common: $(NPM_EXEC)
 	(cd common && $(NPM) update && $(NPM) link)
+
 
 .PHONY: plugins
 plugins: $(NPM_EXEC)
@@ -209,6 +205,14 @@ publish: $(BITS_DIR)
 # Lint, test and miscellaneous targets
 #
 
+.PHONY: dumpvar
+dumpvar:
+	@if [[ -z "$(VAR)" ]]; then \
+		echo "error: set 'VAR' to dump a var"; \
+		exit 1; \
+	fi
+	@echo "$(VAR) is '$($(VAR))'"
+
 #XXX Add to check:: target as check-jshint
 .PHONY: jshint
 jshint:
@@ -237,7 +241,7 @@ install_agent_pkg:
 install_relay_pkg:
 	/opt/smartdc/agents/bin/apm --no-registry install ./`ls -1 amon-relay*.tgz | tail -1`
 
-clean::
+distclean::
 	([[ -d deps/node ]] && cd deps/node && $(MAKE) distclean || true)
 
 
