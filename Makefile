@@ -4,41 +4,20 @@
 # Makefile for Amon
 #
 
-include ./Makefile.defs
-
 
 #
 # Directories
 #
 TOP := $(shell pwd)
-NODEDIR = $(TOP)/deps/node-install
-#XXX Needed?
-NODE_PATH = $(NODEDIR)
-
 
 #
 # Tools
 #
-MAKE = make
-TAR = tar
-UNAME := $(shell uname)
-ifeq ($(UNAME), SunOS)
-	MAKE = gmake
-	TAR = gtar
-	CC = gcc
-endif
-HAVE_GJSLINT := $(shell which gjslint >/dev/null && echo yes || echo no)
-NODE := $(NODEDIR)/bin/node
-NODE_WAF := $(NODEDIR)/bin/node-waf
-NPM_ENV := npm_config_cache=$(shell echo $(TOP)/tmp/npm-cache) npm_config_tar=$(TAR) PATH=$(NODEDIR)/bin:$$PATH
-NPM := $(NPM_ENV) $(NODEDIR)/bin/npm
-#XXX
-PKG_DIR := .pkg
-RESTDOWN := python2.6 $(TOP)/deps/restdown/bin/restdown
-NODE_DEV := $(TOP)/node_modules/.bin/node-dev
-TAP := $(TOP)/node_modules/.bin/tap
-JSHINT := $(TOP)/node_modules/.bin/jshint
-
+NODE_DEV := ./node_modules/.bin/node-dev
+TAP := ./node_modules/.bin/tap
+JSHINT := node_modules/.bin/jshint
+JSSTYLE_FLAGS := -f tools/jsstyle.conf
+NPM_FLAGS := --cache=$(shell pwd)/tmp/npm-cache
 
 #
 # Files
@@ -46,52 +25,42 @@ JSHINT := $(TOP)/node_modules/.bin/jshint
 DOC_FILES = index.restdown
 JS_FILES = $(shell ls master/*.js relay/*.js agent/*.js) \
        $(shell find master relay agent common plugins test -name '*.js')
-#XXX
 JSL_CONF_NODE    = tools/jsl.node.conf
 JSL_FILES_NODE   = $(JS_FILES)
 JSSTYLE_FILES    = $(JS_FILES)
-JSSTYLE_FLAGS    = -f tools/jsstyle.conf
-SMF_MANIFESTS    = agent/smf/amon-agent.smf.in relay/smf/amon-relay.smf.in \
+SMF_MANIFESTS_IN = agent/smf/amon-agent.smf.in relay/smf/amon-relay.smf.in \
 	master/smf/amon-relay.smf.in
+CLEAN_FILES += agent/node_modules relay/node_modules \
+	master/node_modules common/node_modules plugins/node_modules \
+	./node_modules amon-*.tgz \
+	tmp/npm-cache amon-*.tar.bz2 \
+	bin/amon-zwatch     # recently removed bits
 
-CLEAN_FILES += $(NODEDIR) agent/node_modules relay/node_modules \
-       master/node_modules common/node_modules plugins/node_modules \
-       ./node_modules .pkg amon-*.tgz \
-       tmp/npm-cache amon-*.tar.bz2 \
-       bin/amon-zwatch     # recently removed bits
+#
+# Included definitions
+#
+include ./tools/mk/Makefile.defs
+include ./tools/mk/Makefile.node.defs
+include ./tools/mk/Makefile.smf.defs
 
 
 #
-# Targets
+# Repo-specific targets
 #
 
-all:: common plugins agent relay master dev
-
-#XXX
-.PHONY: common agent relay master common plugins test lint gjslint jshint pkg pkg_agent pkg_relay pkg_master publish
+all: common plugins agent relay master dev
 
 
 #
 # deps
 #
 
-$(NODEDIR)/bin/node:
-	([[ ! -d deps/node ]] && GIT_SSL_NO_VERIFY=1 git submodule update --init deps/node || true)
-	(cd deps/node && ./configure --prefix=$(NODEDIR) && $(MAKE) -j 4 && $(MAKE) install)
-
-$(NODEDIR)/bin/npm: $(NODEDIR)/bin/node
-	([[ ! -d deps/npm ]] && GIT_SSL_NO_VERIFY=1 git submodule update --init deps/npm || true)
-	(cd deps/npm && $(NPM_ENV) $(MAKE) install)
-
 deps/node-sdc-clients/.git:
 	([[ ! -d deps/node-sdc-clients ]] && GIT_SSL_NO_VERIFY=1 git submodule update --init deps/node-sdc-clients || true)
 
-lib/node_modules/sdc-clients: deps/node-sdc-clients/.git $(NODEDIR)/bin/npm
+lib/node_modules/sdc-clients: | deps/node-sdc-clients/.git $(NPM_EXEC)
 	cd deps/node-sdc-clients && $(NPM) install
 	cd deps/node-sdc-clients && $(NPM) link   # make available for linking in 'dev' target
-
-deps/restdown/bin/restdown:
-	([[ ! -d deps/restdown ]] && GIT_SSL_NO_VERIFY=1 git submodule update --init deps/restdown || true)
 
 
 
@@ -99,26 +68,31 @@ deps/restdown/bin/restdown:
 # The main amon components
 #
 
-common: $(NODEDIR)/bin/npm
+.PHONY: common
+common: $(NPM_EXEC)
 	(cd common && $(NPM) update && $(NPM) link)
 
-plugins: $(NODEDIR)/bin/npm
+.PHONY: plugins
+plugins: $(NPM_EXEC)
 	(cd plugins && $(NPM) update && $(NPM) link)
 
-agent: $(NODEDIR)/bin/npm common plugins
+.PHONY: agent
+agent: $(NPM_EXEC) common plugins
 	(cd agent && $(NPM) update && $(NPM) link amon-common amon-plugins)
 
-relay: $(NODEDIR)/bin/npm deps/node-sdc-clients/.git common plugins
+.PHONY: relay
+relay: $(NPM_EXEC) deps/node-sdc-clients/.git common plugins
 	(cd relay && $(NPM) update && $(NPM) install ../deps/node-sdc-clients && $(NPM) link amon-common amon-plugins)
 	# Workaround https://github.com/isaacs/npm/issues/2144#issuecomment-4062165
 	(cd relay && rm -rf node_modules/zutil/build && $(NPM) rebuild zutil)
 
-master: $(NODEDIR)/bin/npm deps/node-sdc-clients/.git common plugins
+.PHONY: master
+master: $(NPM_EXEC) deps/node-sdc-clients/.git common plugins
 	(cd master && $(NPM) update && $(NPM) install ../deps/node-sdc-clients && $(NPM) link amon-common amon-plugins)
 
 # "dev" is the name for the top-level test/dev package
 .PHONY: dev
-dev: $(NODEDIR)/bin/npm lib/node_modules/sdc-clients common
+dev: $(NPM_EXEC) lib/node_modules/sdc-clients common
 	$(NPM) install
 	$(NPM) link amon-common
 	$(NPM) link sdc-clients
@@ -128,53 +102,46 @@ dev: $(NODEDIR)/bin/npm lib/node_modules/sdc-clients common
 # Packaging targets
 #
 
+.PHONY: pkg
 pkg: pkg_agent pkg_relay pkg_master
 
+.PHONY: pkg_relay
 pkg_relay:
-	rm -fr $(PKG_DIR)/relay
-	mkdir -p $(PKG_DIR)/relay/deps
-	cp -PR deps/node-install $(PKG_DIR)/relay/deps
+	rm -fr $(BUILD)/pkg/relay
+	mkdir -p $(BUILD)/pkg/relay
+	cp -PR $(NODE_INSTALL) $(BUILD)/pkg/relay/node
 	# '-H' to follow symlink for amon-common and amon-plugins node modules.
-	mkdir -p $(PKG_DIR)/relay/node_modules
-	ls -d relay/node_modules/* | xargs -n1 -I{} cp -HR {} $(PKG_DIR)/relay/node_modules/
+	mkdir -p $(BUILD)/pkg/relay/node_modules
+	ls -d relay/node_modules/* | xargs -n1 -I{} cp -HR {} $(BUILD)/pkg/relay/node_modules/
 	cp -PR relay/lib		\
 		relay/main.js		\
 		relay/package.json	\
 		relay/smf		\
 		relay/npm \
 		relay/bin \
-		$(PKG_DIR)/relay/
-
-	# Need .npmignore in each node module to explictly keep prebuilt
-	# parts of it. Last time I checked this was only needed for the
-	# 'buffertools' and 'dtrace-provider' modules.
-	find $(PKG_DIR)/relay/node_modules -name node_modules \
-		| xargs -n1 -I{} bash -c "ls -d {}/*" \
-		| xargs -n1 -I{} touch {}/.npmignore
-	find $(PKG_DIR)/relay/node_modules -name node_modules \
-		| xargs -n1 -I{} bash -c "ls -d {}/*" \
-		| xargs -n1 -I{} bash -c "cat $(TOP)/tools/keepbuildbits.npmignore >> {}/.npmignore"
+		$(BUILD)/pkg/relay/
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
-	rm -rf $(PKG_DIR)/relay/deps/node-install/lib/node_modules/amon-common \
-		$(PKG_DIR)/relay/deps/node-install/lib/node_modules/amon-plugins
-	find $(PKG_DIR)/relay -name "*.pyc" | xargs rm -f
-	find $(PKG_DIR)/relay -name "*.o" | xargs rm -f
-	find $(PKG_DIR)/relay -name c4che | xargs rm -rf   # waf build file
-	find $(PKG_DIR)/relay -name .wafpickle* | xargs rm -rf   # waf build file
-	find $(PKG_DIR)/relay -name .lock-wscript | xargs rm -rf   # waf build file
-	find $(PKG_DIR)/relay -name config.log | xargs rm -rf   # waf build file
+	rm -rf $(BUILD)/pkg/relay/node/lib/node_modules/amon-common \
+		$(BUILD)/pkg/relay/node/lib/node_modules/amon-plugins
+	find $(BUILD)/pkg/relay -name "*.pyc" | xargs rm -f
+	find $(BUILD)/pkg/relay -name "*.o" | xargs rm -f
+	find $(BUILD)/pkg/relay -name c4che | xargs rm -rf   # waf build file
+	find $(BUILD)/pkg/relay -name .wafpickle* | xargs rm -rf   # waf build file
+	find $(BUILD)/pkg/relay -name .lock-wscript | xargs rm -rf   # waf build file
+	find $(BUILD)/pkg/relay -name config.log | xargs rm -rf   # waf build file
 
-	(cd $(PKG_DIR) && $(TAR) zcf ../amon-relay-$(STAMP).tgz relay)
-	@echo "Created 'amon-relay-$(STAMP).tgz'."
+	(cd $(BUILD)/pkg && $(TAR) zcf ../amon-relay-$(STAMP).tgz relay)
+	@echo "Created '$(BUILD)/amon-relay-$(STAMP).tgz'."
 
+.PHONY: pkg_agent
 pkg_agent:
-	rm -fr $(PKG_DIR)/agent
-	mkdir -p $(PKG_DIR)/agent/deps
-	cp -PR deps/node-install $(PKG_DIR)/agent/deps
+	rm -fr $(BUILD)/pkg/agent
+	mkdir -p $(BUILD)/pkg/agent
+	cp -PR $(NODE_INSTALL) $(BUILD)/pkg/agent/node
 	# '-H' to follow symlink for amon-common and amon-plugins node modules.
-	mkdir -p $(PKG_DIR)/agent/node_modules
-	ls -d agent/node_modules/* | xargs -n1 -I{} cp -HR {} $(PKG_DIR)/agent/node_modules/
+	mkdir -p $(BUILD)/pkg/agent/node_modules
+	ls -d agent/node_modules/* | xargs -n1 -I{} cp -HR {} $(BUILD)/pkg/agent/node_modules/
 	cp -PR agent/lib \
 		agent/main.js \
 		agent/package.json \
@@ -182,59 +149,59 @@ pkg_agent:
 		agent/npm \
 		agent/bin \
 		agent/.npmignore \
-		$(PKG_DIR)/agent
-
-	# Need .npmignore in each node module to explictly keep prebuilt
-	# parts of it.
-	ls -d $(PKG_DIR)/agent/node_modules/* \
-		| xargs -n1 -I{} bash -c "touch {}/.npmignore; cat $(PKG_DIR)/agent/.npmignore >> {}/.npmignore"
+		$(BUILD)/pkg/agent
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
-	rm -rf $(PKG_DIR)/agent/deps/node-install/lib/node_modules/amon-common \
-		$(PKG_DIR)/agent/deps/node-install/lib/node_modules/amon-plugins
-	find $(PKG_DIR)/agent -name "*.pyc" | xargs rm -f
-	find $(PKG_DIR)/agent -name .lock-wscript | xargs rm -rf   # waf build file
+	rm -rf $(BUILD)/pkg/agent/node/lib/node_modules/amon-common \
+		$(BUILD)/pkg/agent/node/lib/node_modules/amon-plugins
+	find $(BUILD)/pkg/agent -name "*.pyc" | xargs rm -f
+	find $(BUILD)/pkg/agent -name .lock-wscript | xargs rm -rf   # waf build file
 
-	(cd $(PKG_DIR) && $(TAR) zcf ../amon-agent-$(STAMP).tgz agent)
-	@echo "Created 'amon-agent-$(STAMP).tgz'."
+	(cd $(BUILD)/pkg && $(TAR) zcf ../amon-agent-$(STAMP).tgz agent)
+	@echo "Created '$(BUILD)/amon-agent-$(STAMP).tgz'."
 
+.PHONY: pkg_master
 pkg_master:
-	rm -fr $(PKG_DIR)/pkg_master
-	mkdir -p $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/deps
-	cp -PR deps/node-install $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/deps/
-	mkdir -p $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/master/node_modules
+	rm -fr $(BUILD)/pkg/pkg_master
+	mkdir -p $(BUILD)/pkg/pkg_master/root/opt/smartdc/amon
+	cp -PR $(NODE_INSTALL) $(BUILD)/pkg/pkg_master/root/opt/smartdc/amon/node
+	mkdir -p $(BUILD)/pkg/pkg_master/root/opt/smartdc/amon/node_modules
 	# '-H' to follow symlink for amon-common and amon-plugins node modules.
 	ls -d master/node_modules/* \
-		| xargs -n1 -I{} cp -HR {} $(PKG_DIR)/pkg_master/root/opt/smartdc/amon/master/node_modules/
+		| xargs -n1 -I{} cp -HR {} $(BUILD)/pkg/pkg_master/root/opt/smartdc/amon/node_modules/
 	cp -PR master/bin \
 		master/lib \
 		master/smf \
 		master/factory-settings.json \
 		master/main.js \
 		master/package.json \
-		$(PKG_DIR)/pkg_master/root/opt/smartdc/amon/master/
+		$(BUILD)/pkg/pkg_master/root/opt/smartdc/amon/
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
-	find $(PKG_DIR)/pkg_master -name "*.pyc" | xargs rm -f
-	find $(PKG_DIR)/pkg_master -name "*.o" | xargs rm -f
-	find $(PKG_DIR)/pkg_master -name c4che | xargs rm -rf   # waf build file
-	find $(PKG_DIR)/pkg_master -name .wafpickle* | xargs rm -rf   # waf build file
-	find $(PKG_DIR)/pkg_master -name .lock-wscript | xargs rm -rf   # waf build file
-	find $(PKG_DIR)/pkg_master -name config.log | xargs rm -rf   # waf build file
+	find $(BUILD)/pkg/pkg_master -name "*.pyc" | xargs rm -f
+	find $(BUILD)/pkg/pkg_master -name "*.o" | xargs rm -f
+	find $(BUILD)/pkg/pkg_master -name c4che | xargs rm -rf   # waf build file
+	find $(BUILD)/pkg/pkg_master -name .wafpickle* | xargs rm -rf   # waf build file
+	find $(BUILD)/pkg/pkg_master -name .lock-wscript | xargs rm -rf   # waf build file
+	find $(BUILD)/pkg/pkg_master -name config.log | xargs rm -rf   # waf build file
 
-	(cd $(PKG_DIR)/pkg_master && $(TAR) cjf $(TOP)/amon-pkg-$(STAMP).tar.bz2 *)
-	@echo "Created 'amon-pkg-$(STAMP).tar.bz2'."
+	(cd $(BUILD)/pkg/pkg_master \
+		&& $(TAR) cjf $(shell unset CDPATH; cd $(BUILD); pwd)/amon-pkg-$(STAMP).tar.bz2 *)
+	@echo "Created '$(BUILD)/amon-pkg-$(STAMP).tar.bz2'."
 
 
 # The "publish" target requires that "BITS_DIR" be defined.
 # Used by Mountain Gorilla.
+.PHONY: publish
 publish: $(BITS_DIR)
 	@if [[ -z "$(BITS_DIR)" ]]; then \
 		echo "error: 'BITS_DIR' must be set for 'publish' target"; \
 		exit 1; \
 	fi
 	mkdir -p $(BITS_DIR)/amon
-	cp amon-pkg-$(STAMP).tar.bz2 amon-relay-$(STAMP).tgz amon-agent-$(STAMP).tgz \
+	cp $(BUILD)/amon-pkg-$(STAMP).tar.bz2 \
+		$(BUILD)/amon-relay-$(STAMP).tgz \
+		$(BUILD)/amon-agent-$(STAMP).tgz \
 		$(BITS_DIR)/amon/
 
 
@@ -242,42 +209,25 @@ publish: $(BITS_DIR)
 # Lint, test and miscellaneous targets
 #
 
-
-
+#XXX Add to check:: target as check-jshint
+.PHONY: jshint
 jshint:
 	$(JSHINT) common/lib plugins/lib master/main.js master/lib relay/main.js relay/lib agent/main.js agent/lib
 
-gjslint:
-	gjslint --nojsdoc -e deps,node_modules,tmp -r .
-
-ifeq ($(HAVE_GJSLINT), yes)
-lint: jshint gjslint
-else
-lint: jshint
-	@echo "* * *"
-	@echo "* Warning: Cannot lint with gjslint. Install it from:"
-	@echo "*    http://code.google.com/closure/utilities/docs/linter_howto.html"
-	@echo "* * *"
-endif
-
-doc: deps/restdown/bin/restdown
-	$(RESTDOWN) -v -m docs docs/index.md
-apisummary:
-	@grep '^\(## \)' docs/index.md
-
+.PHONY: test
 test:
 	[ -f test/config.json ] \
 		|| (echo "error: no 'test/config.json', use 'test/config.json.in'" && exit 1)
 	[ -f test/prep.json ] \
 		|| (echo "error: no 'test/prep.json', run 'cd test && node prep.js'" && exit 1)
 	./test/clean-test-data.sh
-	PATH=$(NODEDIR)/bin:$(PATH) TAP=1 $(TAP) test/*.test.js
+	PATH=$(NODE_INSTALL)/bin:$(PATH) TAP=1 $(TAP) test/*.test.js
 
 tmp:
 	mkdir -p tmp
 
 .PHONY: devrun
-devrun: tmp $(NODEDIR)/bin/node-dev
+devrun: tmp $(NODE_DEV)
 	tools/devrun.sh
 
 .PHONY: install_agent_pkg
@@ -295,5 +245,7 @@ clean::
 # Includes
 #
 
-include ./Makefile.deps
-include ./Makefile.targ
+include ./tools/mk/Makefile.deps
+include ./tools/mk/Makefile.node.targ
+include ./tools/mk/Makefile.smf.targ
+include ./tools/mk/Makefile.targ

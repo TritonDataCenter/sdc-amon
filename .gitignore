@@ -3,10 +3,7 @@ tmp
 node_modules
 *.log
 
-/.pkg
-/amon-*.tgz
-/amon-*.tar.bz2
-/deps/node-install
+/build
 /bootstrap.json
 /agent/*.json
 /test/config.json

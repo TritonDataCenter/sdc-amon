@@ -1,15 +1,10 @@
 #!/bin/bash
 
 TOP=$(cd $(dirname $0)/../; pwd)
-NODEDIR=${TOP}/deps/node-install
+NODE_INSTALL=${TOP}/build/node
 TAR=tar
 if [[ `uname` == "SunOS" ]]; then
     TAR=gtar
-	MAKE=gmake
-	CC=gcc
-	CCFLAGS="-fPIC -g -Wall"
-	LDFLAGS="-static-libgcc"
-	LIBS="-lpthread -lzonecfg -L/lib -lnsl -lsocket"
 fi
 
-npm_config_tar=${TAR} PATH=${NODEDIR}/bin:${PATH} npm "$@"
+npm_config_tar=${TAR} PATH=${NODE_INSTALL}/bin:${PATH} npm "$@"

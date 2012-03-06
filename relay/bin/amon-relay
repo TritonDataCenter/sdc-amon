@@ -1,13 +1,10 @@
 #!/bin/bash
 
-OS=$(/usr/bin/uname -s)
 TOP=$(unset CDPATH; cd $(dirname $0)/../; pwd)
-
-NODEDIR=${TOP}/deps/node-install
-if [[ ! -d "${NODEDIR}" && -d "${TOP}/../deps/node-install" ]]; then
+NODE_INSTALL=${TOP}/node
+if [[ ! -d "${NODE_INSTALL}" && -d "${TOP}/../build/node" ]]; then
     # Dev/repo layout.
-    NODEDIR=${TOP}/../deps/node-install
+    NODE_INSTALL=${TOP}/../build/node
 fi
 
-cd ${TOP}
-${NODEDIR}/bin/node main.js "$@"
+${NODE_INSTALL}/bin/node ${TOP}/main.js "$@"

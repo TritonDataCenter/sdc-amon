@@ -1,6 +1,0 @@
-# Because we'll be using 'npm' (actually 'agents-npm') to install this
-# package, we need to explicitly tell it to not blow away and attempt
-# to rebuild prebuilt and included 'build/' and 'node_modules/' bits.
-!./build
-!./node_modules
-!./*.node
