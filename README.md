@@ -82,8 +82,12 @@ Get the source and build:
 
     git clone git@git.joyent.com:amon.git
     cd amon
-    git submodule update --init
+    git submodule update --init   # not necessary first time
     make all
+
+The `git submodule update` isn't necessary for the first build, b/c it will be
+done automatically. For subsequent builds in the same working tree you may need
+to explicitly update.
 
 And start running (see section below).
 
