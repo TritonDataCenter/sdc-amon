@@ -47,51 +47,40 @@ all: common plugins agent relay master dev
 
 
 #
-# deps
-#
-
-deps/node-sdc-clients/.git:
-	([[ ! -d deps/node-sdc-clients ]] && GIT_SSL_NO_VERIFY=1 git submodule update --init deps/node-sdc-clients || true)
-
-lib/node_modules/sdc-clients: | deps/node-sdc-clients/.git $(NPM_EXEC)
-	cd deps/node-sdc-clients && $(NPM) install
-	cd deps/node-sdc-clients && $(NPM) link   # make available for linking in 'dev' target
-
-
-
-#
 # The main amon components
 #
 
 .PHONY: common
-common: $(NPM_EXEC)
+common: | $(NPM_EXEC)
 	(cd common && $(NPM) update && $(NPM) link)
 
-
 .PHONY: plugins
-plugins: $(NPM_EXEC)
+plugins: | $(NPM_EXEC)
 	(cd plugins && $(NPM) update && $(NPM) link)
 
 .PHONY: agent
-agent: $(NPM_EXEC) common plugins
+agent: common plugins | $(NPM_EXEC)
 	(cd agent && $(NPM) update && $(NPM) link amon-common amon-plugins)
 
 .PHONY: relay
-relay: $(NPM_EXEC) deps/node-sdc-clients/.git common plugins
+relay: common | $(NPM_EXEC) deps/node-sdc-clients/.git
 	(cd relay && $(NPM) update && $(NPM) install ../deps/node-sdc-clients && $(NPM) link amon-common amon-plugins)
 	# Workaround https://github.com/isaacs/npm/issues/2144#issuecomment-4062165
 	(cd relay && rm -rf node_modules/zutil/build && $(NPM) rebuild zutil)
 
 .PHONY: master
-master: $(NPM_EXEC) deps/node-sdc-clients/.git common plugins
+master: common plugins | $(NPM_EXEC) deps/node-sdc-clients/.git
 	(cd master && $(NPM) update && $(NPM) install ../deps/node-sdc-clients && $(NPM) link amon-common amon-plugins)
 
 # "dev" is the name for the top-level test/dev package
 .PHONY: dev
-dev: $(NPM_EXEC) lib/node_modules/sdc-clients common
-	$(NPM) install
+dev: common | $(NPM_EXEC) deps/node-sdc-clients/.git
+	$(NPM) install deps/node-sdc-clients
 	$(NPM) link amon-common
-	$(NPM) link sdc-clients
+	$(NPM) install
+
+deps/node-sdc-clients/.git:
+	GIT_SSL_NO_VERIFY=1 git submodule update --init deps/node-sdc-clients
 
 
 #
