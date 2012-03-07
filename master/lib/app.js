@@ -11,9 +11,9 @@ var debug = console.log;
 var ldap = require('ldapjs');
 var restify = require('restify');
 var MAPI = require('sdc-clients').MAPI;
+var Cache = require('expiring-lru-cache');
 
 var amonCommon = require('amon-common'),
-  Cache = amonCommon.Cache,
   Constants = amonCommon.Constants,
   format = amonCommon.utils.format;
 var Contact = require('./contact');
@@ -169,23 +169,29 @@ function App(config, ufds, mapi, log) {
   }
 
   // Cache of login/uuid (aka username) -> full user record.
-  this.userCache = new Cache(config.userCache.size,
-    config.userCache.expiry, log, 'user');
-  this.isOperatorCache = new Cache(100, 300, log, 'isOperator');
-  this.mapiServersCache = new Cache(100, 300, log, 'mapiServers');
+  this.userCache = new Cache({
+    size: config.userCache.size,
+    expiry: config.userCache.expiry * 1000,
+    log: log,
+    name: 'user'
+  });
+  this.isOperatorCache = new Cache({size: 100, expiry: 300000,
+    log: log, name: 'isOperator'});
+  this.mapiServersCache = new Cache({size: 100, expiry: 300000,
+    log: log, name: 'mapiServers'});
 
   // Caches for server response caching. This is centralized on the app
   // because it allows the interdependant cache-invalidation to be
   // centralized.
   this._cacheFromScope = {
-    MonitorGet: new Cache(100, 300, log, 'MonitorGet'),
-    MonitorList: new Cache(100, 300, log, 'MonitorList'),
-    ProbeGet: new Cache(100, 300, log, 'ProbeGet'),
-    ProbeList: new Cache(100, 300, log, 'ProbeList'),
+    MonitorGet: new Cache({size:100, expiry:300000, log:log, name:'MonitorGet'}),
+    MonitorList: new Cache({size:100, expiry:300000, log:log, name:'MonitorList'}),
+    ProbeGet: new Cache({size:100, expiry:300000, log:log, name:'ProbeGet'}),
+    ProbeList: new Cache({size:100, expiry:300000, log:log, name:'ProbeList'}),
     // This is unbounded in size because (a) the data stored is small and (b)
     // we expect `headAgentProbes` calls for *all* machines (the key) regularly
     // so an LRU-cache is pointless.
-    headAgentProbes: new Cache(0, 300, log, 'headAgentProbes'),
+    headAgentProbes: new Cache({size:100, expiry:300000, log:log, name:'headAgentProbes'}),
   };
 
   var server = this.server = restify.createServer({
@@ -200,6 +206,10 @@ function App(config, ufds, mapi, log) {
   //server.on('after', function (req, res, route) {
   //  req.log.info({snapshot: self.getStateSnapshot()}, "state snapshot")
   //});
+  server.on('uncaughtException', function (req, res, route, err) {
+    req.log.error(err);
+    res.send(err);
+  });
 
   function setup(req, res, next) {
     req._app = self;

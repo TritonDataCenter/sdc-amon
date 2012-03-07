@@ -25,7 +25,6 @@ var assert = require('assert');
 var ldap = require('ldapjs');
 var restify = require('restify');
 var RestCodes = restify.RestCodes;
-var Cache = require("amon-common").Cache;
 var objCopy = require('amon-common').utils.objCopy;
 
 

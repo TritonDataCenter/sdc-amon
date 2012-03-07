@@ -16,7 +16,6 @@ if (process.platform === 'sunos') {
 var async = require('async');
 
 var amonCommon = require('amon-common'),
-  Cache = amonCommon.Cache,
   Constants = amonCommon.Constants,
   format = amonCommon.utils.format,
   compareProbes = amonCommon.compareProbes;

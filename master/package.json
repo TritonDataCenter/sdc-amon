@@ -6,12 +6,13 @@
   "private": true,
   "dependencies": {
     "bunyan": "0.6.8",
-    "restify": "1.0.1",
+    "restify": "1.1.1",
     "node-uuid": "1.2.0",
     "nopt": "1.0.10",
     "retry": "0.6.0",
     "nodemailer": "0.3.2",
-    "ldapjs": "0.4.8"
+    "ldapjs": "0.4.8",
+    "expiring-lru-cache": "2.0.0"
   },
   "bundledDependences": [
     "sdc-clients"

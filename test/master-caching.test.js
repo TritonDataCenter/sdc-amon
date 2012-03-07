@@ -134,7 +134,9 @@ test('monitors: list', function(t) {
     masterClient.get("/pub/sulkybob/monitors", function(err, req, res2, obj2) {
       t.ifError(err);
       t.equal(obj2.length, obj.length);
-      t.ok(Number(res2.headers['x-response-time']) < 50, "faster cached response")
+      t.ok(Number(res2.headers['x-response-time']) < 50,
+        format("faster cached response (< 50ms, actually took %sms)",
+          res2.headers['x-response-time']))
       t.end();
     });
   });
