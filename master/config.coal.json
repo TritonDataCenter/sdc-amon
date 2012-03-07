@@ -14,8 +14,13 @@
     "email": {
       "path": "./notifications/email",
       "config": {
-        "sendmail": "/opt/local/sbin/sendmail -i",
-        "from": "\"Amon (no reply)\" <no-reply@joyent.com>"
+        "smtp": {
+          "host": "127.0.0.1",
+          "port": 25,
+          "ssl": false,
+          "use_authentication": false
+        },
+        "from": "\"Monitoring\" <no-reply@joyent.com>"
       }
     }
   }

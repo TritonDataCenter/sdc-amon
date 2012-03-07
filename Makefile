@@ -12,7 +12,7 @@ NODE_DEV := ./node_modules/.bin/node-dev
 TAP := ./node_modules/.bin/tap
 JSHINT := node_modules/.bin/jshint
 JSSTYLE_FLAGS := -f tools/jsstyle.conf
-NPM_FLAGS := --cache=$(shell pwd)/tmp/npm-cache
+NPM_FLAGS = --tar=$(TAR) --cache=$(shell pwd)/tmp/npm-cache
 
 #
 # Files
