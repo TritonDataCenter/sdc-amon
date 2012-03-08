@@ -255,6 +255,9 @@ function App(config, ufds, mapi, log) {
     monitors.getMonitor);
   server.del({path: '/pub/:user/monitors/:name', name: 'DeleteMonitor'},
     monitors.deleteMonitor);
+  server.post({path: '/pub/:user/monitors/:name/testnotify',
+               name: 'TestMonitorNotify'},
+    monitors.testMonitorNotify);
 
   server.get(
     {path: '/pub/:user/monitors/:monitor/probes', name: 'ListProbes'},
@@ -615,23 +618,6 @@ App.prototype.serverExists = function (serverUuid, callback) {
  * @param callback {Function} `function (err) {}` called on completion.
  *    'err' is undefined (success) or an error message (failure).
  *
- * An example event (beware this being out of date):
- *    {
- *      'probe': {
- *        'user': "7b23ae63-37c9-420e-bb88-8d4bf5e30455",
- *        'monitor': "whistle",
- *        'name': "whistlelog2",
- *        'type': "logscan"
- *      },
- *      'type': "Integer",
- *      'value': 1,
- *      'data': {
- *        'match': "tweet tweet"
- *      },
- *      'uuid': "3ab1336e-5453-45f9-be10-8686ba70e419",
- *      'version': "1.0.0"
- *    }
- *
  * TODO: inability to send a notification should result in an alarm for
  *   the owner of the monitor.
  */
@@ -644,8 +630,9 @@ App.prototype.processEvent = function (event, callback) {
   var userUuid = event.probe.user;
   var monitorName = event.probe.monitor;
   Monitor.get(this, userUuid, monitorName, function (err, monitor) {
-    if (err)
+    if (err) {
       return callback(err);
+    }
     // 2. Notify each contact.
     function getAndNotifyContact(contactUrn, cb) {
       log.debug('App.processEvent: notify contact "%s" (userUuid="%s", '

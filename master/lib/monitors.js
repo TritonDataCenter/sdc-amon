@@ -8,11 +8,13 @@ var assert = require('assert');
 var events = require('events');
 var format = require('util').format;
 
+var uuid = require('node-uuid');
 var ldap = require('ldapjs');
 var restify = require('restify');
 var ufdsmodel = require('./ufdsmodel');
 var Contact = require('./contact');
 var objCopy = require('amon-common').utils.objCopy;
+
 
 
 
@@ -205,5 +207,31 @@ module.exports = {
   deleteMonitor: function deleteMonitor(req, res, next) {
     //XXX:TODO: handle traversing child Probes and deleting them
     return ufdsmodel.requestDelete(req, res, next, Monitor);
+  },
+  testMonitorNotify: function testMonitorNotify(req, res, next) {
+    var userUuid = req._user.uuid;
+    var monitorName = req.params.name;
+    Monitor.get(req._app, userUuid, monitorName, function (err, monitor) {
+      if (err)
+        return next(err);
+      var testEvent = {
+        v: 1,  //XXX constant for this
+        probe: {
+          user: req._user.uuid,
+          monitor: monitor.name,
+          name: "test",
+          type: "test"
+        },
+        time: new Date(),
+        data:{
+          message: "Test notification.",
+        },
+        uuid: uuid()
+      };
+      req._app.processEvent(testEvent, function (err) {
+        res.send({success: (!err)});
+        next(err);
+      });
+    });
   }
 };

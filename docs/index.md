@@ -311,6 +311,37 @@ if not useful.
     }
 
 
+## TestMonitorNotify (POST /pub/:user/monitors/:monitor/testnotify)
+
+Send a test notification for this monitor.
+
+### Inputs
+
+None.
+
+### Example
+
+    $ sdc-amon /pub/admin/monitors/sdczones/testnotify
+    [root@headnode (coal:0) ~]# sdc-amon /pub/admin/monitors/sdczones/testnotify -X POST
+    HTTP/1.1 200 OK
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    Server: Amon Master/1.0.0
+    X-Request-Id: 9fb2a9f3-f34d-4261-ac86-985dc376c442
+    Access-Control-Allow-Methods: POST
+    Connection: close
+    Content-Length: 16
+    Content-MD5: c2PoX+nt7m8FOksxlYjAhg==
+    Content-Type: application/json
+    Date: Wed, 07 Mar 2012 09:23:31 GMT
+    X-Response-Time: 479
+
+    {
+      "success": true
+    }
+
+
 
 # Relay API
 

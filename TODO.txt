@@ -101,6 +101,7 @@
   If this isn't acceptable then update id'ification in agent.
   Perhaps ':' would be preferable for id'ification? Meh.
 - name fields in Master API: percent escaping
+- throttling on TestMonitorNotify
 - walk through a server boot (and boot of all its zones): does Amon eventing
   go crazy?
 - notification types to consider (http://circonus.com/why-us/features/notifications):
@@ -109,7 +110,6 @@
     Twitter (direct messages from @circonusops)
     SMS
     HTTP WebHooks
-
 
 
 # someday/maybe
@@ -286,6 +286,51 @@ Where:
 If not obvious, you can send multiple metrics per check.
 
 
+Current event layouts (working on a spec for this). Event from logscan
+probe type:
+
+    {
+      "v":1,
+      "probe":{
+          "user":"44444444-4444-4444-4444-444444444444",
+          "monitor":"gz",
+          "name":"smartlogin",
+          "type":"logscan"
+      },
+      "time":"2012-03-07T01:01:19.963Z",
+      "data":{
+          "message":"Log \"/var/svc/log/smartdc-agent-smartlogin:default.log\" matched /Stopping/.",
+          "value":1,
+          "details":{
+              "match":"[ Mar 7 01:01:19 Stopping because service restarting. ]\n[ Mar 7 01:01:19 Executing stop method (:kill). ]"
+          }
+      },
+      "machine": UUID
+      // Added by relay:
+      "machine": <will override if from a machine>,
+      "server":"564d986b-793c-9595-e30a-36b06215d7a4",
+      "uuid":"1e5933ba-c813-44fc-bb54-8b75ebf53eff"
+    }
+
+Fake event from /pub/:user/monitors/:monitor/:testnotify:
+
+    {
+      v: 1,
+      probe: {
+        user: req._user.uuid,
+        monitor: monitor.name,
+        name: "test",
+        type: "test"
+      },
+      time: new Date(),
+      data:{
+        message: "Test notification.",
+      },
+      uuid: uuid()
+    }
+
+
+
 
 # notes: alarms
 
@@ -299,41 +344,3 @@ model Alarm:  (a)
     dupeOf: used for grouping de-dupes
     watch: uuid of watch that generted this
     zone: zone id if came from a zone
-
-
-
-# notes: runInGlobal, machine-up probe
-
-Dev Notes: Probes of this type run in the global zone, though. So, at some
-point a "server" needs to be attached. Perhaps the relay can co-ordinate
-that? If "GET /agentprobes?server=564d70d5-0187-e5d4-468f-7b49a6b014ff"
-could support it, that would be nice. Not easy tho.
-
-    GET /agentprobes?server=564
-        []
-    GET /agentprobes?machine=ea3
-        [
-            {"name": "ufds0",
-             "global": true},  // inferred from probe type
-            ...
-        ]
-
-TODO:
-
-- How does the MachineRunningStatusProbe get a stream of up/down events?
-  - Agent spawns /usr/vm/sbin/zoneevent (GZ only)
-  - Add agent "app", EventEmitter. It emits an event for each zone up/down:
-      zoneevent:$uuid   args=full zoneevent json
-      zoneevent:$uuid   args=full zoneevent json
-  - App is passed into Probe.start(app, callback). Probe can setup
-    listener on that event.
-    start:  app.on("zoneevent:$uuid", this._onZoneEvent);
-    stop:   app.removeListener("zoneevent:$uuid", this._onZoneEvent);
-  - Note: fma events might be preferred: context for why the zone is going
-    down. But this is a decent first pass. Next stage is to write:
-      sysevent*
-      fmevent*
-    binaries a la zoneevent (https://mo.joyent.com/source/xref/illumos-live/src/zoneevent.c)
-
-- Relay should change to request agentprobes for *down* zones as well to
-  give an event on the machine being down. ???

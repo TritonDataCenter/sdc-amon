@@ -8,22 +8,23 @@ TOP=$(cd $(dirname $0)/../; pwd)
 COAL=root@10.99.99.7
 
 if [[ -z "$AMON_ZONE" ]]; then
+    # XXX Want the first running one of these. Need `json -c ...`.
     AMON_ZONE=$(ssh coal "/smartdc/bin/sdc-mapi /machines?tag.smartdc_role=amon | json -H 0.name" 2>/dev/null)
 fi
 echo "AMON_ZONE: $AMON_ZONE"
 
 rsync -av ${TOP}/master/ \
-    $COAL:/zones/$AMON_ZONE/root/opt/smartdc/amon/master/ \
+    $COAL:/zones/$AMON_ZONE/root/opt/smartdc/amon/ \
     --exclude "*.node" \
     --exclude amon-common \
     --exclude amon-plugins \
     --exclude tmp/
 rsync -av ${TOP}/common/ \
-    $COAL:/zones/$AMON_ZONE/root/opt/smartdc/amon/master/node_modules/amon-common/ \
+    $COAL:/zones/$AMON_ZONE/root/opt/smartdc/amon/node_modules/amon-common/ \
     --exclude "*.node" \
     --exclude tmp/
 rsync -av ${TOP}/plugins/ \
-    $COAL:/zones/$AMON_ZONE/root/opt/smartdc/amon/master/node_modules/amon-plugins/ \
+    $COAL:/zones/$AMON_ZONE/root/opt/smartdc/amon/node_modules/amon-plugins/ \
     --exclude "*.node" \
     --exclude tmp/
 
