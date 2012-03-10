@@ -221,8 +221,8 @@ open (i.e. unresolved) alarm situations.
     POST /pub/:user/alarms/:alarm?action=close
 
 The point of an "alarm" object is (a) to have a persistent object to show
-current open alarms (e.g. for Cloud API, Operator Portal and Customer Portal)
-to show; (b) for the master to handle de-duplication, i.e. avoid a flood
+current open alarms (e.g. for Cloud API, Operator Portal and Customer Portal);
+(b) for the master to handle de-duplication, i.e. avoid a flood
 of duplicate notifications for a stream of events relating to the same
 problem; and (c) to support the user suppressing notifications for this
 alarm ("Yah, I know it is a problem, but I can't deal with it right now.").
