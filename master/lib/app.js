@@ -12,11 +12,13 @@ var ldap = require('ldapjs');
 var restify = require('restify');
 var MAPI = require('sdc-clients').MAPI;
 var Cache = require('expiring-lru-cache');
+var redis = require('redis');
 
 var amonCommon = require('amon-common'),
   Constants = amonCommon.Constants,
   format = amonCommon.utils.format;
 var Contact = require('./contact');
+var Alarm = require('./alarms').Alarm;
 
 // Endpoint controller modules.
 var monitors = require('./monitors');
@@ -53,7 +55,14 @@ function ping(req, res, next) {
       ping: 'pong',
       pid: process.pid  // used by test suite
     };
-    res.send(200, data);
+    req._app.getRedisClient().info(function (err, info) {
+      if (err) {
+        data.redisErr = err;
+      } else {
+        data.redis = info.match(/^redis_version:(.*?)$/m)[1];
+      }
+      res.send(200, data);
+    });
   }
   return next();
 }
@@ -107,6 +116,13 @@ function asyncForEach(list, fn, cb) {
  * @param callback {Function} `function (err, app) {...}`.
  */
 function createApp(config, log, callback) {
+  if (!config) throw new TypeError('config (Object) required');
+  if (!config.mapi) throw new TypeError('config.mapi (Object) required');
+  if (!config.redis) throw new TypeError('config.redis (Object) required');
+  if (!config.ufds) throw new TypeError('config.ufds (Object) required');
+  if (!log) throw new TypeError('log (Bunyan Logger) required');
+  if (!callback) throw new TypeError('callback (Function) required');
+
   var mapi = new MAPI({
     url: config.mapi.url,
     username: config.mapi.username,
@@ -135,7 +151,6 @@ function createApp(config, log, callback) {
 }
 
 
-
 /**
  * Constructor for the amon 'application'.
  *
@@ -146,10 +161,11 @@ function createApp(config, log, callback) {
  */
 function App(config, ufds, mapi, log) {
   var self = this;
-
   if (!config) throw TypeError('config is required');
   if (!config.port) throw TypeError('config.port is required');
   if (!ufds) throw TypeError('ufds is required');
+  if (!mapi) throw TypeError('mapi is required');
+
   this.config = config;
   this.ufds = ufds;
   this._ufdsCaching = (config.ufds.caching === undefined
@@ -279,6 +295,71 @@ function App(config, ufds, mapi, log) {
 
   server.post({path: '/events', name: 'AddEvents'}, events.addEvents);
 };
+
+
+/**
+ * Get a redis client.
+ *
+ * @returns {redis.RedisClient}
+ *
+ * Problem: By default (node_redis 0.7.1) when the redis connection goes down
+ * (e.g. the redis-server stops) the node_redis client will start a
+ * backoff-retry loop to reconnect. The retry interval grows unbounded
+ * (unless max_attempts or connection_timeout are given) resulting
+ * eventually in *looooong* or possibly hung
+ * (https://github.com/mranney/node_redis/pull/132) Amon Master API
+ * requests (timeout) when using redis. We don't want that.
+ *
+ * Solution: Lacking a mechanism to notice when RedisClient.connection_gone()
+ * has given up (without polling it, lame), the only solution is to disable
+ * node_redis reconnection logic via `max_attempts = 1` and recycle our
+ * `_redisClient` on the "end" event.
+ *
+ * Limitations: A problem with this solution is that when redis is down
+ * and with a torrent of incoming events (i.e. where we need redis for
+ * handling) we naively do a fairly quick cycle of creating new redis
+ * clients without intelligent backoff.
+ * XXX We could mitigate that by returning `null` here if the last "recycle"
+ *     was N ms ago (e.g. within the last second). That's harsh, b/c requires
+ *     all callers to check val of `getRedisClient()`.
+ * XXX Can node-pool help here?
+ */
+App.prototype.getRedisClient = function getRedisClient() {
+  var self = this;
+
+  if (!this._redisClient) {
+    var client = this._redisClient = new redis.createClient(
+      this.config.redis.port || 6379,   // redis default port
+      this.config.redis.host || '127.0.0.1',
+      {max_attempts: 1});
+
+    // Must handle 'error' event to avoid propagation to top-level where node
+    // will terminate.
+    client.on('error', function (err) {
+      self.log.info(err, 'redis client error');
+    });
+
+    client.on('end', function () {
+      self.log.info('redis client end, recycling it');
+      client.end();
+      this._redisClient = null;
+    });
+
+    client.select(1); // Amon uses DB 1 in redis.
+  }
+  return this._redisClient;
+};
+
+
+/**
+ * Quit the redis client (if we have one) gracefully.
+ */
+App.prototype.quitRedisClient = function () {
+  if (this._redisClient) {
+    this._redisClient.quit();
+    this._redisClient = null;
+  }
+}
 
 
 /**
@@ -616,9 +697,9 @@ App.prototype.serverExists = function (serverUuid, callback) {
  * @param ufds {ldapjs client} UFDS client.
  * @param event {Object} The event object.
  * @param callback {Function} `function (err) {}` called on completion.
- *    'err' is undefined (success) or an error message (failure).
+ *    'err' is undefined (success) or a restify Error instance (failure).
  *
- * TODO: inability to send a notification should result in an alarm for
+ * XXX TODO: inability to send a notification should result in an alarm for
  *   the owner of the monitor.
  */
 App.prototype.processEvent = function (event, callback) {
@@ -626,53 +707,150 @@ App.prototype.processEvent = function (event, callback) {
   var log = this.log;
   log.debug({event: event}, 'App.processEvent');
 
-  // 1. Get the monitor for this probe, to get its list of contacts.
-  var userUuid = event.probe.user;
-  var monitorName = event.probe.monitor;
-  Monitor.get(this, userUuid, monitorName, function (err, monitor) {
+  if (event.type === 'probe') {
+    /* pass */
+  } else if (event.type === 'monitor') {
+    /* pass */
+  } else {
+    return callback(new restify.InternalError(
+      format('unknown event type: "%s"', event.type)));
+  }
+
+  var info = {event: event};
+  self.userFromId(event.user, function (err, user) {
     if (err) {
       return callback(err);
+    } else if (! user) {
+      return callback(new restify.InvalidArgumentError(
+        format('no such user: "%s"', userId)));
     }
-    // 2. Notify each contact.
-    function getAndNotifyContact(contactUrn, cb) {
-      log.debug('App.processEvent: notify contact "%s" (userUuid="%s", '
-        + 'monitor="%s")', contactUrn, userUuid, monitorName);
-      Contact.get(self, userUuid, contactUrn, function (err, contact) {
+    info.user = user;
+    Monitor.get(self, event.user, event.monitor, function (err, monitor) {
+      if (err) {
+        return callback(err);
+      }
+      info.monitor = monitor;
+      self.getOrCreateAlarm(info, function (err, alarm) {
         if (err) {
-          log.warn('could not resolve contact "%s" (user "%s"): %s',
-            contactUrn, userUuid, err)
-          return cb();
+          return callback(err);
         }
-        if (!contact.address) {
-          log.info('no contact address (contactUrn="%s" monitor="%s" '
-            + 'userUuid="%s"), alerting monitor owner', contactUrn,
-            monitorName, userUuid);
-          var msg = 'XXX'; // TODO
-          self.alarmConfig(monitor.user, msg, function (err) {
-            if (err) {
-              log.error('could not alert monitor owner: %s', err);
-            }
-            return cb();
-          });
-        } else {
-          self.notifyContact(userUuid, monitor, contact, event, function (err) {
-            if (err) {
-              log.warn('could not notify contact: %s', err);
-            } else {
-              log.debug('App.processEvent: contact "%s" notified '
-                + '(userUuid="%s", monitor="%s")', contactUrn, userUuid,
-                monitorName);
-            }
-            return cb();
-          });
-        }
+        info.alarm = alarm;
+        alarm.handleEvent(self, info, function (err) {
+          return callback(err);
+        });
       });
-    }
-    asyncForEach(monitor.contacts, getAndNotifyContact, function (err) {
-      callback();
     });
   });
 };
+
+
+
+/**
+ * Get a related alarm or create a new one for the given event.
+ *
+ * @param options {Object}
+ *    - `event` {Object} Required. The Amon event.
+ *    - `user` {Object} Required. User object as from `userFromId()`
+ *    - `monitor` {monitors.Monitor} Required. The monitor for this event.
+ *      XXX support this being null/excluded for non-"probe" events.
+ * @param callback {Function} `function (err, alarm)`
+ */
+App.prototype.getOrCreateAlarm = function (options, callback) {
+  var self = this;
+  var log = this.log;
+
+  // Get all open alarms for this user/monitor.
+  log.debug('getOrCreateAlarm: get candidate related alarms')
+  Alarm.filter(
+    self,
+    {
+      user: options.user.uuid,
+      monitor: options.monitor.name,
+      closed: false
+    },
+    function (err, candidateAlarms) {
+      if (err) return callback(err);
+      if (candidateAlarms.length === 0) {
+        log.debug({user: options.user.uuid},
+          'no candidate related alarms: create a new alarm');
+        return self.createAlarm(options, callback);
+      }
+      self.chooseRelatedAlarm(candidateAlarms, options, function (err, alarm) {
+        if (err) {
+          callback(err);
+        } else if (alarm) {
+          callback(null, alarm);
+        } else {
+          self.createAlarm(options, callback);
+        }
+      });
+    }
+  );
+}
+
+
+/**
+ * Choose a related alarm of the given candidates for the given event.
+ *
+ * This essentially is Amon's alarm/notification de-duplication algorithm.
+ *
+ * @param candidateAlarms {Array}
+ * @param options {Object}
+ *    - `event` {Object} Required. The Amon event.
+ * @param callback {Function} `function (err, alarm)`. If none of the
+ *    given candidateAlarms is deemed to be "related", then `alarm` will
+ *    be null.
+ *
+ * First pass at this: Choose the alarm with the most recent
+ * `timeLastEvent`. If `event.time - alarm.timeLastEvent > 1 hour` then
+ * return none, i.e. not related. Else, return that alarm. Eventually make
+ * this "1 hour" an optional var on monitor. Eventually this algo can
+ * consider more vars.
+ */
+App.prototype.chooseRelatedAlarm = function (candidateAlarms, options, callback) {
+  this.log.debug({numCandidateAlarms: candidateAlarms.length}, 'chooseRelatedAlarm');
+  var ONE_HOUR = 60 * 60 * 1000;  // an hour in milliseconds
+  candidateAlarms.sort(
+    // Sort the latest 'timeLastEvent' first (alarms with no 'timeLastEvent'
+    // field sort to the end).
+    function (a, b) { return b.timeLastEvent - a.timeLastEvent; });
+  var a = candidateAlarms[0];
+  if (a.timeLastEvent && (options.event.time - a.timeLastEvent) < ONE_HOUR) {
+    this.log.debug({alarm: a}, 'related alarm')
+    return callback(null, a);
+  }
+  return callback(null, null);
+}
+
+
+/**
+ * Create a new alarm for the given event.
+ *
+ * @param options {Object}
+ *    - `event` {Object} Required. The Amon event.
+ *    - `user` {Object} Required. The user (from `userFromId()`) to which
+ *      this alarm belongs.
+ * @param callback {Function} `function (err, alarm)`.
+ */
+App.prototype.createAlarm = function (options, callback) {
+  if (!options) throw new TypeError('"options" (Object) required');
+  if (!options.event) throw new TypeError('"options.event" (Object) required');
+  if (!options.user) throw new TypeError('"options.user" required');
+
+  this.log.debug({event: options.event}, 'createAlarm');
+  var alarm = new Alarm({
+    user: options.user.uuid,
+    monitor: options.event.monitor
+  }, this.log);
+  alarm.save(this, function (err) {
+    if (err) {
+      callback(err);
+    } else {
+      callback(null, alarm);
+    }
+  });
+}
+
 
 
 /**
@@ -728,14 +906,16 @@ App.prototype.alarmConfig = function (userId, msg, callback) {
 /**
  * Send a notification for a probe event.
  *
- * @param userUuid {String} UUID of the user.
+ * @param alarm {alarms.Alarm}
+ * @param user {Object} User, as from `App.userFromId()`, owning this monitor.
  * @param monitor {Monitor} Monitor for which this notification is being sent.
  * @param event {Object} The probe event object.
  * @param contact {Contact} The contact to notify. A contact is relative
- *    to a user. See 'contact.js' for details.
+ *    to a user. See 'contact.js' for details. Note that when groups are
+ *    in UFDS, this contact could be a person other than `user` here.
  * @param callback {Function} `function (err) {}`.
  */
-App.prototype.notifyContact = function (userUuid, monitor, contact, event,
+App.prototype.notifyContact = function (alarm, user, monitor, contact, event,
                                         callback) {
   var log = this.log;
   var plugin = this.notificationPlugins[contact.notificationType];
@@ -743,10 +923,7 @@ App.prototype.notifyContact = function (userUuid, monitor, contact, event,
     return callback(new Error(format('notification plugin "%s" not found',
       contact.notificationType)));
   }
-  this.userFromId(userUuid, function (err, user) {
-    if (err) return callback(err);
-    plugin.notify(user, contact.address, event, callback);
-  });
+  plugin.notify(alarm, user, contact.address, event, callback);
 }
 
 
@@ -759,6 +936,7 @@ App.prototype.close = function (callback) {
   var log = this.log;
   var self = this;
   this.server.on('close', function () {
+    self.quitRedisClient();
     self.ufds.unbind(function () {
       return callback();
     });

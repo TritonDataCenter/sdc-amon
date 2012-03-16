@@ -32,6 +32,9 @@ var log = new Logger({
     err: Logger.stdSerializers.err,
     req: Logger.stdSerializers.req,
     res: restify.bunyan.serializers.response,
+    alarm: function (alarm) {
+      return (alarm.serializeDb && alarm.serializeDb() || alarm);
+    }
   }
 });
 

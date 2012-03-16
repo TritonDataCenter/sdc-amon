@@ -11,7 +11,6 @@ var spawn = require('child_process').spawn;
 var util = require('util'),
   format = util.format;
 
-var log = require('restify').log;
 var Probe = require('./probe');
 
 

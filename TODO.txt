@@ -1,8 +1,49 @@
 # higher-level prios
 
+- persistent alarms:
+  - commit, usb-headnode changes (redis config?)
+  - clean up todos -> tickets
+  - TICKET: improve email subject: (a) add login, else can have subtle dupes;
+    (b) which of the alternatives below
+     *    Subject: [Monitoring] Alarm trentm 1 in us-west-1: "All SDC Zones" monitor alarmed
+     *    Subject: [Alarm] trentm 1 in us-west-1: "All SDC Zones" monitor alarmed
+            Is repeating username all the time annoying? Not for an operator
+            group it isn't. It matters to identify the owner of the monitor.
+            The owner is the scope for the alarm id too.
+            This should be discussed in the docs.
+     *    Subject: [Alarm] trentm/1 in us-west-1: "All SDC Zones" monitor alarmed
+     *    Subject: [Alarm] us-west-1/trentm/1: "All SDC Zones" monitor alarmed
+     *    Subject: [Alarm] 1 in us-west-1: "All SDC Zones" monitor alarmed (trentm)
+     *    Subject: [Alarm] 1 in us-west-1: "All SDC Zones" monitor alarmed (owned by trentm)
+     *    Subject: [Alarm] 1 in us-west-1: "All SDC Zones" monitor (owned by trentm)
+     *    Subject: [Alarm] 1 in us-west-1: "All SDC Zones" monitor alarmed
+  - TICKET: pathology: adding an event for a user with many alarms takes longer because
+    we load *all* alarms from redis. That is silly. (a) only load the
+    required fields and (b) perhaps use a sorted set of alarms and only
+    consider the last N for de-duplication. (c) also add upper limit on
+    the set of open alarms for a user. 1000? Too small?
+  - clear (zone up). add complication of two zones going down in same
+    alarm. then coming up slowly
+      - should the "is related" logic be updated to have a 'clear' event
+        for same monitor always apply even if over the ONE_HOUR cutoff?
+  - all the REST API endpoints
+    - and actually saving the events
+  - test suite
+  - ...
+- node-redis connection management:
+  If get this in amon-master:
+    [2012-03-10T13:25:44.682Z]  INFO: amon-master/6901 on ef3351fd-5800-4370-8c97-f1d31d719cc1.local: redis client end, recycling it
+    node_redis: Couldn't get Redis connection after 1 attempts.
+  processEvent doesn't work anymore. E.g. the following hangs:
+    sdc-amon /pub/admin/monitors/sdczones/testnotify -X POST
+  ...or at least will timeout. Not sure where the problem is here.
+
+  To trigger it:
+    coal svcadm -z 46d87421-1f62-4c5e-982f-1756e0da8be5 restart redis
+  where that is the redis0 zone UUID.
+
 - back on 'machine-up' probe type:
   - TICKET for adding support for probes for down zones on startup
-  - TICKET: tool to crash a zone: does zonecfg_notify event for leaving "running" get sent?
 - put in readme/dev notes:
 
       PS1='\[\033[0;34m\][\u@\h (${DC_NAME}:${DC_HEADNODE_ID}) \w]\$\[\033[0m\] '
@@ -14,6 +55,9 @@
       email: trentm+coaladmin@gmail.com
       [root@headnode (coal:0) /var/tmp]# sdc-ldap modify -f admin-change.ldif
       ...
+
+    also for amon zone:
+      alias by=/opt/smartdc/amon/node_modules/.bin/bunyan
 
 - missing pieces represented?
   - persistent alarms (and events) and API endpoints to work with open
@@ -65,6 +109,8 @@
 # todo (in no particular order)
 
 - update to latest ldapjs for #49 and #50 fixes
+- update others to restify 1.1
+
 - Relay needs to have guards for run away agents. One case is an infinite
   loop: a probe watching for "ERROR" in amon logs, where sending the
   event results in an "ERROR". Handle this with relay per-agent throttling
@@ -83,14 +129,18 @@
   have a probetype that fires for "missing" data. I.e. missed a heartbeat
   from the relay. Should this "fire on missing data" be a generic probe
   config thing? Probably.
+  See <http://circonus.com/resources/videos#play-video-rule-notifications>
+  for generic probe (aka rule) facilities: on match, invert match, on
+  value change, on absence.
 - <probe>.idObject details on probe events from agent is *wrong*. Insecure.
   The userUuid value must come from relay (and should be the zone owner-uuid
   cfg var). Relay should probably also add the "zone" from which the event
   came? Relay should also validate that given event is for a probe that
   *exists* for that zone, if not then drop it.
 - consistent `new restify.FooError(...)` usage and document this
-- [Trent] master: improve this log line to include user context:
-    2011-11-23 21:36:37Z DEBUG: App.processEvent: contact 'email' notified
+- cache invalidation on delete problem? Remove test data and observe how
+  long it takes for those probe deletions to propage to the amon-relay.
+  Is there a cache invalidate problem there?
 - send an op notification if Redis is down when attempting to process an event
 - relay: improve this log line to know which zone/zsock this request came
   from. Perhaps the "unknown" could be the zone name. Also perhaps "anonymous"
@@ -101,19 +151,33 @@
   If this isn't acceptable then update id'ification in agent.
   Perhaps ':' would be preferable for id'ification? Meh.
 - name fields in Master API: percent escaping
+  Also consider adding a "slug" field to Monitor and Probe. This is used as
+  the 'id'. Guarantee uniqueness, export method (and library?) for calculating
+  the slug. Still allow addressing by name? But perhaps as a query param?
+  Think about it. The downside of "whatever goes" name as the only id is:
+  inelegant alarm naming (use " 1" or "-1" suffix), potential for edge
+  case errors up the stack (portal, cloudapi, adminui) all would have to
+  get all the edge cases correct including unicode, PITA for using the API
+  on the CLI (hand quoting URL parts), inelegant URLs in the portals
 - throttling on TestMonitorNotify
 - walk through a server boot (and boot of all its zones): does Amon eventing
   go crazy?
+- http://circonus.com/resources/videos#play-video-rule-notifications for
+  probe facilities.
 - notification types to consider (http://circonus.com/why-us/features/notifications):
     Email
     AOL and XMPP (Jabber, Google Talk, etc.) Instant Messages
     Twitter (direct messages from @circonusops)
     SMS
+    PagerDuty
     HTTP WebHooks
+- probe types to consider: https://support.cloudkick.com/Category:Checks
 
 
 # someday/maybe
 
+- should "POST /pub/:user/monitors/:monitor/:testnotify" instead be
+  "POST /pub/:user/monitors/:monitor?action=testnotify"?
 - "sdc-amon /pub/trent.mick" messes up on '.' in username -> restify upgrade
   Check for this being fixed with restify 1.x
 - [Trent] master/config.json.in and use that in usb-headnode/zones/amon/setup
@@ -129,6 +193,7 @@
   amon-agent socket is working and that the agent is responding.
 - from workflow/mapi talk: Amon should have the monitor skel for provisioning
   workflow a la FWAPI (but still use normal Amon comm channel). Spec that.
+- check interval: cloudkick checks run every 2.5 minutes.
 - use case: modcloth request to have alerts when in CPU bursting range, i.e.
   they are hitting OS caps. In Modcloth's case, they were hitting caps and
   didn't know it.
@@ -176,17 +241,26 @@
     - http://www.splunk.com/
     - http://www.pagerduty.com/
     - http://www.opennms.org/ (modcloth using this I think)
+    - circonus.com
 
 
+# notes: redis
 
-# Notes: redis
-
+- TODO: test redis being down and down/up/down/up frequently: does that break
+  amon-master? It shouldn't.
+- TODO: Test a notification going through even if redis is down.
 - redis zone config: have "save 60 1". Make sure that isn't filling up disk
   with lots of snapshots. I *presume* this is just one or two files on
   disk, but should check.
-- test: test how events are handled when redis runs out of memory
+- TODO: test how events are handled when redis runs out of memory
   Might want "maxmemory" and "maxmemory-policy ..." or "vm-enabled yes" in
   redis.conf
+
+
+Ensure do "SELECT 1" (or some value of N) to stay indep of other users of
+redis. TODO: Come up with a system for sharing this out. Suggest not using 0
+such that any usage of it is an error to trap faulty users.
+
 
 
 # Notes: suppression
@@ -200,7 +274,6 @@
     - talk with Orlando about a "ready" zoneconfig var set by provisioner
   - the stop/start of an intentional reboot (by an operator at the GZ
     command line)
-    - sdc-amon-suppress ...   # or some command line that
   - intentional reboot or shutdown in adminui
     - either adminui or mapi's shutdown/reboot command would call Amon
       API to suppress?
@@ -287,23 +360,22 @@ If not obvious, you can send multiple metrics per check.
 
 
 Current event layouts (working on a spec for this). Event from logscan
-probe type:
+probe type (a "probe event"):
 
     {
       "v":1,
-      "probe":{
-          "user":"44444444-4444-4444-4444-444444444444",
-          "monitor":"gz",
-          "name":"smartlogin",
-          "type":"logscan"
-      },
-      "time":"2012-03-07T01:01:19.963Z",
+      "time":1331782620613,
+      "type": "probe",
+      "user": "44444444-4444-4444-4444-444444444444",
+      "monitor": "gz",
+      "probe": "smartlogin",
+      "probeType": "logscan"
       "data":{
-          "message":"Log \"/var/svc/log/smartdc-agent-smartlogin:default.log\" matched /Stopping/.",
-          "value":1,
-          "details":{
-              "match":"[ Mar 7 01:01:19 Stopping because service restarting. ]\n[ Mar 7 01:01:19 Executing stop method (:kill). ]"
-          }
+        "message":"Log \"/var/svc/log/smartdc-agent-smartlogin:default.log\" matched /Stopping/.",
+        "value":1,
+        "details":{
+          "match":"[ Mar 7 01:01:19 Stopping because service restarting. ]\n[ Mar 7 01:01:19 Executing stop method (:kill). ]"
+        }
       },
       "machine": UUID
       // Added by relay:
@@ -312,35 +384,213 @@ probe type:
       "uuid":"1e5933ba-c813-44fc-bb54-8b75ebf53eff"
     }
 
-Fake event from /pub/:user/monitors/:monitor/:testnotify:
+Test event from "POST /pub/:user/monitors/:monitor/:testnotify"
+(a "test event" or a "monitor event", i.e. associated with a monitor):
 
     {
       v: 1,
-      probe: {
-        user: req._user.uuid,
-        monitor: monitor.name,
-        name: "test",
-        type: "test"
+      time: Date.now(),
+      type: "monitor",
+      monitor: {
+        user: UUID,
+        monitor: NAME
       },
-      time: new Date(),
       data:{
         message: "Test notification.",
       },
       uuid: uuid()
     }
 
+Other potential event types:
 
+- "operator event": send to (Amon) operator for some internal Amon problem
+- "user event": send to user for some configuration problem in their data?
+  E.g. I was think that with groups, notify the group owner if can't contact
+  one of the group members. Not sure though.
+- "relay" event? A problem report from a relay? Perhaps this is just an
+  operator event? Not sure.
+
+
+# notes: severity
+
+model Monitor:
+  severity: ???
+
+model Probe:
+  severity: 1,2,3? circo. has 1-5.
+
+Circonus has severity on the probe equiv.
 
 
 # notes: alarms
 
-- missing monitor and alarm *priority* or severity
+model Alarm:
+    user: UUID
+    monitor: name, might be null
+    name: this is the id for the alarm, see "Alarm id" section below
+    timeOpened: when first alarmed
+    openedDuringMaint: null or ref to maintenance window? Or just true|false.
+    timeClosed: when cleared (auto or explcitly)
+    timeLastActivity: (If useful.) This is time of last event or API action
+      on this alarm. Perhaps last notification?
+    timeLastEvent: Used for de-duping. This is a bit of denorm from `events`
+      field.
+    timeExpiry: set to N (N == 1 week) after timeClosed whenever it is closed
+      This should be useful for portals to show when this will expire.
+    suppressNotifications: true|false
+    severity: Or could just inherit this from monitor/probe
+    isOpen: true|false  (s/isOpen/closed/)
+    probes: the *set* of probe *names* from this monitor that have tripped.
+    machines: A probe can change, so really want the list of machines
+      affected (or really the ones that ran the tripped probes).
+    events: ... can't store all events for this so perhaps:
+      - firstEvents, recentEvents (N events on either end), numEvents (total)
+        Perhaps "N" is 50 here, i.e. something high enough to not be
+        common.
+      - might want some sort of histogram of events. Can we store a
+        timestamp for every event? *Can* we store all events? Not really.
+        Can redis help us here?
+    numNotifications
+      - perhaps also time of last notification? time of first notification.
 
-model Alarm:  (a)
-    uuid:
-    timestamp:
-    priority: Or could just inherit this from `monitor`
-    state|suppressed
-    dupeOf: used for grouping de-dupes
-    watch: uuid of watch that generted this
-    zone: zone id if came from a zone
+
+API:
+
+    GET /alarms?...    # internal for operators and dev/debugging
+    HEAD /pub/:user/alarms/
+    GET /pub/:user/alarms/
+      - query params on the HEAD/GET: state=open|closed|relevant
+        (where "relevant" is loose, but basically is open and recently
+        closed alarms)
+    GET /pub/:user/alarms/?monitor=:monitor
+    GET /pub/:user/alarms/:alarm
+      - partial data (a la flickr extras, what was the AWS name rm mentioned?)
+    POST /pub/:user/alarms/:alarm?action=close
+    POST /pub/:user/alarms/:alarm?action=reopen    # support undo of accidental close
+    POST /pub/:user/alarms/:alarm?action=suppress  # notifications
+    POST /pub/:user/alarms/:alarm?action=unsuppress
+    WEBSOCKET /pub/:user/alarms/:alarm  # can we do this, so a portal alarm page could update?
+
+Alarm name/id:
+
+- if from a monitor, then: "$monitor-$num" where "$num" is monotonically
+  increasing from 1. Can redis help with this? I think so yes.
+  Do we ever reset that N?
+      Subject: [Alarm all-sdc-zones-1 in us-west-1] "All SDC Zones" monitor alarmed
+      Subject: [Alarm all-sdc-zones-512 in us-west-1] "All SDC Zones" monitor alarmed
+      Subject: Re: [Alarm all-sdc-zones-512 in us-west-1] "All SDC Zones" monitor alarmed
+- if not from a monitor (monitor=null), then likely the event has some other
+  type. Presuming the (still in flux) "operator", "user" and "relay" events
+  from above, names: operator-123, user-123, relay-123 ... where if there
+  is a monitor with the same name (or slug) then they'll share the same
+  namespace. That's fine.
+
+probe event
+  -> handleEvent(event, monitor /* might be null */, probe /* might be null */)
+  -> getOrCreateAlarm(event, monitor, probe)  // monitor and probe might be null
+      i.e. want alarmFromMonitor ...
+      Is there only ever one alarm for a monitor? What if there is an old
+      stale (no events for a long time) unclosed alarm for monitor M, then
+      a new event comes in? Either is revives that alarm or it creates
+      a new one. -> new one (unique names include closed monitors).
+      So need threshold on when to break to a new alarm.
+      Sep this out to a function that decides of this event "is related"
+      to this alarm. For starters this is just whether
+      `event.time - alarm.timeLastEvent > 1 hour`. Perhaps expose that
+      threshold to the monitor config (`monitor.dedupePeriod`). Later the
+      algo could be adaptive or could look at other params (e.g. same probe?
+      same zone? similar period of events, i.e. every day at midnight?)
+  -> alarm.notify(event, monitor, probe) ?
+      There is the first notify, on alarm creation.
+      - Modulo "delay" on first notification for transient errors. See
+        zabbix and nagios options below.
+        "[x] Don't notify on transient error.  Period: [  60] seconds."
+
+      Subsequent events on the same alarm:
+      - Dumbest is to notify every time.
+      - Notify no more than once per N minutes.
+      - Notify every five minutes regardless of additional events.
+      - Notify again if higher severity event.
+      - ...
+      - Zabbix escalation? Don't go there.
+      - http://www.zabbix.com/wiki/howto/config/alerts/delaying_notifications
+        Nagios "soft states".
+        Delay first notification for transient problems. Would NOT want
+        for a reboot, but perhaps for a disk size threshold.
+
+      TODO: Email to ops (linda, ben) on what kind of notification and
+        re-notification setup they use in prod. If there is anything they'd
+        prefer to see. E.g. for repeated failures of a particular
+        check/monitor.
+
+      These are attributes of the monitor. What about default? On the user?
+
+      Implementation. How to handle scheduling and reliable
+      sending of notifications?
+      - put them in redis, have a interval that checks every N seconds for
+        a notification to send (perhaps with a .kick() to send right away)
+      - actually want to setup a ping for the alarm to see about notifying.
+        So an alarm could handle this itself with setTimeout. If it is to
+        be delayed, then it is up to that Alarm instance to put it in redis
+        in case of restarts.
+
+      So not `alarm.notify(...)` but `alarm.start()`. Is it too much to have
+      an alarm in memory the whole time? Yes. So not managed by each alarm
+      instance.
+
+      Could it be "active alarms"? I.e. reminder notifications time out
+      if not new events on an alarm. Or just not support reminder
+      notifications (for now). Punt on "delay for transient" failure for now
+      too. That means no timer needed.
+
+Implementation (take 2):
+probe event
+  -> app.processEvent(event)
+    Get `monitor` and `probe`.
+    Get or create new Alarm: alarm.
+    app.attachEventToAlarm(alarm, event, ...)
+  -> app.getOrCreateAlarm(event, user, monitor, probe, function (err, alarm))
+    - Get all open alarms for this user/monitor.
+    - If not any -> create new alarm.
+    - Pass all potential alarms to app.chooseRelatedAlarm().
+    - If alarm -> return alarm
+    - Else -> create new alarm.
+  -> app.chooseRelatedAlarm(alarms, event, user, monitor, probe, function(err, alarm))
+    First pass at this: Choose the alarm with the most recent `timeLastEvent`.
+    If `event.time - alarm.timeLastEvent > 1 hour` then return none, i.e.
+    not related. Else, return that alarm.
+    Eventually make this "1 hour" an optional var on monitor.
+    Eventually this algo can consider more vars.
+  -> app.createAlarm(alarm, event, monitor)
+    uuid: uuid()
+    monitor:
+  -> app.alarmAddEvent(alarm, event, ...)
+    - update alarm fields:
+        timeOpened: when first alarmed
+        timeLastActivity: (If useful.) This is time of last event or API action
+          on this alarm. Perhaps last notification?
+        timeLastEvent: Used for de-duping. This is a bit of denorm from `events`
+          field.
+        severity: Or could just inherit this from `monitor`
+        isOpen: true|false
+        probes: the *set* of probe *names* from this monitor that have tripped.
+        machines: A probe can change, so really want the list of machines
+          affected (or really the ones that ran the tripped probes).
+        events: ... can't store all events for this so perhaps:
+          - firstEvents, recentEvents (N events on either end), numEvents (total)
+            Perhaps "N" is 50 here, i.e. something high enough to not be
+            common.
+          - might want some sort of histogram of events. Can we store a
+            timestamp for every event? *Can* we store all events? Not really.
+            Can redis help us here?
+    - Decide whether to notify:
+      - if this is a clear event (XXX probe event needs a 'clear: true'
+        field, set by machine-up 'up' event) and never opened, then no
+      - if in maint, then no (update 'openedDuringMaint')
+      - ... more?
+      - else, notify:
+          numNotifications
+
+
+
+.

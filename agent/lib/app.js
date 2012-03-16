@@ -89,6 +89,7 @@ function createProbe(id, probeData, log, app, callback) {
   } catch (e) {
     return callback(new ProbeError(e, probeData));
   }
+  //XXX try/catch here so a fault probe.start doesn't block updating probes
   probe.start(function (e) {
     if (e)
       return callback(new ProbeError(e, probeData));

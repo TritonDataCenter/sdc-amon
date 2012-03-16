@@ -60,27 +60,45 @@ Email.prototype.sanitizeAddress = function (address) {
 /**
  * Notify.
  *
+ * @param alarm {Alarm} Alarm for which this notification is being sent.
  * @param user {Object} UFDS sdcPerson being notified.
  * @param contactAddress {String}
- * @param event {Object} The probe event.
+ * @param event {Object} The Amon event that triggered this notification.
  * @param callback {Function} `function (err)` called on completion.
  */
-Email.prototype.notify = function (user, contactAddress, event, callback) {
+Email.prototype.notify = function (alarm, user, contactAddress, event, callback) {
+  if (!alarm) throw new TypeError('"alarm" required');
   if (!user) throw new TypeError('"user" required');
   if (!contactAddress) throw new TypeError('"contactAddress" required');
   if (!event) throw new TypeError('"event" required');
   if (!callback) throw new TypeError('"callback" required');
-  var log = this.log;
+  var log = this.log.child({alarm: {user: alarm.user, id: alarm.id}}, true);
+
+  // Add name to the email address if have it.
+  // XXX While we don't have UFDS *groups* the `contactAddress` and `user`
+  //     are the same person. When groups are added and the monitor
+  //     contact URN supports group members, then this is no longer the
+  //     same person.
+  var to = contactAddress;
+  var toNoQuotes = to;
+  var contactName;
+  if (contactAddress.indexOf('<') === -1 && (user.cn || user.sn)) {
+    contactName = (user.cn + ' ' + user.sn).trim();
+    to = format('%s <%s>', JSON.stringify(contactName), contactAddress);
+    toNoQuotes = format('%s <%s>', contactName, contactAddress);
+  }
 
   var data = event.data;
-  var monitorName = event.probe.monitor;
+  var monitorName = event.monitor;
   var body = format('%s\n\n'
+    + 'Alarm: %s\n'
     + 'Time: %s\n'
-    + 'Monitor: %s\n'
+    + 'Monitor: %s (owned by %s)\n'
     + '\n\n%s',
     data.message,
-    event.time,
-    monitorName,
+    alarm.id,
+    (new Date(event.time)).toUTCString(),
+    monitorName, toNoQuotes,
     JSON.stringify(event, null, 2));
 /* XXX Template this:
 
@@ -94,13 +112,15 @@ Machine:    {{machineDesc}}
 Datacenter: {{dcName}}
 */
 
-  // Add name to the email address if have it.
-  var to = contactAddress;
-  if (contactAddress.indexOf('<') === -1 && (user.cn || user.sn)) {
-    var name = (user.cn + ' ' + user.sn).trim();
-    to = format('%s <%s>', JSON.stringify(name), contactAddress);
-  }
-  var subject = format('Monitoring alert: "%s" monitor alarmed', monitorName);
+  // Consider <http://www.jwz.org/doc/threading.html> for ensuring follow-ups
+  // are in the same thread/conversation in email clients. Gmail algo is
+  // just the subject "... but it will ignore ... anything in square brackets."
+  // <http://www.google.com/support/forum/p/gmail/thread?tid=07c8bfb80cb09135&hl=en>
+  //
+  // Subject: [Monitoring] Alarm 1 in us-west-1: "All SDC Zones" monitor alarmed
+  var re = (alarm.numNotifications > 0 ? 'Re: ' : '');
+  var subject = format('%s[Monitoring] Alarm %d in {{dcName}}: "%s" monitor alarmed',
+    re, alarm.id, monitorName);
 
   // XXX add retries (retry module)
   log.debug({email: {sender: this.from, to: to, subject: subject}},
@@ -114,11 +134,12 @@ Datacenter: {{dcName}}
         body: body
       },
       function (err, success) {
+        log.debug('email sent')
         callback(err);
       }
     );
   } catch (err) {
-    log.error(err, 'exception in `nodemailer.send_mail`')
+    log.error(err, 'error sending email')
     callback(err);
   }
 };

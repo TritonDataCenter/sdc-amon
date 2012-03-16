@@ -10,7 +10,7 @@ var restify = require('restify');
 var async = require('async');
 var child_process = require('child_process'),
     spawn = child_process.spawn;
-var format = require('amon-common').utils.format;
+var format = require('util').format;
 
 
 //---- globals & constants
@@ -24,7 +24,7 @@ var CONFIG_PATH = __dirname + "/config.json";
  *
  * @param options {Object} Setup options.
  *    t {Object} node-tap Test object
- *    users {Array} User records to add to UFDS for testing
+ *    users {Array} Optional. User records to add to UFDS for testing  (XXX NYI)
  *    masterLogPath {String}
  *    clientLogPath {String}
  * @param callback {Function} `function (err, config)` where:
@@ -80,8 +80,8 @@ function setupMaster(options, callback) {
         if (err) {
           sentinel++;
           if (sentinel >= 10) {
-            t.ok(false, "Master did not come up after "+sentinel
-              +" seconds (see 'master.std{out,err}').");
+            t.ok(false, format("Master did not come up after %s seconds"
+              + " (see '%s')", sentinel, options.masterLogPath));
             t.end();
             return;
           } else {

@@ -5,14 +5,17 @@
   "author": "Joyent (joyent.com)",
   "private": true,
   "dependencies": {
-    "bunyan": "0.6.8",
+    "async": "0.1",
+    "bunyan": "0.6",
     "restify": "1.1.1",
     "node-uuid": "1.2.0",
     "nopt": "1.0.10",
     "retry": "0.6.0",
     "nodemailer": "0.3.2",
     "ldapjs": "0.4.8",
-    "expiring-lru-cache": "2.0.0"
+    "expiring-lru-cache": "2.0.0",
+    "redis": "0.7",
+    "hiredis": "0.1"
   },
   "bundledDependences": [
     "sdc-clients"
@@ -23,5 +26,4 @@
   "engines": {
     "node": ">=0.6"
   }
-
 }

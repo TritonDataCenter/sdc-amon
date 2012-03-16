@@ -8,8 +8,8 @@ TOP=$(cd $(dirname $0)/../; pwd)
 COAL=root@10.99.99.7
 
 if [[ -z "$AMON_ZONE" ]]; then
-    # XXX Want the first running one of these. Need `json -c ...`.
-    AMON_ZONE=$(ssh coal "/smartdc/bin/sdc-mapi /machines?tag.smartdc_role=amon | json -H 0.name" 2>/dev/null)
+    # XXX Want the first running one of these. Need `json -c ...` from json 3.
+    AMON_ZONE=$(ssh $COAL "/smartdc/bin/sdc-mapi /machines?tag.smartdc_role=amon" 2>/dev/null | jsondev -c 'running_status=="running"' -a name -H)
 fi
 echo "AMON_ZONE: $AMON_ZONE"
 

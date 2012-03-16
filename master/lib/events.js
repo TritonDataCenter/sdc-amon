@@ -65,7 +65,9 @@ function addEvents(req, res, next) {
     //XXX event validation would go here
 
     req._app.processEvent(event, function (err) {
-      if (err) errs.push(err);
+      if (err) {
+        errs.push(err);
+      }
       cb();
     });
   }

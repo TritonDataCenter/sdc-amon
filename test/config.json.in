@@ -11,6 +11,10 @@
     "username": "admin",
     "password": "TODO:PASSWORD"
   },
+  "redis": {
+    "host": "10.99.99.22",
+    "port": "6379"
+  },
   "notificationPlugins": {
     "email": {
       "path": "./notifications/testy",

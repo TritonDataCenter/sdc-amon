@@ -46,7 +46,7 @@ var restify = require('restify');
 
 /**
  * Create a new contact. Typically a new instance is created
- * via `Contact.get(...)`.
+ * via `Contact.create(...)`.
  *
  * @param scope {String} One of 'my', 'user' [*NYI], 'group' [*NYI].
  *    See discussion above.
@@ -94,27 +94,23 @@ Contact.parseUrn = function (app, urn) {
 
 
 /**
- * Get a contact.
+ * Create contact.
  *
  * Note: It is possible that `contact.address` is null/undefined on return,
  * e.g., for a contact field 'fooEmail' on an sdcPerson with no such
  * attribute. It is up to the caller to handle this.
  *
  * @param app {App} The Amon Master App.
- * @param userUuid {String} The monitor owner user UUID.
+ * @param user {Object} User object, as from `App.userFromId()` from
+ *    which to interpret the contact `urn`. When UFDS includes groups the
+ *    contact address might be a different person than this user.
  * @param urn {String} The contact URN.
- * @param callback {Function} `function (err, contact)`
  */
-Contact.get = function (app, userUuid, urn, callback) {
+Contact.create = function (app, user, urn) {
   var bits = Contact.parseUrn(app, urn);
-  app.userFromId(userUuid, function (err, user) {
-    if (err)
-      return callback(err);
-    var address = user[bits.medium];
-    var contact = new Contact(bits.scope, bits.medium, bits.notificationType,
-      address);
-    callback(null, contact)
-  });
+  var address = user[bits.medium];
+  return new Contact(bits.scope, bits.medium, bits.notificationType,
+    address);
 }
 
 

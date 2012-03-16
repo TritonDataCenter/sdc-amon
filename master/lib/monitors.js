@@ -20,7 +20,6 @@ var objCopy = require('amon-common').utils.objCopy;
 
 //---- globals
 
-var log = restify.log;
 var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 
@@ -189,8 +188,6 @@ Monitor._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,31}$/;
 
 
 
-
-
 //---- controllers
 
 module.exports = {
@@ -216,21 +213,23 @@ module.exports = {
         return next(err);
       var testEvent = {
         v: 1,  //XXX constant for this
-        probe: {
-          user: req._user.uuid,
-          monitor: monitor.name,
-          name: "test",
-          type: "test"
-        },
-        time: new Date(),
+        type: 'monitor',
+        user: req._user.uuid,
+        monitor: monitor.name,
+        time: Date.now(),
         data:{
           message: "Test notification.",
         },
         uuid: uuid()
       };
       req._app.processEvent(testEvent, function (err) {
-        res.send({success: (!err)});
-        next(err);
+        if (err) {
+          req.log.error(err, 'error processing test event');
+          res.send(new restify.InternalError());
+        } else {
+          res.send({success: true});
+        }
+        next();
       });
     });
   }

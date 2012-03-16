@@ -21,16 +21,8 @@
  *
  *    Event: 'event'
  *      Sent for any probe event. These are sent up to the master for
- *      processing. Example (for illustration):
- *          { version: '1.0.0',
- *            probe:
- *            { user: '7b23ae63-37c9-420e-bb88-8d4bf5e30455',
- *              monitor: 'whistle',
- *              name: 'whistlelog2',
- *              type: 'logscan' },
- *           type: 'Integer',
- *           value: 1,
- *           data: { match: 'tweet' } }
+ *      processing.
+ *      XXX Link to event section in docs.
  *
  * Amon probe types should inherit from this base class -- see "logscan.js"
  * for an example -- and implement the following interface:
@@ -85,12 +77,9 @@ function Probe(options) {
     {probe_id: this.id, probe_type: this.type}, true);
 
   var data = options.data;
-  this._probeId = {
-    user: data.user,
-    monitor: data.monitor,
-    name: data.name,
-    type: this.type
-  };
+  this._user = data.user;
+  this._monitor = data.monitor;
+  this._probe = data.name;
   if (data.machine) {
     this.targetType = 'machine';
     this.targetUuid = data.machine;
@@ -122,8 +111,12 @@ Probe.prototype.emitEvent = function (message, value, details) {
   if (details === undefined) throw new TypeError('"details" is required')
   var event = {
     v: AMON_EVENT_VERSION,
-    probe: this._probeId,
-    time: (new Date()),
+    type: 'probe',
+    user: this._user,
+    monitor: this._monitor,
+    probe: this._probe,
+    probeType: this.type,
+    time: Date.now(),
     data: {
       message: message,
       value: value,

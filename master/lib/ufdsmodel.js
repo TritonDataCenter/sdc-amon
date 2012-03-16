@@ -208,8 +208,8 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
         return callback(null, new Model(app, cached.data));
       } catch (e) {
         // Drop from the cache and carry on.
-        log.warn("error in cached data (cacheScope='%s', dn='%s'): %s",
-          cacheScope, dn, e);
+        log.warn(e, "error in cached data (cacheScope='%s', dn='%s')",
+          cacheScope, dn);
         app.cacheDel(cacheScope, dn);
       }
     }

@@ -6,7 +6,6 @@
  */
 
 var fs = require('fs');
-var log = require('restify').log;
 
 
 /**
