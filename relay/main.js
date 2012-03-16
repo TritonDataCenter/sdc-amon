@@ -38,6 +38,10 @@ var ZoneEventWatcher = require('./lib/zoneeventwatcher');
 // Config defaults.
 var DEFAULT_POLL = 30;
 var DEFAULT_DATA_DIR = '/var/db/amon-relay';
+
+// Don't change this path! The platform's "joyent" brand is specifically
+// watching for this one. See
+// <https://mo.joyent.com/illumos-joyent/commit/2e9c9a5#L399>.
 var DEFAULT_SOCKET = '/var/run/.smartdc-amon.sock';
 
 var config;         // set in `main()`
