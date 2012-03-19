@@ -7,11 +7,12 @@
  *    $ node bootstrap.js
  *
  * This will:
- * - create test users (devbob, devalice)
- * - devalice will be an operator
- * - create a 'devzone' for bob
- * - add a monitor and probe for 'devbob' in the 'devzone'
- * - add a monitor and probe for 'devalice' in the headnode GZ
+ * - create test users (bob, otto)
+ *   Background: http://www.amazon.com/Bob-Otto-Robert-Bruel/dp/1596432039
+ * - otto will be an operator
+ * - create a 'amondevzone' for bob
+ * - add a monitor and probe for 'bob' in the 'amondevzone'
+ * - add a monitor and probe for 'otto' in the headnode GZ
  * - write relevant data to ../bootstrap.json
  */
 
@@ -35,8 +36,8 @@ var sdcClients = require('sdc-clients'),
 //---- globals and constants
 
 var config = JSON.parse(fs.readFileSync(__dirname + '/../test/config.json', 'utf8'));
-var devbob = JSON.parse(fs.readFileSync(__dirname + '/devbob.json', 'utf8'));
-var devalice = JSON.parse(fs.readFileSync(__dirname + '/devalice.json', 'utf8')); // operator
+var bob = JSON.parse(fs.readFileSync(__dirname + '/user-amonuserbob.json', 'utf8'));
+var otto = JSON.parse(fs.readFileSync(__dirname + '/user-amonoperatorotto.json', 'utf8')); // operator
 var ldapClient;
 var ufdsClient;
 var adminUuid;
@@ -108,21 +109,21 @@ function createUser(user, next) {
 
 function createUsers(next) {
   log("# Create users.")
-  async.map([devbob, devalice], createUser, function(err, _){
+  async.map([bob, otto], createUser, function(err, _){
     next(err)
   });
 }
 
 
-function makeDevaliceAdmin(next) {
-  var dn = format("uuid=%s, ou=users, o=smartdc", devalice.uuid);
+function makeOttoAnOperator(next) {
+  var dn = format("uuid=%s, ou=users, o=smartdc", otto.uuid);
   var change = {
     type: 'add',
     modification: {
       uniquemember: dn,
     }
   };
-  log("# Make user %s (%s) an operator", devalice.uuid, devalice.login);
+  log("# Make user %s (%s) an operator", otto.uuid, otto.login);
   ufdsClient.modify('cn=operators, ou=groups, o=smartdc', change, function (err) {
     next(err);
   });
@@ -134,7 +135,7 @@ function addKey(next) {
   // to encode the pain of getting the CAPI auth.
   var key = fs.readFileSync(__dirname + '/../test/id_rsa.amontest.pub', 'utf8');
   var fp = httpSignature.sshKeyFingerprint(key);
-  var userDn = format("uuid=%s, ou=users, o=smartdc", devbob.uuid);
+  var userDn = format("uuid=%s, ou=users, o=smartdc", bob.uuid);
   var dn = format("fingerprint=%s, %s", fp, userDn);
   var entry = {
     name: ["amontest"],
@@ -152,10 +153,10 @@ function addKey(next) {
       res.on('error', function(err) { next(err) });
       res.on('end', function(result) {
         if (found) {
-          log("# Key 'amontest' on user '%s' already exists.", devbob.login);
+          log("# Key 'amontest' on user '%s' already exists.", bob.login);
           next();
         } else {
-          log("# Create key 'amontest' (%s) on user '%s'.", fp, devbob.login);
+          log("# Create key 'amontest' (%s) on user '%s'.", fp, bob.login);
           ldapClient.add(dn, entry, next);
         }
       });
@@ -198,21 +199,21 @@ function getMapi(next) {
 }
 
 function createDevzone(next) {
-  // First check if there is a zone for devbob.
-  mapi.listMachines(devbob.uuid, function (err, zones, headers) {
+  // First check if there is a zone for bob.
+  mapi.listMachines(bob.uuid, function (err, zones, headers) {
     if (err) return next(err);
     if (zones.length > 0) {
-      devzone = zones[0];
-      log("# Devbob already has a zone (%s).", devzone.name)
+      amondevzone = zones[0];
+      log("# Bob already has a zone (%s).", amondevzone.name)
       return next();
     }
-    log("# Create a test zone for devbob.")
+    log("# Create a test zone for bob.")
     mapi.listServers(function(err, servers) {
       if (err) return next(err);
       var headnodeUuid = servers[0].uuid;
-      mapi.createMachine(devbob.uuid, {
+      mapi.createMachine(bob.uuid, {
           package: "regular_128",
-          alias: "devzone",
+          alias: "amondevzone",
           dataset_urn: "smartos",
           server_uuid: headnodeUuid,
           force: "true"  // XXX does MAPI client support `true -> "true"`
@@ -234,7 +235,7 @@ function createDevzone(next) {
                   + "become 'running'");
               }
               setTimeout(function () {
-                mapi.getMachine(devbob.uuid, zoneName, function (err, zone_) {
+                mapi.getMachine(bob.uuid, zoneName, function (err, zone_) {
                   if (err) return nextCheck(err);
                   zone = zone_;
                   nextCheck();
@@ -243,8 +244,8 @@ function createDevzone(next) {
             },
             function (err) {
               if (!err) {
-                devzone = zone;
-                log("# Zone %s (devzone) is running.", devzone.name);
+                amondevzone = zone;
+                log("# Zone %s (amondevzone) is running.", amondevzone.name);
               }
               next(err);
             }
@@ -375,18 +376,18 @@ function loadAmonObjects(next) {
   log("# Loading Amon objects.");
   var objs = [
     {
-      user: devbob.uuid,
+      user: bob.uuid,
       monitor: 'whistle',
       body: {
         contacts: ['email']
       }
     },
     {
-      user: devbob.uuid,
+      user: bob.uuid,
       monitor: 'whistle',
       probe: 'whistlelog',
       body: {
-        "machine": devzone.name,
+        "machine": amondevzone.name,
         "type": "logscan",
         "config": {
           "path": "/tmp/whistle.log",
@@ -397,30 +398,30 @@ function loadAmonObjects(next) {
       }
     },
     {
-      user: devbob.uuid,
+      user: bob.uuid,
       monitor: 'isup',
       body: {
         contacts: ['email']
       }
     },
     {
-      user: devbob.uuid,
+      user: bob.uuid,
       monitor: 'isup',
-      probe: 'devzone',
+      probe: 'amondevzone',
       body: {
-        "machine": devzone.name,
+        "machine": amondevzone.name,
         "type": "machine-up"
       }
     },
     {
-      user: devalice.uuid,
+      user: otto.uuid,
       monitor: 'gz',
       body: {
         contacts: ['email']
       }
     },
     {
-      user: devalice.uuid,
+      user: otto.uuid,
       monitor: 'gz',
       probe: 'smartlogin',
       body: {
@@ -445,11 +446,11 @@ function writeJson(next) {
   var outPath = path.resolve(__dirname, "../bootstrap.json");
   log("# Write '%s'.", outPath)
   var data = {
-    devzone: devzone,
+    amondevzone: amondevzone,
     mapizone: mapizone,
     headnodeUuid: headnodeUuid,
-    devbob: devbob,
-    devalice: devalice
+    bob: bob,
+    otto: otto
   }
   fs.writeFileSync(outPath, JSON.stringify(data, null, 2), 'utf8');
   next();
@@ -465,7 +466,7 @@ async.series([
     getAdminUuid,
     createUsers,
     addKey,
-    makeDevaliceAdmin,
+    makeOttoAnOperator,
     ldapClientUnbind,
     ufdsClientUnbind,
     getMapi,

@@ -456,7 +456,7 @@ whole userCache object.
 Some Amon use cases to guide its design and to demonstrate how to use
 Amon. **Dev Note: Current Amon doesn't support all these use cases yet.**
 
-In the examples below "devalice" is an operator account commonly used
+In the examples below "otto" is an operator account commonly used
 in dev work on Amon, "564d70d5-0187-e5d4-468f-7b49a6b014ff" is the headnode
 UUID, etc.
 
@@ -466,12 +466,12 @@ UUID, etc.
 
 Probes for watching relevant SDC log files for, say, "ERROR".
 
-    sdc-amon /pub/devalice/monitors/sdclogs -X PUT -d- < '{
+    sdc-amon /pub/otto/monitors/sdclogs -X PUT -d- < '{
         "contacts": ["email"]
     }'
 
     # GZ probes
-    sdc-amon /pub/devalice/monitors/sdclogs/probes/headnode-ur -X PUT -d- < '{
+    sdc-amon /pub/otto/monitors/sdclogs/probes/headnode-ur -X PUT -d- < '{
         "type": "logscan",
         "server": "564d70d5-0187-e5d4-468f-7b49a6b014ff",
         "config": {
@@ -482,7 +482,7 @@ Probes for watching relevant SDC log files for, say, "ERROR".
         }
     }'
     # Or perhaps a specialized probe "smf-logscan" type for SMF logs.
-    sdc-amon /pub/devalice/monitors/sdclogs/probes/headnode-heartbeater -X PUT -d- < '{
+    sdc-amon /pub/otto/monitors/sdclogs/probes/headnode-heartbeater -X PUT -d- < '{
         "type": "smf-logscan",
         "server": "564d70d5-0187-e5d4-468f-7b49a6b014ff",
         "config": {
@@ -496,7 +496,7 @@ Probes for watching relevant SDC log files for, say, "ERROR".
 
     # SDC zones probes
     # Where 'ea3898cd-4ca9-410a-bfa6-0152ba07b1d7' is the ufds0 zone name.
-    sdc-amon /pub/devalice/monitors/sdclogs/probes/ufds0-ufds-server -X PUT -d- < '{
+    sdc-amon /pub/otto/monitors/sdclogs/probes/ufds0-ufds-server -X PUT -d- < '{
         "type": "logscan",
         "machine": "ea3898cd-4ca9-410a-bfa6-0152ba07b1d7",
         "config": {
@@ -556,11 +556,11 @@ Probe for SDC zones' and GZ's "smartdc" services going up/down.
 
 For example:
 
-    sdc-amon /pub/devalice/monitors/sdcservices -X PUT -d- < '{
+    sdc-amon /pub/otto/monitors/sdcservices -X PUT -d- < '{
         "contacts": ["email"]
     }'
     # Where '564d70d5-0187-e5d4-468f-7b49a6b014ff' is my headnode UUID.
-    sdc-amon /pub/devalice/monitors/sdcservices/probes/headnode-smartlogin -X PUT -d- < '{
+    sdc-amon /pub/otto/monitors/sdcservices/probes/headnode-smartlogin -X PUT -d- < '{
         "type": "smf",
         "server": "564d70d5-0187-e5d4-468f-7b49a6b014ff",
         "config": {
@@ -569,7 +569,7 @@ For example:
     }'
     ...
     # Where 'ea3898cd-4ca9-410a-bfa6-0152ba07b1d7' is the ufds0 zone name.
-    sdc-amon /pub/devalice/monitors/sdcservices/probes/ufds0-ufds-capi -X PUT -d- < '{
+    sdc-amon /pub/otto/monitors/sdcservices/probes/ufds0-ufds-capi -X PUT -d- < '{
         "type": "smf",
         "machine": "ea3898cd-4ca9-410a-bfa6-0152ba07b1d7",
         "config": {

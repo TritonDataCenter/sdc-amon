@@ -2,6 +2,7 @@ tmp
 *.swp
 node_modules
 *.log
+/amon.sublime*
 
 /build
 /bootstrap.json

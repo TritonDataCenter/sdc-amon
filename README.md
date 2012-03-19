@@ -242,19 +242,19 @@ There is a bootstrap tool that will add some Amon data for playing with:
 
     bin/node ./tools/bootstrap.js
 
-It'll create devbob and devalice (operator) users. Create a devzone for
-devbob and add an Amon monitor and probe for each of them. Try some of the
-following to query the data:
+It'll create test users 'amonuserbob' and 'amonoperatorotto'. Create a
+'amondevzone' for Bob and add an Amon monitor and probe for each of them.
+Try some of the following to query the data:
 
     ssh coal   # only because `sdc-amon` is setup to find the Amon URL there
-    sdc-amon /pub/devbob
-    sdc-amon /pub/devbob/monitors/whistle/probes
-    sdc-amon /pub/devalice/monitors/gz/probes
+    sdc-amon /pub/amonuserbob
+    sdc-amon /pub/amonuserbob/monitors/whistle/probes
+    sdc-amon /pub/amonoperatorotto/monitors/gz/probes
 
 If you have email notifications sending through properly (see "COAL Notes:
 Getting email notifications" above) then the
-`/pub/devalice/monitors/gz/probes/smartlogin` probe can be easily tickled
-by restarting smartlogin:
+`/pub/amonoperatorotto/monitors/gz/probes/smartlogin` probe can be easily
+tickled by restarting smartlogin:
 
     ssh coal svcadm restart smartlogin
 
@@ -443,6 +443,33 @@ has left crud data in UFDS. Clean it out by running:
 
     ./test/clean-test-data.sh   # `make test` does this as well
 
+
+
+# Screencasts
+
+<https://stuff.joyent.us/stuff/trent/screencasts/>
+
+- amon0 is the original Amon early demo that Mark (mostly) and Trent did.
+  It was a recording of an hour long demo meeting with ops folks and
+  a couple devs.
+- amon1 is Trent giving a 2 minute Amon overview and 13 minute walk through
+  using the Amon Master API on the command line to create a 'machine-up'
+  probe and get events.
+
+
+Notes for making a screencast:
+- ScreenFlow is nice
+- Use this prompt:
+  `PS1='\[\033[0;34m\][\u@\h (${DC_NAME}:${DC_HEADNODE_ID}) \w]\$\[\033[0m\] '`
+- Here is how to tweak the admin's password as a quick demo account:
+
+        [root@headnode (coal:0) /var/tmp]# cat admin-change.ldif
+        dn: uuid=930896af-bf8c-48d4-885c-6573a94b1853, ou=users, o=smartdc
+        changetype: modify
+        replace: email
+        email: trentm+coaladmin@gmail.com
+        [root@headnode (coal:0) /var/tmp]# sdc-ldap modify -f admin-change.ldif
+        ...
 
 
 
