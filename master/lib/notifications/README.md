@@ -3,7 +3,14 @@
 Each of the notification type modules here should export the following interface:
 
 
-    function FooNotificationType(config) { ... }
+    /**
+     * Create an Foo notification plugin
+     *
+     * @params log {Bunyan Logger}
+     * @params config {Object}
+     * @params datacenterName {String}
+     */
+    function FooNotificationType(log, config, datacenterName) { ... }
 
     /**
      * Sanitize the given contact address

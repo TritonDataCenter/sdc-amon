@@ -16,12 +16,15 @@ var retry = require('retry');
  *
  * @params log {Bunyan Logger}
  * @params config {Object}
+ * @params datacenterName {String}
  */
-function Email(log, config) {
+function Email(log, config, datacenterName) {
   if (!log) throw new TypeError('"log" required');
   if (!config) throw new TypeError('"config" required');
+  if (!datacenterName) throw new TypeError('"datacenterName" required');
 
   this.log = log;
+  this.datacenterName = datacenterName;
   if (!config || typeof (config) !== 'object')
     throw new TypeError('config (object) is required');
   if (config.smtp && typeof (config.smtp) === 'object') {
@@ -94,11 +97,13 @@ Email.prototype.notify = function (alarm, user, contactAddress, event, callback)
     + 'Alarm: %s\n'
     + 'Time: %s\n'
     + 'Monitor: %s (owned by %s)\n'
+    + 'Data Center: %s\n'
     + '\n\n%s',
     data.message,
     alarm.id,
     (new Date(event.time)).toUTCString(),
     monitorName, toNoQuotes,
+    this.datacenterName,
     JSON.stringify(event, null, 2));
 /* XXX Template this:
 
@@ -119,8 +124,8 @@ Datacenter: {{dcName}}
   //
   // Subject: [Monitoring] Alarm 1 in us-west-1: "All SDC Zones" monitor alarmed
   var re = (alarm.numNotifications > 0 ? 'Re: ' : '');
-  var subject = format('%s[Monitoring] Alarm %d in {{dcName}}: "%s" monitor alarmed',
-    re, alarm.id, monitorName);
+  var subject = format('%s[Monitoring] Alarm %s/%d in %s: "%s" monitor alarmed',
+    re, user.login, alarm.id, this.datacenterName, monitorName);
 
   // XXX add retries (retry module)
   log.debug({email: {sender: this.from, to: to, subject: subject}},

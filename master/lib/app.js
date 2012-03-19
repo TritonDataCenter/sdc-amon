@@ -180,7 +180,9 @@ function App(config, ufds, mapi, log) {
       log.info('Loading "%s" notification plugin.', name);
       var NotificationType = require(plugin.path);
       self.notificationPlugins[name] = new NotificationType(
-        log.child({notification_type: name}, true), plugin.config);
+        log.child({notification_type: name}, true),
+        plugin.config,
+        config.datacenterName);
     });
   }
 

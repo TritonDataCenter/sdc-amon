@@ -16,8 +16,10 @@ var retry = require('retry');
  *
  * @params log {Bunyan Logger}
  * @params config {Object}
+ * @params datacenterName {String}
  */
-function Twilio(log, config) {
+function Twilio(log, config, datacenterName) {
+  if (!log) throw new TypeError('"log" required');
   if (!config || typeof (config) !== 'object')
     throw new TypeError('config must be an object');
   if (!config.accountSid)
@@ -26,6 +28,7 @@ function Twilio(log, config) {
     throw new TypeError('config.authToken is required');
   if (!config.from)
     throw new TypeError('config.from is required');
+  if (!datacenterName) throw new TypeError('"datacenterName" required');
 
   this.log = log;
 

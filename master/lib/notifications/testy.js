@@ -13,10 +13,13 @@ var fs = require('fs');
  *
  * @params log {Bunyan Logger}
  * @params config {Object}
+ * @params datacenterName {String}
  */
-function Testy(log, config) {
+function Testy(log, config, datacenterName) {
+  if (!log) throw new TypeError('"log" required');
   if (!config.logPath || typeof (config.logPath) !== 'string')
     throw new TypeError('config.logPath is required (path)');
+  if (!datacenterName) throw new TypeError('"datacenterName" required');
   this.log = log;
   this.logPath = config.logPath;
   this.notifications = [];
