@@ -44,8 +44,8 @@ function findProbes(app, field, uuid, log, callback) {
     scope: 'sub'
   };
 
-  log.trace({opts: opts}, 'findProbes UFDS search')
-  app.ufds.search('ou=users, o=smartdc', opts, function (err, result) {
+  log.trace({opts: opts}, 'findProbes UFDS search');
+  return app.ufds.search('ou=users, o=smartdc', opts, function (err, result) {
     if (err)
       return callback(err);
 
@@ -53,20 +53,20 @@ function findProbes(app, field, uuid, log, callback) {
     result.on('searchEntry', function (entry) {
       try {
         probes.push((new Probe(app, entry.object)).serialize(true));
-      } catch (err) {
-        log.warn(err, "invalid probe in UFDS (ignoring)")
+      } catch (e) {
+        log.warn(e, "invalid probe in UFDS (ignoring)");
       }
     });
 
-    result.on('error', function (err) {
-      return callback(err);
+    result.on('error', function (e) {
+      return callback(e);
     });
 
-    result.on('end', function (result) {
-      if (result.status !== 0) {
+    result.on('end', function (res) {
+      if (res.status !== 0) {
         return callback(
           format('Non-zero status from UFDS search: %s (opts: %s)',
-            result, JSON.stringify(opts)));
+            res, JSON.stringify(opts)));
       }
 
       // To enable meaningful usage of Content-MD5 we need a stable order
@@ -76,6 +76,7 @@ function findProbes(app, field, uuid, log, callback) {
       log.trace({probes: probes}, 'probes for %s "%s"', field, uuid);
       return callback(null, probes);
     });
+    return true;
   });
 }
 
@@ -96,7 +97,7 @@ function _parseReqParams(req) {
       field = 'machine';
       uuid = machine;
     } else if (server) {
-      field = 'server'
+      field = 'server';
       uuid = server;
     }
     if (!UUID_REGEX.test(uuid)) {
@@ -109,7 +110,7 @@ function _parseReqParams(req) {
     err: err,
     field: field,
     uuid: uuid
-  }
+  };
 }
 
 
@@ -130,7 +131,7 @@ function listAgentProbes(req, res, next) {
   var field = parsed.field;
   var uuid = parsed.uuid;
 
-  findProbes(req._app, field, uuid, req.log, function (err, probes) {
+  return findProbes(req._app, field, uuid, req.log, function (err, probes) {
     if (err) {
       req.log.error(err, 'error getting probes for %s "%s"', field, uuid);
       res.send(500);
@@ -159,18 +160,20 @@ function headAgentProbes(req, res, next) {
   function respond(contentMD5) {
     res.header('Content-MD5', contentMD5);
     res.send();
-    next();
+    return next();
   }
 
-  // Check cache.
-  var cacheKey = format('%s:%s', field, uuid)
-  var contentMD5 = req._app.cacheGet('headAgentProbes', cacheKey);
-  if (contentMD5) {
-    req.log.trace({contentMD5: contentMD5}, 'headAgentProbes respond (cached)');
-    return respond(contentMD5);
-  }
+  var cacheKey = format('%s:%s', field, uuid);
+  (function checkCache() {
+    var contentMD5 = req._app.cacheGet('headAgentProbes', cacheKey);
+    if (contentMD5) {
+      req.log.trace({contentMD5: contentMD5}, 'headAgentProbes respond (cached)');
+      return respond(contentMD5);
+    }
+    return null;
+  })();
 
-  findProbes(req._app, field, uuid, req.log, function (err, probes) {
+  return findProbes(req._app, field, uuid, req.log, function (err, probes) {
     if (err) {
       req.log.error(err, 'error getting probes for %s "%s"', field, uuid);
       return next(new restify.InternalError());
