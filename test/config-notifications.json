@@ -1,4 +1,5 @@
 {
+  "datacenterName": "testdc",
   "notificationPlugins": {
     "sms": {
       "path": "../master/lib/notifications/twilio",

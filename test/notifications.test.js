@@ -38,7 +38,8 @@ test('setup', function(t) {
       Object.keys(config.notificationPlugins || {}).forEach(function (name) {
         var plugin = config.notificationPlugins[name];
         var NotificationType = require(plugin.path);
-        notificationPlugins[name] = new NotificationType(log, plugin.config);
+        notificationPlugins[name] = new NotificationType(
+          log, plugin.config, config.datacenterName);
       });
     }
     twilio = notificationPlugins.sms;
