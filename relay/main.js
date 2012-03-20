@@ -293,7 +293,7 @@ function updateZoneApps(next) {
   // to be the global zone).
   if (!config.allZones) {
     if (! zoneApps['global']) {
-      (function() {
+      (function () {
         var app = createGlobalZoneApp();
         zoneApps['global'] = app;
         startApp(app);
@@ -304,7 +304,7 @@ function updateZoneApps(next) {
 
   var existingZonenames = Object.keys(zoneApps);
   var existingZonenamesMap = {};
-  (function() {
+  (function () {
     for (var i = 0; i < existingZonenames.length; i++) {
       existingZonenamesMap[existingZonenames[i]] = true;
     }
@@ -336,7 +336,7 @@ function updateZoneApps(next) {
 
   // Remove obsolete `zoneApps` entries.
   var obsoleteZonenames = Object.keys(existingZonenamesMap);
-  (function() {
+  (function () {
     for (var i = 0; i < obsoleteZonenames.length; i++) {
       var zonename = obsoleteZonenames[i];
       var app = zoneApps[zonename];
@@ -385,7 +385,7 @@ function updateAgentProbes(next) {
     log.debug('updateAgentProbes');
     return masterClient.agentProbesMD5(app.targetType,
                                        app.targetUuid,
-                                       function(err, masterMD5) {
+                                       function (err, masterMD5) {
       if (err) {
         logger.warn('Error getting master agent probes MD5: %s', err);
         return nextOne();
@@ -398,17 +398,20 @@ function updateAgentProbes(next) {
         return nextOne();
       }
       return masterClient.agentProbes(app.targetType, app.targetUuid,
-                                      function(probeErr, agentProbes, probeMasterMD5) {
+                                      function (probeErr,
+                                                agentProbes,
+                                                probeMasterMD5) {
         if (probeErr || !agentProbes || !probeMasterMD5) {
-          logger.warn(probeErr, 'Error getting agent probes from master (%s=%s)',
-            app.targetType, app.targetUuid);
+          logger.warn(probeErr,
+                      'Error getting agent probes from master (%s=%s)',
+                      app.targetType, app.targetUuid);
           return nextOne();
         }
         logger.trace({agentProbes: agentProbes},
           'Retrieved agent probes from master');
 
         return app.writeAgentProbes(agentProbes, masterMD5,
-                                    function(writeErr, isGlobalChange) {
+                                    function (writeErr, isGlobalChange) {
           if (writeErr) {
             logger.error(writeErr, 'unable to save new agent probes');
           } else {
@@ -416,7 +419,7 @@ function updateAgentProbes(next) {
               zoneApps['global'].cacheInvalidateDownstream();
             }
             logger.info('Successfully updated agent probes from master '
-              + '(md5: %s -> %s).', currMD5 || "(none)", masterMD5);
+              + '(md5: %s -> %s).', currMD5 || '(none)', masterMD5);
           }
           return nextOne();
         });
@@ -425,11 +428,10 @@ function updateAgentProbes(next) {
   }
 
   var zonenames = Object.keys(zoneApps);
-  log.info("Checking for agent probe updates (%d zones).", zonenames.length);
+  log.info('Checking for agent probe updates (%d zones).', zonenames.length);
   async.forEachSeries(zonenames, updateForOneZone, function (err) {
     return (next && next());
   });
-  return;
 }
 
 
@@ -563,7 +565,7 @@ function main() {
       log.error(err);
       process.exit(2);
     }
-    log.info("startup complete");
+    log.info('startup complete');
   });
 }
 
