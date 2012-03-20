@@ -46,7 +46,7 @@ function ping(req, res, next) {
   if (req.params.error !== undefined) {
     var restCode = req.params.error || 'InternalError';
     if (restCode.slice(-5) !== 'Error') {
-      restCode += 'Error'
+      restCode += 'Error';
     }
     var err = new restify[restCode]('pong');
     res.send(err);
@@ -55,20 +55,22 @@ function ping(req, res, next) {
       ping: 'pong',
       pid: process.pid  // used by test suite
     };
-    req._app.getRedisClient().info(function (err, info) {
-      if (err) {
-        data.redisErr = err;
+    req._app.getRedisClient().info(function (infoErr, info) {
+      if (infoErr) {
+        data.redisErr = infoErr;
       } else {
         data.redis = info.match(/^redis_version:(.*?)$/m)[1];
       }
       res.send(200, data);
+      return;
     });
   }
-  return next();
+  next();
+  return;
 }
 
 function getUser(req, res, next) {
-  user = req._user;
+  var user = req._user;
   var data = {
     login: user.login,
     email: user.email,
@@ -89,19 +91,25 @@ function getUser(req, res, next) {
  * From Isaac's rimraf.js.
  */
 function asyncForEach(list, fn, cb) {
-  if (!list.length) cb()
-  var c = list.length
-    , errState = null
-  list.forEach(function (item, i, list) {
-   fn(item, function (er) {
-      if (errState)
-        return
-      if (er)
-        return cb(errState = er)
-      if (-- c === 0)
-        return cb()
-    })
-  })
+  if (!list.length) {
+    return cb();
+  }
+  var c = list.length, errState = null;
+  return list.forEach(function (item, i, lst) {
+    return fn(item, function (er) {
+      if (errState) {
+        return errState;
+      }
+      if (er) {
+        return cb(errState = er);
+      }
+      if (-- c === 0) {
+        return cb();
+      }
+
+      return true;
+    });
+  });
 }
 /* END JSSTYLED */
 
@@ -143,8 +151,8 @@ function createApp(config, log, callback) {
     var app;
     try {
       app = new App(config, ufds, mapi, log);
-    } catch (err) {
-      return callback(err);
+    } catch (e) {
+      return callback(e);
     }
     return callback(null, app);
   });
@@ -209,7 +217,7 @@ function App(config, ufds, mapi, log) {
     // This is unbounded in size because (a) the data stored is small and (b)
     // we expect `headAgentProbes` calls for *all* machines (the key) regularly
     // so an LRU-cache is pointless.
-    headAgentProbes: new Cache({size:100, expiry:300000, log:log, name:'headAgentProbes'}),
+    headAgentProbes: new Cache({size:100, expiry:300000, log:log, name:'headAgentProbes'})
   };
 
   var server = this.server = restify.createServer({
@@ -236,6 +244,7 @@ function App(config, ufds, mapi, log) {
     // Handle ':user' in route: add `req._user` or respond with
     // appropriate error.
     var userId = req.params.user;
+
     if (userId) {
       self.userFromId(userId, function (err, user) {
         if (err) {
@@ -250,16 +259,18 @@ function App(config, ufds, mapi, log) {
         return next();
       });
     } else {
-      return next();
+      next();
     }
-  };
+    return;
+  }
+
   server.use(setup);
 
   server.get({path: '/ping', name: 'Ping'}, ping);
   // Debugging:
   // XXX Conform with Dap's spec and document this.
   server.get('/state', function (req, res, next) {
-    res.send(self.getStateSnapshot())
+    res.send(self.getStateSnapshot());
     next();
   });
 
@@ -296,7 +307,8 @@ function App(config, ufds, mapi, log) {
     agentprobes.headAgentProbes);
 
   server.post({path: '/events', name: 'AddEvents'}, events.addEvents);
-};
+  return server;
+}
 
 
 /**
@@ -361,7 +373,8 @@ App.prototype.quitRedisClient = function () {
     this._redisClient.quit();
     this._redisClient = null;
   }
-}
+  return;
+};
 
 
 /**
@@ -379,24 +392,29 @@ App.prototype.listen = function (callback) {
 
 
 App.prototype.cacheGet = function (scope, key) {
-  if (! this._ufdsCaching)
-    return;
+  if (! this._ufdsCaching) {
+    return null;
+  }
   var hit = this._cacheFromScope[scope].get(key);
   //this.log.trace('App.cacheGet scope="%s" key="%s": %s', scope, key,
   //  (hit ? 'hit' : "miss"));
-  return hit
-}
+  return hit;
+};
+
+
 App.prototype.cacheSet = function (scope, key, value) {
   if (! this._ufdsCaching)
     return;
   //this.log.trace('App.cacheSet scope="%s" key="%s"', scope, key);
   this._cacheFromScope[scope].set(key, value);
-}
+};
+
+
 App.prototype.cacheDel = function (scope, key) {
   if (! this._ufdsCaching)
     return;
   this._cacheFromScope[scope].del(key);
-}
+};
 
 /**
  * Invalidate caches as appropriate for the given DB object create/update.
@@ -414,7 +432,7 @@ App.prototype.cacheInvalidatePut = function (modelName, item) {
   // Reset the '${modelName}List' cache.
   // Note: This could be improved by only invalidating the item for this
   // specific user. We are being lazy for starters here.
-  var scope = modelName + 'List'
+  var scope = modelName + 'List';
   this._cacheFromScope[scope].reset();
 
   // Delete the '${modelName}Get' cache item with this dn (possible because
@@ -428,7 +446,8 @@ App.prototype.cacheInvalidatePut = function (modelName, item) {
       : 'server:'+item.server);
     this._cacheFromScope.headAgentProbes.del(cacheKey);
   }
-}
+};
+
 
 /**
  * Invalidate caches as appropriate for the given DB object delete.
@@ -459,7 +478,7 @@ App.prototype.cacheInvalidateDelete = function (modelName, item) {
       : 'server:'+item.server);
     this._cacheFromScope.headAgentProbes.del(cacheKey);
   }
-}
+};
 
 
 /**
@@ -471,7 +490,7 @@ App.prototype.getStateSnapshot = function () {
     cache: {
       user: this.userCache.dump(),
       isOperator: this.isOperatorCache.dump(),
-      mapiServers: this.mapiServersCache.dump(),
+      mapiServers: this.mapiServersCache.dump()
     },
     log: { level: this.log.level() }
   };
@@ -481,7 +500,7 @@ App.prototype.getStateSnapshot = function () {
   });
 
   return snapshot;
-}
+};
 
 /**
  * Facilitate getting user info (and caching it) from a login/username.
@@ -497,20 +516,25 @@ App.prototype.userFromId = function (userId, callback) {
   // Validate args.
   if (!userId) {
     log.error('userFromId: "userId" is required');
-    return callback(new restify.InternalError());
+    callback(new restify.InternalError());
+    return;
   }
   if (!callback || typeof (callback) !== 'function') {
     log.error('userFromId: "callback" must be a function: %s',
       typeof (callback));
-    return callback(new restify.InternalError());
+    callback(new restify.InternalError());
+    return;
   }
 
   // Check cache. 'cached' is `{err: <error>, user: <user>}`.
   var cached = this.userCache.get(userId);
   if (cached) {
-    if (cached.err)
-      return callback(cached.err);
-    return callback(null, cached.user);
+    if (cached.err) {
+      callback(cached.err);
+      return;
+    }
+    callback(null, cached.user);
+    return;
   }
 
   // UUID or login?
@@ -520,8 +544,9 @@ App.prototype.userFromId = function (userId, callback) {
   } else if (VALID_LOGIN_CHARS.test(login)) {
     login = userId;
   } else {
-    return callback(new restify.InvalidArgumentError(
+    callback(new restify.InvalidArgumentError(
       format('user id is not a valid UUID or login: "%s"', userId)));
+    return;
   }
 
   var self = this;
@@ -534,7 +559,8 @@ App.prototype.userFromId = function (userId, callback) {
     } else {
       self.userCache.set(userId, obj);
     }
-    return callback(err, user);
+    callback(err, user);
+    return;
   }
 
   // Look up the user, cache the result and return.
@@ -544,10 +570,12 @@ App.prototype.userFromId = function (userId, callback) {
       : '(&(login=' + login + ')(objectclass=sdcperson))'),
     scope: 'one'
   };
-  log.trace('search for user: ldap filter: %s', searchOpts.filter)
-  this.ufds.search('ou=users, o=smartdc', searchOpts, function (err, result) {
-    if (err)
-      return cacheAndCallback(err);
+  log.trace('search for user: ldap filter: %s', searchOpts.filter);
+  this.ufds.search('ou=users, o=smartdc', searchOpts, function (sErr, result) {
+    if (sErr) {
+      cacheAndCallback(sErr);
+      return;
+    }
 
     var users = [];
     result.on('searchEntry', function (entry) {
@@ -558,29 +586,33 @@ App.prototype.userFromId = function (userId, callback) {
       // `err` is an ldapjs error (<http://ldapjs.org/errors.html>) which is
       // currently compatible enough so that we don't bother wrapping it in
       // a `restify.RESTError`. (TODO: verify that)
-      return cacheAndCallback(err);
+      cacheAndCallback(err);
+      return;
     });
 
-    result.on('end', function (result) {
-      if (result.status !== 0) {
-        return cacheAndCallback('non-zero status from LDAP search: '+result);
+    result.on('end', function (res) {
+      if (res.status !== 0) {
+        cacheAndCallback('non-zero status from LDAP search: ' + res);
+        return;
       }
       switch (users.length) {
       case 0:
-        return cacheAndCallback(null, null);
-        break;
+        cacheAndCallback(null, null);
+        return;
       case 1:
-        return cacheAndCallback(null, users[0]);
-        break;
+        cacheAndCallback(null, users[0]);
+        return;
       default:
         log.error({searchOpts: searchOpts, users: users},
           'unexpected number of users (%d) matching user id "%s"',
           users.length, userId);
-        return cacheAndCallback(new restify.InternalError(
+        cacheAndCallback(new restify.InternalError(
           format('error determining user for "%s"', userId)));
+          return;
       }
     });
   });
+  return;
 };
 
 
@@ -624,13 +656,14 @@ App.prototype.isOperator = function (userUuid, callback) {
   };
   log.trace('search if user is operator: search opts: %s',
     JSON.stringify(searchOpts));
-  this.ufds.search(base, searchOpts, function (err, result) {
-    if (err)
-      return callback(err);
+  this.ufds.search(base, searchOpts, function (searchErr, result) {
+    if (searchErr) {
+      return callback(searchErr);
+    }
 
     var entries = [];
     result.on('searchEntry', function (entry) {
-      entries.push(entry.object);
+      return entries.push(entry.object);
     });
 
     result.on('error', function (err) {
@@ -640,17 +673,19 @@ App.prototype.isOperator = function (userUuid, callback) {
       return callback(err);
     });
 
-    result.on('end', function (result) {
-      if (result.status !== 0) {
+    result.on('end', function (res) {
+      if (res.status !== 0) {
         //XXX restify this error
-        return callback('non-zero status from LDAP search: '+result);
+        return callback('non-zero status from LDAP search: '+res);
       }
       var isOperator = (entries.length > 0);
       self.isOperatorCache.set(userUuid, {isOperator: isOperator});
       return callback(null, isOperator);
     });
+    return true;
   });
-}
+  return true;
+};
 
 /**
  * Does the given server UUID exist (in MAPI).
@@ -679,8 +714,9 @@ App.prototype.serverExists = function (serverUuid, callback) {
 
   // Look up the user, cache the result and return.
   var self = this;
-  this.mapi.listServers(function (err, servers) {
+  return this.mapi.listServers(function (err, servers) {
     if (err) {
+      log.fatal(format('Failed to call mapi.listServers (%s)', err));
       return callback(err);
     }
     var serverMap = {};
@@ -688,9 +724,9 @@ App.prototype.serverExists = function (serverUuid, callback) {
       serverMap[servers[i].uuid] = true;
     }
     self.mapiServersCache.set('servers', serverMap);
-    callback(null, (serverMap[serverUuid] !== undefined));
+    return callback(null, (serverMap[serverUuid] !== undefined));
   });
-}
+};
 
 
 /**
@@ -710,9 +746,9 @@ App.prototype.processEvent = function (event, callback) {
   log.debug({event: event}, 'App.processEvent');
 
   if (event.type === 'probe') {
-    /* pass */
+    /*jsl:pass*/
   } else if (event.type === 'monitor') {
-    /* pass */
+    /*jsl:pass*/
   } else {
     return callback(new restify.InternalError(
       format('unknown event type: "%s"', event.type)));
@@ -724,25 +760,27 @@ App.prototype.processEvent = function (event, callback) {
       return callback(err);
     } else if (! user) {
       return callback(new restify.InvalidArgumentError(
-        format('no such user: "%s"', userId)));
+        format('no such user: "%s"', event.user)));
     }
     info.user = user;
-    Monitor.get(self, event.user, event.monitor, function (err, monitor) {
-      if (err) {
-        return callback(err);
+    return Monitor.get(self, event.user, event.monitor, 
+                       function (getErr, monitor) {
+      if (getErr) {
+        return callback(getErr);
       }
       info.monitor = monitor;
-      self.getOrCreateAlarm(info, function (err, alarm) {
-        if (err) {
-          return callback(err);
+      return self.getOrCreateAlarm(info, function (getOrCreateErr, alarm) {
+        if (getOrCreateErr) {
+          return callback(getOrCreateErr);
         }
         info.alarm = alarm;
-        alarm.handleEvent(self, info, function (err) {
-          return callback(err);
+        return alarm.handleEvent(self, info, function (evtErr) {
+          return callback(evtErr);
         });
       });
     });
   });
+  return true;
 };
 
 
@@ -762,7 +800,7 @@ App.prototype.getOrCreateAlarm = function (options, callback) {
   var log = this.log;
 
   // Get all open alarms for this user/monitor.
-  log.debug('getOrCreateAlarm: get candidate related alarms')
+  log.debug('getOrCreateAlarm: get candidate related alarms');
   Alarm.filter(
     self,
     {
@@ -771,24 +809,31 @@ App.prototype.getOrCreateAlarm = function (options, callback) {
       closed: false
     },
     function (err, candidateAlarms) {
-      if (err) return callback(err);
+      if (err) {
+        return callback(err);
+      }
+
       if (candidateAlarms.length === 0) {
         log.debug({user: options.user.uuid},
           'no candidate related alarms: create a new alarm');
         return self.createAlarm(options, callback);
       }
-      self.chooseRelatedAlarm(candidateAlarms, options, function (err, alarm) {
-        if (err) {
-          callback(err);
+      self.chooseRelatedAlarm(candidateAlarms, options, 
+                              function (chooseErr, alarm) {
+        if (chooseErr) {
+          callback(chooseErr);
         } else if (alarm) {
           callback(null, alarm);
         } else {
           self.createAlarm(options, callback);
         }
       });
+      return true;
     }
   );
-}
+
+  return true;
+};
 
 
 /**
@@ -815,14 +860,16 @@ App.prototype.chooseRelatedAlarm = function (candidateAlarms, options, callback)
   candidateAlarms.sort(
     // Sort the latest 'timeLastEvent' first (alarms with no 'timeLastEvent'
     // field sort to the end).
-    function (a, b) { return b.timeLastEvent - a.timeLastEvent; });
+    function (x, y) { return x.timeLastEvent - y.timeLastEvent; });
   var a = candidateAlarms[0];
+
   if (a.timeLastEvent && (options.event.time - a.timeLastEvent) < ONE_HOUR) {
-    this.log.debug({alarm: a}, 'related alarm')
+    this.log.debug({alarm: a}, 'related alarm');
     return callback(null, a);
   }
+
   return callback(null, null);
-}
+};
 
 
 /**
@@ -851,7 +898,7 @@ App.prototype.createAlarm = function (options, callback) {
       callback(null, alarm);
     }
   });
-}
+};
 
 
 
@@ -883,7 +930,7 @@ App.prototype.notificationTypeFromMedium = function (medium) {
     + 'for "%s" medium.', medium);
   throw new restify.InvalidArgumentError(
     format('Invalid or unsupported contact medium "%s".', medium));
-}
+};
 
 
 /**
@@ -900,9 +947,9 @@ App.prototype.notificationTypeFromMedium = function (medium) {
  */
 App.prototype.alarmConfig = function (userId, msg, callback) {
   var log = this.log;
-  log.error('TODO: implement App.alarmConfig')
-  callback();
-}
+  log.error('TODO: implement App.alarmConfig');
+  return callback();
+};
 
 
 /**
@@ -922,11 +969,13 @@ App.prototype.notifyContact = function (alarm, user, monitor, contact, event,
   var log = this.log;
   var plugin = this.notificationPlugins[contact.notificationType];
   if (!plugin) {
-    return callback(new Error(format('notification plugin "%s" not found',
-      contact.notificationType)));
+    var msg = format('notification plugin "%s" not found', contact.notificationType);
+    log.fatal(msg);
+    return callback(new Error(msg));
   }
   plugin.notify(alarm, user, contact.address, event, callback);
-}
+  return true;
+};
 
 
 /**
@@ -935,7 +984,7 @@ App.prototype.notifyContact = function (alarm, user, monitor, contact, event,
  * @param {Function} callback called when closed. Takes no arguments.
  */
 App.prototype.close = function (callback) {
-  var log = this.log;
+  // var log = this.log;
   var self = this;
   this.server.on('close', function () {
     self.quitRedisClient();
