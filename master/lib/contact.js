@@ -58,7 +58,7 @@ var restify = require('restify');
  * @param address {String} The UFDS sdcPerson field *value*.
  */
 function Contact(scope, medium, notificationType, address) {
-  this.scope = scope
+  this.scope = scope;
   this.medium = medium;
   this.notificationType = notificationType;
   this.address = address;
@@ -90,7 +90,7 @@ Contact.parseUrn = function (app, urn) {
     medium: medium,
     notificationType: app.notificationTypeFromMedium(medium)
   };
-}
+};
 
 
 /**
@@ -111,10 +111,10 @@ Contact.create = function (app, user, urn) {
   var address = user[bits.medium];
   return new Contact(bits.scope, bits.medium, bits.notificationType,
     address);
-}
+};
 
 
 
 //---- exports
 
-module.exports = Contact
+module.exports = Contact;
