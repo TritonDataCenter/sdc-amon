@@ -59,13 +59,13 @@ function Probe(app, data) {
     this.dn = data.dn;
     raw = objCopy(data);
     delete raw.dn;
-    var parsed = Probe.parseDn(data.dn)
+    var parsed = Probe.parseDn(data.dn);
     this.user = parsed.user;
     this.monitor = parsed.monitor;
   } else {
-    assert.ok(data.name)
-    assert.ok(data.monitor)
-    assert.ok(data.user)
+    assert.ok(data.name);
+    assert.ok(data.monitor);
+    assert.ok(data.user);
     this.dn = Probe.dn(data.user, data.monitor, data.name);
     raw = {
       amonprobe: data.name,
@@ -118,11 +118,13 @@ Probe.parseDn = function (dn) {
     monitor: parsed.rdns[1].amonmonitor,
     name: parsed.rdns[0].amonprobe
   };
-}
+};
+
 Probe.dn = function (user, monitor, name) {
   return format("amonprobe=%s, amonmonitor=%s, uuid=%s, ou=users, o=smartdc",
     name, monitor, user);
-}
+};
+
 Probe.dnFromRequest = function (req) {
   var monitorName = req.params.monitor;
   Monitor.validateName(monitorName);
@@ -159,7 +161,7 @@ Probe.prototype.serialize = function serialize(priv) {
     if (this.global) data.global = this.global;
   }
   return data;
-}
+};
 
 
 /**
@@ -191,27 +193,29 @@ Probe.prototype.authorizePut = function (app, callback) {
       next("not runInGlobal: " + self.type);
     }
   }
+
   function isExistingMachineOrErr(next) {
     app.mapi.getMachine('', self.machine, function (err, machine) {
       if (err && err.code !== 'ResourceNotFound') {
-        log.error(err, 'unexpected error getting machine')
+        log.error(err, 'unexpected error getting machine');
       }
       if (machine) {
-        next()
+        next();
       } else {
         next("no such machine: " + self.machine);
       }
     });
   }
+
   function userIsOperatorOrErr(next) {
     app.isOperator(self.user, function (err, isOperator) {
       if (err) {
         log.error("unexpected error authorizing probe put: "
           + "probe=%s, error=%s", JSON.stringify(self.serialize()),
           err.stack || err);
-        next('err determining if operator')
+        next('err determining if operator');
       } else if (isOperator) {
-        next()
+        next();
       } else {
         next("not operator: " + self.user);
       }
@@ -256,26 +260,30 @@ Probe.prototype.authorizePut = function (app, callback) {
         log.error("unexpected error authorizing probe put: "
           + "probe=%s, error=%s", JSON.stringify(self.serialize()),
           err.stack || err);
-        return callback(new restify.InternalError(
+        callback(new restify.InternalError(
           "Internal error authorizing probe put."));
+        return;
       }
       if (!isOperator) {
-        return callback(new restify.InvalidArgumentError(format(
+        callback(new restify.InvalidArgumentError(format(
           "Must be operator put a probe on a server (server=%s): "
           + "user '%s' is not an operator.", self.server, self.user)));
+        return;
       }
 
       // Server must exist.
-      app.serverExists(self.server, function (err, serverExists) {
+      app.serverExists(self.server, function ($err, serverExists) {
         if (err) {
-          log.error({err: err, probe: self.serialize()},
+          log.error({err: $err, probe: self.serialize()},
             "unexpected error authorizing probe put against MAPI");
-          return callback(new restify.InternalError(
+          callback(new restify.InternalError(
             "Internal error authorizing probe put."));
+          return;
         }
         if (!serverExists) {
-          return callback(new restify.InvalidArgumentError(format(
+          callback(new restify.InvalidArgumentError(format(
             "'server', %s, is invalid: no such server", self.server)));
+          return;
         }
         callback();
       });
@@ -284,7 +292,7 @@ Probe.prototype.authorizePut = function (app, callback) {
     log.error("Attempting to authorize PUT on an invalid probe: "
       + "no 'machine' or 'server' value: %s",
       JSON.stringify(this.serialize()));
-    return callback(new restify.InternalError(
+    callback(new restify.InternalError(
       "Internal error authorizing probe put."));
   }
 };
@@ -313,7 +321,7 @@ Probe.get = function get(app, user, monitor, name, callback) {
   Monitor.validateName(monitor);
   var dn = Probe.dn(user, monitor, name);
   ufdsmodel.modelGet(app, Probe, dn, app.log, callback);
-}
+};
 
 
 /**
@@ -329,8 +337,8 @@ Probe.validate = function validate(app, raw) {
   var requiredFields = {
     // <raw field name>: <exported name>
     "amonprobe": "name",
-    "type": "type",
-  }
+    "type": "type"
+  };
   Object.keys(requiredFields).forEach(function (field) {
     if (!raw[field]) {
       //TODO: This error response is confusing for, e.g., a
@@ -380,7 +388,7 @@ Probe.validate = function validate(app, raw) {
         format('probe config, %s, is invalid: %s', raw.config, err));
     }
     try {
-      ProbeType.validateConfig(config)
+      ProbeType.validateConfig(config);
     } catch (err) {
       throw new restify.InvalidArgumentError(
         format('probe config, %s, is invalid: "%s"', raw.config, err.message));
@@ -391,7 +399,7 @@ Probe.validate = function validate(app, raw) {
   }
 
   return raw;
-}
+};
 
 /**
  * Validate the given name.
@@ -404,7 +412,7 @@ Probe.validateName = function validateName(name) {
     throw new restify.InvalidArgumentError(
       format("%s name is invalid: '%s'", Probe.name, name));
   }
-}
+};
 
 // Note: Should be in sync with "ufds/schema/amonprobe.js".
 Probe._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,31}$/;
