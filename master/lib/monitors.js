@@ -55,8 +55,8 @@ function Monitor(app, data) {
     delete raw.dn;
     this.user = Monitor.parseDn(data.dn).user;
   } else {
-    assert.ok(data.name)
-    assert.ok(data.user)
+    assert.ok(data.name);
+    assert.ok(data.user);
     this.dn = Monitor.dn(data.user, data.name);
     raw = {
       amonmonitor: data.name,
@@ -86,16 +86,21 @@ Monitor.parseDn = function (dn) {
     user: parsed.rdns[1].uuid,
     name: parsed.rdns[0].amonmonitor
   };
-}
+};
+
+
 Monitor.dn = function (user, name) {
-  return format('amonmonitor=%s, uuid=%s, ou=users, o=smartdc',
-    name, user);
-}
+  return format('amonmonitor=%s, uuid=%s, ou=users, o=smartdc', name, user);
+};
+
+
 Monitor.dnFromRequest = function (req) {
   var name = req.params.name;
   Monitor.validateName(name);
   return Monitor.dn(req._user.uuid, name);
 };
+
+
 Monitor.parentDnFromRequest = function (req) {
   return req._user.dn;
 };
@@ -111,7 +116,7 @@ Monitor.prototype.serialize = function serialize() {
     name: this.name,
     contacts: this.contacts
   };
-}
+};
 
 Monitor.prototype.authorizePut = function (app, callback) {
   callback();
@@ -134,7 +139,7 @@ Monitor.get = function get(app, user, name, callback) {
   Monitor.validateName(name);
   var dn = Monitor.dn(user, name);
   ufdsmodel.modelGet(app, Monitor, dn, app.log, callback);
-}
+};
 
 
 /**
@@ -150,8 +155,8 @@ Monitor.validate = function validate(app, raw) {
   var requiredFields = {
     // <raw field name>: <exported name>
     'amonmonitor': 'name',
-    'contact': 'contacts',
-  }
+    'contact': 'contacts'
+  };
   Object.keys(requiredFields).forEach(function (field) {
     if (!raw[field]) {
       throw new restify.MissingParameterError(
@@ -167,7 +172,7 @@ Monitor.validate = function validate(app, raw) {
   });
 
   return raw;
-}
+};
 
 
 /**
@@ -181,7 +186,7 @@ Monitor.validateName = function validateName(name) {
     throw new restify.InvalidArgumentError(
       format('%s name is invalid: "%s"', Monitor.name, name));
   }
-}
+};
 
 // Note: Should be in sync with 'ufds/schema/amonmonitor.js'.
 Monitor._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,31}$/;
@@ -209,8 +214,9 @@ module.exports = {
     var userUuid = req._user.uuid;
     var monitorName = req.params.name;
     Monitor.get(req._app, userUuid, monitorName, function (err, monitor) {
-      if (err)
+      if (err) {
         return next(err);
+      }
       var testEvent = {
         v: 1,  //XXX constant for this
         type: 'monitor',
@@ -218,19 +224,21 @@ module.exports = {
         monitor: monitor.name,
         time: Date.now(),
         data:{
-          message: "Test notification.",
+          message: "Test notification."
         },
         uuid: uuid()
       };
-      req._app.processEvent(testEvent, function (err) {
-        if (err) {
-          req.log.error(err, 'error processing test event');
+      req._app.processEvent(testEvent, function (processErr) {
+        if (processErr) {
+          req.log.error(processErr, 'error processing test event');
           res.send(new restify.InternalError());
         } else {
           res.send({success: true});
         }
-        next();
+        return next();
       });
+      return true;
     });
+    return true;
   }
 };
