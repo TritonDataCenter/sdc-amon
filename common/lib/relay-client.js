@@ -42,7 +42,7 @@ function RelayClient(options) {
   this._baseRequestOpts = {
     headers: {
       'Accept': 'application/json',
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/json'
     }
   };
   if (parsed.hostname && parsed.protocol) {
@@ -177,7 +177,7 @@ RelayClient.prototype.sendEvent = function(event, callback) {
     } else {
       return callback();
     }
-  };
+  }
 
   var req = this._request('POST', '/events', onComplete);
   req.write(JSON.stringify(event));
@@ -199,7 +199,7 @@ RelayClient.prototype._request = function(method, path, callback) {
   var options = {};
   Object.keys(this._baseRequestOpts).forEach(function (k) {
     options[k] = self._baseRequestOpts[k];
-  })
+  });
   options.method = method;
   options.path = path;
 
