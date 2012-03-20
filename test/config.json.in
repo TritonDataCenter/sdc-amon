@@ -9,12 +9,13 @@
   "mapi": {
     "url": "http://10.99.99.8:80",
     "username": "admin",
-    "password": "TODO:PASSWORD"
+    "password": "MAPI_PASSWORD"
   },
   "redis": {
     "host": "10.99.99.22",
     "port": "6379"
   },
+  "datacenterName": "DATACENTER_NAME",
   "notificationPlugins": {
     "email": {
       "path": "./notifications/testy",

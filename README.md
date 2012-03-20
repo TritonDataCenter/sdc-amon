@@ -415,7 +415,7 @@ The test suite is in the 'test' directory.
 First, create the test configuration:
 
     cd test && cp config.json.in config.json
-    vi config.json   # enter mapi password
+    vi config.json   # enter MAPI_PASSWORD and DATACENTER_NAME
 
 Default config notes:
 
