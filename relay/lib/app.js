@@ -89,7 +89,7 @@ function md5FromDataSync(data) {
  * @param {Object} options The usual.
  *
  */
-var App = function App(options) {
+function App(options) {
   if (!options) throw TypeError('options is required');
   if (!options.log) throw TypeError('options.log is required');
   if (!options.socket) throw TypeError('options.socket is required');
@@ -141,7 +141,7 @@ var App = function App(options) {
     req._app = self;
     req._masterClient = self.masterClient;
     return next();
-  };
+  }
   server.use(setup);
 
   // Routes.
@@ -151,7 +151,7 @@ var App = function App(options) {
     agentprobes.listAgentProbes);
   this.server.post({path: '/events', name: 'PutEvents'},
     events.putEvents);
-};
+}
 
 
 /**
@@ -178,7 +178,7 @@ App.prototype.sendOperatorEvent = function (msg, details, callback) {
     }
   };
   this.masterClient.sendEvent(event, callback);
-}
+};
 
 
 /**
@@ -284,7 +284,7 @@ App.prototype.start = function(callback) {
     createSocket
   ], function (err) {
     if (err) {
-      var msg = 'error starting relay'
+      var msg = 'error starting relay';
       log.error({err: err, zonename: zonename}, msg);
       return self.sendOperatorEvent(msg, {zonename: zonename}, callback);
     } else {
@@ -322,7 +322,7 @@ App.prototype.cacheInvalidateDownstream = function () {
   this.log.trace('cacheInvalidateDownstream');
   this.downstreamAgentProbesMD5 = null;
   this.downstreamAgentProbes = null;
-}
+};
 
 
 /**
@@ -347,7 +347,7 @@ App.prototype.getDownstreamAgentProbesMD5 = function(callback) {
     self.log.trace({md5: md5}, 'getDownstreamAgentProbesMD5');
     callback(null, md5);
   });
-}
+};
 
 
 /**
@@ -392,8 +392,8 @@ App.prototype.getDownstreamAgentProbes = function(callback) {
         var data;
         try {
           data = JSON.parse(content);
-        } catch (err) {
-          log.warn({err: err, path: filePath}, 'err parsing db file');
+        } catch (e) {
+          log.warn({err: e, path: filePath}, 'err parsing db file');
           return next();
         }
         agentProbes = agentProbes.concat(data);
@@ -402,7 +402,7 @@ App.prototype.getDownstreamAgentProbes = function(callback) {
     },
     function (err) {
       if (err) {
-        callback(err)
+        callback(err);
       } else {
         agentProbes.sort(compareProbes);  // Stable order for Content-MD5.
         self.downstreamAgentProbes = agentProbes;
@@ -411,7 +411,7 @@ App.prototype.getDownstreamAgentProbes = function(callback) {
       }
     }
   );
-}
+};
 
 
 
@@ -440,11 +440,11 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
   var localAgentProbes = [];
   var globalAgentProbes = [];
   for (var i = 0; i < agentProbes.length; i++) {
-    var p = agentProbes[i];
-    if (p.global) {
-      globalAgentProbes.push(p);
+    var probe = agentProbes[i];
+    if (probe.global) {
+      globalAgentProbes.push(probe);
     } else {
-      localAgentProbes.push(p);
+      localAgentProbes.push(probe);
     }
   }
 
