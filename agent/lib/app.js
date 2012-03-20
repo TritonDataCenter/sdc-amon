@@ -27,16 +27,16 @@ var ZoneEventWatcher = require('./zoneeventwatcher');
  * From Isaac's rimraf.js.
  */
 function asyncForEach(list, fn, cb) {
-  if (!list.length) cb()
+  if (!list.length) cb();
   var c = list.length
-    , errState = null
-  list.forEach(function (item, i, list) {
+    , errState = null;
+  list.forEach(function (item, i, lst) {
    fn(item, function (er) {
-      if (errState) return
-      if (er) return cb(errState = er)
-      if (-- c === 0) return cb()
-    })
-  })
+      if (errState) return;
+      if (er) return cb(errState = er);
+      if (-- c === 0) return cb();
+    });
+  });
 }
 /* END JSSTYLED */
 
@@ -142,8 +142,8 @@ function App(options) {
 
   var self = this;
   self.on('newListener', function (event, listener) {
-    self.log.debug({event: event}, 'newListener')
-  })
+    self.log.debug({event: event}, 'newListener');
+  });
 }
 util.inherits(App, process.EventEmitter);
 
@@ -156,11 +156,12 @@ util.inherits(App, process.EventEmitter);
 App.prototype.start = function(callback) {
   var self = this;
   this.loadProbeDataCacheSync();
-  this.updaterInterval = setInterval(function () { self.updateProbes() },
-    this.config.poll * 1000);
+  this.updaterInterval = setInterval(function () { 
+    self.updateProbes();
+  }, this.config.poll * 1000);
   self.updateProbes(true);
   callback(null);
-}
+};
 
 
 /**
@@ -178,7 +179,7 @@ App.prototype.stop = function(callback) {
     this.zwatcher = null;
   }
   callback(null);
-}
+};
 
 
 /**
@@ -206,7 +207,7 @@ App.prototype.loadProbeDataCacheSync = function () {
       this.probeDataCacheMD5 = null;
     }
   }
-}
+};
 
 /**
  * Update probe info from relay (if any) and do necessary update of live
@@ -220,9 +221,9 @@ App.prototype.updateProbes = function updateProbes(force) {
   log.trace('updateProbes entered');
 
   // 1. Get probe data from relay (may be cached).
-  self.getProbeData(force, function (err, probeData) {
-    if (err) {
-      log.warn(err,
+  self.getProbeData(force, function (errGetProbeData, probeData) {
+    if (errGetProbeData) {
+      log.warn(errGetProbeData,
         'error getting probe data (continuing, presuming no probes)');
       if (!probeData) {
         probeData = [];
@@ -256,7 +257,7 @@ App.prototype.updateProbes = function updateProbes(force) {
         }
       }
     });
-    log.trace({todos: todos}, 'update probes: todos')
+    log.trace({todos: todos}, 'update probes: todos');
 
     // 4. Handle each of those todos and log when finished. `probeFromId`
     //    global is updated here.
@@ -265,7 +266,8 @@ App.prototype.updateProbes = function updateProbes(force) {
       deleted: 0,
       updated: 0,
       errors: 0
-    }
+    };
+
     function handleProbeTodo(todo, cb) {
       var action = todo[0];
       var id = todo[1];
@@ -289,41 +291,55 @@ App.prototype.updateProbes = function updateProbes(force) {
         break;
 
       case 'delete':
-        var probe = self.probeFromId[id];
-        var isProbeError = (probe instanceof ProbeError);
-        log.debug({id: id, isProbeError: isProbeError, probeData: probe.json},
-          'update probes: delete probe');
-        if (!isProbeError) {
-          probe.stop();
-        }
-        delete self.probeFromId[id];
-        stats.deleted++;
-        cb();
+        (function delete(probe) {
+          var isProbeError = (probe instanceof ProbeError);
+
+          log.debug({
+            id: id,
+            isProbeError: isProbeError,
+            probeData: probe.json
+          }, 'update probes: delete probe');
+
+          if (!isProbeError) {
+            probe.stop();
+          }
+
+          delete self.probeFromId[id];
+          stats.deleted++;
+          cb();
+        })(self.probeFromId[id]);
         break;
 
       case 'update':
-        // Changed probe.
-        var probe = self.probeFromId[id];
-        var isProbeError = (probe instanceof ProbeError);
-        var probeData = probeDataFromId[id];
-        log.debug({id: id, oldProbeData: probe.json, isProbeError: isProbeError,
-            newProbeData: probeData}, 'update probes: update probe');
-        if (!isProbeError) {
-          probe.stop();
-        }
-        delete self.probeFromId[id];
-        createProbe(id, probeDataFromId[id], log, self, function (err, probe) {
-          if (err) {
-            log.error({id: id, err: err}, 'could not create probe (continuing)');
-            self.probeFromId[id] = err;
-            stats.errors++;
-          } else {
-            self.probeFromId[id] = probe;
-            self.onNewProbe(probe);
-            stats.updated++;
+        (function update(probe) {
+          var isProbeError = (probe instanceof ProbeError);
+          var data = probeDataFromId[id];
+          log.debug({
+            id: id,
+            oldProbeData: probe.json,
+            isProbeError: isProbeError,
+            newProbeData: data
+          }, 'update probes: update probe');
+
+          if (!isProbeError) {
+            probe.stop();
           }
-          cb();
-        });
+          delete self.probeFromId[id];
+          createProbe(id, data, log, self,
+                      function (errCreate, createdProbe) {
+                        if (errCreate) {
+                          log.error({id: id, err: errCreate}, 'could not create probe (continuing)');
+                          self.probeFromId[id] = errCreate;
+                          stats.errors++;
+                        } else {
+                          self.probeFromId[id] = createdProbe;
+                          self.onNewProbe(createdProbe);
+                          stats.updated++;
+                        }
+                        cb();
+                      }
+          ); /* createProbe */
+        })(self.probeFromId[id]);
         break;
 
       default:
@@ -335,7 +351,7 @@ App.prototype.updateProbes = function updateProbes(force) {
       self.onProbesUpdated();
     });
   });
-}
+};
 
 
 /**
@@ -346,9 +362,9 @@ App.prototype.updateProbes = function updateProbes(force) {
 App.prototype.onNewProbe = function onNewProbe(probe) {
   var self = this;
   probe.on('event', function (event) {
-    self.sendEvent(event)
+    self.sendEvent(event);
   });
-}
+};
 
 
 /**
@@ -375,7 +391,7 @@ App.prototype.onProbesUpdated = function () {
     log.info('one or more probes need zoneevents, starting zwatcher');
     self.zwatcher = new ZoneEventWatcher(log);
     self.zwatcher.on('zoneUp', function (zonename) {
-      log.debug('event: zoneUp:%s', zonename)
+      log.debug('event: zoneUp:%s', zonename);
       self.emit('zoneUp:' + zonename);
     });
     self.zwatcher.on('zoneDown', function (zonename) {
@@ -387,11 +403,11 @@ App.prototype.onProbesUpdated = function () {
         self.zwatcher.stopped);
     });
   } else if (!needZoneEvents && self.zwatcher) {
-    log.info('no probes need zoneevents, stopping zwatcher')
+    log.info('no probes need zoneevents, stopping zwatcher');
     self.zwatcher.stop();
     self.zwatcher = null;
   }
-}
+};
 
 
 /**
@@ -408,7 +424,7 @@ App.prototype.sendEvent = function sendEvent(event) {
       log.error({event: event, err: err}, 'error sending event');
     }
   });
-}
+};
 
 
 /**
@@ -435,18 +451,18 @@ App.prototype.getProbeData = function getProbeData(force, callback) {
       return callback(null, self.probeDataCache);
     }
 
-    self.relayClient.agentProbes(function (err, probeData, probeDataMD5) {
-      if (err || !probeData || !probeDataMD5) {
+    self.relayClient.agentProbes(function (probeErr, probeData, probeDataMD5) {
+      if (probeErr || !probeData || !probeDataMD5) {
         log.warn(err, 'error getting agent probes (continuing with cache)');
-        return callback(err, self.probeDataCache);
+        return callback(probeErr, self.probeDataCache);
       }
       log.trace({probeData: probeData}, 'getProbeData: retrieved agent probes');
       var oldMD5 = self.probeDataCacheMD5;
       self.probeDataCache = probeData;
       self.probeDataCacheMD5 = probeDataMD5;
-      self.saveProbeDataCache(function (err) {
-        if (err) {
-          log.warn(err, 'unable to cache probe data to disk (continuing)');
+      self.saveProbeDataCache(function (saveErr) {
+        if (saveErr) {
+          log.warn(saveErr, 'unable to cache probe data to disk (continuing)');
         }
         log.info('Successfully updated probe data from relay (md5: %s -> %s).',
           oldMD5 || '(none)', probeDataMD5);
@@ -454,7 +470,7 @@ App.prototype.getProbeData = function getProbeData(force, callback) {
       });
     });
   });
-}
+};
 
 
 /**
@@ -470,14 +486,14 @@ App.prototype.saveProbeDataCache = function saveProbeDataCache(callback) {
       if (err)
         return callback(err);
       fs.writeFile(self.config.pdMD5CachePath, self.probeDataCacheMD5, 'utf8',
-                   function (err) {
-        if (err)
-          return callback(err);
+                   function (fErr) {
+        if (fErr)
+          return callback(fErr);
         return callback();
       });
     }
   );
-}
+};
 
 
 module.exports = App;
