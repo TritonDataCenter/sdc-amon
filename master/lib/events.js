@@ -15,6 +15,7 @@ var Monitor = require('./monitors').Monitor;
 //---- internal support routines
 
 /* BEGIN JSSTYLED */
+/* jsl:ignore */
 /**
  * Run async `fn` on each entry in `list`. Call `cb(error)` when all done.
  * `fn` is expected to have `fn(item, callback) -> callback(error)` signature.
@@ -22,20 +23,21 @@ var Monitor = require('./monitors').Monitor;
  * From Isaac's rimraf.js.
  */
 function asyncForEach(list, fn, cb) {
-  if (!list.length) cb()
+  if (!list.length) cb();
   var c = list.length
-    , errState = null
-  list.forEach(function (item, i, list) {
-   fn(item, function (er) {
+    , errState = null;
+  list.forEach(function (item, i, lst) {
+    fn(item, function (er) {
       if (errState)
-        return
+        return true;
       if (er)
-        return cb(errState = er)
+        return cb(errState = er);
       if (-- c === 0)
-        return cb()
-    })
-  })
+        return cb();
+    });
+  });
 }
+/* jsl:end */
 /* END JSSTYLED */
 
 
