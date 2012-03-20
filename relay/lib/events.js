@@ -41,5 +41,5 @@ function putEvents(req, res, next) {
 
 
 module.exports = {
-  putEvents: putEvents,
+  putEvents: putEvents
 };
