@@ -254,7 +254,7 @@ function startApp(app, callback) {
  * accordingly.
  */
 function startZoneEventWatcher(next) {
-  log.info("startZoneEventWatcher");
+  log.info('startZoneEventWatcher');
   if (!config.allZones) {
     return next();
   }
