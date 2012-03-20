@@ -54,7 +54,7 @@ var log = new Logger({
   serializers: {
     err: Logger.stdSerializers.err,
     req: Logger.stdSerializers.req,
-    res: restify.bunyan.serializers.response,
+    res: restify.bunyan.serializers.response
   }
 });
 
@@ -119,7 +119,6 @@ function getMasterUrl(poll, callback) {
     username: process.env.MAPI_HTTP_ADMIN_USER,
     password: process.env.MAPI_HTTP_ADMIN_PW
   });
-  var notAmonZoneUuids = []; // Ones with a `smartdc_role!=amon`.
 
   function pollMapi() {
     log.info('Poll MAPI for Amon zone (admin uuid "%s").',
@@ -128,7 +127,7 @@ function getMasterUrl(poll, callback) {
       tags: {
         smartdc_role: 'amon'
       }
-    }
+    };
     mapi.listMachines(process.env.UFDS_ADMIN_UUID, options,
       function (err, machines, headers) {
         if (err) {
@@ -137,7 +136,7 @@ function getMasterUrl(poll, callback) {
             String(err).slice(0, 100) + '...');
           setTimeout(pollMapi, pollInterval);
         } else if (machines.length === 0) {
-          log.error('No Amon Master zone (tag smartdc_role=amon).')
+          log.error('No Amon Master zone (tag smartdc_role=amon).');
           setTimeout(pollMapi, pollInterval);
         } else {
           // TODO: A start at HA is to accept multiple Amon zones here.
@@ -158,7 +157,7 @@ function getMasterUrl(poll, callback) {
     );
   }
 
-  pollMapi();
+  return pollMapi();
 }
 
 
@@ -166,7 +165,7 @@ function getMasterUrl(poll, callback) {
 function ensureDataDir(next) {
   if (!path.existsSync(config.dataDir)) {
     log.info('Create data dir: %s', config.dataDir);
-    fs.mkdirSync(config.dataDir, 0777)
+    fs.mkdirSync(config.dataDir, 0777);
   }
   next();
 }
@@ -175,8 +174,8 @@ function ensureDataDir(next) {
 // Get the compute node UUID.
 function ensureComputeNodeUuid(next) {
   if (!config.computeNodeUuid) {
-    log.info('Getting compute node UUID from `sysinfo`.')
-    execFile('/usr/bin/sysinfo', [], function (err, stdout, stderr) {
+    log.info('Getting compute node UUID from `sysinfo`.');
+    return execFile('/usr/bin/sysinfo', [], function (err, stdout, stderr) {
       if (err)
         return next(format(
           'Error calling sysinfo: %s stdout="%s" stderr="%s"',
@@ -189,10 +188,10 @@ function ensureComputeNodeUuid(next) {
       }
       log.info('Compute node UUID: %s', sysinfo.UUID);
       config.computeNodeUuid = sysinfo.UUID;
-      next();
+      return next();
     });
   } else {
-    next();
+    return next();
   }
 }
 
@@ -211,15 +210,15 @@ function logConfig(next) {
 function ensureMasterUrl(next) {
   if (!config.masterUrl) {
     log.info('Getting master URL from MAPI.');
-    getMasterUrl(config.poll, function (err, masterUrl) {
+    return getMasterUrl(config.poll, function (err, masterUrl) {
       if (err)
         return next('Error getting Amon master URL from MAPI: '+err);
       log.info('Got master URL (from MAPI): %s', masterUrl);
       config.masterUrl = masterUrl;
-      next();
+      return next();
     });
   } else {
-    next();
+    return next();
   }
 }
 
@@ -240,12 +239,13 @@ function createMasterClient(next) {
  * @param callback {Function} Optional. `function (err)`
  */
 function startApp(app, callback) {
-  app.start(function (err) {
+  return app.start(function (err) {
     if (!err)
       app.log.info({owner: app.owner}, 'Amon-relay started');
     if (callback)
       callback(err);
-  })
+    return;
+  });
 }
 
 
@@ -254,7 +254,7 @@ function startApp(app, callback) {
  * accordingly.
  */
 function startZoneEventWatcher(next) {
-  log.info("startZoneEventWatcher")
+  log.info("startZoneEventWatcher");
   if (!config.allZones) {
     return next();
   }
@@ -269,11 +269,11 @@ function startZoneEventWatcher(next) {
     log.info({zonename: zonename}, 'handle zoneDown event');
     var app = zoneApps[zonename];
     if (app) {
-      delete zoneApps[zonename]
+      delete zoneApps[zonename];
       app.close(function () {});
     }
   });
-  next();
+  return next();
 }
 
 
@@ -293,18 +293,22 @@ function updateZoneApps(next) {
   // to be the global zone).
   if (!config.allZones) {
     if (! zoneApps['global']) {
-      var app = createGlobalZoneApp();
-      zoneApps['global'] = app;
-      startApp(app);
+      (function() {
+        var app = createGlobalZoneApp();
+        zoneApps['global'] = app;
+        startApp(app);
+      })();
     }
     return (next && next());
   }
 
   var existingZonenames = Object.keys(zoneApps);
   var existingZonenamesMap = {};
-  for (var i = 0; i < existingZonenames.length; i++) {
-    existingZonenamesMap[existingZonenames[i]] = true;
-  }
+  (function() {
+    for (var i = 0; i < existingZonenames.length; i++) {
+      existingZonenamesMap[existingZonenames[i]] = true;
+    }
+  })();
   var actualZones = zutil.listZones();
   //XXX
   //var actualZones = [
@@ -313,36 +317,40 @@ function updateZoneApps(next) {
   //  ]
 
   // Find new zonenames and create a `zoneApps` entry for each.
-  for (var i = 0; i < actualZones.length; i++) {
-    var zonename = actualZones[i].name;
-    if (! zoneApps[zonename]) {
-      if (isSelfHeal) {
-        log.warn({zonename: zonename}, 'self-healing zone list: add zone');
+  (function () {
+    for (var i = 0; i < actualZones.length; i++) {
+      var zonename = actualZones[i].name;
+      if (! zoneApps[zonename]) {
+        if (isSelfHeal) {
+          log.warn({zonename: zonename}, 'self-healing zone list: add zone');
+        }
+        var app = (zonename === 'global' ?
+          createGlobalZoneApp() : createZoneApp(zonename));
+        zoneApps[zonename] = app;
+        startApp(app);
+      } else {
+        delete existingZonenamesMap[zonename];
       }
-      var app = (zonename === 'global' ?
-        createGlobalZoneApp() : createZoneApp(zonename));
-      zoneApps[zonename] = app;
-      startApp(app);
-    } else {
-      delete existingZonenamesMap[zonename];
     }
-  }
+  })();
 
   // Remove obsolete `zoneApps` entries.
   var obsoleteZonenames = Object.keys(existingZonenamesMap);
-  for (var i = 0; i < obsoleteZonenames.length; i++) {
-    var zonename = obsoleteZonenames[i];
-    var app = zoneApps[zonename];
-    if (app) {
-      if (isSelfHeal) {
-        log.warn({zonename: zonename}, 'self-healing zone list: remove zone');
+  (function() {
+    for (var i = 0; i < obsoleteZonenames.length; i++) {
+      var zonename = obsoleteZonenames[i];
+      var app = zoneApps[zonename];
+      if (app) {
+        if (isSelfHeal) {
+          log.warn({zonename: zonename}, 'self-healing zone list: remove zone');
+        }
+        delete zoneApps[zonename];
+        app.close(function () {});
       }
-      delete zoneApps[zonename]
-      app.close(function () {});
     }
-  }
+  })();
 
-  next && next();
+  return (next && next());
 }
 
 
@@ -373,36 +381,41 @@ function updateAgentProbes(next) {
       return nextOne();
 
     //XXX Update the following to bulk query against master.
-    var log = app.log;
-    log.debug('updateAgentProbes')
-    masterClient.agentProbesMD5(app.targetType, app.targetUuid, function(err, masterMD5) {
+    var logger = app.log;
+    log.debug('updateAgentProbes');
+    return masterClient.agentProbesMD5(app.targetType,
+                                       app.targetUuid,
+                                       function(err, masterMD5) {
       if (err) {
-        log.warn('Error getting master agent probes MD5: %s', err);
+        logger.warn('Error getting master agent probes MD5: %s', err);
         return nextOne();
       }
       var currMD5 = app.upstreamAgentProbesMD5;
-      log.trace('Agent probes md5: "%s" (from master) vs "%s" (curr)',
+      logger.trace('Agent probes md5: "%s" (from master) vs "%s" (curr)',
         masterMD5, currMD5);
       if (masterMD5 === currMD5) {
-        log.trace('No agent probes update.')
+        logger.trace('No agent probes update.');
         return nextOne();
       }
-      masterClient.agentProbes(app.targetType, app.targetUuid, function(err, agentProbes, masterMD5) {
-        if (err || !agentProbes || !masterMD5) {
-          log.warn(err, 'Error getting agent probes from master (%s=%s)',
+      return masterClient.agentProbes(app.targetType, app.targetUuid,
+                                      function(probeErr, agentProbes, probeMasterMD5) {
+        if (probeErr || !agentProbes || !probeMasterMD5) {
+          logger.warn(probeErr, 'Error getting agent probes from master (%s=%s)',
             app.targetType, app.targetUuid);
           return nextOne();
         }
-        log.trace({agentProbes: agentProbes},
-          'Retrieved agent probes from master')
-        app.writeAgentProbes(agentProbes, masterMD5, function(err, isGlobalChange) {
-          if (err) {
-            log.error(err, 'unable to save new agent probes');
+        logger.trace({agentProbes: agentProbes},
+          'Retrieved agent probes from master');
+
+        return app.writeAgentProbes(agentProbes, masterMD5,
+                                    function(writeErr, isGlobalChange) {
+          if (writeErr) {
+            logger.error(writeErr, 'unable to save new agent probes');
           } else {
             if (isGlobalChange) {
               zoneApps['global'].cacheInvalidateDownstream();
             }
-            log.info('Successfully updated agent probes from master '
+            logger.info('Successfully updated agent probes from master '
               + '(md5: %s -> %s).', currMD5 || "(none)", masterMD5);
           }
           return nextOne();
@@ -414,8 +427,9 @@ function updateAgentProbes(next) {
   var zonenames = Object.keys(zoneApps);
   log.info("Checking for agent probe updates (%d zones).", zonenames.length);
   async.forEachSeries(zonenames, updateForOneZone, function (err) {
-    next && next();
+    return (next && next());
   });
+  return;
 }
 
 
@@ -448,7 +462,7 @@ function printHelp() {
   console.log('  -v, --verbose  Once for DEBUG log output. Twice for TRACE.');
   console.log('');
   console.log('  -m MASTER-URL, --master-url MASTER-URL');
-  console.log('       The Amon Master API base url.')
+  console.log('       The Amon Master API base url.');
   console.log('  -n UUID, --compute-node-uuid UUID');
   console.log('       UUID of the compute node on which this relay is');
   console.log('       running. If not given, it will be determined from');
@@ -466,7 +480,7 @@ function printHelp() {
   console.log('       the path inside the target zone at which the zone will');
   console.log('       listen on a "zsock". Default: ' + DEFAULT_SOCKET);
   console.log('       For dev this may be a port *number* to facilitate');
-  console.log('       using curl and using off of SmartOS.')
+  console.log('       using curl and using off of SmartOS.');
   console.log('  -Z, --all-zones');
   console.log('       Setup socket in all zones. By default we only listen');
   console.log('       in the current zone (presumed to be the global).');
@@ -510,9 +524,9 @@ function main() {
 
   // Die on unknown opts.
   var extraOpts = {};
-  Object.keys(rawOpts).forEach(function (o) { extraOpts[o] = true });
+  Object.keys(rawOpts).forEach(function (o) { extraOpts[o] = true; });
   delete extraOpts.argv;
-  Object.keys(longOpts).forEach(function (o) { delete extraOpts[o] });
+  Object.keys(longOpts).forEach(function (o) { delete extraOpts[o]; });
   extraOpts = Object.keys(extraOpts);
   if (extraOpts.length) {
     console.error('unknown option%s: -%s\n',
@@ -549,7 +563,7 @@ function main() {
       log.error(err);
       process.exit(2);
     }
-    log.info("startup complete")
+    log.info("startup complete");
   });
 }
 
