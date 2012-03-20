@@ -161,6 +161,7 @@ Alarm.get = function get(app, user, id, callback) {
 
   var _key = _getAlarmKey(user, id);
   app.getRedisClient().hgetall(_key, function (err, obj) {
+    var log = app.log;
     if (err) {
       log.error(err, "error retrieving '%s' from redis", _key);
       return callback(err);
@@ -172,9 +173,9 @@ Alarm.get = function get(app, user, id, callback) {
       log.error(e, "XXX");
       return callback(e);
     }
-    callback(null, alarm);
+    return callback(null, alarm);
   });
-}
+};
 
 
 /**
@@ -198,6 +199,7 @@ Alarm.filter = function filter(app, options, callback) {
   if (options.closed !== undefined && typeof(options.closed) !== 'boolean')
     throw new TypeError('"options.closed" is not a boolean');
   if (!callback) throw new TypeError('"callback" (object) is required');
+
   var log = app.log;
 
   var _alarmsKey = 'alarms:' + options.user;
@@ -206,17 +208,18 @@ Alarm.filter = function filter(app, options, callback) {
       log.error(err, "XXX");
       return callback(err);
     }
-    var alarmKeys = alarmIds.map(
-      function (id) { return _getAlarmKey(options.user, id); });
+    var alarmKeys = alarmIds.map(function (id) {
+      return _getAlarmKey(options.user, id);
+    });
     log.debug({alarmKeys: alarmKeys}, 'load alarms');
-    var redisClient = app.getRedisClient()
+    var redisClient = app.getRedisClient();
     function hgetall(key, next) {
       redisClient.hgetall(key, next);
     }
-    async.map(alarmKeys, hgetall, function (err, alarmObjs) {
-      if (err) {
-        log.error(err, "XXX");
-        return callback(err);
+    return async.map(alarmKeys, hgetall, function (hgetallerr, alarmObjs) {
+      if (hgetallerr) {
+        log.error(hgetallerr, "XXX");
+        return callback(hgetallerr);
       }
       var alarms = [];
       for (var i = 0; i < alarmObjs.length; i++) {
@@ -225,21 +228,20 @@ Alarm.filter = function filter(app, options, callback) {
         // Filter.
         if (alarm.monitor !== options.monitor) {
           log.trace({alarm: alarm}, 'filter out alarm (monitor: %j != %j)',
-            alarm.monitor, options.monitor)
+            alarm.monitor, options.monitor);
           continue;
         }
         if (options.closed !== undefined && alarm.closed !== options.closed) {
           log.trace({alarm: alarm}, 'filter out alarm (closed: %j != %j)',
-            alarm.closed, options.closed)
+            alarm.closed, options.closed);
           continue;
         }
         alarms.push(alarm);
       }
-      callback(null, alarms);
+      return callback(null, alarms);
     });
   });
-  var pattern = "";
-}
+};
 
 
 /**
@@ -258,7 +260,7 @@ Alarm.prototype.serializePublic = function serializePublic() {
     //suppressNotifications: this.suppressNotifications,
     numNotifications: this.numNotifications
   };
-}
+};
 
 /**
  * Serialize this Alarm to a simple object for the public API endpoints.
@@ -267,7 +269,7 @@ Alarm.prototype.serializeDb = function serializeDb() {
   var obj = this.serializePublic();
   obj.v = this.v;
   return obj;
-}
+};
 
 
 /**
@@ -285,16 +287,16 @@ Alarm.prototype.save = function save(app, callback) {
 
   function _ensureId(next) {
     if (self.id) return next();
-    log.debug({user: self.user}, 'get next alarm id')
-    app.getRedisClient().hincrby('alarmIds', self.user, 1, function (err, id) {
+    log.debug({user: self.user}, 'get next alarm id');
+    return app.getRedisClient().hincrby('alarmIds', self.user, 1, function (err, id) {
       if (err) {
         return callback(err);
       }
-      log.trace({id: id, user: self.user}, 'new alarm id')
+      log.trace({id: id, user: self.user}, 'new alarm id');
       self.id = id;
       self._key = ['alarm', self.user, id].join(':');
       self.log = self.log.child({alarm: {user: self.user, id: self.id}}, true);
-      next();
+      return next();
     });
   }
 
@@ -310,8 +312,8 @@ Alarm.prototype.save = function save(app, callback) {
         }
         return callback();
       });
-  })
-}
+  });
+};
 
 
 /**
@@ -398,7 +400,7 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
       }
       callback(err);
     });
-}
+};
 
 
 /**
@@ -421,7 +423,7 @@ Alarm.prototype.notify = function notify(app, user, event, monitor, callback) {
 
   var self = this;
   var log = this.log;
-  log.trace('notify')
+  log.trace('notify');
 
   function getAndNotifyContact(contactUrn, cb) {
     log.debug({contact: contactUrn, monitor: monitor.name}, 'notify contact');
@@ -430,7 +432,7 @@ Alarm.prototype.notify = function notify(app, user, event, monitor, callback) {
       contact = Contact.create(app, user, contactUrn);
     } catch (err) {
       log.warn('could not resolve contact "%s" (user "%s"): %s',
-        contactUrn, user.uuid, err)
+        contactUrn, user.uuid, err);
       return cb();
     }
     if (!contact.address) {
@@ -445,11 +447,11 @@ Alarm.prototype.notify = function notify(app, user, event, monitor, callback) {
       //});
       return cb();
     } else {
-      app.notifyContact(self, user, monitor, contact, event, function (err) {
+      return app.notifyContact(self, user, monitor, contact, event, function (err) {
         if (err) {
           log.warn({err: err, contact: contactUrn}, 'could not notify contact');
         } else {
-          log.debug({contact: contactUrn}, 'contact notified')
+          log.debug({contact: contactUrn}, 'contact notified');
         }
         return cb();
       });
@@ -459,7 +461,7 @@ Alarm.prototype.notify = function notify(app, user, event, monitor, callback) {
   async.forEach(monitor.contacts, getAndNotifyContact, function (err) {
     callback();
   });
-}
+};
 
 
 //---- exports
