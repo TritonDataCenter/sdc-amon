@@ -108,7 +108,7 @@ function main() {
   var shortOpts = {
     'h': ['--help'],
     'v': ['--verbose'],
-    'f': ['--file'],
+    'f': ['--file']
   };
   var rawOpts = nopt(longOpts, shortOpts, process.argv, 2);
   if (rawOpts.help) {
@@ -125,9 +125,9 @@ function main() {
 
   // Die on unknown opts.
   var extraOpts = {};
-  Object.keys(rawOpts).forEach(function (o) { extraOpts[o] = true });
+  Object.keys(rawOpts).forEach(function (o) { extraOpts[o] = true; });
   delete extraOpts.argv;
-  Object.keys(longOpts).forEach(function (o) { delete extraOpts[o] });
+  Object.keys(longOpts).forEach(function (o) { delete extraOpts[o]; });
   extraOpts = Object.keys(extraOpts);
   if (extraOpts.length) {
     console.error('unknown option%s: -%s\n',
@@ -137,7 +137,7 @@ function main() {
 
   var config = loadConfig(rawOpts.file);
   // Log config (but don't put passwords in the log file).
-  var censorKeys = {'password': '***', 'authToken': '***', 'pass': '***'}
+  var censorKeys = {'password': '***', 'authToken': '***', 'pass': '***'};
   function censor(key, value) {
     var censored = censorKeys[key];
     return (censored === undefined ? value : censored);
@@ -170,7 +170,7 @@ function main() {
     }
   }
   process.on('SIGINT', function () {
-    log.debug('SIGINT. Cleaning up.')
+    log.debug('SIGINT. Cleaning up.');
     closeApp(function () {
       process.exit(1);
     });

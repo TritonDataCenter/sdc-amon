@@ -38,7 +38,7 @@ var log = new Logger({
   serializers: {
     err: Logger.stdSerializers.err,
     req: Logger.stdSerializers.req,
-    res: restify.bunyan.serializers.response,
+    res: restify.bunyan.serializers.response
   }
 });
 
@@ -68,7 +68,7 @@ function printHelp() {
   console.log('       The Amon relay socket path on which to listen. In ');
   console.log('       normal operation this is the path to the Unix domain ');
   console.log('       socket created by the Amon relay. However, for ');
-  console.log('       development this can be a port number.')
+  console.log('       development this can be a port number.');
   console.log('       Default: ' + DEFAULT_SOCKET);
   console.log('  -D DIR, --data-dir DIR');
   console.log('       Path to a directory to use for working data storage.');
@@ -112,9 +112,9 @@ function main() {
 
   // Die on unknown opts.
   var extraOpts = {};
-  Object.keys(rawOpts).forEach(function (o) { extraOpts[o] = true });
+  Object.keys(rawOpts).forEach(function (o) { extraOpts[o] = true; });
   delete extraOpts.argv;
-  Object.keys(longOpts).forEach(function (o) { delete extraOpts[o] });
+  Object.keys(longOpts).forEach(function (o) { delete extraOpts[o]; });
   extraOpts = Object.keys(extraOpts);
   if (extraOpts.length) {
     console.error('unknown option%s: -%s\n',
@@ -136,12 +136,12 @@ function main() {
   // Create data dir, if necessary.
   if (!path.existsSync(config.dataDir)) {
     log.info({dataDir: config.dataDir}, 'create data dir');
-    fs.mkdirSync(config.dataDir, 0777)
+    fs.mkdirSync(config.dataDir, 0777);
   }
 
   var app = new App({
     log: log,
-    config: config,
+    config: config
   });
   app.start(function (err) {
     if (err) {
@@ -151,7 +151,7 @@ function main() {
     process.on('exit', function () {
       app.stop();
     });
-  })
+  });
 }
 
 main();
