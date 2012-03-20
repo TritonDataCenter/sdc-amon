@@ -13,7 +13,7 @@
 - design use cases, assign a use case driver for each prio
 - sysevent-based events: use case #2, machine-running-state probe type
 - agent in all zones
-- authorizeDelete finish
+- authorizeDelete finish (should merge with authorizePut logic)
 - finish CRUD on UFDS objects
 - sdc-healthcheck
 - notification formatting: templating?
@@ -295,6 +295,7 @@ probe type (a "probe event"):
       "monitor": "gz",
       "probe": "smartlogin",
       "probeType": "logscan"
+      "clear": false,
       "data":{
         "message":"Log \"/var/svc/log/smartdc-agent-smartlogin:default.log\" matched /Stopping/.",
         "value":1,
@@ -320,6 +321,7 @@ Test event from "POST /pub/:user/monitors/:monitor/:testnotify"
         user: UUID,
         monitor: NAME
       },
+      clear: false,
       data:{
         message: "Test notification.",
       },

@@ -38,7 +38,7 @@ function MachineUpProbe(options) {
   var self = this;
   self._handleZoneUp = function () {
     self.emitEvent(format('Machine "%s" has come up.', self.machine),
-      true, {machine: self.machine});
+      true, {machine: self.machine}, true);
   }
   self._handleZoneDown = function (zonename) {
     self.emitEvent(format('Machine "%s" has gone down.', self.machine),

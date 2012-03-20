@@ -15,9 +15,21 @@
  *    <probe>.config
  *      The config object given at probe creation.
  *
- *    <probe>.emitEvent(message, value, details)
- *      Method for the base classes to call to emit an event.
- *      XXX Signature and event format is still fluid.
+ *    <probe>.emitEvent(message, value, details, [clear])
+ *      Emit an Amon probe event.
+ *      @param message {String} Required. Short message describing the event.
+ *        This is prose that should be displayable to the monitor owner in a
+ *        notification.
+ *      @param value {Number|String|Boolean|null} Required. A simple metric
+ *        value for this event. Use `null` if nothing meaningful for this
+ *        probe type. Dev Note: It isn't yet clear whether and how these
+ *        `value`s will be used.
+ *      @param details {Object} Required. A JSON-able object with details
+ *        on the event. Currently the fields are free-form. These *size*
+ *        of this data should be reasonable.
+ *      @param clear {Boolean} Optional. Default `false`. Whether this is
+ *        a "clear" event, i.e. an event that indicates the issue this
+ *        probe is checking has cleared, is better now.
  *
  *    Event: 'event'
  *      Sent for any probe event. These are sent up to the master for
@@ -95,6 +107,7 @@ util.inherits(Probe, process.EventEmitter);
 
 Probe.runInGlobal = false;
 
+
 /**
  * Emit a probe event.
  *
@@ -104,11 +117,14 @@ Probe.runInGlobal = false;
  *    not meaningful for this probe type.
  * @param details {Object} Extra details pertinent to this event. Use `null`
  *    if none.
+ * @param clear {Boolean} `true` if this is a clear event.
  */
-Probe.prototype.emitEvent = function (message, value, details) {
+Probe.prototype.emitEvent = function (message, value, details, clear) {
   if (!message) throw new TypeError('"message" is required')
   if (value === undefined) throw new TypeError('"value" is required')
   if (details === undefined) throw new TypeError('"details" is required')
+  if (clear === undefined) clear = false;
+  if (typeof(clear) !== 'boolean') throw new TypeError('"clear" must be boolean')
   var event = {
     v: AMON_EVENT_VERSION,
     type: 'probe',
@@ -117,6 +133,7 @@ Probe.prototype.emitEvent = function (message, value, details) {
     probe: this._probe,
     probeType: this.type,
     time: Date.now(),
+    clear: clear,
     data: {
       message: message,
       value: value,
