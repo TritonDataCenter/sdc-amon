@@ -10,6 +10,7 @@ var assert = require('assert');
 
 var ldap = require('ldapjs');
 var restify = require('restify');
+var async = require('async');
 var ufdsmodel = require('./ufdsmodel');
 var Monitor = require('./monitors').Monitor;
 var utils = require('amon-common').utils,
@@ -164,6 +165,14 @@ Probe.prototype.serialize = function serialize(priv) {
 /**
  * Authorize that this Probe can be added/updated.
  *
+ * One of the following must be true
+ * 1. The probe targets an existing machine and the user is an owner
+ *    of the machine.
+ * 2. The probe targets an existing server (i.e. the GZ) and the user
+ *    is an operator.
+ * 3. The probe targets a existing machine, the probe type
+ *    is `runInGlobal=true`, and the user is an operator.
+ *
  * @param app {App} The amon-master app.
  * @param callback {Function} `function (err)`. `err` may be:
  *    undefined: put is authorized
@@ -173,28 +182,78 @@ Probe.prototype.serialize = function serialize(priv) {
  */
 Probe.prototype.authorizePut = function (app, callback) {
   var self = this;
+  var log = app.log;
+
+  function isRunInGlobalOrErr(next) {
+    if (plugins[self.type].runInGlobal) {
+      next();
+    } else {
+      next("not runInGlobal: " + self.type);
+    }
+  }
+  function isExistingMachineOrErr(next) {
+    app.mapi.getMachine('', self.machine, function (err, machine) {
+      if (err && err.code !== 'ResourceNotFound') {
+        log.error(err, 'unexpected error getting machine')
+      }
+      if (machine) {
+        next()
+      } else {
+        next("no such machine: " + self.machine);
+      }
+    });
+  }
+  function userIsOperatorOrErr(next) {
+    app.isOperator(self.user, function (err, isOperator) {
+      if (err) {
+        log.error("unexpected error authorizing probe put: "
+          + "probe=%s, error=%s", JSON.stringify(self.serialize()),
+          err.stack || err);
+        next('err determining if operator')
+      } else if (isOperator) {
+        next()
+      } else {
+        next("not operator: " + self.user);
+      }
+    });
+  }
+
   if (this.machine) {
-    // Must be the owner of this machine.
+    // 1. A machine owned by this user.
     app.mapi.getMachine(this.user, this.machine, function (err, machine) {
       if (err) {
         if (err.httpCode === 404) {
-          return callback(new restify.InvalidArgumentError(format(
-            "Invalid 'machine': machine '%s' does not exist or is not "
-            + "owned by user '%s'.", self.machine, self.user)));
+          // 3. Operator setting 'runInGlobal' monitor.
+          var conditions3 = [
+            isRunInGlobalOrErr,
+            isExistingMachineOrErr,
+            userIsOperatorOrErr
+          ];
+          async.series(conditions3, function (not3) {
+            if (not3) {
+              // Not "3.", return error for "1."
+              callback(new restify.InvalidArgumentError(format(
+                "Invalid 'machine': machine '%s' does not exist or is not "
+                + "owned by user '%s'.", self.machine, self.user)));
+            } else {
+              callback();
+            }
+          });
         } else {
-          app.log.error({err: err, probe: self.serialize()},
+          log.error({err: err, probe: self.serialize()},
             "unexpected error authorizing probe put against MAPI");
-          return callback(new restify.InternalError(
+          callback(new restify.InternalError(
             "Internal error authorizing probe put."));
         }
+      } else {
+        callback();
       }
-      callback();
     });
   } else if (this.server) {
-    // Must be an operator to add a probe to a GZ.
+    // 2. Must be an operator to add a probe to a GZ.
     app.isOperator(this.user, function (err, isOperator) {
       if (err) {
-        app.log.error("unexpected error authorizing probe put: "
+        log.error("unexpected error authorizing probe put: "
           + "probe=%s, error=%s", JSON.stringify(self.serialize()),
           err.stack || err);
         return callback(new restify.InternalError(
@@ -209,7 +268,7 @@ Probe.prototype.authorizePut = function (app, callback) {
       // Server must exist.
       app.serverExists(self.server, function (err, serverExists) {
         if (err) {
-          app.log.error({err: err, probe: self.serialize()},
+          log.error({err: err, probe: self.serialize()},
             "unexpected error authorizing probe put against MAPI");
           return callback(new restify.InternalError(
             "Internal error authorizing probe put."));
@@ -222,7 +281,7 @@ Probe.prototype.authorizePut = function (app, callback) {
       });
     });
   } else {
-    app.log.error("Attempting to authorize PUT on an invalid probe: "
+    log.error("Attempting to authorize PUT on an invalid probe: "
       + "no 'machine' or 'server' value: %s",
       JSON.stringify(this.serialize()));
     return callback(new restify.InternalError(
