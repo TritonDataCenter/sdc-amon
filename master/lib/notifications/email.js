@@ -139,7 +139,7 @@ Datacenter: {{dcName}}
         body: body
       },
       function (err, success) {
-        log.debug('email sent')
+        //log.debug('email sent')
         callback(err);
       }
     );
