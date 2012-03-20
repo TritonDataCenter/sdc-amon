@@ -120,11 +120,11 @@ Probe.runInGlobal = false;
  * @param clear {Boolean} `true` if this is a clear event.
  */
 Probe.prototype.emitEvent = function (message, value, details, clear) {
-  if (!message) throw new TypeError('"message" is required')
-  if (value === undefined) throw new TypeError('"value" is required')
-  if (details === undefined) throw new TypeError('"details" is required')
+  if (!message) throw new TypeError('"message" is required');
+  if (value === undefined) throw new TypeError('"value" is required');
+  if (details === undefined) throw new TypeError('"details" is required');
   if (clear === undefined) clear = false;
-  if (typeof(clear) !== 'boolean') throw new TypeError('"clear" must be boolean')
+  if (typeof(clear) !== 'boolean') throw new TypeError('"clear" must be boolean');
   var event = {
     v: AMON_EVENT_VERSION,
     type: 'probe',

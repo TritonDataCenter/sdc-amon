@@ -85,7 +85,7 @@ var Probe = require('./probe');
 module.exports = HttpProbe;
 
 
-var HTTP_OK = [200, 201 ,202 ,203 ,204]
+var HTTP_OK = [200, 201, 202, 203, 204];
 
 
 
@@ -104,7 +104,9 @@ function HttpProbe(options) {
   this.expectedCodes = this.config.statusCodes || HTTP_OK;
 
   if (this.config.username && this.config.password) {
-    var str = new Buffer([this.config.username, this.config.password].join(':')).toString('base64')
+    var str = new Buffer(
+      [this.config.username, this.config.password].join(':')
+    ).toString('base64');
     this.headers['Authorization'] = format('Basic %s', str);
   }
 
@@ -141,7 +143,7 @@ HttpProbe.validateConfig = function(config) {
     throw new TypeError('config.url is required');
   }
 
-  var parsed = url.parse(config.url)
+  var parsed = url.parse(config.url);
   if (!parsed.hostname || !parsed.protocol || !(/^(http)s?:/.test(parsed.protocol))) {
     throw new TypeError('config.url must be valid http(s) url');
   }
@@ -155,9 +157,9 @@ HttpProbe.validateConfig = function(config) {
   }
 
   if (config.body && typeof (config.body) !== 'string') {
-    throw new typeError('config.body when provided, should be a string');
+    throw new TypeError('config.body when provided, should be a string');
   }
-}
+};
 
 HttpProbe.prototype.doRequest = function() {
 
@@ -176,9 +178,9 @@ HttpProbe.prototype.doRequest = function() {
         request: self.requestOptions,
         response: {
           statusCode: res.statusCode,
-          headers: res.headers,
+          headers: res.headers
         }
-      }
+      };
 
       if (self._statusMatch(res.statusCode) === false) {
         eventMessages.push(format('Unexpected HTTP Status Code (%s)',
@@ -223,7 +225,7 @@ HttpProbe.prototype.stop = function(callback) {
 
 HttpProbe.prototype._statusMatch = function(that) {
   return this.expectedCodes.indexOf(that) !== -1;
-}
+};
 
 HttpProbe.prototype._regexMatch = function(body) {
   var m = null;
@@ -248,8 +250,9 @@ HttpProbe.prototype._regexMatch = function(body) {
     })());
   }
   return matches;
-}
+};
 
+/*
 DONE - HTTProbe -> HttpProbe
 DONE - Body comment says "threshold". Should be "period" as in the code.
 DONE - Also period isn't being used in the setInterval.
@@ -261,3 +264,4 @@ DONE - Provide a context to the matched string instead of the whole body
 DONE - Don't emit two events if there is both a regex match and a status code fail. 
        Collect both of those together.
 DONE - basicAuthUsername, basicAuthPassword
+*/

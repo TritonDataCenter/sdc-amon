@@ -46,7 +46,7 @@ function LogScanProbe(options) {
   this.threshold = this.config.threshold;
   if (this.threshold > 1) {
     this.message = format('Log "%s" matched %s >=%d times in %d seconds.',
-      this.path, this.regex, self.threshold, this.period);
+      this.path, this.regex, this.threshold, this.period);
   } else {
     this.message = format('Log "%s" matched %s.', this.path, this.regex);
   }

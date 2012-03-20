@@ -1,3 +1,4 @@
+
 /**
  * Copyright 2012 Joyent, Inc.  All rights reserved.
  */
@@ -14,13 +15,14 @@ var Logger = require('bunyan');
 var log = new Logger({name:'httprobe.test'});
 
 function _default_opts() {
-  return  {
+  return {
     id: 1,
     log: log,
     data: { machine: 'c0ffee-c0ffee-c0ffee-c0ffee', config: {} }
-  }
+  };
 }
 
+/* jsl:ignore */
 test('HttpProbe', function(t) {
 
   t.test('url check', function(t) {
@@ -195,3 +197,4 @@ test('HttpProbe', function(t) {
 
   t.end();
 });
+/* jsl:end */
