@@ -18,16 +18,16 @@ var amonCommon = require('amon-common'),
  * From Isaac's rimraf.js.
  */
 function asyncForEach(list, fn, cb) {
-  if (!list.length) cb()
+  if (!list.length) cb();
   var c = list.length
-    , errState = null
-  list.forEach(function (item, i, list) {
+    , errState = null;
+  list.forEach(function (item, i, lst) {
    fn(item, function (er) {
-      if (errState) return
-      if (er) return cb(errState = er)
-      if (-- c === 0) return cb()
-    })
-  })
+      if (errState) return;
+      if (er) return cb(errState = er);
+      if (-- c === 0) return cb();
+    });
+  });
 }
 
 
@@ -63,7 +63,7 @@ function waitForZoneSvc(zonename, svc, timeout, log, callback) {
       if (isOnline) {
         return callback();
       }
-      currTime = Date.now();
+      var currTime = Date.now();
       if (currTime - startTime > timeout) {
         return callback(new Error(format(
           'timeout (%ss) waiting for SMF "%s" to come online in zone "%s"',
