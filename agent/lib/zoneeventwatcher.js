@@ -76,7 +76,7 @@ ZoneEventWatcher.prototype.start = function () {
     }
     self.stopped = true;
   });
-}
+};
 
 
 ZoneEventWatcher.prototype.stop = function () {
@@ -84,7 +84,7 @@ ZoneEventWatcher.prototype.stop = function () {
   if (this.child) {
     this.child.kill('SIGTERM');
   }
-}
+};
 
 
 ZoneEventWatcher.prototype.handleZoneEvent = function (event) {
@@ -114,7 +114,7 @@ ZoneEventWatcher.prototype.handleZoneEvent = function (event) {
     this.log.trace({zonevent: event}, 'emit "zoneUp" for zone "%s"', zonename);
     this.emit('zoneUp', zonename);
   }
-}
+};
 
 
 ZoneEventWatcher.prototype.handleZoneEventLine = function (line) {
@@ -124,7 +124,7 @@ ZoneEventWatcher.prototype.handleZoneEventLine = function (line) {
     return this.emit('error', err);
   }
   this.handleZoneEvent(event);
-}
+};
 
 
 module.exports = ZoneEventWatcher;
