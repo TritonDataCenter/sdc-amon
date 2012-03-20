@@ -45,7 +45,7 @@ function Twilio(log, config, datacenterName) {
 Twilio.prototype.acceptsMedium = function (medium) {
   var mediumLower = medium.toLowerCase();
   return (mediumLower.slice(-5) === 'phone');
-}
+};
 
 
 //XXX Change this API to throw error with details if invalid.
@@ -115,7 +115,8 @@ Twilio.prototype.notify = function (user, contactAddress, event, callback) {
       if (res.statusCode >= 500) {
         log.warn({res: res}, 'twilio failure response (code %d), calling retry',
           res.statusCode);
-        return operation.retry(new Error());
+        operation.retry(new Error());
+        return;
       }
 
       res.body = '';

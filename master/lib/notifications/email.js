@@ -47,7 +47,7 @@ function Email(log, config, datacenterName) {
 Email.prototype.acceptsMedium = function (medium) {
   var mediumLower = medium.toLowerCase();
   return (mediumLower.slice(-5) === 'email');
-}
+};
 
 /**
  * Sanitize the given email contact address.
@@ -144,7 +144,7 @@ Datacenter: {{dcName}}
       }
     );
   } catch (err) {
-    log.error(err, 'error sending email')
+    log.error(err, 'error sending email');
     callback(err);
   }
 };

@@ -28,7 +28,7 @@ function Testy(log, config, datacenterName) {
 Testy.prototype.acceptsMedium = function (medium) {
   var mediumLower = medium.toLowerCase();
   return (mediumLower.slice(-5) === 'email');
-}
+};
 
 Testy.prototype.sanitizeAddress = function (data) {
   return data;
@@ -53,7 +53,7 @@ Testy.prototype.notify = function (user, contactAddress, event, callback) {
   });
   fs.writeFileSync(this.logPath,
     JSON.stringify(this.notifications, null, 2), 'utf8');
-  this.log.debug('Testy.notify: wrote "%s"', this.logPath)
+  this.log.debug('Testy.notify: wrote "%s"', this.logPath);
   callback();
 };
 
