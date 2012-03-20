@@ -8,7 +8,7 @@
  *      ...
  *    }
  *
- * This creates test users (if necessary), key and test zone (if necessary)
+ * This creates test users (if necessary), key and test zone (if necessary);
  * and writes out prep.json (and emits that to stdout). Exits non-zero if
  * there was a problem.
  */
@@ -47,7 +47,7 @@ var headnodeUuid;
 //---- prep steps
 
 function ufdsClientBind(next) {
-  log('# UFDS client bind.')
+  log('# UFDS client bind.');
   ufdsClient = new UFDS({
     url: config.ufds.url,
     bindDN: config.ufds.rootDn,
@@ -55,14 +55,14 @@ function ufdsClientBind(next) {
   });
   ufdsClient.on('ready', function() {
     next();
-  })
+  });
   ufdsClient.on('error', function(err) {
     next(err);
-  })
+  });
 }
 
 function ldapClientBind(next) {
-  log('# LDAP client bind.')
+  log('# LDAP client bind.');
   ldapClient = ldap.createClient({
     url: config.ufds.url,
     reconnect: false
@@ -74,7 +74,7 @@ function ldapClientBind(next) {
 
 
 function getAdminUuid(next) {
-  log('# Get "admin" UUID.')
+  log('# Get "admin" UUID.');
   ufdsClient.getUser("admin", function(err, user) {
     if (err) return next(err);
     adminUuid = user.uuid;
@@ -91,8 +91,8 @@ function createUser(user, next) {
     function(err, res) {
       if (err) return next(err);
       var found = false;
-      res.on('searchEntry', function(entry) { found = true });
-      res.on('error', function(err) { next(err) });
+      res.on('searchEntry', function(entry) { found = true; });
+      res.on('error', function(err2) { next(err2); });
       res.on('end', function(result) {
         if (found) {
           log("# User %s (%s) already exists.", user.uuid, user.login);
@@ -107,9 +107,9 @@ function createUser(user, next) {
 }
 
 function createUsers(next) {
-  log('# Create users.')
+  log('# Create users.');
   async.map([sulkybob, adminbob], createUser, function(err, _){
-    next(err)
+    next(err);
   });
 }
 
@@ -119,7 +119,7 @@ function makeAdminbobOperator(next) {
   var change = {
     type: 'add',
     modification: {
-      uniquemember: dn,
+      uniquemember: dn
     }
   };
   log("# Make user %s (%s) an operator", adminbob.uuid, adminbob.login);
@@ -129,7 +129,7 @@ function makeAdminbobOperator(next) {
 }
 
 function addKey(next) {
-  log("# Add key for sulkybob.")
+  log("# Add key for sulkybob.");
   // Note: We should probably just use the CAPI api for this, but don't want
   // to encode the pain of getting the CAPI auth.
   var key = fs.readFileSync(__dirname + '/id_rsa.amontest.pub', 'utf8');
@@ -140,7 +140,7 @@ function addKey(next) {
     name: ["amontest"],
     openssh: [key],
     fingerprint: [fp],
-    objectclass: ['sdckey'],
+    objectclass: ['sdckey']
   };
 
   ldapClient.search(userDn,
@@ -148,8 +148,8 @@ function addKey(next) {
     function(err, res) {
       if (err) return next(err);
       var found = false;
-      res.on('searchEntry', function(entry) { found = true });
-      res.on('error', function(err) { next(err) });
+      res.on('searchEntry', function(ent) { found = true; });
+      res.on('error', function(err2) { next(err2); });
       res.on('end', function(result) {
         if (found) {
           log("# Key 'amontest' already exists.");
@@ -203,29 +203,29 @@ function createSulkyzone(next) {
     if (err) return next(err);
     if (zones.length > 0) {
       sulkyzone = zones[0];
-      log("# Sulkybob already has a zone (%s).", sulkyzone.name)
+      log("# Sulkybob already has a zone (%s).", sulkyzone.name);
       return next();
     }
-    log("# Create a test zone for sulkybob.")
-    mapi.listServers(function(err, servers) {
-      if (err) return next(err);
-      var headnodeUuid = servers[0].uuid;
+    log("# Create a test zone for sulkybob.");
+    mapi.listServers(function(err2, servers) {
+      if (err2) return next(err2);
+      var hnuuid = servers[0].uuid;
       mapi.createMachine(sulkybob.uuid, {
           package: "regular_128",
           alias: "sulkyzone",
           dataset_urn: "smartos",
-          server_uuid: headnodeUuid,
+          server_uuid: hnuuid,
           force: "true"  // XXX does MAPI client support `true -> "true"`
         },
-        function (err, newZone) {
+        function (err3, newZone) {
           log("# Waiting up to ~2min for new zone %s to start up.", newZone.name);
-          if (err) return next(err);
+          if (err3) return next(err3);
           var zone = newZone;
           var zoneName = zone.name;
           var sentinel = 40;
           async.until(
             function () {
-              return zone.running_status === "running"
+              return zone.running_status === "running";
             },
             function (nextCheck) {
               sentinel--;
@@ -235,11 +235,11 @@ function createSulkyzone(next) {
               }
               setTimeout(function () {
                 mapi.listMachines(sulkybob.uuid, {name: zoneName},
-                                  function (err, zones_) {
-                  if (err) {
-                    return nextCheck(err);
+                                  function (err4, zones_) {
+                  if (err4) {
+                    return nextCheck(err3);
                   }
-                  if (zones_.length == 0) {
+                  if (zones_.length === 0) {
                     return nextCheck();
                   }
                   zone = zones_[0];
@@ -247,12 +247,12 @@ function createSulkyzone(next) {
                 });
               }, 3000);
             },
-            function (err) {
-              if (!err) {
+            function (err4) {
+              if (!err4) {
                 sulkyzone = zone;
                 log("# Zone %s is running.", sulkyzone.name);
               }
-              next(err);
+              next(err4);
             }
           );
         }
@@ -262,7 +262,7 @@ function createSulkyzone(next) {
 }
 
 function getMapizone(next) {
-  log("# Get MAPI zone.")
+  log("# Get MAPI zone.");
   mapi.listMachines(adminUuid, {alias: 'mapi'}, function (err, zones) {
     if (err) {
       return next(err);
@@ -277,7 +277,7 @@ function getMapizone(next) {
 }
 
 function getHeadnodeUuid(next) {
-  log("# Get headnode UUID.")
+  log("# Get headnode UUID.");
   mapi.listServers(function (err, servers) {
     if (err) {
       return next(err);
@@ -297,16 +297,16 @@ function getHeadnodeUuid(next) {
 }
 
 function writePrepJson(next) {
-  log("# Write '%s/prep.json'.", __dirname)
+  log("# Write '%s/prep.json'.", __dirname);
   var prepJson = __dirname + "/prep.json";
-  log("# Write '%s'.", prepJson)
+  log("# Write '%s'.", prepJson);
   var prep = {
     sulkyzone: sulkyzone,
     mapizone: mapizone,
     headnodeUuid: headnodeUuid,
     sulkybob: sulkybob,
     adminbob: adminbob
-  }
+  };
   fs.writeFileSync(prepJson, JSON.stringify(prep, null, 2), 'utf8');
   next();
 }
@@ -332,7 +332,7 @@ async.series([
   ],
   function (err) {
     if (err) {
-      log("error preparing: %s\n", err.stack, err)
+      log("error preparing: %s\n", err.stack, err);
       process.exit(1);
     }
   }

@@ -48,7 +48,7 @@ function setupMaster(options, callback) {
     serializers: {
       err: Logger.stdSerializers.err,
       req: Logger.stdSerializers.req,
-      res: restify.bunyan.serializers.response,
+      res: restify.bunyan.serializers.response
     }
   });
   var masterClient = restify.createJsonClient({
@@ -91,7 +91,7 @@ function setupMaster(options, callback) {
           t.equal(obj.pid, master.pid,
             format("Master responding to ping (pid %d) vs. spawned master (pid %d).",
               obj.pid, master.pid));
-          t.ok(true, "master is running")
+          t.ok(true, "master is running");
           next();
         }
       });

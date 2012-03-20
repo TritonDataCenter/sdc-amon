@@ -5,8 +5,10 @@
  *
  * Note: Some of these tests can only be run with access to the Master
  * source code (the "raw alarm" tests). XXX That part should move to
- * "master/test/*".
+ * "master/test/".
+ *
  */
+
 
 var debug = console.log;
 var fs = require('fs');
@@ -60,7 +62,7 @@ test('setup', function (t) {
 test('ping', function(t) {
   masterClient.get("/ping", function(err, req, res, obj) {
     t.ifError(err, "ping'd");
-    t.equal(obj.ping, 'pong', "responded with 'pong'")
+    t.equal(obj.ping, 'pong', "responded with 'pong'");
     t.ok(obj.redis, 'have a redis version');
     t.end();
   });
@@ -79,14 +81,14 @@ test('raw alarm', function (t) {
     user: sulkybob.uuid,
     name: 'ack'
   });
-  t.equal(alarm.user, sulkybob.uuid, 'alarm.user')
-  t.equal(alarm.name, 'ack', 'alarm.name')
+  t.equal(alarm.user, sulkybob.uuid, 'alarm.user');
+  t.equal(alarm.name, 'ack', 'alarm.name');
 
   // Check serializations.
   var pub = alarm.serializePublic();
   var db = alarm.serializeDb();
-  t.equal(pub.name, 'ack', 'serializePublic name')
-  t.equal(db.name, 'ack', 'serializeDb name')
+  t.equal(pub.name, 'ack', 'serializePublic name');
+  t.equal(db.name, 'ack', 'serializeDb name');
 
   app.redisClient.quit();
   t.end();

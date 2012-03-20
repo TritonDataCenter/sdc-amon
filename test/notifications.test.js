@@ -22,7 +22,7 @@ var log = new Logger({
   name: 'notifications.test',
   stream: process.stderr,
   level: 'trace'
-})
+});
 
 
 //---- setup
