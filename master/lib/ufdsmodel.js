@@ -57,7 +57,7 @@ function modelList(app, Model, parentDn, log, callback) {
     }
     try {
       var items = cached.data.map(function (d) { return new Model(app, d); });
-      callback(null, items);
+      return callback(null, items);
     } catch (e) {
       // Drop from the cache and carry on.
       log.warn('error in cached data (cacheScope=\'%s\', cacheKey=\'%s\'): %s',
@@ -107,7 +107,7 @@ function modelList(app, Model, parentDn, log, callback) {
       if (res.status !== 0) {
         log.error('Non-zero status from UFDS search: %s (opts: %s)',
           res, JSON.stringify(opts));
-        callback(new restify.InternalError());
+        return callback(new restify.InternalError());
       }
       log.trace('%s items:', Model.name, models);
       cacheAndCallback(null, models);
@@ -210,10 +210,10 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
     var cached = app.cacheGet(cacheScope, dn);
     if (cached) {
       if (cached.err) {
-        callback(cached.err);
+        return callback(cached.err);
       } else {
         try {
-          callback(null, new Model(app, cached.data));
+          return callback(null, new Model(app, cached.data));
         } catch (e) {
           // Drop from the cache and carry on.
           log.warn(e, 'error in cached data (cacheScope="%s", dn="%s")',
