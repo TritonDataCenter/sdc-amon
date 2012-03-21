@@ -1,4 +1,5 @@
-/* Copyright 2011 Joyent, Inc.  All rights reserved.
+/**
+ * Copyright 2011 Joyent, Inc.  All rights reserved.
  *
  * Shared bits for the Amon test files.
  */
@@ -15,7 +16,7 @@ var format = require('util').format;
 
 //---- globals & constants
 
-var CONFIG_PATH = __dirname + "/config.json";
+var CONFIG_PATH = __dirname + '/config.json';
 
 
 
@@ -67,21 +68,21 @@ function setupMaster(options, callback) {
     master = spawn(process.execPath,
       ['../master/main.js', '-vv', '-f', CONFIG_PATH],
       {cwd: __dirname});
-    t.ok(options.masterLogPath, "master log path: '"+options.masterLogPath+"'");
+    t.ok(options.masterLogPath, 'master log path: "'+options.masterLogPath+'"');
     var masterLog = fs.createWriteStream(options.masterLogPath);
     master.stdout.pipe(masterLog);
     master.stderr.pipe(masterLog);
-    t.ok(master, "master created");
+    t.ok(master, 'master created');
 
     // Wait until it is running.
     var sentinel = 0;
     function checkPing() {
-      masterClient.get("/ping", function(err, req, res, obj) {
+      masterClient.get('/ping', function (err, req, res, obj) {
         if (err) {
           sentinel++;
           if (sentinel >= 10) {
-            t.ok(false, format("Master did not come up after %s seconds"
-              + " (see '%s')", sentinel, options.masterLogPath));
+            t.ok(false, format('Master did not come up after %s seconds'
+              + ' (see \'%s\')', sentinel, options.masterLogPath));
             t.end();
             return;
           } else {
@@ -89,9 +90,11 @@ function setupMaster(options, callback) {
           }
         } else {
           t.equal(obj.pid, master.pid,
-            format("Master responding to ping (pid %d) vs. spawned master (pid %d).",
+            format(
+              'Master responding to ping (pid %d) vs. '+
+                'spawned master (pid %d).',
               obj.pid, master.pid));
-          t.ok(true, "master is running");
+          t.ok(true, 'master is running');
           next();
         }
       });
@@ -99,7 +102,7 @@ function setupMaster(options, callback) {
     setTimeout(checkPing, 1000);
   }
 
-  async.series([startMaster], function(err) {
+  async.series([startMaster], function (err) {
     callback(err, masterClient, master);
   });
 }

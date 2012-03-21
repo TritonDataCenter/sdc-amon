@@ -23,10 +23,10 @@ function _default_opts() {
 }
 
 /* jsl:ignore */
-test('HttpProbe', function(t) {
+test('HttpProbe', function (t) {
 
-  t.test('url check', function(t) {
-    t.throws(function() {
+  t.test('url check', function (t) {
+    t.throws(function () {
       var opts = Object.create(_default_opts());
       opts.data.config.url = 'bogus://not-a-url';
       var probe = new HttpProbe(opts);
@@ -34,7 +34,7 @@ test('HttpProbe', function(t) {
     t.end();
   });
 
-  t.test('init with defaults', function(t) {
+  t.test('init with defaults', function (t) {
     var opts = Object.create(_default_opts());
     opts.data.config.url = 'http://google.com';
     var probe = new HttpProbe(opts);
@@ -51,7 +51,7 @@ test('HttpProbe', function(t) {
     t.end();
   });
 
-  t.test('init with config', function(t) {
+  t.test('init with config', function (t) {
     var opts = Object.create(_default_opts());
     opts.data.config.period = 1;
     opts.data.config.url = 'http://localhost:12345/test';
@@ -66,7 +66,10 @@ test('HttpProbe', function(t) {
     t.equals(probe.requestOptions.port, '12345', 'port set');
     t.equals(probe.requestOptions.hostname, 'localhost', 'hostname set');
     t.equals(probe.requestOptions.method, 'POST', 'method set');
-    t.equals(probe.requestOptions.headers['X-Custom-Header'], 'value', 'custom header set');
+    t.equals(
+      probe.requestOptions.headers['X-Custom-Header'],
+      'value',
+      'custom header set');
     t.equals(probe.body, 'mybody', 'body');
 
     t.end();
@@ -77,7 +80,7 @@ test('HttpProbe', function(t) {
     var opts = _default_opts();
     config = config || {};
 
-    Object.keys(config).forEach(function(key) {
+    Object.keys(config).forEach(function (key) {
       opts.data.config[key] = config[key];
     })
 
@@ -97,13 +100,13 @@ test('HttpProbe', function(t) {
 
 
 
-  test('defualt config: success request', function(t) {
+  test('defualt config: success request', function (t) {
     var server = createServer(200, 'conflict!!');
     t.ok(server);
     server.listen(9000, function _cb() {
       var probe = createProbe();
       probe.start();
-      probe.on('event', function(e) {
+      probe.on('event', function (e) {
         t.error('should not have fired');
       });
 
@@ -113,14 +116,14 @@ test('HttpProbe', function(t) {
     t.end();
   });
 
-  test('default config: failed request', function(t) {
+  test('default config: failed request', function (t) {
     t.plan(1);
     var server = createServer(409, 'conflict!!');
 
     server.listen(9000, function _cb() {
       var probe = createProbe();
       probe.start();
-      probe.on('event', function(e) {
+      probe.on('event', function (e) {
         t.ok(true, 'event did fire');
         probe.stop();
         server.close();
@@ -128,7 +131,7 @@ test('HttpProbe', function(t) {
     });
   });
 
-  test('custom statusCode', function(t) {
+  test('custom statusCode', function (t) {
     t.plan(4);
 
     // server returns a 200
@@ -136,10 +139,10 @@ test('HttpProbe', function(t) {
 
     server.listen(9000, function _cb() {
       // configure probe to consider 401,409 as success
-      var probe = createProbe({statusCodes:[401,409]});
+      var probe = createProbe({statusCodes: [401, 409]});
       t.ok(probe);
       probe.start();
-      probe.on('event', function(e) {
+      probe.on('event', function (e) {
         t.comment('event fired from status match');
         t.ok(/HTTP Status/, e.data.message);
         t.equals(e.data.details.response.statusCode, 200);
@@ -150,7 +153,7 @@ test('HttpProbe', function(t) {
     });
   });
 
-  test('auth', function(t) {
+  test('auth', function (t) {
     var probe = createProbe({
       username: 'superman',
       password: 'hungry'
@@ -163,12 +166,12 @@ test('HttpProbe', function(t) {
   });
 
 
-  test('probe regex test', function(t) {
+  test('probe regex test', function (t) {
     t.plan(5);
 
     var server = createServer(200,
       ['This is a really really nice probe.',
-        'We really should treat the probe well'].join("\n"));
+        'We really should treat the probe well'].join('\n'));
 
     server.listen(9000, function _cb() {
       var probe = createProbe({ regex: {
@@ -177,14 +180,14 @@ test('HttpProbe', function(t) {
       }});
 
       probe.start();
-      probe.on('event', function(e) {
+      probe.on('event', function (e) {
         t.comment('event fired from regex match');
 
         t.ok(/Body matches/.test(e.data.message), 'event has proper msg');
         t.equals(e.data.details.matches.length, 2, 'event contains matches');
-        e.data.details.matches.forEach(function(m) {
+        e.data.details.matches.forEach(function (m) {
           // keep the state so we can reset back to it after test
-          var _i = probe.regex.lastIndex; 
+          var _i = probe.regex.lastIndex;
           t.ok(probe.regex.test(m.context), 'matched context is relevant');
           probe.regex.lastIndex = _i;
         });

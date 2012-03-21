@@ -49,23 +49,27 @@ util.inherits(MachineUpProbe, Probe);
 
 
 MachineUpProbe.runInGlobal = true;
-MachineUpProbe.prototype.type = "machine-up";
+MachineUpProbe.prototype.type = 'machine-up';
 
-MachineUpProbe.validateConfig = function(config) {
+MachineUpProbe.validateConfig = function (config) {
   // Pass through. No current config for this probe.
 };
 
 
-MachineUpProbe.prototype.start = function(callback) {
+MachineUpProbe.prototype.start = function (callback) {
   this.app.on('zoneUp:'+this.machine, this._handleZoneUp);
   this.app.on('zoneDown:'+this.machine, this._handleZoneDown);
-  if (callback && (callback instanceof Function)) return callback();
+  if (callback && (callback instanceof Function)) {
+    return callback();
+  }
 };
 
-MachineUpProbe.prototype.stop = function(callback) {
+MachineUpProbe.prototype.stop = function (callback) {
   this.app.removeListener('zoneUp:'+this.machine, this._handleZoneUp);
   this.app.removeListener('zoneDown:'+this.machine, this._handleZoneDown);
-  if (callback && (callback instanceof Function)) return callback();
+  if (callback && (callback instanceof Function)) {
+    return callback();
+  }
 };
 
 
