@@ -53,8 +53,7 @@ function modelList(app, Model, parentDn, log, callback) {
     log.trace('<%s> modelList: parentDn=\'%s\': cache hit: %s', Model.name,
       parentDn, cached);
     if (cached.err) {
-      callback(cached.err);
-      return;
+      return callback(cached.err);
     }
     try {
       var items = cached.data.map(function (d) { return new Model(app, d); });
@@ -67,10 +66,10 @@ function modelList(app, Model, parentDn, log, callback) {
     }
   }
 
-  function cacheAndCallback($err, $items) {
-    var data = $items && $items.map(function (i) { return i.serialize(); });
-    app.cacheSet(cacheScope, cacheKey, {err: $err, data: data});
-    callback($err, items);
+  function cacheAndCallback(cErr, cItems) {
+    var data = cItems && cItems.map(function (i) { return i.serialize(); });
+    app.cacheSet(cacheScope, cacheKey, {err: cErr, data: data});
+    callback(cErr, cItems);
   }
 
   var opts = {
@@ -83,8 +82,7 @@ function modelList(app, Model, parentDn, log, callback) {
 
   app.ufds.search(parentDn, opts, function (err, result) {
     if (err) {
-      cacheAndCallback(err);
-      return;
+      return cacheAndCallback(err);
     }
 
     var models = [];
@@ -136,8 +134,7 @@ function modelPut(app, Model, data, log, callback) {
   try {
     item = new Model(app, data);
   } catch (e) {
-    callback(e);
-    return;
+    return callback(e);
   }
 
   // Access control check.
@@ -145,19 +142,18 @@ function modelPut(app, Model, data, log, callback) {
     if (err) {
       log.debug({err: err, modelName: Model.name, dn: item.dn},
         'authorizePut err');
-      callback(err);
-      return;
+      return callback(err);
     }
     log.debug({modelName: Model.name, dn: item.dn},
       'authorizePut: authorized');
 
     // Add it.
     var dn = item.dn;
-    app.ufds.add(dn, item.raw, function ($err) {
-      if ($err) {
-        if ($err instanceof ldap.EntryAlreadyExistsError) {
+    app.ufds.add(dn, item.raw, function (ufdsErr) {
+      if (ufdsErr) {
+        if (ufdsErr instanceof ldap.EntryAlreadyExistsError) {
           return callback(new restify.InternalError(
-            'XXX DN \'"+dn+"\' already exists. Can\'t nicely update '
+            'XXX DN "'+dn+'" already exists. Can\'t nicely update '
             + '(with LDAP modify/replace) until '
             + '<https://github.com/mcavage/node-ldapjs/issues/31> is fixed.'));
           //XXX Also not sure if there is another bug in node-ldapjs if
@@ -172,7 +168,7 @@ function modelPut(app, Model, data, log, callback) {
           //});
           //XXX Does replace work if have children?
         } else {
-          log.error($err, 'Error saving to UFDS (dn=\'%s\')', dn);
+          log.error(ufdsErr, 'Error saving to UFDS (dn=\'%s\')', dn);
           return callback(
             new restify.InternalError('Error saving '+Model.name)
           );
@@ -220,7 +216,7 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
           callback(null, new Model(app, cached.data));
         } catch (e) {
           // Drop from the cache and carry on.
-          log.warn(e, 'error in cached data (cacheScope=\'%s\', dn=\'%s\')',
+          log.warn(e, 'error in cached data (cacheScope="%s", dn="%s")',
             cacheScope, dn);
           app.cacheDel(cacheScope, dn);
         }
@@ -238,14 +234,13 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
   var opts = {scope: 'base'};
   app.ufds.search(dn, opts, function (err, result) {
     if (err) {
-      cacheAndCallback(err);
-      return;
+      return cacheAndCallback(err);
     }
 
     var item = null;
     result.on('searchEntry', function (entry) {
       // Should only one entry with this DN.
-      assert.ok(item === null, 'more than one item with dn=\'"+dn+"\': '+item);
+      assert.ok(item === null, 'more than one item with dn="'+dn+'": '+item);
       try {
         item = new Model(app, entry.object);
       } catch (err2) {
@@ -305,8 +300,7 @@ function modelDelete(app, Model, dn, log, callback) {
   // invalidation).
   modelGet(app, Model, dn, log, true, function (err, item) {
     if (err) {
-      callback(err);
-      return;
+      return callback(err);
     }
 
     app.ufds.del(dn, function (err1) {
@@ -375,8 +369,7 @@ function requestGet(req, res, next, Model) {
   try {
     dn = Model.dnFromRequest(req);
   } catch (err) {
-    res.send(err);
-    return;
+    return res.send(err);
   }
 
   modelGet(req._app, Model, dn, req.log, function (err, item) {
