@@ -1,4 +1,5 @@
-/* Copyright 2011 Joyent, Inc.  All rights reserved.
+/**
+ * Copyright 2011 Joyent, Inc.  All rights reserved.
  *
  * Controller for relay "POST /events" endpoint.
  */
@@ -23,14 +24,14 @@ function putEvents(req, res, next) {
 
   // Add data known by the relay (this is info the master can trust more
   // because the relay is always in the hands of the operator).
-  if (req.targetType === "server") {
+  if (req.targetType === 'server') {
     event.server = req.targetUuid;
   } else {
     event.machine = req.targetUuid;
   }
 
-  req.log.debug({event: event}, "relaying event");
-  req._masterClient.sendEvent(event, function(err) {
+  req.log.debug({event: event}, 'relaying event');
+  req._masterClient.sendEvent(event, function (err) {
     if (err) {
       return next(err);
     }

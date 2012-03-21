@@ -66,7 +66,6 @@ function ping(req, res, next) {
     });
   }
   next();
-  return;
 }
 
 function getUser(req, res, next) {
@@ -210,14 +209,39 @@ function App(config, ufds, mapi, log) {
   // because it allows the interdependant cache-invalidation to be
   // centralized.
   this._cacheFromScope = {
-    MonitorGet: new Cache({size:100, expiry:300000, log:log, name:'MonitorGet'}),
-    MonitorList: new Cache({size:100, expiry:300000, log:log, name:'MonitorList'}),
-    ProbeGet: new Cache({size:100, expiry:300000, log:log, name:'ProbeGet'}),
-    ProbeList: new Cache({size:100, expiry:300000, log:log, name:'ProbeList'}),
+    MonitorGet: new Cache({
+      size:100,
+      expiry:300000,
+      log:log,
+      name:'MonitorGet'
+    }),
+    MonitorList: new Cache({
+      size:100,
+      expiry:300000,
+      log:log,
+      name:'MonitorList'
+    }),
+    ProbeGet: new Cache({
+      size:100,
+      expiry:300000,
+      log:log,
+      name:'ProbeGet'
+    }),
+    ProbeList: new Cache({
+      size:100,
+      expiry:300000,
+      log:log,
+      name:'ProbeList'
+    }),
     // This is unbounded in size because (a) the data stored is small and (b)
     // we expect `headAgentProbes` calls for *all* machines (the key) regularly
     // so an LRU-cache is pointless.
-    headAgentProbes: new Cache({size:100, expiry:300000, log:log, name:'headAgentProbes'})
+    headAgentProbes: new Cache({
+      size:100,
+      expiry:300000,
+      log:log,
+      name:'headAgentProbes'
+    })
   };
 
   var server = this.server = restify.createServer({
@@ -763,7 +787,7 @@ App.prototype.processEvent = function (event, callback) {
         format('no such user: "%s"', event.user)));
     }
     info.user = user;
-    return Monitor.get(self, event.user, event.monitor, 
+    return Monitor.get(self, event.user, event.monitor,
                        function (getErr, monitor) {
       if (getErr) {
         return callback(getErr);
@@ -818,7 +842,7 @@ App.prototype.getOrCreateAlarm = function (options, callback) {
           'no candidate related alarms: create a new alarm');
         return self.createAlarm(options, callback);
       }
-      self.chooseRelatedAlarm(candidateAlarms, options, 
+      self.chooseRelatedAlarm(candidateAlarms, options,
                               function (chooseErr, alarm) {
         if (chooseErr) {
           callback(chooseErr);
@@ -854,8 +878,11 @@ App.prototype.getOrCreateAlarm = function (options, callback) {
  * this "1 hour" an optional var on monitor. Eventually this algo can
  * consider more vars.
  */
-App.prototype.chooseRelatedAlarm = function (candidateAlarms, options, callback) {
-  this.log.debug({numCandidateAlarms: candidateAlarms.length}, 'chooseRelatedAlarm');
+App.prototype.chooseRelatedAlarm = function (candidateAlarms,
+                                             options,
+                                             callback) {
+  this.log.debug({numCandidateAlarms: candidateAlarms.length},
+                 'chooseRelatedAlarm');
   var ONE_HOUR = 60 * 60 * 1000;  // an hour in milliseconds
   candidateAlarms.sort(
     // Sort the latest 'timeLastEvent' first (alarms with no 'timeLastEvent'
@@ -969,7 +996,8 @@ App.prototype.notifyContact = function (alarm, user, monitor, contact, event,
   var log = this.log;
   var plugin = this.notificationPlugins[contact.notificationType];
   if (!plugin) {
-    var msg = format('notification plugin "%s" not found', contact.notificationType);
+    var msg = format('notification plugin "%s" not found',
+                     contact.notificationType);
     log.fatal(msg);
     return callback(new Error(msg));
   }

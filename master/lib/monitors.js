@@ -223,8 +223,8 @@ module.exports = {
         user: req._user.uuid,
         monitor: monitor.name,
         time: Date.now(),
-        data:{
-          message: "Test notification."
+        data: {
+          message: 'Test notification.'
         },
         uuid: uuid()
       };

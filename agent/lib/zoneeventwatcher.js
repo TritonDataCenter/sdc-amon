@@ -108,7 +108,9 @@ ZoneEventWatcher.prototype.handleZoneEvent = function (event) {
   var oldstate = event.oldstate;
   var newstate = event.newstate;
   if (oldstate === 'running' && newstate === 'shutting_down') {
-    this.log.trace({zoneevent: event}, 'emit "zoneDown" for zone "%s"', zonename);
+    this.log.trace({zoneevent: event},
+                   'emit "zoneDown" for zone "%s"',
+                   zonename);
     this.emit('zoneDown', zonename);
   } else if (oldstate === 'ready' && newstate === 'running') {
     this.log.trace({zonevent: event}, 'emit "zoneUp" for zone "%s"', zonename);

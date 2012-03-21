@@ -45,8 +45,14 @@ Testy.prototype.sanitizeAddress = function (data) {
 Testy.prototype.notify = function (user, contactAddress, event, callback) {
   var probeName = event.probe.name;
   var message = JSON.stringify(event);
-  this.log.debug('Test.notify: probeName="%s", contactAddress="%s", message="%s"',
-    probeName, contactAddress, message);
+
+  this.log.debug(
+    'Test.notify: probeName="%s", contactAddress="%s", message="%s"',
+    probeName,
+    contactAddress,
+    message
+  );
+
   this.notifications.push({
     contactAddress: contactAddress,
     message: message

@@ -4,7 +4,7 @@ var fs = require('fs');
 var http = require('http');
 var path = require('path');
 var os = require('os');
-var Pipe = process.binding("pipe_wrap").Pipe;
+var Pipe = process.binding('pipe_wrap').Pipe;
 var crypto = require('crypto');
 
 var restify = require('restify');
@@ -40,7 +40,7 @@ var utils = require('./utils');
  *    null if the file doesn't exist.
  */
 function md5FromPath(filePath, cb) {
-  fs.readFile(filePath, 'utf8', function(err, data) {
+  fs.readFile(filePath, 'utf8', function (err, data) {
     if (err) {
       if (err.code !== 'ENOENT') {
         return cb(null, null);
@@ -94,7 +94,8 @@ function App(options) {
   if (!options.log) throw TypeError('options.log is required');
   if (!options.socket) throw TypeError('options.socket is required');
   if (!options.dataDir) throw TypeError('options.dataDir is required');
-  if (!options.masterClient) throw TypeError('options.masterClient is required');
+  if (!options.masterClient)
+    throw TypeError('options.masterClient is required');
   if (options.machine && options.server) {
     throw TypeError('cannot specify both options.machine and options.server');
   } else if (!options.machine && !options.server) {
@@ -102,7 +103,7 @@ function App(options) {
   }
   var self = this;
 
-  this.targetType = (options.server ? "server" : "machine");
+  this.targetType = (options.server ? 'server' : 'machine');
   this.targetUuid = (options.server || options.machine);
   this.target = format('%s:%s', this.targetType, this.targetUuid);
   var log = this.log = options.log.child({target: this.target}, true);
@@ -119,15 +120,15 @@ function App(options) {
   this.downstreamAgentProbes = null;
 
   this._stageLocalJsonPath = path.resolve(this.dataDir,
-    format("%s-%s-local.json", this.targetType, this.targetUuid));
+    format('%s-%s-local.json', this.targetType, this.targetUuid));
   this._stageGlobalJsonPath = path.resolve(this.dataDir,
-    format("%s-%s-global.json", this.targetType, this.targetUuid));
+    format('%s-%s-global.json', this.targetType, this.targetUuid));
   this._stageMD5Path = path.resolve(this.dataDir,
-    format("%s-%s.content-md5", this.targetType, this.targetUuid));
+    format('%s-%s.content-md5', this.targetType, this.targetUuid));
 
   // Server setup.
   var server = this.server = restify.createServer({
-    name: "Amon Relay/" + Constants.ApiVersion,
+    name: 'Amon Relay/' + Constants.ApiVersion,
     log: log
   });
   server.use(restify.queryParser());
@@ -186,20 +187,20 @@ App.prototype.sendOperatorEvent = function (msg, details, callback) {
  *
  * @param callback {Function} `function (err) {}` called when complete.
  */
-App.prototype.start = function(callback) {
+App.prototype.start = function (callback) {
   var self = this;
   var zonename = this.targetUuid;
   var log = this.log;
 
   // Early out for developer mode.
-  if (typeof(self.socket) === 'number') {
-    log.debug("Starting app on <http://127.0.0.1:%d> (developer mode)",
+  if (typeof (self.socket) === 'number') {
+    log.debug('Starting app on <http://127.0.0.1:%d> (developer mode)',
       self.socket);
     return self.server.listen(self.socket, '127.0.0.1', callback);
   }
 
   function loadCache(next) {
-    fs.readFile(self._stageMD5Path, 'utf8', function(err, data) {
+    fs.readFile(self._stageMD5Path, 'utf8', function (err, data) {
       if (err && err.code !== 'ENOENT') {
         log.warn('Unable to read file ' + self._stageMD5Path + ': ' + err);
       }
@@ -256,7 +257,7 @@ App.prototype.start = function(callback) {
       zone: zonename,
       path: self.socket
     };
-    zsock.createZoneSocket(opts, function(err, fd) {
+    zsock.createZoneSocket(opts, function (err, fd) {
       if (err) {
         return next(err);
       }
@@ -299,7 +300,7 @@ App.prototype.start = function(callback) {
  *
  * @param {Function} callback called when closed. Takes no arguments.
  */
-App.prototype.close = function(callback) {
+App.prototype.close = function (callback) {
   this.log.info('close app for %s "%s"', this.targetType, this.targetUuid);
   this.server.once('close', callback);
   try {
@@ -330,7 +331,7 @@ App.prototype.cacheInvalidateDownstream = function () {
  *
  * @param callback (Function) `function (err, md5)`
  */
-App.prototype.getDownstreamAgentProbesMD5 = function(callback) {
+App.prototype.getDownstreamAgentProbesMD5 = function (callback) {
   var self = this;
   if (self.downstreamAgentProbesMD5) {
     self.log.trace({md5: self.downstreamAgentProbesMD5},
@@ -339,7 +340,9 @@ App.prototype.getDownstreamAgentProbesMD5 = function(callback) {
   }
 
   self.getDownstreamAgentProbes(function (err, agentProbes) {
-    if (err) return callback(err);
+    if (err) {
+      return callback(err);
+    }
     var data = JSON.stringify(agentProbes);
     var hash = crypto.createHash('md5');
     hash.update(data);
@@ -355,7 +358,7 @@ App.prototype.getDownstreamAgentProbesMD5 = function(callback) {
  *
  * @param callback (Function) `function (err, agentProbes)`
  */
-App.prototype.getDownstreamAgentProbes = function(callback) {
+App.prototype.getDownstreamAgentProbes = function (callback) {
   var self = this;
   if (self.downstreamAgentProbes) {
     self.log.trace({agentProbes: self.downstreamAgentProbes},
@@ -365,24 +368,25 @@ App.prototype.getDownstreamAgentProbes = function(callback) {
 
   var log = self.log;
   var files = [];
+
   if (self.targetType === 'server') {
-    files.push(format("server-%s-local.json", self.targetUuid));
-    files.push(format("server-%s-global.json", self.targetUuid));
+    files.push(format('server-%s-local.json', self.targetUuid));
+    files.push(format('server-%s-global.json', self.targetUuid));
     var zonenames = Object.keys(self.zoneApps);
     for (var i = 0; i < zonenames.length; i++) {
       if (zonenames[i] === 'global')
         continue;
-      files.push(format("machine-%s-global.json", zonenames[i]));
+      files.push(format('machine-%s-global.json', zonenames[i]));
     }
   } else {
-    files.push(format("%s-%s-local.json", self.targetType, self.targetUuid));
+    files.push(format('%s-%s-local.json', self.targetType, self.targetUuid));
   }
   var agentProbes = [];
   async.forEachSeries(files,
     function (file, next) {
       var filePath = path.join(self.dataDir, file);
       log.trace({file: file}, 'read file for downstreamAgentProbes');
-      fs.readFile(filePath, 'utf8', function(err, content) {
+      fs.readFile(filePath, 'utf8', function (err, content) {
         if (err) {
           if (err.code !== 'ENOENT') {
             log.warn({err: err, path: filePath}, 'unable to read db file');
@@ -427,7 +431,7 @@ App.prototype.getDownstreamAgentProbes = function(callback) {
  *    for which `global: true`). This boolean is used to assist with
  *    cache invalidation.
  */
-App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
+App.prototype.writeAgentProbes = function (agentProbes, md5, callback) {
   var self = this;
   var log = self.log;
 
@@ -458,19 +462,22 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
 
   function backup(cb) {
     var backedUpPaths = [];
-    utils.asyncForEach([localJsonPath, globalJsonPath, md5Path], function (p, cb2) {
+    utils.asyncForEach([localJsonPath, globalJsonPath, md5Path],
+                       function (p, cb2) {
       path.exists(p, function (exists) {
         if (exists) {
-          log.trace("Backup '%s' to '%s'.", p, p + ".bak");
+          log.trace('Backup \'%s\' to \'%s\'.', p, p + '.bak');
           backedUpPaths.push([p, p + '.bak']);
           if (p === globalJsonPath) {
             md5FromPath(p, function (err, globalMD5) {
-              if (err) return cb2(err);
+              if (err) {
+                return cb2(err);
+              }
               oldGlobalMD5 = globalMD5;
-              fs.rename(p, p + ".bak", cb2);
+              fs.rename(p, p + '.bak', cb2);
             });
           } else {
-            fs.rename(p, p + ".bak", cb2);
+            fs.rename(p, p + '.bak', cb2);
           }
         } else {
           cb2();
@@ -501,7 +508,7 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
     utils.asyncForEach(
       backedUpPaths,
       function (ps, cb2) {
-        log.trace("Restore backup '%s' to '%s'.", ps[1], ps[0]);
+        log.trace('Restore backup \'%s\' to \'%s\'.', ps[1], ps[0]);
         fs.rename(ps[1], ps[0], cb2);
       },
       cb);
@@ -510,20 +517,22 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
     utils.asyncForEach(
       backedUpPaths,
       function (ps, cb2) {
-        log.trace("Remove backup '%s'.", ps[1]);
+        log.trace('Remove backup \'%s\'.', ps[1]);
         fs.unlink(ps[1], cb2);
       },
       cb);
   }
 
   backup(function (err1, backedUpPaths) {
-    if (err1) return callback(err1);
+    if (err1) {
+      return callback(err1);
+    }
     write(function (err2) {
       if (err2) {
         if (backedUpPaths.length) {
           return restore(backedUpPaths, function (err3) {
             if (err3) {
-              return callback(format("%s (also: %s)", err2, err3));
+              return callback(format('%s (also: %s)', err2, err3));
             }
             return callback(err2);
           });
@@ -538,7 +547,9 @@ App.prototype.writeAgentProbes = function(agentProbes, md5, callback) {
         newGlobalMD5: newGlobalMD5}, 'isGlobalChange in writeAgentProbes');
       if (backedUpPaths.length) {
         cleanBackup(backedUpPaths, function (err4) {
-          if (err4) return callback(err4);
+          if (err4) {
+            return callback(err4);
+          }
           return callback(null, isGlobalChange);
         });
       } else {

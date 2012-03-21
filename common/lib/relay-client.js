@@ -35,7 +35,8 @@ var RestCodes = restify.RestCodes;
 function RelayClient(options) {
   if (!options) throw new TypeError('options is required');
   if (!options.url) throw new TypeError('options.url (string) is required');
-  if (!options.log) throw new TypeError('options.log (Bunyan Logger) is required');
+  if (!options.log)
+    throw new TypeError('options.log (Bunyan Logger) is required');
   this.log = options.log;
 
   var parsed = url.parse(options.url);
@@ -49,20 +50,20 @@ function RelayClient(options) {
     this._baseRequestOpts.host = parsed.hostname;
     this._baseRequestOpts.port = parsed.port;
     switch (parsed.protocol) {
-    case "http:":
-      this._requestMode = "http";
+    case 'http:':
+      this._requestMode = 'http';
       break;
-    case "https:":
-      this._requestMode = "https";
+    case 'https:':
+      this._requestMode = 'https';
       break;
     default:
-      throw new TypeError(format("invalid relay API protocol: '%s'",
+      throw new TypeError(format('invalid relay API protocol: \'%s\'',
         parsed.protocol));
     }
   } else {
     assert.equal(options.url, parsed.pathname);
     this._baseRequestOpts.socketPath = parsed.pathname;
-    this._requestMode = "http";
+    this._requestMode = 'http';
   }
 }
 
@@ -85,7 +86,7 @@ function RelayClient(options) {
  * @param callback {Function} `function (err, md5)`.
  */
 RelayClient.prototype.agentProbesMD5 = function (type, uuid, callback) {
-  if (!callback && typeof(type) === "function") {
+  if (!callback && typeof (type) === 'function') {
     callback = type;
     type = null;
     uuid = null;
@@ -94,12 +95,14 @@ RelayClient.prototype.agentProbesMD5 = function (type, uuid, callback) {
   if (type && !uuid) throw TypeError('"uuid" is required with "type" param');
   var self = this;
 
-  var path = "/agentprobes";
+  var path = '/agentprobes';
   if (type) {
-    path += "?" + type + "=" + uuid;
+    path += '?' + type + '=' + uuid;
   }
-  this._request('HEAD', path, function(err, res) {
-    if (err) return callback(err);
+  this._request('HEAD', path, function (err, res) {
+    if (err) {
+      return callback(err);
+    }
     if (res.statusCode !== 200) {
       self.log.warn('Bad status code for checksum: %d', res.statusCode);
       return callback(new Error('HttpError: ' + res.statusCode));
@@ -118,8 +121,8 @@ RelayClient.prototype.agentProbesMD5 = function (type, uuid, callback) {
  * the machine/server is implicit in the socket communication channel
  * provided by the relay. More succintly:
  *
- *    client.agentProbes(TYPE, UUID, function(err, md5) {...}) # relay usage
- *    client.agentProbes(function(err, md5) {...})             # agent usage
+ *    client.agentProbes(TYPE, UUID, function (err, md5) {...}) # relay usage
+ *    client.agentProbes(function (err, md5) {...})             # agent usage
  *
  * @param type {String} One of "server" or "machine" indicating the scope
  *    for the `uuid` param.
@@ -128,7 +131,7 @@ RelayClient.prototype.agentProbesMD5 = function (type, uuid, callback) {
  * @param callback {Function} `function (err, md5)`.
  */
 RelayClient.prototype.agentProbes = function (type, uuid, callback) {
-  if (!callback && typeof(type) === "function") {
+  if (!callback && typeof (type) === 'function') {
     callback = type;
     type = null;
     uuid = null;
@@ -137,12 +140,14 @@ RelayClient.prototype.agentProbes = function (type, uuid, callback) {
   if (type && !uuid) throw TypeError('"uuid" is required with "type" param');
   var self = this;
 
-  var path = "/agentprobes";
+  var path = '/agentprobes';
   if (type) {
-    path += "?" + type + "=" + uuid;
+    path += '?' + type + '=' + uuid;
   }
-  this._request("GET", path, function(err, res) {
-    if (err) return callback(err);
+  this._request('GET', path, function (err, res) {
+    if (err) {
+      return callback(err);
+    }
     if (res.statusCode !== 200) {
       self.log.warn('Bad status code for checksum: %d', res.statusCode);
       return callback(new Error('HttpError: ' + res.statusCode));
@@ -162,7 +167,7 @@ RelayClient.prototype.agentProbes = function (type, uuid, callback) {
  * @param callback {Function} `function (err) {}` called on completion.
  *    "err" is undefined on success, a restify error instance on failure.
  */
-RelayClient.prototype.sendEvent = function(event, callback) {
+RelayClient.prototype.sendEvent = function (event, callback) {
   var self = this;
 
   function onComplete(err, res) {
@@ -172,7 +177,7 @@ RelayClient.prototype.sendEvent = function(event, callback) {
     }
     if (res.statusCode !== 202 /* Accepted */) {
       self.log.warn({res: res, body: res.body},
-        "invalid response for RelayClient.sendEvent");
+        'invalid response for RelayClient.sendEvent');
       return callback(new restify.InternalError());
     } else {
       return callback();
@@ -193,7 +198,7 @@ RelayClient.prototype.sendEvent = function(event, callback) {
  * @param callback {Function} Called when request is complete.
  *    `function (err, response)`.
  */
-RelayClient.prototype._request = function(method, path, callback) {
+RelayClient.prototype._request = function (method, path, callback) {
   var self = this;
 
   var options = {};
@@ -203,14 +208,14 @@ RelayClient.prototype._request = function(method, path, callback) {
   options.method = method;
   options.path = path;
 
-  var onResponse = function(res) {
+  var onResponse = function (res) {
     var chunks = [];
     res.setEncoding('utf8');
-    res.on('data', function(chunk) {
+    res.on('data', function (chunk) {
       self.log.trace('RelayClient request chunk=%s', chunk);
       chunks.push(chunk);
     });
-    res.on('end', function() {
+    res.on('end', function () {
       res.body = chunks.join('');
       if (res.body.length > 0 &&
           res.headers['content-type'] === 'application/json') {
@@ -228,18 +233,18 @@ RelayClient.prototype._request = function(method, path, callback) {
   this.log.trace({options: options}, 'RelayClient request');
   var req;
   switch (this._requestMode) {
-  case "http":
+  case 'http':
     req = http.request(options, onResponse);
     break;
-  case "https":
+  case 'https':
     req = https.request(options, onResponse);
     break;
   default:
-    throw new Error(format("unknown request mode: '%s'", this._requestMode));
+    throw new Error(format('unknown request mode: \'%s\'', this._requestMode));
   }
 
-  req.on('error', function(err) {
-    self.log.warn("error requesting '%s %s': %s", method, path, err);
+  req.on('error', function (err) {
+    self.log.warn('error requesting \'%s %s\': %s', method, path, err);
     return callback(err);
   });
   return req;

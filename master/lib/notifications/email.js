@@ -69,7 +69,11 @@ Email.prototype.sanitizeAddress = function (address) {
  * @param event {Object} The Amon event that triggered this notification.
  * @param callback {Function} `function (err)` called on completion.
  */
-Email.prototype.notify = function (alarm, user, contactAddress, event, callback) {
+Email.prototype.notify = function (alarm,
+                                   user,
+                                   contactAddress,
+                                   event,
+                                   callback) {
   if (!alarm) throw new TypeError('"alarm" required');
   if (!user) throw new TypeError('"user" required');
   if (!contactAddress) throw new TypeError('"contactAddress" required');
@@ -105,6 +109,11 @@ Email.prototype.notify = function (alarm, user, contactAddress, event, callback)
     monitorName, toNoQuotes,
     this.datacenterName,
     JSON.stringify(event, null, 2));
+
+
+
+/* BEGIN JSSTYLED */
+
 /* XXX Template this:
 
 {{message}}
@@ -123,6 +132,7 @@ Datacenter: {{dcName}}
   // <http://www.google.com/support/forum/p/gmail/thread?tid=07c8bfb80cb09135&hl=en>
   //
   // Subject: [Monitoring] Alarm 1 in us-west-1: "All SDC Zones" monitor alarmed
+/* END JSSTYLED */
   var re = (alarm.numNotifications > 0 ? 'Re: ' : '');
   var subject = format('%s[Monitoring] Alarm %s/%d in %s: "%s" monitor alarmed',
     re, user.login, alarm.id, this.datacenterName, monitorName);

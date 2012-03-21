@@ -19,18 +19,21 @@ var amonCommon = require('amon-common'),
  */
 function asyncForEach(list, fn, cb) {
   if (!list.length) cb();
-  var c = list.length
-    , errState = null;
+  var c = list.length, errState = null;
   list.forEach(function (item, i, lst) {
    fn(item, function (er) {
-      if (errState) return;
-      if (er) return cb(errState = er);
-      if (-- c === 0) return cb();
+      if (errState)
+        return;
+      if (er)
+        return cb(errState = er);
+      if (-- c === 0)
+        return cb();
     });
   });
 }
 
 
+/* BEGIN JSSTYLED */
 /**
  * Wait for a SMF service or milestone to come online.
  *
@@ -49,6 +52,7 @@ function asyncForEach(list, fn, cb) {
  * @param log {Logger}
  * @param callback {Function} `function (err) {}`.
  */
+/* END JSSTYLED */
 function waitForZoneSvc(zonename, svc, timeout, log, callback) {
   // Return a random delay between 5-15s.
   function getDelay() {
@@ -91,7 +95,7 @@ function isSvcOnline(zonename, svc, log, callback) {
   var cmd = '/usr/bin/svcs';
   var args = ['-z', zonename, '-o', 'state', '-Hp', svc];
   log.trace('run: cmd=%s, args=%j', cmd, args);
-  execFile(cmd, args, {}, function(err, stdout, stderr) {
+  execFile(cmd, args, {}, function (err, stdout, stderr) {
     log.trace('ran: cmd=%s, args=%j, err=%s, stdout=%j, stderr=%j',
       cmd, args, err, stdout, stderr);
     if (err) {

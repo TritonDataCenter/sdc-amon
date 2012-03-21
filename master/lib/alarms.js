@@ -50,8 +50,9 @@
  *
  * FWIW, example email notification subjects using the Alarm id:
  *
- *    Subject: [Monitoring] Alarm trentm 1 in us-west-1: "All SDC Zones" monitor alarmed
- *    Subject: [Alarm] trentm 1 in us-west-1: "All SDC Zones" monitor alarmed
+ * Subject: [Monitoring] Alarm trentm 1 in us-west-1: "All SDC Zones"
+ *            monitor alarmed
+ * Subject: [Alarm] trentm 1 in us-west-1: "All SDC Zones" monitor alarmed
  *
  */
 
@@ -124,7 +125,7 @@ function Alarm(data, log) {
     this.closed = false;
   } else if (data.closed === 'true') { // redis hash string
     this.closed = true;
-  } else if (typeof(data.closed) === 'boolean') {
+  } else if (typeof (data.closed) === 'boolean') {
     this.closed = data.closed;
   } else {
     throw new TypeError(
@@ -163,14 +164,14 @@ Alarm.get = function get(app, user, id, callback) {
   app.getRedisClient().hgetall(_key, function (err, obj) {
     var log = app.log;
     if (err) {
-      log.error(err, "error retrieving '%s' from redis", _key);
+      log.error(err, 'error retrieving "%s" from redis', _key);
       return callback(err);
     }
     try {
       var alarm = new Alarm(obj, app.log);
     } catch (e) {
       //XXX xform to our error hierarchy.
-      log.error(e, "XXX");
+      log.error(e, 'XXX');
       return callback(e);
     }
     return callback(null, alarm);
@@ -194,18 +195,18 @@ Alarm.filter = function filter(app, options, callback) {
   if (!app) throw new TypeError('"app" (object) is required');
   if (!options) throw new TypeError('"options" (object) is required');
   if (!options.user) throw new TypeError('"options.user" (UUID) is required');
-  if (options.monitor !== undefined && typeof(options.monitor) !== 'string')
+  if (options.monitor !== undefined && typeof (options.monitor) !== 'string')
     throw new TypeError('"options.monitor" is not a string');
-  if (options.closed !== undefined && typeof(options.closed) !== 'boolean')
+  if (options.closed !== undefined && typeof (options.closed) !== 'boolean')
     throw new TypeError('"options.closed" is not a boolean');
   if (!callback) throw new TypeError('"callback" (object) is required');
 
   var log = app.log;
 
   var _alarmsKey = 'alarms:' + options.user;
-  app.getRedisClient().smembers(_alarmsKey, function(err, alarmIds) {
+  app.getRedisClient().smembers(_alarmsKey, function (err, alarmIds) {
     if (err) {
-      log.error(err, "XXX");
+      log.error(err, 'XXX');
       return callback(err);
     }
     var alarmKeys = alarmIds.map(function (id) {
@@ -218,12 +219,13 @@ Alarm.filter = function filter(app, options, callback) {
     }
     return async.map(alarmKeys, hgetall, function (hgetallerr, alarmObjs) {
       if (hgetallerr) {
-        log.error(hgetallerr, "XXX");
+        log.error(hgetallerr, 'XXX');
         return callback(hgetallerr);
       }
       var alarms = [];
       for (var i = 0; i < alarmObjs.length; i++) {
-        // TODO:PERF: consider filtering `alarmObj` instead of `alarm` to avoid creation.
+        // TODO:PERF:
+        // consider filtering `alarmObj` instead of `alarm` to avoid creation.
         var alarm = new Alarm(alarmObjs[i], log);
         // Filter.
         if (alarm.monitor !== options.monitor) {
@@ -286,9 +288,11 @@ Alarm.prototype.save = function save(app, callback) {
   var log = this.log;
 
   function _ensureId(next) {
-    if (self.id) return next();
+    if (self.id)
+      return next();
     log.debug({user: self.user}, 'get next alarm id');
-    return app.getRedisClient().hincrby('alarmIds', self.user, 1, function (err, id) {
+    return app.getRedisClient().hincrby('alarmIds', self.user, 1,
+                                        function (err, id) {
       if (err) {
         return callback(err);
       }
@@ -307,7 +311,7 @@ Alarm.prototype.save = function save(app, callback) {
       .hmset(self._key, self.serializeDb())
       .exec(function (err, replies) {
         if (err) {
-          log.error(err, "XXX");
+          log.error(err, 'XXX');
           return callback(err);
         }
         return callback();
@@ -343,7 +347,10 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
   var user = options.user;
   var event = options.event;
   var monitor = options.monitor;
-  log.info({event_uuid: event.uuid, alarm_id: this.id, user: this.user}, 'handleEvent');
+  log.info(
+    {event_uuid: event.uuid, alarm_id: this.id, user: this.user},
+    'handleEvent'
+  );
 
   // Decide whether to notify:
   // - if this is a clear event and never opened, then no (TODO)
@@ -358,7 +365,7 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
   function doNotify(cb) {
     self.notify(app, user, event, monitor, function (err) {
       if (err) {
-        log.error(err, "TODO:XXX send a user event about error notifying");
+        log.error(err, 'TODO:XXX send a user event about error notifying');
       }
       if (cb)
         cb(err);
@@ -396,7 +403,7 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
         doNotify();
       }
       if (err) {
-        log.error(err, "error updating redis with alarm event data");
+        log.error(err, 'error updating redis with alarm event data');
       }
       callback(err);
     });
@@ -447,7 +454,8 @@ Alarm.prototype.notify = function notify(app, user, event, monitor, callback) {
       //});
       return cb();
     } else {
-      return app.notifyContact(self, user, monitor, contact, event, function (err) {
+      return app.notifyContact(self, user, monitor, contact, event,
+                               function (err) {
         if (err) {
           log.warn({err: err, contact: contactUrn}, 'could not notify contact');
         } else {

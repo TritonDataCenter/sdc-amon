@@ -1,7 +1,8 @@
 /*
  * Copyright 2011 Joyent, Inc.  All rights reserved.
  *
- * Amon Master controller for '/pub/:user/monitors/:monitor/probes/...' endpoints.
+ * Amon Master controller for '/pub/:user/monitors/:monitor/probes/...'
+ * endpoints.
  */
 
 var debug = console.warn;
@@ -30,6 +31,7 @@ var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 // Interface is as required by "ufdsmodel.js".
 // Presuming routes as follows: '.../monitors/:monitor/probes/:probe'.
 
+/* BEGIN JSSTYLED */
 /**
  * Create a Probe. `new Probe(app, data)`.
  *
@@ -49,6 +51,7 @@ var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
  *        objectclass: 'amonprobe' }
  * @throws {restify.RESTError} if the given data is invalid.
  */
+/* END JSSTYLED */
 function Probe(app, data) {
   assert.ok(app);
   assert.ok(data);
@@ -83,22 +86,22 @@ function Probe(app, data) {
   this.raw = Probe.validate(app, raw);
 
   var self = this;
-  this.__defineGetter__('name', function() {
+  this.__defineGetter__('name', function () {
     return self.raw.amonprobe;
   });
-  this.__defineGetter__('type', function() {
+  this.__defineGetter__('type', function () {
     return self.raw.type;
   });
-  this.__defineGetter__('machine', function() {
+  this.__defineGetter__('machine', function () {
     return self.raw.machine;
   });
-  this.__defineGetter__('server', function() {
+  this.__defineGetter__('server', function () {
     return self.raw.server;
   });
-  this.__defineGetter__('global', function() {
+  this.__defineGetter__('global', function () {
     return self.raw.global;
   });
-  this.__defineGetter__('config', function() {
+  this.__defineGetter__('config', function () {
     if (!self.raw.config) {
       return undefined;
     }
@@ -109,7 +112,7 @@ function Probe(app, data) {
   });
 }
 
-Probe.objectclass = "amonprobe";
+Probe.objectclass = 'amonprobe';
 
 Probe.parseDn = function (dn) {
   var parsed = ldap.parseDN(dn);
@@ -121,7 +124,7 @@ Probe.parseDn = function (dn) {
 };
 
 Probe.dn = function (user, monitor, name) {
-  return format("amonprobe=%s, amonmonitor=%s, uuid=%s, ou=users, o=smartdc",
+  return format('amonprobe=%s, amonmonitor=%s, uuid=%s, ou=users, o=smartdc',
     name, monitor, user);
 };
 
@@ -135,7 +138,7 @@ Probe.dnFromRequest = function (req) {
 Probe.parentDnFromRequest = function (req) {
   var monitorName = req.params.monitor;
   Monitor.validateName(monitorName);
-  return format("amonmonitor=%s, %s", monitorName, req._user.dn);
+  return format('amonmonitor=%s, %s', monitorName, req._user.dn);
 };
 
 
@@ -190,7 +193,7 @@ Probe.prototype.authorizePut = function (app, callback) {
     if (plugins[self.type].runInGlobal) {
       next();
     } else {
-      next("not runInGlobal: " + self.type);
+      next('not runInGlobal: ' + self.type);
     }
   }
 
@@ -202,7 +205,7 @@ Probe.prototype.authorizePut = function (app, callback) {
       if (machine) {
         next();
       } else {
-        next("no such machine: " + self.machine);
+        next('no such machine: ' + self.machine);
       }
     });
   }
@@ -210,14 +213,14 @@ Probe.prototype.authorizePut = function (app, callback) {
   function userIsOperatorOrErr(next) {
     app.isOperator(self.user, function (err, isOperator) {
       if (err) {
-        log.error("unexpected error authorizing probe put: "
-          + "probe=%s, error=%s", JSON.stringify(self.serialize()),
+        log.error('unexpected error authorizing probe put: '
+          + 'probe=%s, error=%s', JSON.stringify(self.serialize()),
           err.stack || err);
         next('err determining if operator');
       } else if (isOperator) {
         next();
       } else {
-        next("not operator: " + self.user);
+        next('not operator: ' + self.user);
       }
     });
   }
@@ -237,17 +240,17 @@ Probe.prototype.authorizePut = function (app, callback) {
             if (not3) {
               // Not "3.", return error for "1."
               callback(new restify.InvalidArgumentError(format(
-                "Invalid 'machine': machine '%s' does not exist or is not "
-                + "owned by user '%s'.", self.machine, self.user)));
+                'Invalid \'machine\': machine \'%s\' does not exist or is not '
+                + 'owned by user \'%s\'.', self.machine, self.user)));
             } else {
               callback();
             }
           });
         } else {
           log.error({err: err, probe: self.serialize()},
-            "unexpected error authorizing probe put against MAPI");
+            'unexpected error authorizing probe put against MAPI');
           callback(new restify.InternalError(
-            "Internal error authorizing probe put."));
+            'Internal error authorizing probe put.'));
         }
       } else {
         callback();
@@ -257,17 +260,17 @@ Probe.prototype.authorizePut = function (app, callback) {
     // 2. Must be an operator to add a probe to a GZ.
     app.isOperator(this.user, function (err, isOperator) {
       if (err) {
-        log.error("unexpected error authorizing probe put: "
-          + "probe=%s, error=%s", JSON.stringify(self.serialize()),
+        log.error('unexpected error authorizing probe put: '
+          + 'probe=%s, error=%s', JSON.stringify(self.serialize()),
           err.stack || err);
         callback(new restify.InternalError(
-          "Internal error authorizing probe put."));
+          'Internal error authorizing probe put.'));
         return;
       }
       if (!isOperator) {
         callback(new restify.InvalidArgumentError(format(
-          "Must be operator put a probe on a server (server=%s): "
-          + "user '%s' is not an operator.", self.server, self.user)));
+          'Must be operator put a probe on a server (server=%s): '
+          + 'user \'%s\' is not an operator.', self.server, self.user)));
         return;
       }
 
@@ -275,30 +278,30 @@ Probe.prototype.authorizePut = function (app, callback) {
       app.serverExists(self.server, function ($err, serverExists) {
         if (err) {
           log.error({err: $err, probe: self.serialize()},
-            "unexpected error authorizing probe put against MAPI");
+            'unexpected error authorizing probe put against MAPI');
           callback(new restify.InternalError(
-            "Internal error authorizing probe put."));
+            'Internal error authorizing probe put.'));
           return;
         }
         if (!serverExists) {
           callback(new restify.InvalidArgumentError(format(
-            "'server', %s, is invalid: no such server", self.server)));
+            '\'server\', %s, is invalid: no such server', self.server)));
           return;
         }
         callback();
       });
     });
   } else {
-    log.error("Attempting to authorize PUT on an invalid probe: "
-      + "no 'machine' or 'server' value: %s",
+    log.error('Attempting to authorize PUT on an invalid probe: '
+      + 'no \'machine\' or \'server\' value: %s',
       JSON.stringify(this.serialize()));
     callback(new restify.InternalError(
-      "Internal error authorizing probe put."));
+      'Internal error authorizing probe put.'));
   }
 };
 
 Probe.prototype.authorizeDelete = function (app, callback) {
-  throw new Error("XXX authorize boom");
+  throw new Error('XXX authorize boom');
 };
 
 
@@ -315,7 +318,7 @@ Probe.prototype.authorizeDelete = function (app, callback) {
 Probe.get = function get(app, user, monitor, name, callback) {
   if (! UUID_RE.test(user)) {
     throw new restify.InvalidArgumentError(
-      format("invalid user UUID: '%s'", user));
+      format('invalid user UUID: "%s"', user));
   }
   Probe.validateName(name);
   Monitor.validateName(monitor);
@@ -336,8 +339,8 @@ Probe.get = function get(app, user, monitor, name, callback) {
 Probe.validate = function validate(app, raw) {
   var requiredFields = {
     // <raw field name>: <exported name>
-    "amonprobe": "name",
-    "type": "type"
+    'amonprobe': 'name',
+    'type': 'type'
   };
   Object.keys(requiredFields).forEach(function (field) {
     if (!raw[field]) {
@@ -347,7 +350,7 @@ Probe.validate = function validate(app, raw) {
       //      that. Would be a pain to have a separate error hierarchy here
       //      that is translated higher up.
       throw new restify.MissingParameterError(
-        format("'%s' is a required parameter for a probe",
+        format('\'%s\' is a required parameter for a probe',
           requiredFields[field]));
     }
   });
@@ -355,21 +358,21 @@ Probe.validate = function validate(app, raw) {
   // One of 'machine' or 'server' is required.
   if (raw.machine && raw.server) {
     throw new restify.InvalidArgumentError(
-      format("must specify only one of 'machine' or 'server' for a "
-        + "probe: %j", raw));
+      format('must specify only one of \'machine\' or \'server\' for a '
+        + 'probe: %j', raw));
   } else if (raw.machine) {
     if (! UUID_RE.test(raw.machine)) {
       throw new restify.InvalidArgumentError(
-        format("invalid probe machine UUID: '%s'", raw.machine));
+        format('invalid probe machine UUID: \'%s\'', raw.machine));
     }
   } else if (raw.server) {
     if (! UUID_RE.test(raw.server)) {
       throw new restify.InvalidArgumentError(
-        format("invalid probe server UUID: '%s'", raw.server));
+        format('invalid probe server UUID: \'%s\'', raw.server));
     }
   } else {
     throw new restify.MissingParameterError(
-      format("must specify one of 'machine' or 'server' for a probe: %j",
+      format('must specify one of \'machine\' or \'server\' for a probe: %j',
         raw));
   }
 
@@ -410,7 +413,7 @@ Probe.validate = function validate(app, raw) {
 Probe.validateName = function validateName(name) {
   if (! Probe._nameRegex.test(name)) {
     throw new restify.InvalidArgumentError(
-      format("%s name is invalid: '%s'", Probe.name, name));
+      format('%s name is invalid: \'%s\'', Probe.name, name));
   }
 };
 

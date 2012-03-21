@@ -56,22 +56,27 @@ function LogScanProbe(options) {
 }
 util.inherits(LogScanProbe, Probe);
 
-LogScanProbe.prototype.type = "logscan";
+LogScanProbe.prototype.type = 'logscan';
 
-LogScanProbe.validateConfig = function(config) {
-  if (!config) throw new TypeError('config is required');
-  if (!config.path) throw new TypeError('config.path is required');
-  if (!config.period) throw new TypeError('config.period is required');
-  if (!config.regex) throw new TypeError('config.regex is required');
-  if (!config.threshold) throw new TypeError('config.threshold is required');
+LogScanProbe.validateConfig = function (config) {
+  if (!config)
+    throw new TypeError('config is required');
+  if (!config.path)
+    throw new TypeError('config.path is required');
+  if (!config.period)
+    throw new TypeError('config.period is required');
+  if (!config.regex)
+    throw new TypeError('config.regex is required');
+  if (!config.threshold)
+    throw new TypeError('config.threshold is required');
 };
 
 
-LogScanProbe.prototype.start = function(callback) {
+LogScanProbe.prototype.start = function (callback) {
   var self = this;
   var log = this.log;
 
-  this.timer = setInterval(function() {
+  this.timer = setInterval(function () {
     if (!self._running)
       return;
     log.trace('clear logscan counter');
@@ -80,8 +85,10 @@ LogScanProbe.prototype.start = function(callback) {
 
   this._running = true;
   this.tail = spawn('/usr/bin/tail', ['-1cF', this.path]);
-  this.tail.stdout.on('data', function(data) {
-    if (!self._running) return;
+  this.tail.stdout.on('data', function (data) {
+    if (!self._running) {
+      return;
+    }
 
     var line = _trim('' + data);
     if (self.regex.test(line)) {
@@ -94,22 +101,24 @@ LogScanProbe.prototype.start = function(callback) {
     }
   });
 
-  this.tail.on('exit', function(code) {
+  this.tail.on('exit', function (code) {
     if (!self._running)
       return;
     log.fatal('logscan: tail exited (code=%d)', code);
     clearInterval(self.timer);
   });
 
-  if (callback && (callback instanceof Function)) return callback();
+  if (callback && (callback instanceof Function))
+    return callback();
 };
 
-LogScanProbe.prototype.stop = function(callback) {
+LogScanProbe.prototype.stop = function (callback) {
   this._running = false;
   clearInterval(this.timer);
   this.tail.kill();
 
-  if (callback && (callback instanceof Function)) return callback();
+  if (callback && (callback instanceof Function))
+    return callback();
 };
 
 

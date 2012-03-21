@@ -1,6 +1,6 @@
 /**
  * Copyright 2012 Joyent, Inc.  All rights reserved.
-*/
+ */
 
 /**
  * Creates an HTTP Probe
@@ -15,12 +15,12 @@
  *
  * ## HttpProbe config options
  *
- * By default only `url` config is required. The probe will perform 
+ * By default only `url` config is required. The probe will perform
  * a GET request on the specified URL. If the status code in the http response
  * is not in the 2xx range, then an event is emitted.
  *
  * All aspects of the request can be overidden by providing any of the following
- * options `method`, `headers`, `body`. A `regex` pattern can be provided, 
+ * options `method`, `headers`, `body`. A `regex` pattern can be provided,
  * which will be tested against the response body. When no matches are found,
  * then an event will be emitted. An array of custom statusCodes can be provided
  * which will override the default 2xx range of status codes that's tested
@@ -51,25 +51,25 @@
  *   emitted
  *
  *   - regex.pattern {String} pattern to match
- *   - regex.flags {String} optional flags to use (ie `g` for global matching, 
+ *   - regex.flags {String} optional flags to use (ie `g` for global matching,
  *     `i` to ignore case sensitivity
  *
  * - statusCodes {Array} When provided, the HTTP status code of the
  *   response will be checked against the list of statusCodes provided, if the
  *   statuses does not include the one that is returned, then an event is
  *   emitted
-*/
+ */
 
 
-/*
-TODO - want an "invertMatch" or something to assert that the response body
-       does NOT match the given regex. E.g. "make sure this URL doesn't
-       have 'Error' in the body".
-TODO - threadhold add a real "threshold" as per logscan. Default 1. I.e. allows 
-       you to only alarm on there being N failures in a row so you can ignore 
-       the odd spurious error. Not sure. MarkC was the advocate for threshold
-       on logscan.
-*/
+/**
+ * TODO want an "invertMatch" or something to assert that the response body
+ *     does NOT match the given regex. E.g. "make sure this URL doesn't
+ *     have 'Error' in the body".
+ * TODO threadhold add a real "threshold" as per logscan. Default 1. I.e. allows
+ *     you to only alarm on there being N failures in a row so you can ignore
+ *     the odd spurious error. Not sure. MarkC was the advocate for threshold
+ *     on logscan.
+ */
 
 var events = require('events');
 var util = require('util');
@@ -135,7 +135,7 @@ util.inherits(HttpProbe, Probe);
 
 HttpProbe.prototype.type = 'http';
 
-HttpProbe.validateConfig = function(config) {
+HttpProbe.validateConfig = function (config) {
   if (! config)
     throw new TypeError('config is required');
 
@@ -144,7 +144,8 @@ HttpProbe.validateConfig = function(config) {
   }
 
   var parsed = url.parse(config.url);
-  if (!parsed.hostname || !parsed.protocol || !(/^(http)s?:/.test(parsed.protocol))) {
+  if (!parsed.hostname || !parsed.protocol ||
+      !(/^(http)s?:/.test(parsed.protocol))) {
     throw new TypeError('config.url must be valid http(s) url');
   }
 
@@ -161,18 +162,18 @@ HttpProbe.validateConfig = function(config) {
   }
 };
 
-HttpProbe.prototype.doRequest = function() {
+HttpProbe.prototype.doRequest = function () {
 
   var self = this;
 
-  var req = http.request(this.requestOptions, function(res) {
+  var req = http.request(this.requestOptions, function (res) {
     var body = '';
 
-    res.on('data', function(d) {
+    res.on('data', function (d) {
       body += d;
     });
 
-    res.on('end', function() {
+    res.on('end', function () {
       var eventMessages = [];
       var eventDetails = {
         request: self.requestOptions,
@@ -191,14 +192,16 @@ HttpProbe.prototype.doRequest = function() {
         var matches = self._regexMatch(body);
 
         if (matches.length !== 0) {
-          eventMessages.push(format('Body matches (%s)', self.regex.toString()));
+          eventMessages.push(
+            format('Body matches (%s)', self.regex.toString())
+          );
           eventDetails.regex = self.regex.toString();
           eventDetails.matches = matches;
         }
       }
 
       if (eventMessages.length !== 0) {
-        self.emitEvent(eventMessages.join("\n"), null, eventDetails);
+        self.emitEvent(eventMessages.join('\n'), null, eventDetails);
       }
 
       return;
@@ -209,32 +212,36 @@ HttpProbe.prototype.doRequest = function() {
   return req.end(this.body);
 };
 
-HttpProbe.prototype.start = function(callback) {
+HttpProbe.prototype.start = function (callback) {
   this.timer = setInterval(this.doRequest.bind(this), this.period * 1000);
-  if (callback && (typeof(callback) === 'function')) return callback();
+  if (callback && (typeof (callback) === 'function')) {
+    return callback();
+  }
 };
 
-HttpProbe.prototype.stop = function(callback) {
+HttpProbe.prototype.stop = function (callback) {
   clearInterval(this.timer);
 
-  if (callback && (typeof(callback) === 'function')) return callback();
+  if (callback && (typeof (callback) === 'function')) {
+    return callback();
+  }
 };
 
 
 
 
-HttpProbe.prototype._statusMatch = function(that) {
+HttpProbe.prototype._statusMatch = function (that) {
   return this.expectedCodes.indexOf(that) !== -1;
 };
 
-HttpProbe.prototype._regexMatch = function(body) {
+HttpProbe.prototype._regexMatch = function (body) {
   var m = null;
   var matches = [];
 
   assert.ok(body);
 
   while ((m = this.regex.exec(body)) !== null) {
-    matches.push((function() {
+    matches.push((function () {
       var begin = m.index - 20;
       var end = m.index + 20;
 
@@ -251,17 +258,3 @@ HttpProbe.prototype._regexMatch = function(body) {
   }
   return matches;
 };
-
-/*
-DONE - HTTProbe -> HttpProbe
-DONE - Body comment says "threshold". Should be "period" as in the code.
-DONE - Also period isn't being used in the setInterval.
-DONE - some way to specify regex flags (else how to do case insensitive match)
-DONE - emitEvent second arg, "value". should be a simple type value
-DONE - Remove `var log = require('restify').log;`
-DONE - Nit: // ==== Exports to //---- Exports per the existing files.
-DONE - Provide a context to the matched string instead of the whole body
-DONE - Don't emit two events if there is both a regex match and a status code fail. 
-       Collect both of those together.
-DONE - basicAuthUsername, basicAuthPassword
-*/

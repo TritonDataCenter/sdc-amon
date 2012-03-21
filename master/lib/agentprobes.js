@@ -54,7 +54,7 @@ function findProbes(app, field, uuid, log, callback) {
       try {
         probes.push((new Probe(app, entry.object)).serialize(true));
       } catch (e) {
-        log.warn(e, "invalid probe in UFDS (ignoring)");
+        log.warn(e, 'invalid probe in UFDS (ignoring)');
       }
     });
 
@@ -167,7 +167,8 @@ function headAgentProbes(req, res, next) {
   (function checkCache() {
     var contentMD5 = req._app.cacheGet('headAgentProbes', cacheKey);
     if (contentMD5) {
-      req.log.trace({contentMD5: contentMD5}, 'headAgentProbes respond (cached)');
+      req.log.trace({contentMD5: contentMD5},
+                    'headAgentProbes respond (cached)');
       return respond(contentMD5);
     }
     return null;

@@ -153,10 +153,10 @@ util.inherits(App, process.EventEmitter);
  *
  * @param callback {Function} `function (err)` called when started.
  */
-App.prototype.start = function(callback) {
+App.prototype.start = function (callback) {
   var self = this;
   this.loadProbeDataCacheSync();
-  this.updaterInterval = setInterval(function () { 
+  this.updaterInterval = setInterval(function () {
     self.updateProbes();
   }, this.config.poll * 1000);
   self.updateProbes(true);
@@ -169,7 +169,7 @@ App.prototype.start = function(callback) {
  *
  * @param callback {Function} `function (err)` called when started.
  */
-App.prototype.stop = function(callback) {
+App.prototype.stop = function (callback) {
   if (this.updaterInterval) {
     clearInterval(this.updaterInterval);
     this.updaterInterval = null;
@@ -278,7 +278,8 @@ App.prototype.updateProbes = function updateProbes(force) {
           'update probes: create probe');
         createProbe(id, probeDataFromId[id], log, self, function (err, probe) {
           if (err) {
-            log.error({id: id, err: err}, 'could not create probe (continuing)');
+            log.error({id: id, err: err},
+                      'could not create probe (continuing)');
             self.probeFromId[id] = err;
             stats.errors++;
           } else {
@@ -291,7 +292,7 @@ App.prototype.updateProbes = function updateProbes(force) {
         break;
 
       case 'delete':
-        (function delete(probe) {
+        (function delete (probe) {
           var isProbeError = (probe instanceof ProbeError);
 
           log.debug({
@@ -325,19 +326,19 @@ App.prototype.updateProbes = function updateProbes(force) {
             probe.stop();
           }
           delete self.probeFromId[id];
-          createProbe(id, data, log, self,
-                      function (errCreate, createdProbe) {
-                        if (errCreate) {
-                          log.error({id: id, err: errCreate}, 'could not create probe (continuing)');
-                          self.probeFromId[id] = errCreate;
-                          stats.errors++;
-                        } else {
-                          self.probeFromId[id] = createdProbe;
-                          self.onNewProbe(createdProbe);
-                          stats.updated++;
-                        }
-                        cb();
-                      }
+          createProbe(id, data, log, self, function (errCreate, createdProbe) {
+            if (errCreate) {
+              log.error({id: id, err: errCreate},
+                        'could not create probe (continuing)');
+              self.probeFromId[id] = errCreate;
+              stats.errors++;
+            } else {
+              self.probeFromId[id] = createdProbe;
+              self.onNewProbe(createdProbe);
+              stats.updated++;
+            }
+            cb();
+          }
           ); /* createProbe */
         })(self.probeFromId[id]);
         break;

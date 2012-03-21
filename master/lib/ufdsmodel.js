@@ -46,11 +46,11 @@ function modelList(app, Model, parentDn, log, callback) {
   log.info({parentDn: parentDn}, 'modelList');
 
   // Check cache. "cached" is `{err: <error>, data: <data>}`.
-  var cacheScope = Model.name + "List";
+  var cacheScope = Model.name + 'List';
   var cacheKey = parentDn;
   var cached = app.cacheGet(cacheScope, cacheKey);
   if (cached) {
-    log.trace("<%s> modelList: parentDn='%s': cache hit: %s", Model.name,
+    log.trace('<%s> modelList: parentDn=\'%s\': cache hit: %s', Model.name,
       parentDn, cached);
     if (cached.err) {
       callback(cached.err);
@@ -61,7 +61,7 @@ function modelList(app, Model, parentDn, log, callback) {
       callback(null, items);
     } catch (e) {
       // Drop from the cache and carry on.
-      log.warn("error in cached data (cacheScope='%s', cacheKey='%s'): %s",
+      log.warn('error in cached data (cacheScope=\'%s\', cacheKey=\'%s\'): %s',
         cacheScope, cacheKey, e);
       app.cacheDel(cacheScope, cacheKey);
     }
@@ -78,36 +78,36 @@ function modelList(app, Model, parentDn, log, callback) {
     scope: 'sub'
   };
 
-  log.trace({searchOpts: opts}, "<%s> modelList: ufds search: parentDn='%s'",
+  log.trace({searchOpts: opts}, '<%s> modelList: ufds search: parentDn=\'%s\'',
     Model.name, parentDn);
 
-  app.ufds.search(parentDn, opts, function(err, result) {
+  app.ufds.search(parentDn, opts, function (err, result) {
     if (err) {
       cacheAndCallback(err);
       return;
     }
 
     var models = [];
-    result.on('searchEntry', function(entry) {
+    result.on('searchEntry', function (entry) {
       try {
         models.push(new Model(app, entry.object));
       } catch (err2) {
         if (err2 instanceof restify.RESTError) {
-          log.warn("Ignoring invalid %s (dn='%s'): %s", Model.name,
+          log.warn('Ignoring invalid %s (dn=\'%s\'): %s', Model.name,
             entry.object.dn, err2);
         } else {
-          log.error(err2, "Unknown error with %s entry:", Model.name,
+          log.error(err2, 'Unknown error with %s entry:', Model.name,
             entry.object);
         }
       }
     });
-    result.on('error', function($err) {
-      log.error($err, "Error searching UFDS (opts: %s)", JSON.stringify(opts));
+    result.on('error', function (err1) {
+      log.error(err1, 'Error searching UFDS (opts: %s)', JSON.stringify(opts));
       callback(new restify.InternalError());
     });
-    result.on('end', function(res) {
+    result.on('end', function (res) {
       if (res.status !== 0) {
-        log.error("Non-zero status from UFDS search: %s (opts: %s)",
+        log.error('Non-zero status from UFDS search: %s (opts: %s)',
           res, JSON.stringify(opts));
         callback(new restify.InternalError());
       }
@@ -153,27 +153,29 @@ function modelPut(app, Model, data, log, callback) {
 
     // Add it.
     var dn = item.dn;
-    app.ufds.add(dn, item.raw, function($err) {
+    app.ufds.add(dn, item.raw, function ($err) {
       if ($err) {
         if ($err instanceof ldap.EntryAlreadyExistsError) {
           return callback(new restify.InternalError(
-            "XXX DN '"+dn+"' already exists. Can't nicely update "
-            + "(with LDAP modify/replace) until "
-            + "<https://github.com/mcavage/node-ldapjs/issues/31> is fixed."));
+            'XXX DN \'"+dn+"\' already exists. Can\'t nicely update '
+            + '(with LDAP modify/replace) until '
+            + '<https://github.com/mcavage/node-ldapjs/issues/31> is fixed.'));
           //XXX Also not sure if there is another bug in node-ldapjs if
           //    "objectclass" is specified in here. Guessing it is same bug.
           //var change = new ldap.Change({
           //  operation: 'replace',
           //  modification: item.raw
           //});
-          //client.modify(dn, change, function(err) {
+          //client.modify(dn, change, function (err) {
           //  if (err) console.warn("client.modify err: %s", err)
-          //  client.unbind(function(err) {});
+          //  client.unbind(function (err) {});
           //});
           //XXX Does replace work if have children?
         } else {
-          log.error($err, "Error saving to UFDS (dn='%s')", dn);
-          return callback(new restify.InternalError("Error saving "+Model.name));
+          log.error($err, 'Error saving to UFDS (dn=\'%s\')', dn);
+          return callback(
+            new restify.InternalError('Error saving '+Model.name)
+          );
         }
       } else {
         log.trace('<%s> create item:', Model.name, item);
@@ -208,7 +210,7 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
 
   // Check cache. "cached" is `{err: <error>, data: <data>}`.
   if (!skipCache) {
-    var cacheScope = Model.name + "Get";
+    var cacheScope = Model.name + 'Get';
     var cached = app.cacheGet(cacheScope, dn);
     if (cached) {
       if (cached.err) {
@@ -218,7 +220,7 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
           callback(null, new Model(app, cached.data));
         } catch (e) {
           // Drop from the cache and carry on.
-          log.warn(e, "error in cached data (cacheScope='%s', dn='%s')",
+          log.warn(e, 'error in cached data (cacheScope=\'%s\', dn=\'%s\')',
             cacheScope, dn);
           app.cacheDel(cacheScope, dn);
         }
@@ -234,41 +236,42 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
   }
 
   var opts = {scope: 'base'};
-  app.ufds.search(dn, opts, function(err, result) {
+  app.ufds.search(dn, opts, function (err, result) {
     if (err) {
       cacheAndCallback(err);
       return;
     }
 
     var item = null;
-    result.on('searchEntry', function(entry) {
+    result.on('searchEntry', function (entry) {
       // Should only one entry with this DN.
-      assert.ok(item === null, "more than one item with dn='"+dn+"': "+item);
+      assert.ok(item === null, 'more than one item with dn=\'"+dn+"\': '+item);
       try {
         item = new Model(app, entry.object);
       } catch (err2) {
         if (err2 instanceof restify.RESTError) {
-          log.warn("Ignoring invalid %s (dn='%s'): %s", Model.name,
+          log.warn('Ignoring invalid %s (dn=\'%s\'): %s', Model.name,
             entry.object.dn, err2);
         } else {
-          log.error(err2, "Unknown error with %s entry:", Model.name,
+          log.error(err2, 'Unknown error with %s entry:', Model.name,
             entry.object);
         }
       }
     });
 
-    result.on('error', function($err) {
-      if ($err instanceof ldap.NoSuchObjectError) {
+    result.on('error', function (err1) {
+      if (err1 instanceof ldap.NoSuchObjectError) {
         cacheAndCallback(new restify.ResourceNotFoundError());
       } else {
-        log.error($err, "Error searching UFDS (opts: %s)", JSON.stringify(opts));
+        log.error(err1,
+                  'Error searching UFDS (opts: %s)', JSON.stringify(opts));
         callback(new restify.InternalError());
       }
     });
 
-    result.on('end', function(res) {
+    result.on('end', function (res) {
       if (res.status !== 0) {
-        log.error("Non-zero status from UFDS search: %s (opts: %s)",
+        log.error('Non-zero status from UFDS search: %s (opts: %s)',
           res, JSON.stringify(opts));
         return callback(new restify.InternalError());
       }
@@ -300,18 +303,18 @@ function modelDelete(app, Model, dn, log, callback) {
 
   // We need to first get the item (we'll need it for proper cache
   // invalidation).
-  modelGet(app, Model, dn, log, true, function(err, item) {
+  modelGet(app, Model, dn, log, true, function (err, item) {
     if (err) {
       callback(err);
       return;
     }
 
-    app.ufds.del(dn, function($err) {
-      if ($err) {
-        if ($err instanceof ldap.NoSuchObjectError) {
+    app.ufds.del(dn, function (err1) {
+      if (err1) {
+        if (err1 instanceof ldap.NoSuchObjectError) {
           callback(new restify.ResourceNotFoundError());
         } else {
-          log.error(err, "Error deleting '%s' from UFDS", dn);
+          log.error(err, 'Error deleting \'%s\' from UFDS', dn);
           callback(new restify.InternalError());
         }
       } else {
@@ -334,7 +337,7 @@ function requestList(req, res, next, Model) {
       res.send(err);
     } else {
       var data = items.map(function (i) { return i.serialize(); });
-      req.log.trace({data: data}, "items from modelList:", items);
+      req.log.trace({data: data}, 'items from modelList:', items);
       res.send(200, data);
     }
     return next();
@@ -353,12 +356,12 @@ function requestPut(req, res, next, Model) {
   });
   data.user = req._user.uuid;
 
-  modelPut(req._app, Model, data, req.log, function(err, item) {
+  modelPut(req._app, Model, data, req.log, function (err, item) {
     if (err) {
       res.send(err);
     } else {
       var d = item.serialize();
-      req.log.trace({data: d}, "item from modelPut:", item);
+      req.log.trace({data: d}, 'item from modelPut:', item);
       res.send(200, d);
     }
     next();
@@ -381,7 +384,7 @@ function requestGet(req, res, next, Model) {
       res.send(err);
     } else {
       var data = item.serialize();
-      req.log.trace({data: data}, "item from modelGet:", item);
+      req.log.trace({data: data}, 'item from modelGet:', item);
       res.send(200, data);
     }
     next();
@@ -392,7 +395,7 @@ function requestGet(req, res, next, Model) {
 function requestDelete(req, res, next, Model) {
   req.log.trace({params: req.params}, '<%s> delete entered', Model.name);
   var dn = Model.dnFromRequest(req);
-  modelDelete(req._app, Model, dn, req.log, function(err) {
+  modelDelete(req._app, Model, dn, req.log, function (err) {
     if (err) {
       res.send(err);
     } else {
