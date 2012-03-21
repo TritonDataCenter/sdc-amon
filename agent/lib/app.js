@@ -292,7 +292,7 @@ App.prototype.updateProbes = function updateProbes(force) {
         break;
 
       case 'delete':
-        (function delete (probe) {
+        (function (probe) {
           var isProbeError = (probe instanceof ProbeError);
 
           log.debug({
