@@ -19,7 +19,8 @@ NPM_FLAGS = --tar=$(TAR) --cache=$(shell pwd)/tmp/npm-cache
 #
 DOC_FILES = index.restdown
 JS_FILES = $(shell ls master/*.js relay/*.js agent/*.js) \
-       $(shell find master relay agent common plugins test -name '*.js')
+	$(shell find master relay agent common plugins test -name '*.js' \
+	| grep -v node_modules | grep -v '/tmp/')
 JSL_CONF_NODE    = tools/jsl.node.conf
 JSL_FILES_NODE   = $(JS_FILES)
 JSSTYLE_FILES    = $(JS_FILES)
