@@ -45,9 +45,10 @@ function findProbes(app, field, uuid, log, callback) {
   };
 
   log.trace({opts: opts}, 'findProbes UFDS search');
-  return app.ufds.search('ou=users, o=smartdc', opts, function (err, result) {
-    if (err)
+  app.ufds.search('ou=users, o=smartdc', opts, function (err, result) {
+    if (err) {
       return callback(err);
+    }
 
     var probes = [];
     result.on('searchEntry', function (entry) {
@@ -59,7 +60,7 @@ function findProbes(app, field, uuid, log, callback) {
     });
 
     result.on('error', function (e) {
-      return callback(e);
+      callback(e);
     });
 
     result.on('end', function (res) {
@@ -74,9 +75,8 @@ function findProbes(app, field, uuid, log, callback) {
       probes.sort(compareProbes);
 
       log.trace({probes: probes}, 'probes for %s "%s"', field, uuid);
-      return callback(null, probes);
+      callback(null, probes);
     });
-    return true;
   });
 }
 
@@ -131,14 +131,14 @@ function listAgentProbes(req, res, next) {
   var field = parsed.field;
   var uuid = parsed.uuid;
 
-  return findProbes(req._app, field, uuid, req.log, function (err, probes) {
+  findProbes(req._app, field, uuid, req.log, function (err, probes) {
     if (err) {
       req.log.error(err, 'error getting probes for %s "%s"', field, uuid);
       res.send(500);
     } else {
       res.send(200, probes);
     }
-    return next();
+    next();
   });
 }
 
@@ -160,7 +160,7 @@ function headAgentProbes(req, res, next) {
   function respond(contentMD5) {
     res.header('Content-MD5', contentMD5);
     res.send();
-    return next();
+    next();
   }
 
   var cacheKey = format('%s:%s', field, uuid);
@@ -174,10 +174,10 @@ function headAgentProbes(req, res, next) {
     return null;
   })();
 
-  return findProbes(req._app, field, uuid, req.log, function (err, probes) {
+  findProbes(req._app, field, uuid, req.log, function (err, probes) {
     if (err) {
       req.log.error(err, 'error getting probes for %s "%s"', field, uuid);
-      return next(new restify.InternalError());
+      next(new restify.InternalError());
     } else {
       req.log.trace({probes: probes}, 'found probes');
       var data = JSON.stringify(probes);
@@ -186,7 +186,7 @@ function headAgentProbes(req, res, next) {
       var contentMD5 = hash.digest('base64');
       req._app.cacheSet('headAgentProbes', cacheKey, contentMD5);
       req.log.trace({contentMD5: contentMD5}, 'headAgentProbes respond');
-      return respond(contentMD5);
+      respond(contentMD5);
     }
   });
 }
