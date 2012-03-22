@@ -41,7 +41,7 @@ test('HttpProbe', function (t) {
 
     t.ok(probe);
     t.equals(probe.method, 'GET', 'method defaults to GET');
-    t.equals(probe.period, 300, 'period defaults to 60');
+    t.equals(probe.period, 300, 'period defaults to 300');
     t.equals(probe.body, null, 'body');
     t.equals(probe.requestOptions.path, '/', 'path');
     t.equals(probe.requestOptions.hostname, 'google.com', 'hostname');
