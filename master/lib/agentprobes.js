@@ -164,15 +164,12 @@ function headAgentProbes(req, res, next) {
   }
 
   var cacheKey = format('%s:%s', field, uuid);
-  (function checkCache() {
-    var contentMD5 = req._app.cacheGet('headAgentProbes', cacheKey);
-    if (contentMD5) {
-      req.log.trace({contentMD5: contentMD5},
-                    'headAgentProbes respond (cached)');
-      return respond(contentMD5);
-    }
-    return null;
-  })();
+  var cacheContentMD5 = req._app.cacheGet('headAgentProbes', cacheKey);
+  if (cacheContentMD5) {
+    req.log.trace({contentMD5: cacheContentMD5},
+      'headAgentProbes respond (cached)');
+    return respond(cacheContentMD5);
+  }
 
   findProbes(req._app, field, uuid, req.log, function (err, probes) {
     if (err) {
