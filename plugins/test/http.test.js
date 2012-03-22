@@ -41,7 +41,7 @@ test('HttpProbe', function (t) {
 
     t.ok(probe);
     t.equals(probe.method, 'GET', 'method defaults to GET');
-    t.equals(probe.period, 60, 'period defaults to 60');
+    t.equals(probe.period, 300, 'period defaults to 60');
     t.equals(probe.body, null, 'body');
     t.equals(probe.requestOptions.path, '/', 'path');
     t.equals(probe.requestOptions.hostname, 'google.com', 'hostname');
@@ -79,13 +79,15 @@ test('HttpProbe', function (t) {
   function createProbe(config) {
     var opts = _default_opts();
     config = config || {};
+    opts.data.config.period = 3;
+    opts.data.config.threshold = 0;
+    opts.data.config.interval = 1;
 
     Object.keys(config).forEach(function (key) {
       opts.data.config[key] = config[key];
     })
 
     opts.data.config.url = 'http://localhost:9000/';
-    opts.data.config.period = 1;
     return new HttpProbe(opts);
   }
 
@@ -101,7 +103,7 @@ test('HttpProbe', function (t) {
 
 
   test('defualt config: success request', function (t) {
-    var server = createServer(200, 'conflict!!');
+    var server = createServer(200, 'hello');
     t.ok(server);
     server.listen(9000, function _cb() {
       var probe = createProbe();

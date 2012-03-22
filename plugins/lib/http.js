@@ -41,10 +41,21 @@
  * - username {String} Username used for HTTP Basic Auth
  * - password {String} Password used for HTTP Basic Auth
  *
- * ### Probe Monitor/Trigger Options
+ * Probe Monitor/Trigger Options
  *
- * - peiod {Integer} Default: 60 (1 minute) How often should this probe run/make
- *   the speciied request
+ * - interval {integer} Default 90s. How often should this probe make a request
+ *                      to the specified URL
+ *
+ * period & threshold
+ *
+ * - period {Integer} Default: 300s a time window in which an alarm would be
+ *                    triggered if number of events fired crosses that given by
+ *                    `threshold`.
+ *
+ * - threashold {Integer} Default: 0, when the number of failed requests crosses
+ *                    `threshold` in a given `period`, an alarm would be fired
+ *
+ * matching options
  *
  * - regex {Object} When provided, the response body will be matched
  *   against the regex provided, if no matches are found, then an event is
@@ -65,10 +76,6 @@
  * TODO want an "invertMatch" or something to assert that the response body
  *     does NOT match the given regex. E.g. "make sure this URL doesn't
  *     have 'Error' in the body".
- * TODO threadhold add a real "threshold" as per logscan. Default 1. I.e. allows
- *     you to only alarm on there being N failures in a row so you can ignore
- *     the odd spurious error. Not sure. MarkC was the advocate for threshold
- *     on logscan.
  */
 
 var events = require('events');
@@ -97,7 +104,6 @@ function HttpProbe(options) {
   HttpProbe.validateConfig(this.config);
 
   this.url = url.parse(this.config.url);
-  this.period = this.config.period || 60;
   this.headers = this.config.headers || {};
   this.body = this.config.body || null;
   this.method = this.config.method || 'GET'; // Default: GET
@@ -126,9 +132,15 @@ function HttpProbe(options) {
 
   if (this.url.port) { this.requestOptions.port = this.url.port; }
 
+  this.interval = this.config.interval || 90; // how often to probe the url
+
+  this.threshold = this.config.threshold || 0; // default: alert immediately
+
+  this.period = this.config.period || (5 * 60); // in 1 minute
+  this.interval = this.config.interval || 60;
 
   this._count = 0;
-  this._running = false;
+  this._alerted = false;
 }
 
 util.inherits(HttpProbe, Probe);
@@ -201,32 +213,47 @@ HttpProbe.prototype.doRequest = function () {
       }
 
       if (eventMessages.length !== 0) {
-        self.emitEvent(eventMessages.join('\n'), null, eventDetails);
+        if (!self._alerted && self._count > self.threshold) {
+          self.emitEvent(eventMessages.join('\n'), self._count, eventDetails);
+          self.alerted = true;
+        } else {
+          self._count++;
+        }
       }
-
-      return;
     });
 
   });
 
-  return req.end(this.body);
+  req.end(this.body);
 };
 
 HttpProbe.prototype.start = function (callback) {
-  this.timer = setInterval(this.doRequest.bind(this), this.period * 1000);
+  this.periodTimer = setInterval(
+    this.resetCounter.bind(this),
+    this.period * 1000);
+
+  this.intervalTimer = setInterval(
+    this.doRequest.bind(this),
+    this.interval * 1000);
+
   if (callback && (typeof (callback) === 'function')) {
     return callback();
   }
+};
+
+HttpProbe.prototype.resetCounter = function () {
+  this._count = 0;
+  this._alerted = false;
 };
 
 HttpProbe.prototype.stop = function (callback) {
-  clearInterval(this.timer);
+  clearInterval(this.intervalTimer);
+  clearInterval(this.periodTimer);
 
   if (callback && (typeof (callback) === 'function')) {
     return callback();
   }
 };
-
 
 
 
