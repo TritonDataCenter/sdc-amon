@@ -3,13 +3,17 @@
 # Rsync the master in this working copy to the install on the COAL headnode GZ.
 #
 
-#set -x
+set -x
 TOP=$(cd $(dirname $0)/../; pwd)
 COAL=root@10.99.99.7
 
 if [[ -z "$AMON_ZONE" ]]; then
     # XXX Want the first running one of these. Need `json -c ...` from json 3.
-    AMON_ZONE=$(ssh $COAL "/smartdc/bin/sdc-mapi /machines?tag.smartdc_role=amon" 2>/dev/null | jsondev -c 'running_status=="running"' -a name -H)
+    #     Until then, presume the last one is the running one.
+    # AMON_ZONE=$(ssh $COAL "/smartdc/bin/sdc-mapi /machines?tag.smartdc_role=amon" 2>/dev/null | jsondev -c 'running_status=="running"' -a name -H)
+    AMON_NUM_ZONES=$(ssh $COAL "/smartdc/bin/sdc-mapi /machines?tag.smartdc_role=amon" 2>/dev/null | json -H length)
+    AMON_ZONE_INDEX=$(($AMON_NUM_ZONES - 1))
+    AMON_ZONE=$(ssh $COAL "/smartdc/bin/sdc-mapi /machines?tag.smartdc_role=amon" 2>/dev/null | json -H $AMON_ZONE_INDEX.name)
 fi
 echo "AMON_ZONE: $AMON_ZONE"
 
