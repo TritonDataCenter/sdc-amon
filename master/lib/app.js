@@ -285,14 +285,13 @@ function App(config, ufds, mapi, log) {
     } else {
       next();
     }
-    return;
   }
 
   server.use(setup);
 
   server.get({path: '/ping', name: 'Ping'}, ping);
   // Debugging:
-  // XXX Conform with Dap's spec and document this.
+  // XXX Kang-ify (https://github.com/davepacheco/kang)
   server.get('/state', function (req, res, next) {
     res.send(self.getStateSnapshot());
     next();
@@ -331,7 +330,6 @@ function App(config, ufds, mapi, log) {
     agentprobes.headAgentProbes);
 
   server.post({path: '/events', name: 'AddEvents'}, events.addEvents);
-  return server;
 }
 
 
@@ -793,31 +791,37 @@ App.prototype.processEvent = function (event, callback) {
         return callback(getErr);
       }
       info.monitor = monitor;
-      return self.getOrCreateAlarm(info, function (getOrCreateErr, alarm) {
+      self.getOrCreateAlarm(info, function (getOrCreateErr, alarm) {
         if (getOrCreateErr) {
-          return callback(getOrCreateErr);
+          callback(getOrCreateErr);
+        } else if (alarm) {
+          info.alarm = alarm;
+          alarm.handleEvent(self, info, function (evtErr) {
+            callback(evtErr);
+          });
+        } else {
+          callback();
         }
-        info.alarm = alarm;
-        return alarm.handleEvent(self, info, function (evtErr) {
-          return callback(evtErr);
-        });
       });
     });
   });
-  return true;
 };
 
 
 
 /**
- * Get a related alarm or create a new one for the given event.
+ * Get a related alarm or create a new one for the given event, if
+ * appropriate.
  *
  * @param options {Object}
  *    - `event` {Object} Required. The Amon event.
  *    - `user` {Object} Required. User object as from `userFromId()`
  *    - `monitor` {monitors.Monitor} Required. The monitor for this event.
  *      XXX support this being null/excluded for non-"probe" events.
- * @param callback {Function} `function (err, alarm)`
+ * @param callback {Function} `function (err, alarm)`. If there was an
+ *    error, the `err` is an Error instance. Else if `alarm` is either
+ *    a related existing alarm, a new alarm, or null (if no new alarm
+ *    is appropriate for this event).
  */
 App.prototype.getOrCreateAlarm = function (options, callback) {
   var self = this;
@@ -836,18 +840,18 @@ App.prototype.getOrCreateAlarm = function (options, callback) {
       if (err) {
         return callback(err);
       }
-
-      if (candidateAlarms.length === 0) {
-        log.debug({user: options.user.uuid},
-          'no candidate related alarms: create a new alarm');
-        return self.createAlarm(options, callback);
-      }
       self.chooseRelatedAlarm(candidateAlarms, options,
                               function (chooseErr, alarm) {
         if (chooseErr) {
           callback(chooseErr);
         } else if (alarm) {
           callback(null, alarm);
+        } else if (options.event.clear) {
+          // A clear event with no related open alarm should be dropped.
+          // Don't create an alarm for this.
+          log.info({event_uuid: options.event.uuid},
+            'not creating a new alarm for a clear event');
+          callback(null, null);
         } else {
           self.createAlarm(options, callback);
         }
@@ -874,27 +878,32 @@ App.prototype.getOrCreateAlarm = function (options, callback) {
  *
  * First pass at this: Choose the alarm with the most recent
  * `timeLastEvent`. If `event.time - alarm.timeLastEvent > 1 hour` then
- * return none, i.e. not related. Else, return that alarm. Eventually make
- * this "1 hour" an optional var on monitor. Eventually this algo can
- * consider more vars.
+ * return none, i.e. not related. Else, return that alarm. A 'clear' event
+ * is excluded from this "1 hour" check.
+ *
+ * Eventually make this "1 hour" an optional var on monitor.
+ * Eventually this algo can consider more vars.
  */
 App.prototype.chooseRelatedAlarm = function (candidateAlarms,
                                              options,
                                              callback) {
-  this.log.debug({numCandidateAlarms: candidateAlarms.length},
-                 'chooseRelatedAlarm');
+  this.log.debug({event_uuid: options.event.uuid,
+    num_candidate_alarms: candidateAlarms.length}, 'chooseRelatedAlarm');
+  if (candidateAlarms.length === 0) {
+    return callback(null, null);
+  }
   var ONE_HOUR = 60 * 60 * 1000;  // an hour in milliseconds
   candidateAlarms.sort(
     // Sort the latest 'timeLastEvent' first (alarms with no 'timeLastEvent'
     // field sort to the end).
     function (x, y) { return x.timeLastEvent - y.timeLastEvent; });
   var a = candidateAlarms[0];
-
-  if (a.timeLastEvent && (options.event.time - a.timeLastEvent) < ONE_HOUR) {
+  if (a.timeLastEvent &&
+      (options.event.clear ||
+       (options.event.time - a.timeLastEvent) < ONE_HOUR)) {
     this.log.debug({alarm: a}, 'related alarm');
     return callback(null, a);
   }
-
   return callback(null, null);
 };
 

@@ -47,6 +47,7 @@
   pathological regex (or mdb command) could hang and would need process
   mgmt to deal with. How to break out of this??? A separate process everytime
   is a pain.
+- node-retry in PutEvents in RelayClient.
 - 'sdc-amon /pub/hamish/monitors/whistle -X DELETE' fails
     ERROR: Error deleting 'amonmonitor=whistle, uuid=7b23ae63-37c9-420e-bb88-8d4bf5e30455, ou=customers, o=smartdc' from UFDS: NotAllowedOnNonLeafError:...
 - What if a whole CN goes down? Could have heartbeats from the relays. Then
@@ -104,6 +105,7 @@
   "POST /pub/:user/monitors/:monitor?action=testnotify"?
 - "sdc-amon /pub/trent.mick" messes up on '.' in username -> restify upgrade
   Check for this being fixed with restify 1.x
+- amon-relay and amon-agent: move node to build/node (a la portal and others)
 - [Trent] master/config.json.in and use that in usb-headnode/zones/amon/setup
 - from master/lib/probes.js:
     //XXX validate the type is an existing probe type
@@ -143,7 +145,7 @@
   generates traps and directs them somewhere of your choosing. So you can see
   what they look like. That may help you start writing the MIB you want to
   use (definitions of data objects, types, and structures)"""
-
+- https://github.com/davepacheco/kang -ify
 - edge-triggered alarms in master for probes
 - CA probe type
 - HTTP probe type

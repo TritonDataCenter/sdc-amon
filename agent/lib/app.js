@@ -44,58 +44,16 @@ function asyncForEach(list, fn, cb) {
 /**
  * Error class indicating a probe that failed to be created.
  *
- * @param err {Error} The creation error.
+ * @param err {Error|String} The creation error or an error message
  * @param probeData {Object} The probe data with which probe creation failed.
  */
 function ProbeError(err, probeData) {
   this.name = ProbeError.name;
-  this.err = err;
+  this.message = err.message || err.toString();
+  this.stack = err.stack;
   this.json = JSON.stringify(probeData);  // Copy `Probe.json` property.
-
-  this.__defineGetter__('message', function () {
-    return err.message;
-  });
-  this.__defineGetter__('stack', function () {
-    return err.stack;
-  });
 }
 util.inherits(ProbeError, Error);
-
-
-/**
- * Create a new probe and start it.
- *
- * @param id {String} The probe id.
- * @param probeData {Object} The probe data.
- * @param log {Bunyan Logger} Log to pass to the probe instance.
- * @param app {App}
- * @param callback {Function} `function (err, probe)` called with the
- *    started probe instance. On failure `err` is `ProbeError` instance.
- */
-function createProbe(id, probeData, log, app, callback) {
-  var ProbeType = plugins[probeData.type];
-  if (! ProbeType) {
-    return callback(format('unknown amon probe plugin type: "%s"',
-      probeData.type));
-  }
-
-  try {
-    var probe = new ProbeType({
-      id: id,
-      data: probeData,
-      log: log,
-      app: app
-    });
-  } catch (e) {
-    return callback(new ProbeError(e, probeData));
-  }
-  //XXX try/catch here so a fault probe.start doesn't block updating probes
-  probe.start(function (e) {
-    if (e)
-      return callback(new ProbeError(e, probeData));
-    callback(null, probe);
-  });
-}
 
 
 
@@ -210,8 +168,52 @@ App.prototype.loadProbeDataCacheSync = function () {
 };
 
 /**
+ * Create a new probe and start it.
+ *
+ * @param id {String} The probe id.
+ * @param probeData {Object} The probe data.
+ * @param callback {Function} `function (err, probe)` called with the
+ *    started probe instance. On failure `err` is `ProbeError` instance.
+ */
+App.prototype.createProbe = function (id, probeData, callback) {
+  var self = this;
+
+  var ProbeType = plugins[probeData.type];
+  if (! ProbeType) {
+    return callback(new ProbeError(
+      format('unknown amon probe plugin type: "%s"', probeData.type)));
+  }
+
+  try {
+    var probe = new ProbeType({
+      id: id,
+      data: probeData,
+      log: self.log,
+      app: self
+    });
+  } catch (e) {
+    return callback(new ProbeError(e, probeData));
+  }
+
+  probe.on('event', function (event) {
+    self.sendEvent(event);
+  });
+
+  //XXX try/catch here so a fault probe.start doesn't block updating probes
+  probe.start(function (e) {
+    if (e) {
+      return callback(new ProbeError(e, probeData));
+    }
+    callback(null, probe);
+  });
+};
+
+
+/**
  * Update probe info from relay (if any) and do necessary update of live
  * probe instances.
+ *
+ * This is async, but no callback (caller doesn't need to join on this).
  *
  * @param force {Boolean} Force update.
  */
@@ -276,7 +278,7 @@ App.prototype.updateProbes = function updateProbes(force) {
       case 'add':
         log.debug({id: id, probeData: probeDataFromId[id]},
           'update probes: create probe');
-        createProbe(id, probeDataFromId[id], log, self, function (err, probe) {
+        self.createProbe(id, probeDataFromId[id], function (err, probe) {
           if (err) {
             log.error({id: id, err: err},
                       'could not create probe (continuing)');
@@ -284,7 +286,6 @@ App.prototype.updateProbes = function updateProbes(force) {
             stats.errors++;
           } else {
             self.probeFromId[id] = probe;
-            self.onNewProbe(probe);
             stats.added++;
           }
           cb();
@@ -292,7 +293,8 @@ App.prototype.updateProbes = function updateProbes(force) {
         break;
 
       case 'delete':
-        (function (probe) {
+        (function () {
+          var probe = self.probeFromId[id];
           var isProbeError = (probe instanceof ProbeError);
 
           log.debug({
@@ -308,39 +310,35 @@ App.prototype.updateProbes = function updateProbes(force) {
           delete self.probeFromId[id];
           stats.deleted++;
           cb();
-        })(self.probeFromId[id]);
+        })();
         break;
 
       case 'update':
-        (function update(probe) {
+        // Changed probe.
+        (function update() {
+          var probe = self.probeFromId[id];
           var isProbeError = (probe instanceof ProbeError);
           var data = probeDataFromId[id];
-          log.debug({
-            id: id,
-            oldProbeData: probe.json,
-            isProbeError: isProbeError,
-            newProbeData: data
-          }, 'update probes: update probe');
-
+          log.debug({id: id, oldProbeData: probe.json,
+              isProbeError: isProbeError, newProbeData: data},
+              'update probes: update probe');
           if (!isProbeError) {
             probe.stop();
           }
           delete self.probeFromId[id];
-          createProbe(id, data, log, self, function (errCreate, createdProbe) {
+          self.createProbe(id, data, function (errCreate, createdProbe) {
             if (errCreate) {
               log.error({id: id, err: errCreate},
-                        'could not create probe (continuing)');
+                'could not create probe (continuing)');
               self.probeFromId[id] = errCreate;
               stats.errors++;
             } else {
               self.probeFromId[id] = createdProbe;
-              self.onNewProbe(createdProbe);
               stats.updated++;
             }
             cb();
-          }
-          ); /* createProbe */
-        })(self.probeFromId[id]);
+          });
+        })();
         break;
 
       default:
@@ -351,19 +349,6 @@ App.prototype.updateProbes = function updateProbes(force) {
       log.info({changes: stats, numProbes: probeData.length}, 'updated probes');
       self.onProbesUpdated();
     });
-  });
-};
-
-
-/**
- * Called for each new started probe, to setup listeners to its event stream.
- *
- * @param probe {Object} The probe instance.
- */
-App.prototype.onNewProbe = function onNewProbe(probe) {
-  var self = this;
-  probe.on('event', function (event) {
-    self.sendEvent(event);
   });
 };
 

@@ -19,7 +19,6 @@ var amonCommon = require('amon-common'),
   Constants = amonCommon.Constants,
   format = amonCommon.utils.format,
   compareProbes = amonCommon.compareProbes;
-
 var agentprobes = require('./agentprobes');
 var events = require('./events');
 var utils = require('./utils');
@@ -112,6 +111,16 @@ function App(options) {
   this.masterClient = options.masterClient;
   this.localMode = options.localMode || false;
   this.zoneApps = options.zoneApps;
+
+  // If the zone is not running (at App creation time), then (obviously) no
+  // socket into the zone will be created. The App's purpose then is limited
+  // to updating agentprobe data for this zone: (a) in case the zone comes
+  // back up, or (b) if there are probes for the zone to run from the global.
+  if (this.targetType === 'server') {
+    this.isZoneRunning = true;
+  } else {
+    this.isZoneRunning = (zutil.getZoneState(this.targetUuid) === 'running');
+  }
 
   // Cached current Content-MD5 for agentprobes from upstream (master).
   this.upstreamAgentProbesMD5 = null;
@@ -234,16 +243,15 @@ App.prototype.start = function (callback) {
     if (self.localMode) {
       return next();
     }
+    if (!self.isZoneRunning) {
+      return next();
+    }
     var timeout = 5 * 60 * 1000; // 5 minutes
     utils.waitForZoneSvc(zonename, 'milestone/multi-user', timeout, log,
                          function (err) {
       // Note: We get a spurious timeout here for a zone that was mid
       // going down when amon-relay was started. An improvement would be
       // to not error/event for that.
-      // XXX The problem here is that `zutil.listZones()` includes zones
-      //     currently shutting_down. TODO: Ticket this and find out why and
-      //     if can be avoided. We only want zones in 'running' state. Others
-      //     will get picked up on next self-heal.
       return next(err);
     });
   }
@@ -252,6 +260,9 @@ App.prototype.start = function (callback) {
     if (self.localMode) {
       log.debug('Starting app on local socket "%s".', self.socket);
       return self.server.listen(self.socket, next);
+    }
+    if (!self.isZoneRunning) {
+      return next();
     }
     var opts = {
       zone: zonename,
@@ -302,14 +313,18 @@ App.prototype.start = function (callback) {
  */
 App.prototype.close = function (callback) {
   this.log.info('close app for %s "%s"', this.targetType, this.targetUuid);
-  this.server.once('close', callback);
-  try {
-    this.server.close();
-  } catch (err) {
-    // A `net.Server` at least will throw if it hasn't reached a ready
-    // state yet. We don't care.
-    this.log.warn(err, 'error closing server for %s "%s"', this.targetType,
-      this.targetUuid);
+  if (this.isZoneRunning) {
+    this.server.once('close', callback);
+    try {
+      this.server.close();
+    } catch (err) {
+      // A `net.Server` at least will throw if it hasn't reached a ready
+      // state yet. We don't care.
+      this.log.warn(err, 'error closing server for %s "%s"', this.targetType,
+        this.targetUuid);
+      callback();
+    }
+  } else {
     callback();
   }
 };

@@ -11,6 +11,7 @@
 var fs = require('fs');
 var net = require('net');
 var child_process = require('child_process'),
+  exec = child_process.exec,
   execFile = child_process.execFile,
   spawn = child_process.spawn;
 var path = require('path');
@@ -132,7 +133,7 @@ function getMasterUrl(poll, callback) {
       function (err, machines, headers) {
         if (err) {
           // Retry on error.
-          log.error('MAPI listZones error: "%s"',
+          log.error('MAPI listMachines error: "%s"',
             String(err).slice(0, 100) + '...');
           setTimeout(pollMapi, pollInterval);
         } else if (machines.length === 0) {
@@ -168,6 +169,33 @@ function ensureDataDir(next) {
     fs.mkdirSync(config.dataDir, 0777);
   }
   next();
+}
+
+
+/**
+ * Get list of all zones (including non-running zones).
+ *
+ * `zutil.listZones()` does not include down zones. It includes "running"
+ * zones and sometimes zones that are currently "shutting_down" -- though
+ * I'm not sure of the exact details of the latter.
+ *
+ * @param callback {Function} `function (err, zonenames)` where "err" is
+ *    an Error instance or null and "zonenames" is a list of
+ *    `{name: ZONENAME}` objects.
+ */
+function listAllZones(callback) {
+  log.info('Getting compute node UUID from `sysinfo`.');
+  return execFile('/usr/sbin/zoneadm', ['list', '-c'],
+                  function (err, stdout, stderr) {
+    if (err || stderr) {
+      return callback(new Error(
+        format('Error calling zoneadm: %s stdout="%s" stderr="%s"',
+        err, stdout, stderr)));
+    }
+    var names = stdout.trim().split('\n');
+    var objs = names.map(function (n) { return {name: n}; });
+    callback(null, objs);
+  });
 }
 
 
@@ -241,7 +269,7 @@ function createMasterClient(next) {
 function startApp(app, callback) {
   return app.start(function (err) {
     if (!err)
-      app.log.info({owner: app.owner}, 'Amon-relay started');
+      app.log.info({target: app.target}, 'Amon-relay started');
     if (callback)
       callback(err);
     return;
@@ -261,7 +289,14 @@ function startZoneEventWatcher(next) {
   var zoneEventWatcher = new ZoneEventWatcher(log);
   zoneEventWatcher.on('zoneUp', function (zonename) {
     log.info({zonename: zonename}, 'handle zoneUp event');
-    var app = createZoneApp(zonename);
+    // Remove possibly existing old app.
+    var app = zoneApps[zonename];
+    if (app) {
+      delete zoneApps[zonename];
+      app.close(function () {});
+    }
+    // Add a new one.
+    app = createZoneApp(zonename);
     zoneApps[zonename] = app;
     startApp(app);
   });
@@ -281,65 +316,80 @@ function startZoneEventWatcher(next) {
  * Update the `zoneApps` global -- the master list of Apps for each running
  * zone -- from current state on the box.
  *
- * @param next (Function) Hack: If this is set, then this is the first call
- *  to this function during Relay initialization. Else, this is being
- *  called in the "self-heal" `setInterval`.
+ * @param next (Function) `function (err)`
+ *  Hack: If this is set, then this is the first call to this function
+ *  during Relay initialization. Else, this is being called in the
+ *  "self-heal" `setInterval`.
  */
 function updateZoneApps(next) {
-  log.info('updateZoneApps');
   var isSelfHeal = (next === undefined);
+  log.info({isSelfHeal: isSelfHeal}, 'updateZoneApps');
+  var i, app;
 
   // Handle dev-case of only listening in the current zone (presumed
   // to be the global zone).
   if (!config.allZones) {
     if (! zoneApps['global']) {
-      (function () {
-        var app = createGlobalZoneApp();
-        zoneApps['global'] = app;
-        startApp(app);
-      })();
+      app = createGlobalZoneApp();
+      zoneApps['global'] = app;
+      startApp(app);
     }
     return (next && next());
   }
 
+  // Get a working list of current zonenames.
   var existingZonenames = Object.keys(zoneApps);
   var existingZonenamesMap = {};
-  (function () {
-    for (var i = 0; i < existingZonenames.length; i++) {
-      existingZonenamesMap[existingZonenames[i]] = true;
-    }
-  })();
-  var actualZones = zutil.listZones();
-  //XXX
-  //var actualZones = [
-  //  { name: 'global' },
-  //  { name: 'f01ceb53-f132-4980-871b-b23628229b54' }
-  //  ]
+  for (i = 0; i < existingZonenames.length; i++) {
+    existingZonenamesMap[existingZonenames[i]] = true;
+  }
 
-  // Find new zonenames and create a `zoneApps` entry for each.
-  (function () {
-    for (var i = 0; i < actualZones.length; i++) {
-      var zonename = actualZones[i].name;
-      if (! zoneApps[zonename]) {
+  // Get the new list of zones to which to compare.
+  listAllZones(function (err, actualZones) {
+    if (err) {
+      return next(err);
+    }
+    var zonename;
+
+    // Find new zonenames and create a `zoneApps` entry for each.
+    for (i = 0; i < actualZones.length; i++) {
+      zonename = actualZones[i].name;
+      app = zoneApps[zonename];
+      if (!app) {
         if (isSelfHeal) {
           log.warn({zonename: zonename}, 'self-healing zone list: add zone');
         }
-        var app = (zonename === 'global' ?
+        app = (zonename === 'global' ?
           createGlobalZoneApp() : createZoneApp(zonename));
         zoneApps[zonename] = app;
         startApp(app);
       } else {
         delete existingZonenamesMap[zonename];
+
+        // Apps for non-running zones: re-create them if the zone is running
+        // now.
+        if (!app.isZoneRunning && zutil.getZoneState(zonename) === 'running') {
+          if (isSelfHeal) {
+            log.warn({zonename: zonename},
+              'self-healing zone list: recycle zone app');
+          }
+          // Remove the old one.
+          delete zoneApps[zonename];
+          app.close(function () {});
+          // Create a new one.
+          app = (zonename === 'global' ?
+            createGlobalZoneApp() : createZoneApp(zonename));
+          zoneApps[zonename] = app;
+          startApp(app);
+        }
       }
     }
-  })();
 
-  // Remove obsolete `zoneApps` entries.
-  var obsoleteZonenames = Object.keys(existingZonenamesMap);
-  (function () {
-    for (var i = 0; i < obsoleteZonenames.length; i++) {
-      var zonename = obsoleteZonenames[i];
-      var app = zoneApps[zonename];
+    // Remove obsolete `zoneApps` entries.
+    var obsoleteZonenames = Object.keys(existingZonenamesMap);
+    for (i = 0; i < obsoleteZonenames.length; i++) {
+      zonename = obsoleteZonenames[i];
+      app = zoneApps[zonename];
       if (app) {
         if (isSelfHeal) {
           log.warn({zonename: zonename}, 'self-healing zone list: remove zone');
@@ -348,7 +398,7 @@ function updateZoneApps(next) {
         app.close(function () {});
       }
     }
-  })();
+  });
 
   return (next && next());
 }
@@ -381,20 +431,20 @@ function updateAgentProbes(next) {
       return nextOne();
 
     //XXX Update the following to bulk query against master.
-    var logger = app.log;
-    log.debug('updateAgentProbes');
+    var applog = app.log;
+    applog.debug('updateAgentProbes for zone "%s"', zonename);
     return masterClient.agentProbesMD5(app.targetType,
                                        app.targetUuid,
                                        function (err, masterMD5) {
       if (err) {
-        logger.warn('Error getting master agent probes MD5: %s', err);
+        applog.warn('Error getting master agent probes MD5: %s', err);
         return nextOne();
       }
       var currMD5 = app.upstreamAgentProbesMD5;
-      logger.trace('Agent probes md5: "%s" (from master) vs "%s" (curr)',
+      applog.trace('Agent probes md5: "%s" (from master) vs "%s" (curr)',
         masterMD5, currMD5);
       if (masterMD5 === currMD5) {
-        logger.trace('No agent probes update.');
+        applog.trace('No agent probes update.');
         return nextOne();
       }
       return masterClient.agentProbes(app.targetType, app.targetUuid,
@@ -402,23 +452,23 @@ function updateAgentProbes(next) {
                                                 agentProbes,
                                                 probeMasterMD5) {
         if (probeErr || !agentProbes || !probeMasterMD5) {
-          logger.warn(probeErr,
-                      'Error getting agent probes from master (%s=%s)',
-                      app.targetType, app.targetUuid);
+          applog.warn(probeErr,
+            'Error getting agent probes from master (%s=%s)',
+            app.targetType, app.targetUuid);
           return nextOne();
         }
-        logger.trace({agentProbes: agentProbes},
+        applog.trace({agentProbes: agentProbes},
           'Retrieved agent probes from master');
 
         return app.writeAgentProbes(agentProbes, masterMD5,
                                     function (writeErr, isGlobalChange) {
           if (writeErr) {
-            logger.error(writeErr, 'unable to save new agent probes');
+            applog.error(writeErr, 'unable to save new agent probes');
           } else {
             if (isGlobalChange) {
               zoneApps['global'].cacheInvalidateDownstream();
             }
-            logger.info('Successfully updated agent probes from master '
+            applog.info('Successfully updated agent probes from master '
               + '(md5: %s -> %s).', currMD5 || '(none)', masterMD5);
           }
           return nextOne();

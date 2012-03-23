@@ -6,7 +6,6 @@
 
 var events = require('events');
 var fs = require('fs');
-var spawn = require('child_process').spawn;
 var util = require('util'),
   format = util.format;
 
@@ -38,11 +37,11 @@ function MachineUpProbe(options) {
   var self = this;
   self._handleZoneUp = function () {
     self.emitEvent(format('Machine "%s" has come up.', self.machine),
-      true, {machine: self.machine}, true);
+      null, {machine: self.machine}, true);
   };
-  self._handleZoneDown = function (zonename) {
+  self._handleZoneDown = function () {
     self.emitEvent(format('Machine "%s" has gone down.', self.machine),
-      false, {machine: self.machine});
+      null, {machine: self.machine}, false);
   };
 }
 util.inherits(MachineUpProbe, Probe);
@@ -57,6 +56,19 @@ MachineUpProbe.validateConfig = function (config) {
 
 
 MachineUpProbe.prototype.start = function (callback) {
+  // Start with an machine status event to ensure that a machine state
+  // change while amon-agent was down is reported. It is up to de-duplication
+  // logic in the master to avoid unnecessary alarms and notifications to
+  // the owner of this probe. (See MON-71.)
+  var zutil = require('zutil');
+  if (zutil.getZoneState(this.machine) === 'running') {
+    this.emitEvent(format('Machine "%s" is up.', this.machine),
+      null, {machine: this.machine}, true);
+  } else {
+    this.emitEvent(format('Machine "%s" is down.', this.machine),
+      null, {machine: this.machine}, false);
+  }
+
   this.app.on('zoneUp:'+this.machine, this._handleZoneUp);
   this.app.on('zoneDown:'+this.machine, this._handleZoneDown);
   if (callback && (callback instanceof Function)) {

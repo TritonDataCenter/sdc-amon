@@ -347,13 +347,10 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
   var user = options.user;
   var event = options.event;
   var monitor = options.monitor;
-  log.info(
-    {event_uuid: event.uuid, alarm_id: this.id, user: this.user},
-    'handleEvent'
-  );
+  log.info({event_uuid: event.uuid, alarm_id: this.id, user: this.user},
+    'handleEvent');
 
   // Decide whether to notify:
-  // - if this is a clear event and never opened, then no (TODO)
   // - if in maint, then no (update 'openedDuringMaint') (TODO)
   // - TODO: guard against too frequent notifications. Set a timeout for
   //   5 minutes from now. Hold ref to alarm. Send notification with all
