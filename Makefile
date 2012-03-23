@@ -24,7 +24,8 @@ JS_FILES = $(shell ls master/*.js relay/*.js agent/*.js) \
 JSL_CONF_NODE    = tools/jsl.node.conf
 JSL_FILES_NODE   = $(JS_FILES)
 JSSTYLE_FILES    = $(JS_FILES)
-SMF_MANIFESTS_IN = agent/smf/amon-agent.smf.in relay/smf/amon-relay.smf.in \
+SMF_MANIFESTS_IN = agent/smf/manifests/amon-agent.xml.in \
+	relay/smf/manifests/amon-relay.xml.in \
 	master/smf/amon-relay.smf.in
 CLEAN_FILES += agent/node_modules relay/node_modules \
 	master/node_modules common/node_modules plugins/node_modules \
@@ -94,17 +95,18 @@ pkg: pkg_agent pkg_relay pkg_master
 .PHONY: pkg_relay
 pkg_relay:
 	rm -fr $(BUILD)/pkg/relay
-	mkdir -p $(BUILD)/pkg/relay
-	cp -PR $(NODE_INSTALL) $(BUILD)/pkg/relay/node
+	mkdir -p $(BUILD)/pkg/relay/build
+	cp -PR $(NODE_INSTALL) $(BUILD)/pkg/relay/build/node
 	# '-H' to follow symlink for amon-common and amon-plugins node modules.
 	mkdir -p $(BUILD)/pkg/relay/node_modules
 	ls -d relay/node_modules/* | xargs -n1 -I{} cp -HR {} $(BUILD)/pkg/relay/node_modules/
-	cp -PR relay/lib		\
-		relay/main.js		\
-		relay/package.json	\
-		relay/smf		\
-		relay/npm \
+	cp -PR relay/lib \
+		relay/main.js \
+		relay/package.json \
+		relay/smf \
+		relay/pkg \
 		relay/bin \
+		relay/.npmignore \
 		$(BUILD)/pkg/relay/
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
@@ -123,8 +125,8 @@ pkg_relay:
 .PHONY: pkg_agent
 pkg_agent:
 	rm -fr $(BUILD)/pkg/agent
-	mkdir -p $(BUILD)/pkg/agent
-	cp -PR $(NODE_INSTALL) $(BUILD)/pkg/agent/node
+	mkdir -p $(BUILD)/pkg/agent/build
+	cp -PR $(NODE_INSTALL) $(BUILD)/pkg/agent/build/node
 	# '-H' to follow symlink for amon-common and amon-plugins node modules.
 	mkdir -p $(BUILD)/pkg/agent/node_modules
 	ls -d agent/node_modules/* | xargs -n1 -I{} cp -HR {} $(BUILD)/pkg/agent/node_modules/
@@ -132,7 +134,7 @@ pkg_agent:
 		agent/main.js \
 		agent/package.json \
 		agent/smf \
-		agent/npm \
+		agent/pkg \
 		agent/bin \
 		agent/.npmignore \
 		$(BUILD)/pkg/agent

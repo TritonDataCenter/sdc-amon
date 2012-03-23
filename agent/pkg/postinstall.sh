@@ -21,7 +21,7 @@ subfile () {
 }
 
 
-subfile "$DIR/../smf/amon-agent.smf.in" "$SMFDIR/amon-agent.xml"
+subfile "$DIR/../smf/manifests/amon-agent.xml.in" "$SMFDIR/amon-agent.xml"
 
 svccfg import $SMFDIR/amon-agent.xml
 

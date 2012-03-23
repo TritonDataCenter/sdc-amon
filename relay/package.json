@@ -14,9 +14,9 @@
     "zutil": "0.2.1"
   },
   "scripts": {
-    "start": "node ./main.js",
-    "postinstall": "./npm/postinstall.sh",
-    "preuninstall": "./npm/preuninstall.sh"
+    "start": "./bin/amon-relay",
+    "postinstall": "./pkg/postinstall.sh",
+    "preuninstall": "./pkg/preuninstall.sh"
   },
   "bin": {
     "bunyan": "./node_modules/bunyan/bin/bunyan"

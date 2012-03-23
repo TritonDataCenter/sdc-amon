@@ -11,8 +11,9 @@
     "zutil": "0.2.1"
   },
   "scripts": {
-    "postinstall": "npm/postinstall.sh",
-    "preuninstall": "npm/preuninstall.sh"
+		"start": "./bin/amon-agent",
+    "postinstall": "pkg/postinstall.sh",
+    "preuninstall": "pkg/preuninstall.sh"
   },
   "engines": {
     "node": ">=0.6"

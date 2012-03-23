@@ -27,7 +27,7 @@ function subfile () {
 }
 
 
-subfile "$DIR/../smf/amon-relay.smf.in" "$SMFDIR/amon-relay.xml"
+subfile "$DIR/../smf/manifests/amon-relay.xml.in" "$SMFDIR/amon-relay.xml"
 
 svccfg import $SMFDIR/amon-relay.xml
 

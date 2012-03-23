@@ -1,7 +1,7 @@
 #!/bin/bash
 
 TOP=$(unset CDPATH; cd $(dirname $0)/../; pwd)
-NODE_INSTALL=${TOP}/node
+NODE_INSTALL=${TOP}/build/node
 if [[ ! -d "${NODE_INSTALL}" && -d "${TOP}/../build/node" ]]; then
     # Dev/repo layout.
     NODE_INSTALL=${TOP}/../build/node
