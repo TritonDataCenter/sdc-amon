@@ -276,7 +276,7 @@ function App(config, ufds, mapi, log) {
           res.send(err);
         } else if (! user) {
           res.send(new restify.ResourceNotFoundError(
-            format('no such user: "%s"', userId)), true);
+            format('no such user: "%s"', userId)));
         } else {
           req._user = user;
         }
