@@ -213,14 +213,15 @@ function createDevzone(next) {
       var headnodeUuid = servers[0].uuid;
       mapi.createMachine(bob.uuid, {
           package: "regular_128",
+          ram: 64,
           alias: "amondevzone",
           dataset_urn: "smartos",
           server_uuid: headnodeUuid,
           force: "true"  // XXX does MAPI client support `true -> "true"`
         },
         function (err, newZone) {
-          log("# Waiting up to ~90s for new zone %s to start up.", newZone.name);
           if (err) return next(err);
+          log("# Waiting up to ~90s for new zone %s to start up.", newZone.name);
           var zone = newZone;
           var zoneName = zone.name;
           var sentinel = 30;
