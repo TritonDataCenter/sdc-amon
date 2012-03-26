@@ -620,7 +620,7 @@ Probe to "GET /canary" on the site from some other source location.
                 "method": "GET",
                 "status": 200  // number or list of HTTP status numbers to expect
                 "regex": "...",   // check for a pattern in returned content
-                "period": 60  // how frequently to check. Should this be exposed?
+                "interval": 60  // how frequently to check. Should this be exposed?
             }
         }
 
@@ -643,6 +643,6 @@ healthcheck on KVM.
                 "command": ...,
                 "regex": "...",   // check for a pattern in returned content?
                 // Something to check exit value?
-                "period": 60  // how frequently to check.
+                "interval": 60  // how frequently to check.
             }
         }
