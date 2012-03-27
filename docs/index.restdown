@@ -614,13 +614,15 @@ Probe to "GET /canary" on the site from some other source location.
         }
     PUT /my/monitors/site/probes/webcheck < {
             "machine": "$machine_uuid",  // <--- this is the machine to run HTTP request from
-            "type": "httprequest",
+            "type": "http",
             "config": {
                 "url": "http://example.com/canary.html",
                 "method": "GET",
-                "status": 200  // number or list of HTTP status numbers to expect
-                "regex": "...",   // check for a pattern in returned content
-                "interval": 60  // how frequently to check. Should this be exposed?
+                "statusCodes": [200,201,204,401] // number or list of HTTP status numbers to expect
+                "regex": "...", // (optional) check for a pattern in returned content
+                "interval": 60,  // how often to check (in seconds),
+                "period": 300, // alert window
+                "threshold": 1 // # of times event must occur within the alert window before alarming
             }
         }
 
