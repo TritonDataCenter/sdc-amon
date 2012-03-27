@@ -188,7 +188,12 @@ HttpProbe.prototype.doRequest = function () {
     res.on('end', function () {
       var eventMessages = [];
       var eventDetails = {
-        request: self.requestOptions,
+        request: {
+          hostname: self.requestOptions.hostname,
+          path: self.requestOptions.path,
+          headers: self.requestOptions.headers,
+          method: self.requestOptions.method
+        },
         response: {
           statusCode: res.statusCode,
           headers: res.headers
@@ -279,7 +284,7 @@ HttpProbe.prototype._regexMatch = function (body) {
 
       return {
         context: ctx,
-        match: m[0]
+        match: m[0].toString()
       };
     })());
   }
