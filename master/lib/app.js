@@ -362,6 +362,7 @@ function App(config, ufds, mapi, log) {
  */
 App.prototype.getRedisClient = function getRedisClient() {
   var self = this;
+  var log = self.log;
 
   if (!this._redisClient) {
     var client = this._redisClient = new redis.createClient(
@@ -378,7 +379,7 @@ App.prototype.getRedisClient = function getRedisClient() {
     client.on('end', function () {
       self.log.info('redis client end, recycling it');
       client.end();
-      this._redisClient = null;
+      self._redisClient = null;
     });
 
     client.select(1); // Amon uses DB 1 in redis.
