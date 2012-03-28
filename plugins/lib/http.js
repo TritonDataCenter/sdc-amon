@@ -87,6 +87,8 @@ var format = util.format;
 
 var Probe = require('./probe');
 
+var SECONDS = 1000;
+
 // ==== Exports
 //
 module.exports = HttpProbe;
@@ -235,11 +237,11 @@ HttpProbe.prototype.doRequest = function () {
 HttpProbe.prototype.start = function (callback) {
   this.periodTimer = setInterval(
     this.resetCounter.bind(this),
-    this.period * 1000);
+    this.period * SECONDS);
 
   this.intervalTimer = setInterval(
     this.doRequest.bind(this),
-    this.interval * 1000);
+    this.interval * SECONDS);
 
   if (callback && (typeof (callback) === 'function')) {
     return callback();
