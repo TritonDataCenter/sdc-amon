@@ -13,7 +13,7 @@ var util = require('util'),
 
 var Probe = require('./probe');
 
-
+var SECONDS = 1000;
 
 //---- internal support stuff
 
@@ -41,9 +41,11 @@ function LogScanProbe(options) {
   LogScanProbe.validateConfig(this.config);
 
   this.path = this.config.path;
-  this.period = this.config.period;
   this.regex = new RegExp(this.config.regex);
-  this.threshold = this.config.threshold;
+
+  this.threshold = this.config.threshold || 1;
+  this.period = this.config.period || 60;
+
   if (this.threshold > 1) {
     this.message = format('Log "%s" matched %s >=%d times in %d seconds.',
       this.path, this.regex, this.threshold, this.period);
@@ -63,12 +65,8 @@ LogScanProbe.validateConfig = function (config) {
     throw new TypeError('config is required');
   if (!config.path)
     throw new TypeError('config.path is required');
-  if (!config.period)
-    throw new TypeError('config.period is required');
   if (!config.regex)
     throw new TypeError('config.regex is required');
-  if (!config.threshold)
-    throw new TypeError('config.threshold is required');
 };
 
 
@@ -81,7 +79,7 @@ LogScanProbe.prototype.start = function (callback) {
       return;
     log.trace('clear logscan counter');
     self._count = 0;
-  }, this.period * 1000);
+  }, this.period * SECONDS);
 
   this._running = true;
   this.tail = spawn('/usr/bin/tail', ['-1cF', this.path]);

@@ -440,8 +440,8 @@ Watch (tail -f) a log file for a particular pattern (regular expression).
 ||**Parameter**||**Required?**||**Default**||**Description**||
 ||path||Required||-||Path to the log file to watch.||
 ||regex||Required||-||Regular expression pattern to match against each log line.||
-||period||Required||-||Integer number of seconds. Time window in which `threshold` number of matches must be found to alarm.||
-||threshold||Required||-||Integer. Number of times a match must be found within `period` to alarm.||
+||period||Optional||60||Integer number of seconds. Time window in which `threshold` number of matches must be found to alarm.||
+||threshold||Optional||1||Integer. Number of times a match must be found within `period` to alarm.||
 
 ### Example
 
