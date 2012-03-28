@@ -13,64 +13,8 @@
  *  - data {Object} The Probe data, including it's config
  *  - log {Buyan Logger}
  *
- * ## HttpProbe config options
- *
- * By default only `url` config is required. The probe will perform
- * a GET request on the specified URL. If the status code in the http response
- * is not in the 2xx range, then an event is emitted.
- *
- * All aspects of the request can be overidden by providing any of the following
- * options `method`, `headers`, `body`. A `regex` pattern can be provided,
- * which will be tested against the response body. When no matches are found,
- * then an event will be emitted. An array of custom statusCodes can be provided
- * which will override the default 2xx range of status codes that's tested
- * against by default.
- *
- * ## Required
- *
- * - url {String} URL to probe
- *
- *
- * ## Optional
- *
- * ### Customizing the Request
- *
- * - method {String} Curently Supports GET (default) or POST
- * - headers {Object} Additional headers to include with request
- * - body {String} string of form data
- * - username {String} Username used for HTTP Basic Auth
- * - password {String} Password used for HTTP Basic Auth
- *
- * Probe Monitor/Trigger Options
- *
- * - interval {integer} Default 90s. How often should this probe make a request
- *                      to the specified URL
- *
- * period & threshold
- *
- * - period {Integer} Default: 300s a time window in which alarms would be
- *                    triggered if number of events fired crosses that given by
- *                    `threshold`.
- *
- * - threashold {Integer} Default: 0, when the number of failed requests crosses
- *                    `threshold` in a given `period`, an alarm would be fired
- *
- * matching options
- *
- * - regex {Object} When provided, the response body will be matched
- *   against the regex provided, if no matches are found, then an event is
- *   emitted
- *
- *   - regex.pattern {String} pattern to match
- *   - regex.flags {String} optional flags to use (ie `g` for global matching,
- *     `i` to ignore case sensitivity
- *
- * - statusCodes {Array} When provided, the HTTP status code of the
- *   response will be checked against the list of statusCodes provided, if the
- *   statuses does not include the one that is returned, then an event is
- *   emitted
+ * @see config options, see docs/index.restdown
  */
-
 
 /**
  * TODO want an "invertMatch" or something to assert that the response body
@@ -135,11 +79,8 @@ function HttpProbe(options) {
   if (this.url.port) { this.requestOptions.port = this.url.port; }
 
   this.interval = this.config.interval || 90; // how often to probe the url
-
-  this.threshold = this.config.threshold || 0; // default: alert immediately
-
+  this.threshold = this.config.threshold || 1; // default: alert immediately
   this.period = this.config.period || (5 * 60); // in 1 minute
-  this.interval = this.config.interval || 60;
 
   this._count = 0;
   this._alerted = false;
@@ -221,7 +162,7 @@ HttpProbe.prototype.doRequest = function () {
       }
 
       if (eventMessages.length !== 0) {
-        if (self._count > self.threshold) {
+        if (self._count >= self.threshold) {
           self.emitEvent(eventMessages.join('\n'), self._count, eventDetails);
         } else {
           self._count++;

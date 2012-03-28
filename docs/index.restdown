@@ -476,8 +476,35 @@ None.
 
 ## Probe: http
 
-TODO: kevin to fill in
+Watches a HTTP(S) URL for a specific body (regex), or status codes.
 
+### Config
+
+||**Parameter**||**Required?**||**Default**||**Description**||
+||url||Required||-||URL to probe, this url must be accessable from the machine or server running the probe||
+||method||Optional||GET||Curently Supports GET (default) or POST||
+||headers||Optional||-||Additional headers to include with request (an object)||
+||body||Optional||-||string of form data||
+||username||Optional||-||Username used for HTTP Basic Auth||
+||password||Optional||-||Password used for HTTP Basic Auth||
+||interval||Optional||90||interval in seconds to check the specified URL||
+||period||Optional||300||Integer number of seconds. Time window in which `threshold` number of matches must be found to alarm.||
+||threshold||Optional||1||Integer. Number of times a match must be found within `period` to alarm.||
+||regex.pattern||Optional||-||check the response body for the regex pattern, if there are no matches, an event is fired||
+||regex.flags||Optional||-||flags to use with `regex.pattern` (ie `g` for global matching, `i` to ignore case sensitivity||
+||statusCodes||Optional||[200,201,202,204]||an array of status codes to be compared to the response, if statusCodes does not contain include the response status code form the request, then an alarm is fired||
+
+### Example
+
+Watches http://google.com/ home page and fire when a non 2xx status code is returned
+
+    $ sdc-amon /pub/bob/monitors/mymonitor/probes/googleprobe -X PUT --data '{
+        "type": "http",
+        "machine": "a5134e62-1bed-5e48-a760-7b9b79aef729",
+        "config":{
+          "url":"http://google.com/"
+        }
+    }'
 
 
 # Glossary
