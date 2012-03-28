@@ -48,7 +48,7 @@
  *
  * period & threshold
  *
- * - period {Integer} Default: 300s a time window in which an alarm would be
+ * - period {Integer} Default: 300s a time window in which alarms would be
  *                    triggered if number of events fired crosses that given by
  *                    `threshold`.
  *
@@ -197,7 +197,8 @@ HttpProbe.prototype.doRequest = function () {
         response: {
           statusCode: res.statusCode,
           headers: res.headers
-        }
+        },
+        statusCodes: self.expectedCodes
       };
 
       if (self._statusMatch(res.statusCode) === false) {
@@ -218,9 +219,8 @@ HttpProbe.prototype.doRequest = function () {
       }
 
       if (eventMessages.length !== 0) {
-        if (!self._alerted && self._count > self.threshold) {
+        if (self._count > self.threshold) {
           self.emitEvent(eventMessages.join('\n'), self._count, eventDetails);
-          self.alerted = true;
         } else {
           self._count++;
         }
@@ -248,7 +248,6 @@ HttpProbe.prototype.start = function (callback) {
 
 HttpProbe.prototype.resetCounter = function () {
   this._count = 0;
-  this._alerted = false;
 };
 
 HttpProbe.prototype.stop = function (callback) {
