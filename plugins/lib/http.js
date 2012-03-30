@@ -106,15 +106,19 @@ HttpProbe.validateConfig = function (config) {
   }
 
   if (config.method && !(config.method === 'GET' || config.method === 'POST')) {
-    throw new TypeError('config.method when provided must be GET or POST');
+    throw new TypeError('config.method when present, must be GET or POST');
   }
 
   if (config.headers && typeof (config.headers) !== 'object') {
-    throw new TypeError('config.headers when provided must be an object');
+    throw new TypeError('config.headers when present, must be an object');
   }
 
   if (config.body && typeof (config.body) !== 'string') {
-    throw new TypeError('config.body when provided, should be a string');
+    throw new TypeError('config.body when present, should be a string');
+  }
+
+  if (config.maxResponseTime && typeof (config.maxResponseTime) !== 'number') {
+    throw new TypeError('config.maxResponseTime when present must be a number');
   }
 };
 
