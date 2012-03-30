@@ -76,11 +76,11 @@ function addEvents(req, res, next) {
 
   asyncForEach(events, validateAndProcess, function (err) {
     if (errs.length > 0) {
-      res.send(new restify.InternalError(errs.join(', ')));
+      next(new restify.InternalError(errs.join(', ')));
     } else {
       res.send(202 /* Accepted */);
+      next();
     }
-    next();
   });
 }
 

@@ -49,7 +49,7 @@ function ping(req, res, next) {
       restCode += 'Error';
     }
     var err = new restify[restCode]('pong');
-    res.send(err);
+    next(err);
   } else {
     var data = {
       ping: 'pong',
@@ -61,11 +61,10 @@ function ping(req, res, next) {
       } else {
         data.redis = info.match(/^redis_version:(.*?)$/m)[1];
       }
-      res.send(200, data);
-      return;
+      res.send(data);
+      next();
     });
   }
-  next();
 }
 
 function getUser(req, res, next) {
@@ -77,7 +76,7 @@ function getUser(req, res, next) {
     firstName: user.cn,
     lastName: user.sn
   };
-  res.send(200, data);
+  res.send(data);
   return next();
 }
 
@@ -273,14 +272,14 @@ function App(config, ufds, mapi, log) {
       self.userFromId(userId, function (err, user) {
         if (err) {
           //TODO: does this work with an LDAPError?
-          res.send(err);
+          next(err);
         } else if (! user) {
-          res.send(new restify.ResourceNotFoundError(
+          next(new restify.ResourceNotFoundError(
             format('no such user: "%s"', userId)));
         } else {
           req._user = user;
+          next();
         }
-        return next();
       });
     } else {
       next();
@@ -373,11 +372,11 @@ App.prototype.getRedisClient = function getRedisClient() {
     // Must handle 'error' event to avoid propagation to top-level where node
     // will terminate.
     client.on('error', function (err) {
-      self.log.info(err, 'redis client error');
+      log.info(err, 'redis client error');
     });
 
     client.on('end', function () {
-      self.log.info('redis client end, recycling it');
+      log.info('redis client end, recycling it');
       client.end();
       self._redisClient = null;
     });

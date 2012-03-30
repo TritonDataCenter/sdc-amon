@@ -134,11 +134,11 @@ function listAgentProbes(req, res, next) {
   findProbes(req._app, field, uuid, req.log, function (err, probes) {
     if (err) {
       req.log.error(err, 'error getting probes for %s "%s"', field, uuid);
-      res.send(500);
+      next(new restify.InternalError());
     } else {
       res.send(200, probes);
+      next();
     }
-    next();
   });
 }
 

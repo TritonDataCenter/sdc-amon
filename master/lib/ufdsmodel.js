@@ -328,13 +328,13 @@ function requestList(req, res, next, Model) {
   var parentDn = Model.parentDnFromRequest(req);
   modelList(req._app, Model, parentDn, req.log, function (err, items) {
     if (err) {
-      res.send(err);
+      next(err);
     } else {
       var data = items.map(function (i) { return i.serialize(); });
       req.log.trace({data: data}, 'items from modelList:', items);
-      res.send(200, data);
+      res.send(data);
+      next();
     }
-    return next();
   });
 }
 
@@ -356,13 +356,13 @@ function requestPut(req, res, next, Model) {
 
   modelPut(req._app, Model, data, req.log, function (err, item) {
     if (err) {
-      res.send(err);
+      next(err);
     } else {
       var d = item.serialize();
       req.log.trace({data: d}, 'item from modelPut:', item);
-      res.send(200, d);
+      res.send(d);
+      next();
     }
-    next();
   });
 }
 
@@ -373,18 +373,18 @@ function requestGet(req, res, next, Model) {
   try {
     dn = Model.dnFromRequest(req);
   } catch (err) {
-    return res.send(err);
+    return next(err);
   }
 
   modelGet(req._app, Model, dn, req.log, function (err, item) {
     if (err) {
-      res.send(err);
+      next(err);
     } else {
       var data = item.serialize();
       req.log.trace({data: data}, 'item from modelGet:', item);
-      res.send(200, data);
+      res.send(data);
+      next();
     }
-    next();
   });
 }
 
@@ -394,11 +394,11 @@ function requestDelete(req, res, next, Model) {
   var dn = Model.dnFromRequest(req);
   modelDelete(req._app, Model, dn, req.log, function (err) {
     if (err) {
-      res.send(err);
+      next(err);
     } else {
       res.send(204);
+      return next();
     }
-    return next();
   });
 }
 

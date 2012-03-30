@@ -231,11 +231,11 @@ module.exports = {
       req._app.processEvent(testEvent, function (processErr) {
         if (processErr) {
           req.log.error(processErr, 'error processing test event');
-          res.send(new restify.InternalError());
+          next(new restify.InternalError());
         } else {
           res.send({success: true});
+          next();
         }
-        return next();
       });
       return true;
     });
