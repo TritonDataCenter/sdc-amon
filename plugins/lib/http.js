@@ -146,7 +146,7 @@ HttpProbe.prototype.doRequest = function () {
     eventDetails.response = {
       statusCode: res.statusCode,
       headers: res.headers
-    }
+    };
 
     res.on('data', function (d) {
       body += d;
@@ -155,13 +155,13 @@ HttpProbe.prototype.doRequest = function () {
     res.on('end', function () {
       if (self._statusMatch(res.statusCode) === false) {
         eventMessages.push(format('Unexpected HTTP Status Code (%s)',
-                                  res.statusCode));
+          res.statusCode));
       }
 
       if (self.maxResponseTime && responseTime >= self.maxResponseTime) {
-        eventMessages.push(format('Maximum Response Time (%sms) exceeded, was: %sms',
-                                  self.maxResponseTime,
-                                  responseTime));
+        eventMessages.push(
+          format('Maximum Response Time (%sms) exceeded, was: %sms',
+            self.maxResponseTime, responseTime));
       }
 
       if (self.regex) {
@@ -188,8 +188,8 @@ HttpProbe.prototype.doRequest = function () {
 
   req.setTimeout(self.timeout * SECONDS);
 
-  req.on('timeout', function() {
-    eventMessages.push("Request Timed Out");
+  req.on('timeout', function () {
+    eventMessages.push('Request Timed Out');
     if (self._count >= self.threshold) {
       self.emitEvent(eventMessages.join('\n'), self._count, eventDetails);
     } else {

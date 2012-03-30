@@ -156,7 +156,7 @@ test('HttpProbe', function (t) {
 
   test('response time', function (t) {
     var server = require('http').createServer(function (req, res) {
-      setTimeout(function() {
+      setTimeout(function () {
         res.writeHead(200, {});
         res.end('sorry that took too long');
       }, 500);
@@ -164,10 +164,11 @@ test('HttpProbe', function (t) {
 
     var probe = createProbe({maxResponseTime:1});
 
-    server.listen(9000, function() {
+    server.listen(9000, function () {
       probe.start();
       probe.on('event', function (e) {
-        t.ok(e.data.message =~ 'Maximum response time', 'has message');
+        t.ok(e.data.message.indexOf('Maximum response time') != -1,
+          'has message');
         t.end();
         probe.stop();
         server.close();
