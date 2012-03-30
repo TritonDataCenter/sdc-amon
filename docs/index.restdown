@@ -491,6 +491,7 @@ Watches a HTTP(S) URL for a specific body (regex), or status codes.
 ||period||Optional||300||Integer number of seconds. Time window in which `threshold` number of matches must be found to alarm.||
 ||threshold||Optional||1||Integer. Number of times a match must be found within `period` to alarm.||
 ||maxResponseTime||Optional||-||when response time of request exceeds `maxResponseTime`, an event will fire||
+||timeout||Optional||30||Maximum time in seconds that you allow the connection to the server to take.||
 ||regex.pattern||Optional||-||check the response body for the regex pattern, if there are no matches, an event is fired||
 ||regex.flags||Optional||-||flags to use with `regex.pattern` (ie `g` for global matching, `i` to ignore case sensitivity||
 ||statusCodes||Optional||[200,201,202,204]||an array of status codes to be compared to the response, if statusCodes does not contain include the response status code form the request, then an alarm is fired||

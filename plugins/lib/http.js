@@ -55,6 +55,7 @@ function HttpProbe(options) {
   this.method = this.config.method || 'GET'; // Default: GET
   this.expectedCodes = this.config.statusCodes || HTTP_OK;
   this.maxResponseTime = this.config.maxResponseTime;
+  this.timeout = this.config.timeout || 30;
 
   if (this.config.username && this.config.password) {
     var str = new Buffer(
@@ -126,30 +127,32 @@ HttpProbe.prototype.doRequest = function () {
 
   var self = this;
   var start = Date.now();
+
+  var eventMessages = [];
+  var eventDetails = {
+    request: {
+      hostname: self.requestOptions.hostname,
+      path: self.requestOptions.path,
+      headers: self.requestOptions.headers,
+      method: self.requestOptions.method
+    },
+    statusCodes: self.expectedCodes
+  };
+
   var req = http.request(this.requestOptions, function (res) {
+
     var body = '';
     var responseTime = Date.now() - start;
+    eventDetails.response = {
+      statusCode: res.statusCode,
+      headers: res.headers
+    }
 
     res.on('data', function (d) {
       body += d;
     });
 
     res.on('end', function () {
-      var eventMessages = [];
-      var eventDetails = {
-        request: {
-          hostname: self.requestOptions.hostname,
-          path: self.requestOptions.path,
-          headers: self.requestOptions.headers,
-          method: self.requestOptions.method
-        },
-        response: {
-          statusCode: res.statusCode,
-          headers: res.headers
-        },
-        statusCodes: self.expectedCodes
-      };
-
       if (self._statusMatch(res.statusCode) === false) {
         eventMessages.push(format('Unexpected HTTP Status Code (%s)',
                                   res.statusCode));
@@ -181,7 +184,18 @@ HttpProbe.prototype.doRequest = function () {
         }
       }
     });
+  });
 
+  req.setTimeout(self.timeout * SECONDS);
+
+  req.on('timeout', function() {
+    eventMessages.push("Request Timed Out");
+    if (self._count >= self.threshold) {
+      self.emitEvent(eventMessages.join('\n'), self._count, eventDetails);
+    } else {
+      self._count++;
+    }
+    req.end();
   });
 
   req.end(this.body);
