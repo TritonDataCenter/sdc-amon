@@ -101,7 +101,6 @@ test('HttpProbe', function (t) {
 
 
 
-
   test('defualt config: success request', function (t) {
     var server = createServer(200, 'hello');
     t.ok(server);
@@ -139,7 +138,7 @@ test('HttpProbe', function (t) {
     // server returns a 200
     var server = createServer(200, 'conflict!!');
 
-    server.listen(9000, function _cb() {
+    server.listen(9000, function () {
       // configure probe to consider 401,409 as success
       var probe = createProbe({statusCodes: [401, 409]});
       t.ok(probe);
@@ -152,6 +151,28 @@ test('HttpProbe', function (t) {
         probe.stop();
         server.close();
       });
+    });
+  });
+
+  test('response time', function (t) {
+    var server = require('http').createServer(function (req, res) {
+      setTimeout(function() {
+        res.writeHead(200, {});
+        res.end('sorry that took too long');
+      }, 500);
+    });
+
+    var probe = createProbe({maxResponseTime:1});
+
+    server.listen(9000, function() {
+      probe.start();
+      probe.on('event', function (e) {
+        t.ok(e.data.message =~ 'Maximum response time', 'has message');
+        t.end();
+        probe.stop();
+        server.close();
+      });
+
     });
   });
 

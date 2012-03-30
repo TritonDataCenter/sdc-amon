@@ -54,6 +54,7 @@ function HttpProbe(options) {
   this.body = this.config.body || null;
   this.method = this.config.method || 'GET'; // Default: GET
   this.expectedCodes = this.config.statusCodes || HTTP_OK;
+  this.maxResponseTime = this.config.maxResponseTime;
 
   if (this.config.username && this.config.password) {
     var str = new Buffer(
@@ -120,9 +121,10 @@ HttpProbe.validateConfig = function (config) {
 HttpProbe.prototype.doRequest = function () {
 
   var self = this;
-
+  var start = Date.now();
   var req = http.request(this.requestOptions, function (res) {
     var body = '';
+    var responseTime = Date.now() - start;
 
     res.on('data', function (d) {
       body += d;
@@ -147,6 +149,12 @@ HttpProbe.prototype.doRequest = function () {
       if (self._statusMatch(res.statusCode) === false) {
         eventMessages.push(format('Unexpected HTTP Status Code (%s)',
                                   res.statusCode));
+      }
+
+      if (self.maxResponseTime && responseTime >= self.maxResponseTime) {
+        eventMessages.push(format('Maximum Response Time (%sms) exceeded, was: %sms',
+                                  self.maxResponseTime,
+                                  responseTime));
       }
 
       if (self.regex) {
