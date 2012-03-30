@@ -340,13 +340,17 @@ function requestList(req, res, next, Model) {
 
 
 function requestPut(req, res, next, Model) {
-  req.log.trace({params: req.params}, '<%s> create entered', Model.name);
+  req.log.trace({params: req.params, body: req.body},
+    '<%s> put entered', Model.name);
 
   // Note this means that the *route variable names* need to match the
   // expected `data` key names in the models (e.g. `monitors.Monitor`).
   var data = objCopy(req.params);
   Object.keys(req.params).forEach(function (k) {
     data[k] = req.params[k];
+  });
+  Object.keys(req.body).forEach(function (k) {
+    data[k] = req.body[k];
   });
   data.user = req._user.uuid;
 

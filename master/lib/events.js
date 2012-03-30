@@ -54,10 +54,10 @@ function asyncForEach(list, fn, cb) {
  */
 function addEvents(req, res, next) {
   var events;
-  if (Array.isArray(req.params)) {
-    events = req.params;
+  if (Array.isArray(req.body)) {
+    events = req.body;
   } else {
-    events = [req.params];
+    events = [req.body];
   }
   req.log.info({events: events}, 'addEvents');
 

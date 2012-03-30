@@ -43,8 +43,8 @@ var VALID_LOGIN_CHARS = /^[a-zA-Z][a-zA-Z0-9_\.@]+$/;
 //---- internal support stuff
 
 function ping(req, res, next) {
-  if (req.params.error !== undefined) {
-    var restCode = req.params.error || 'InternalError';
+  if (req.query.error !== undefined) {
+    var restCode = req.query.error || 'InternalError';
     if (restCode.slice(-5) !== 'Error') {
       restCode += 'Error';
     }
@@ -248,8 +248,8 @@ function App(config, ufds, mapi, log) {
     name: 'Amon Master/' + Constants.ApiVersion,
     log: log
   });
-  server.use(restify.queryParser());
-  server.use(restify.bodyParser());
+  server.use(restify.queryParser({mapParams: false}));
+  server.use(restify.bodyParser({mapParams: false}));
   server.on('after', restify.auditLogger({
     log: log.child({component: 'audit'})
   }));

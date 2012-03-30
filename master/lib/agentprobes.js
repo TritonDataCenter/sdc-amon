@@ -84,8 +84,8 @@ function findProbes(app, field, uuid, log, callback) {
 
 function _parseReqParams(req) {
   var err, field, uuid;
-  var machine = req.params.machine;
-  var server = req.params.server;
+  var machine = req.query.machine;
+  var server = req.query.server;
   if (!machine && !server) {
     err = new restify.MissingParameterError(
       'one of "machine" or "server" is a required parameter');
