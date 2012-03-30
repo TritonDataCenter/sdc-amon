@@ -14,5 +14,5 @@ node_modules
 
 # built docs (ignore for now)
 /docs/media
-/docs/index.html
-/docs/index.json
+/docs/*.html
+/docs/*.json
