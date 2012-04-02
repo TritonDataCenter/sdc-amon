@@ -13,7 +13,6 @@
  * - create a 'amondevzone' for bob
  * - add a monitor and probe for 'bob' in the 'amondevzone'
  * - add a monitor and probe for 'otto' in the headnode GZ
- * - write relevant data to ../bootstrap.json
  */
 
 var log = console.error;
@@ -35,7 +34,7 @@ var sdcClients = require('sdc-clients'),
 
 //---- globals and constants
 
-var config = JSON.parse(fs.readFileSync(__dirname + '/../test/config.json', 'utf8'));
+var config;  // set in `loadConfig()`
 var bob = JSON.parse(fs.readFileSync(__dirname + '/user-amonuserbob.json', 'utf8'));
 var otto = JSON.parse(fs.readFileSync(__dirname + '/user-amonoperatorotto.json', 'utf8')); // operator
 var ldapClient;
@@ -47,6 +46,16 @@ var amonClient;
 
 
 //---- prep steps
+
+// Load config.json file, using the first argv argument or falling back to
+// "../test/config.json".
+function loadConfig(next) {
+  var configPath = process.argv[2] || (__dirname + '/../test/config.json');
+  log('# Load config from "%s".', configPath)
+  // 'config' is intentionally global.
+  config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  next();
+}
 
 function ufdsClientBind(next) {
   log("# Create UFDS client and bind.")
@@ -165,6 +174,7 @@ function addKey(next) {
 }
 
 function ufdsClientUnbind(next) {
+  log("# Unbind UFDS client.")
   if (ufdsClient) {
     ufdsClient.close(next);
   } else {
@@ -173,6 +183,7 @@ function ufdsClientUnbind(next) {
 }
 
 function ldapClientUnbind(next) {
+  log("# Unbind LDAP client.")
   if (ldapClient) {
     ldapClient.unbind(next);
   } else {
@@ -182,6 +193,7 @@ function ldapClientUnbind(next) {
 
 
 function getMapi(next) {
+  log("# Get MAPI client.")
   var clientOptions;
   if (config.mapi.url && config.mapi.username && config.mapi.password) {
     clientOptions = {
@@ -199,6 +211,7 @@ function getMapi(next) {
 }
 
 function createDevzone(next) {
+  log("# Create dev zone.")
   // First check if there is a zone for bob.
   mapi.listMachines(bob.uuid, function (err, zones, headers) {
     if (err) return next(err);
@@ -462,6 +475,7 @@ function writeJson(next) {
 //---- mainline
 
 async.series([
+    loadConfig,
     ldapClientBind,
     ufdsClientBind,
     getAdminUuid,
@@ -475,8 +489,9 @@ async.series([
     getMapizone,
     getHeadnodeUuid,
     getAmonClient,
-    loadAmonObjects,
-    writeJson
+    loadAmonObjects
+    // bootstrap.json isn't used by anyone.
+    //writeJson
   ],
   function (err) {
     if (err) {
