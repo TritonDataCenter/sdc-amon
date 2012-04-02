@@ -18,7 +18,8 @@ var amonCommon = require('amon-common'),
   Constants = amonCommon.Constants,
   format = amonCommon.utils.format;
 var Contact = require('./contact');
-var Alarm = require('./alarms').Alarm;
+var alarms = require('./alarms'),
+  Alarm = alarms.Alarm;
 
 // Endpoint controller modules.
 var monitors = require('./monitors');
@@ -42,13 +43,16 @@ var VALID_LOGIN_CHARS = /^[a-zA-Z][a-zA-Z0-9_\.@]+$/;
 
 //---- internal support stuff
 
+/**
+ * "GET /ping"
+ */
 function ping(req, res, next) {
   if (req.query.error !== undefined) {
     var restCode = req.query.error || 'InternalError';
     if (restCode.slice(-5) !== 'Error') {
       restCode += 'Error';
     }
-    var err = new restify[restCode]('pong');
+    var err = new restify[restCode](req.params.message || 'pong');
     next(err);
   } else {
     var data = {
@@ -80,36 +84,6 @@ function getUser(req, res, next) {
   return next();
 }
 
-
-/* BEGIN JSSTYLED */
-/**
- * Run async `fn` on each entry in `list`. Call `cb(error)` when all done.
- * `fn` is expected to have `fn(item, callback) -> callback(error)` signature.
- *
- * From Isaac's rimraf.js.
- */
-function asyncForEach(list, fn, cb) {
-  if (!list.length) {
-    return cb();
-  }
-  var c = list.length, errState = null;
-  return list.forEach(function (item, i, lst) {
-    return fn(item, function (er) {
-      if (errState) {
-        return errState;
-      }
-      if (er) {
-        return cb(errState = er);
-      }
-      if (-- c === 0) {
-        return cb();
-      }
-
-      return true;
-    });
-  });
-}
-/* END JSSTYLED */
 
 
 //---- exports
@@ -322,6 +296,8 @@ function App(config, ufds, mapi, log) {
   server.del(
     {path: '/pub/:user/monitors/:monitor/probes/:name', name: 'DeleteProbe'},
     probes.deleteProbe);
+
+  alarms.mount(server);
 
   server.get({path: '/agentprobes', name: 'ListAgentProbes'},
     agentprobes.listAgentProbes);
@@ -896,8 +872,9 @@ App.prototype.chooseRelatedAlarm = function (candidateAlarms,
   candidateAlarms.sort(
     // Sort the latest 'timeLastEvent' first (alarms with no 'timeLastEvent'
     // field sort to the end).
-    function (x, y) { return x.timeLastEvent - y.timeLastEvent; });
+    function (x, y) { return y.timeLastEvent - x.timeLastEvent; });
   var a = candidateAlarms[0];
+  this.log.debug({alarm: a}, 'best candidate related alarm')
   if (a.timeLastEvent &&
       (options.event.clear ||
        (options.event.time - a.timeLastEvent) < ONE_HOUR)) {

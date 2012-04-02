@@ -64,7 +64,7 @@ Where the code element is one of:
 Clients are expected to check HTTP status code first, and if in the 4xx range,
 they can leverage the codes above.
 
-<!-- TODO: complete the error list above, show some examples -->
+TODO: complete the error list above, show some examples
 
 
 
@@ -81,7 +81,7 @@ List all monitors for this user.
 
 ### Inputs
 
-* None
+None.
 
 ### Returns
 
@@ -209,17 +209,17 @@ TODO
 
 # Master API: Alarms
 
-**Dev Note: Not implemented yet. Currently the Master just sends a notification
-for every event that comes in from an agent.**
+An alarm is an occurence of a problem situation. Typically an alarm is
+associated with a particular monitor. An alarm is opened when one of the
+monitor's probes trips. Some probe types (e.g. "machine-up") support
+clearing alarms automatically (e.g. when a machine being watched by a
+"machine-up" probe comes back up after having been down, it will clear
+the alarm for it having been down). Other alarms need to be explicitly
+closed.
 
-An alarm is a occurence of a monitor having identified a problem situation.
-These APIs provide info on recent alarms for this customer. Closed alarms are
+These APIs provide info on recent alarms for a user. Closed alarms are
 only guaranteed to be persisted for a week. I.e. this is mainly about showing
 open (i.e. unresolved) alarm situations.
-
-    GET  /pub/:user/alarms
-    GET  /pub/:user/alarms/:alarm
-    POST /pub/:user/alarms/:alarm?action=close
 
 The point of an "alarm" object is (a) to have a persistent object to show
 current open alarms (e.g. for Cloud API, Operator Portal and Customer Portal);
@@ -230,12 +230,349 @@ alarm ("Yah, I know it is a problem, but I can't deal with it right now.").
 
 
 
+### Alarm Fields
+
+||**Field**||**Type**||**Description**||
+||user||String||The UUID of the user to which this alarm belongs.||
+||id||Integer||The integer ID of this alarm. Note that this is scoped on `user`.||
+||monitor||String||The name of the monitor with which this alarm is associated.||
+||closed||Boolean||Whether this alarm has been closed.||
+||suppressed||Boolean||Whether notifications for this alarm are currently suppressed.||
+||timeOpened||Integer||Timestamp (milliseconds since the epoch) at which the alarm was opened.||
+||timeClosed||Integer||Timestamp (milliseconds since the epoch) at which the alarm was closed.||
+||timeLastEvent||Integer||Timestamp (milliseconds since the epoch) at which the last event for this alarm occurred.||
+||v||Integer||The version of this Alarm object schema. Currently this is only exposed via the internal APIs.||
+
+An example alarm:
+
+    {
+      "user": "deadbeef-5555-5555-5555-555555555555",
+      "id": "1",
+      "monitor": "isup",
+      "closed": false,
+      "timeOpened": 1332870155860,
+      "timeClosed": null,
+      "timeLastEvent": 1332870615162,
+      "numNotifications": 0,
+      "v": 1
+    }
+
+
+## ListAllAlarms (GET /alarms)
+
+An **internal** API for listing and searching all alarms. This is intended
+for operators and development/debugging only. In a heavily loaded system care
+should be taken with this endpoint to not swamp the Amon Master.
+
+### Inputs
+
+None.
+
+### Errors
+
+For all possible errors, see [Error Response](#error-responses) above.
+
+### Returns
+
+Returns an array of alarms (see [Alarm Fields](#alarm-fields) above).
+
+### Example
+
+    $ sdc-amon /alarms
+    HTTP/1.1 200 OK
+    ...
+
+    [
+      {
+        "user": "deadbeef-5555-5555-5555-555555555555",
+        "id": "1",
+        "monitor": "isup",
+        "closed": false,
+        "timeOpened": 1332870155860,
+        "timeClosed": null,
+        "timeLastEvent": 1332870615162,
+        "numNotifications": 0,
+        "v": 1
+      }
+    ]
+
+
+## ListAlarms (GET /pub/:user/alarms)
+
+List a users alarms. By default this is the set of open alarms and recently
+closed (in the last hour) alarms, if any. Note that old closed alarms are
+automatically expunged (currently a week after being closed).
+
+### Inputs
+
+||**Field**||**Type**||**Description**||
+||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||state||String||One of "recent" (open and recently closed alarms, this is the default), "open" and "closed".||
+||monitor||String||Only return alarms associated with this monitor.||
+
+### Errors
+
+For all possible errors, see [Error Response](#error-responses) above.
+
+||**Error Code**||**HTTP Code**||**Description**||
+||InvalidArgumentError||400||If `state` or `monitor` is invalid.||
+
+### Returns
+
+Returns an array of alarms (see [Alarm Fields](#alarm-fields) above).
+
+### Example
+
+    $ sdc-amon /pub/bob/alarms?state=open
+    HTTP/1.1 200 OK
+    ...
+
+    [
+      {
+        "user": "deadbeef-5555-5555-5555-555555555555",
+        "id": "1",
+        "monitor": "isup",
+        "closed": false,
+        "timeOpened": 1332870155860,
+        "timeClosed": null,
+        "timeLastEvent": 1332870615162,
+        "numNotifications": 0,
+        "v": 1
+      }
+    ]
+
+
+## GetAlarm (GET /pub/:user/alarms/:alarm)
+
+Get a particular alarm.
+
+### Inputs
+
+||**Field**||**Type**||**Description**||
+||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||alarm (in URL)||Integer||The alarm id for this user.||
+
+### Returns
+
+An alarm object (see [Alarm Fields](#alarm-fields) above).
+
+### Errors
+
+For all possible errors, see [Error Response](#error-responses) above.
+
+||**Error Code**||**HTTP Code**||**Description**||
+||ResourceNotFound||404||If `user` does not exist or the `alarm` id does not exist.||
+||Gone||410||If the `alarm` has been expunged. Closed alarms are expunged after about a week.||
+
+### Example
+
+    $ sdc-amon /pub/bob/alarms/1
+    HTTP/1.1 200 OK
+    ...
+
+    {
+      "user": "deadbeef-5555-5555-5555-555555555555",
+      "id": "1",
+      "monitor": "isup",
+      "closed": false,
+      "timeOpened": 1332870155860,
+      "timeClosed": null,
+      "timeLastEvent": 1332870615162,
+      "numNotifications": 0,
+      "v": 1
+    }
+
+
+## CloseAlarm (POST /pub/:user/alarms/:alarm?action=close)
+
+Close the given alarm.
+
+### Inputs
+
+||**Field**||**Type**||**Description**||
+||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||alarm (in URL)||Integer||The alarm id for this user.||
+||action||String||"close". See other "*Alarm*" actions in this section.||
+
+### Returns
+
+Nothing. Responds with an HTTP 202 (Accepted) on success.
+
+### Errors
+
+For all possible errors, see [Error Response](#error-responses) above.
+
+||**Error Code**||**HTTP Code**||**Description**||
+||ResourceNotFound||404||If `user` does not exist or the `alarm` id does not exist.||
+||Gone||410||If the `alarm` has been expunged. Closed alarms are expunged after about a week.||
+
+### Example
+
+    $ sdc-amon /pub/bob/alarms/123?action=close -X POST
+    HTTP/1.1 202 Accepted
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    Server: Amon Master/1.0.0
+    X-Request-Id: e16b7aab-b8b8-4a8a-97f2-9216dd0e5798
+    Access-Control-Allow-Methods: POST
+    Connection: close
+    Content-Length: 0
+    Date: Mon, 02 Apr 2012 17:15:52 GMT
+    X-Response-Time: 3
+
+
+
+## ReopenAlarm (POST /pub/:user/alarms/:alarm?action=reopen)
+
+Re-open the given alarm. This exists mainly to provide an "undo" for an
+accidental "close" action.
+
+### Inputs
+
+||**Field**||**Type**||**Description**||
+||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||alarm (in URL)||Integer||The alarm id for this user.||
+||action||String||"reopen". See other "*Alarm*" actions in this section.||
+
+### Returns
+
+Nothing. Responds with an HTTP 202 (Accepted) on success.
+
+### Errors
+
+For all possible errors, see [Error Response](#error-responses) above.
+
+||**Error Code**||**HTTP Code**||**Description**||
+||ResourceNotFound||404||If `user` does not exist or the `alarm` id does not exist.||
+||Gone||410||If the `alarm` has been expunged. Closed alarms are expunged after about a week.||
+
+### Example
+
+    $ sdc-amon /pub/bob/alarms/123?action=reopen -X POST
+    HTTP/1.1 202 Accepted
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    Server: Amon Master/1.0.0
+    X-Request-Id: e16b7aab-b8b8-4a8a-97f2-9216dd0e5798
+    Access-Control-Allow-Methods: POST
+    Connection: close
+    Content-Length: 0
+    Date: Mon, 02 Apr 2012 17:15:52 GMT
+    X-Response-Time: 3
+
+
+
+## SuppressAlarmNotifications (POST /pub/:user/alarms/:alarm?action=suppress)
+
+Suppress notifications for events on the given alarm.
+
+### Inputs
+
+||**Field**||**Type**||**Description**||
+||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||alarm (in URL)||Integer||The alarm id for this user.||
+||action||String||"suppress". See other "*Alarm*" actions in this section.||
+
+### Returns
+
+Nothing. Responds with an HTTP 202 (Accepted) on success.
+
+### Errors
+
+For all possible errors, see [Error Response](#error-responses) above.
+
+||**Error Code**||**HTTP Code**||**Description**||
+||ResourceNotFound||404||If `user` does not exist or the `alarm` id does not exist.||
+||Gone||410||If the `alarm` has been expunged. Closed alarms are expunged after about a week.||
+
+### Example
+
+    $ sdc-amon /pub/bob/alarms/123?action=suppress -X POST
+    HTTP/1.1 202 Accepted
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    Server: Amon Master/1.0.0
+    X-Request-Id: e16b7aab-b8b8-4a8a-97f2-9216dd0e5798
+    Access-Control-Allow-Methods: POST
+    Connection: close
+    Content-Length: 0
+    Date: Mon, 02 Apr 2012 17:15:52 GMT
+    X-Response-Time: 3
+
+
+
+## UnsuppressAlarmNotifications (POST /pub/:user/alarms/:alarm?action=unsuppress)
+
+Stop suppression of notifications on the given alarm.
+
+### Inputs
+
+||**Field**||**Type**||**Description**||
+||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||alarm (in URL)||Integer||The alarm id for this user.||
+||action||String||"close". See other "*Alarm*" actions in this section.||
+
+### Returns
+
+Nothing. Responds with an HTTP 202 (Accepted) on success.
+
+### Errors
+
+For all possible errors, see [Error Response](#error-responses) above.
+
+||**Error Code**||**HTTP Code**||**Description**||
+||ResourceNotFound||404||If `user` does not exist or the `alarm` id does not exist.||
+||Gone||410||If the `alarm` has been expunged. Closed alarms are expunged after about a week.||
+
+### Example
+
+    $ sdc-amon /pub/bob/alarms/123?action=unsuppress -X POST
+    HTTP/1.1 202 Accepted
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    Server: Amon Master/1.0.0
+    X-Request-Id: e16b7aab-b8b8-4a8a-97f2-9216dd0e5798
+    Access-Control-Allow-Methods: POST
+    Connection: close
+    Content-Length: 0
+    Date: Mon, 02 Apr 2012 17:15:52 GMT
+    X-Response-Time: 3
+
+
+
 # Master API: Miscellaneous
 
 ## Ping (GET /ping)
 
 A simple ping to check to health of the Amon server. Here "pid" is the PID of
 the Amon master server process. This is helpful for the test suite.
+
+### Inputs
+
+||**Field**||**Type**||**Description**||
+||error||String||Optional. An error code name, e.g. "ResourceNotFound" to simulate an error response.||
+||message||String||Optional. The error message to include in the simulated error response. Defaults to "pong".||
+
+### Returns
+
+When not simulating an error response, a "pong" object is returned:
+
+||**Field**||**Type**||**Description**||
+||ping||String||"pong"||
+||pid||String||The PID of Amon Master process.||
+
+When simulating an error, the HTTP response code depends on the error type
+and the response body is an JSON object with:
+
+||**Field**||**Type**||**Description**||
+||code||String||Error code string.||
+||message||String||Error message.||
+
+### Examples
 
     $ sdc-amon /ping
     HTTP/1.1 200 OK
@@ -260,7 +597,7 @@ the Amon master server process. This is helpful for the test suite.
 
 Ping can also be used to simulate error responses from Amon master:
 
-    $ sdc-amon /ping?error=ResourceNotFound
+    $ sdc-amon /ping?error=ResourceNotFound\&message=nada
     HTTP/1.1 404 Not Found
     Connection: close
     Date: Tue, 06 Dec 2011 23:43:03 GMT
@@ -278,13 +615,9 @@ Ping can also be used to simulate error responses from Amon master:
 
     {
       "code": "ResourceNotFound",
-      "message": "pong"
+      "message": "nada"
     }
 
-
-### Inputs
-
-None
 
 
 ## GetUser (GET /pub/:user)
@@ -511,22 +844,22 @@ Watches http://google.com/ home page and fire when a non 2xx status code is retu
 
 # Glossary
 
-- A "monitor" is a the main conceptual object that is configured by operators
+- A **monitor** is a the main conceptual object that is configured by operators
   and customers using Amon. It includes the details for what checks to
   run and, when a check trips, who and how to notify ("contacts").
-- A "probe" is a single thing to check (the atom of physical monitoring
+- A **probe** is a single thing to check (the atom of physical monitoring
   done by the Amon agents). E.g. "Check the running state of zone X." "Check
   for 3 occurrences of 'ERROR' in 'foo.log' in zone X within 1 minute." A
   monitor includes one or more probes.
-- An "event" is a message sent from an Amon agent up to the Amon master that
+- An **event** is a message sent from an Amon agent up to the Amon master that
   might create or update an alarm.
-- An open or active "alarm" is the state of a failing monitor. An alarm is
-  created when a monitor trips (i.e. one of its checks fails). An alarm can
+- An open **alarm** is the state of a failing monitor. An alarm is created
+  when a monitor trips (i.e. one of its probes detects a fault). An alarm can
   be closed by user action (via the API or in the Operator or User Portals)
-  or via an Amon clear event -- the failing state is no longer failing, e.g.
-  a halted machine has come back up.  An alarm object lives until it is
+  or via an Amon *clear* event -- the failing state is no longer failing,
+  e.g. a halted machine has come back up. An alarm object lives until it is
   closed.
-- A "notification" is a message sent for an alarm to one or more contacts
+- A **notification** is a message sent for an alarm to one or more contacts
   associated with that monitor. An alarm may result in many notifications
   through its lifetime.
 

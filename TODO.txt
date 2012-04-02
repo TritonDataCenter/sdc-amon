@@ -1,14 +1,8 @@
 # higher-level prios
 
 - persistent alarms:
-  - clear (zone up). add complication of two zones going down in same
-    alarm. then coming up slowly
-      - should the "is related" logic be updated to have a 'clear' event
-        for same monitor always apply even if over the ONE_HOUR cutoff?
-  - all the REST API endpoints
-    - and actually saving the events
-  - see http://circonus.com/resources/api/rules
-    'dashboard' option to show active alerts + those recnetly cleared
+  - handle 'clear' event closing an alarm
+  - saving the events in redis
   - test suite
 - design use cases, assign a use case driver for each prio
 - sysevent-based events: use case #2, machine-running-state probe type
@@ -16,7 +10,8 @@
 - authorizeDelete finish (should merge with authorizePut logic)
 - finish CRUD on UFDS objects
 - sdc-healthcheck
-- notification formatting: templating?
+- notification formatting: templating? Show open/closed state in notifications.
+  Design section on what info should be included in notification.
 - more notification types: webhook, sms(?), pagerduty?
 - suppression support (alarms, monitors, everything)
 - upgrade plan: What if UFDS schema needs to change? How do we rev the Master
@@ -47,6 +42,9 @@
   pathological regex (or mdb command) could hang and would need process
   mgmt to deal with. How to break out of this??? A separate process everytime
   is a pain.
+- clear event scenario: A monitor with 'machine-up' probes on two zones.
+  Both go down. One comes back up. That alarm should not clear, **but it
+  does currently**.
 - node-retry in PutEvents in RelayClient.
 - 'sdc-amon /pub/hamish/monitors/whistle -X DELETE' fails
     ERROR: Error deleting 'amonmonitor=whistle, uuid=7b23ae63-37c9-420e-bb88-8d4bf5e30455, ou=customers, o=smartdc' from UFDS: NotAllowedOnNonLeafError:...
@@ -148,11 +146,13 @@
 - https://github.com/davepacheco/kang -ify
 - edge-triggered alarms in master for probes
 - CA probe type
-- HTTP probe type
 - probe types: http://circonus.com/why-us/features/monitoring
+- compare to http://www.rackspace.com/blog/cloud-monitoring-early-access-program-opens-its-doors/
+  http://docs.rackspace.com/cm/api/v1.0/cm-devguide/content/index.html
 - revive twilio notification backend as "sms"
 - more probe types: run cmd, http check, zone list, ping, disk free, disk
   iops, cpu, mem, ps (aka "top")
+    - http://blog.nodeping.com/2012/03/28/ssl-certificate-check/
 - torture test on amon-relay resiliency on start
     // XXX Test/design for race condition where: get list of zones, zone
     //     goes down before zsock is created for it. I.e. should be buffering
@@ -382,37 +382,6 @@ model Alarm:
     numNotifications
       - perhaps also time of last notification? time of first notification.
 
-
-API:
-
-    GET /alarms?...    # internal for operators and dev/debugging
-    HEAD /pub/:user/alarms/
-    GET /pub/:user/alarms/
-      - query params on the HEAD/GET: state=open|closed|relevant
-        (where "relevant" is loose, but basically is open and recently
-        closed alarms)
-    GET /pub/:user/alarms/?monitor=:monitor
-    GET /pub/:user/alarms/:alarm
-      - partial data (a la flickr extras, what was the AWS name rm mentioned?)
-    POST /pub/:user/alarms/:alarm?action=close
-    POST /pub/:user/alarms/:alarm?action=reopen    # support undo of accidental close
-    POST /pub/:user/alarms/:alarm?action=suppress  # notifications
-    POST /pub/:user/alarms/:alarm?action=unsuppress
-    WEBSOCKET /pub/:user/alarms/:alarm  # can we do this, so a portal alarm page could update?
-
-Alarm name/id:
-
-- if from a monitor, then: "$monitor-$num" where "$num" is monotonically
-  increasing from 1. Can redis help with this? I think so yes.
-  Do we ever reset that N?
-      Subject: [Alarm all-sdc-zones-1 in us-west-1] "All SDC Zones" monitor alarmed
-      Subject: [Alarm all-sdc-zones-512 in us-west-1] "All SDC Zones" monitor alarmed
-      Subject: Re: [Alarm all-sdc-zones-512 in us-west-1] "All SDC Zones" monitor alarmed
-- if not from a monitor (monitor=null), then likely the event has some other
-  type. Presuming the (still in flux) "operator", "user" and "relay" events
-  from above, names: operator-123, user-123, relay-123 ... where if there
-  is a monitor with the same name (or slug) then they'll share the same
-  namespace. That's fine.
 
 probe event
   -> handleEvent(event, monitor /* might be null */, probe /* might be null */)

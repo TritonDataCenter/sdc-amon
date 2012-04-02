@@ -1,7 +1,7 @@
 /*
  * Copyright 2012 Joyent, Inc.  All rights reserved.
  *
- * Amon Master model for Alarms.
+ * Amon Master model and API endpoints for alarms.
  *
  *
  * Alarms are stored in redis. Alarms have the following fields:
@@ -16,19 +16,14 @@
  * - timeOpened: when first alarmed
  * - openedDuringMaint: null or ref to maintenance window? Or just true|false.
  *     XXX NYI
- * - timeClosed: when cleared (auto or explcitly)
- * - timeLastActivity: (If useful.) This is time of last event or API action
- *     on this alarm. Perhaps last notification? XXX NYI
- * - timeLastEvent: Used for de-duping. This is a bit of denorm from `events`
- *     field.
- * - timeExpiry: set to N (N == 1 week) after timeClosed whenever it is closed
- *     This should be useful for portals to show when this will expire.
- * - suppressNotifications: true|false (XXX NYI)
+ * - timeClosed {Integer} when cleared (auto or explcitly)
+ * - timeLastEvent {Integer} Used for de-duping. This is a bit of denorm from
+ *    `events` field.
+ * - suppressed {Boolean} Whether notifications for this alarm are suppressed.
  * - severity: Or could just inherit this from monitor/probe. (XXX NYI)
- * - closed: true|false
+ * - closed {Boolean}
  * - probes: the set of probe names from this monitor that have tripped.
  * - events:
- * - numNotifications
  *
  *
  * Layout in redis:
@@ -48,11 +43,11 @@
  * within a data center. To be unique to the cloud you need
  * (dc-name, user, id).
  *
- * FWIW, example email notification subjects using the Alarm id:
+ * FWIW, example email notification subjects using the Alarm id might be
+ * something like this:
  *
- * Subject: [Monitoring] Alarm trentm 1 in us-west-1: "All SDC Zones"
- *            monitor alarmed
- * Subject: [Alarm] trentm 1 in us-west-1: "All SDC Zones" monitor alarmed
+ *    Subject: [Monitoring] Alarm trentm 1 in us-west-1: "All SDC Zones"
+ *    Subject: [Alarm] trentm 1 in us-west-1: "All SDC Zones" monitor alarmed
  *
  */
 
@@ -87,6 +82,31 @@ function _getAlarmKey(user, id) {
 }
 
 
+/**
+ * Convert a boolean or redis string representing a boolean into a
+ * boolean, or raise TypeError trying.
+ *
+ * @param value {Boolean|String} The input value to convert.
+ * @param default_ {Boolean} The default value is `value` is undefined.
+ * @param errName {String} The variable name to quote in the possibly
+ *    raised TypeError.
+ */
+function boolFromRedisString(value, default_, errName) {
+  if (value === undefined) {
+    return default_;
+  } else if (value === 'false') { // redis hash string
+    return false;
+  } else if (value === 'true') { // redis hash string
+    return true;
+  } else if (typeof (value) === 'boolean') {
+    return value;
+  } else {
+    throw new TypeError(
+      format('invalid value for "%s": %j', errName, value));
+  }
+}
+
+
 
 //---- Alarm model
 
@@ -110,7 +130,7 @@ function Alarm(data, log) {
   this.v = ALARM_MODEL_VERSION;
   this.user = data.user;
   if (data.id) {
-    this.id = data.id;
+    this.id = Number(data.id);
     this._key = ['alarm', this.user, this.id].join(':');
     this.log = log.child({alarm: {user: this.user, id: this.id}}, true);
   } else {
@@ -119,24 +139,12 @@ function Alarm(data, log) {
     this.log = log.child({alarm: {user: this.user}}, true);
   }
   this.monitor = data.monitor;
-  if (data.closed === undefined) {
-    this.closed = false;
-  } else if (data.closed === 'false') { // redis hash string
-    this.closed = false;
-  } else if (data.closed === 'true') { // redis hash string
-    this.closed = true;
-  } else if (typeof (data.closed) === 'boolean') {
-    this.closed = data.closed;
-  } else {
-    throw new TypeError(
-      format('invalid value for "data.closed": %j', data.closed));
-  }
+  this.closed = boolFromRedisString(data.closed, false, 'data.closed');
   this.timeOpened = Number(data.timeOpened) || Date.now();
   this.timeClosed = Number(data.timeClosed) || null;
   this.timeLastEvent = Number(data.timeLastEvent) || null;
-  this.timeExpiry = Number(data.timeExpiry) || null;
-  this.suppressNotifications = Number(data.suppressNotifications) || false;
-  this.numNotifications = Number(data.numNotifications) || 0;
+  this.suppressed = boolFromRedisString(data.suppressed, false,
+    'data.suppressed');
 }
 
 
@@ -160,18 +168,17 @@ Alarm.get = function get(app, user, id, callback) {
   if (!id) throw new TypeError('"id" (Integer) is required');
   if (!callback) throw new TypeError('"callback" (Function) is required');
 
+  var log = app.log;
   var _key = _getAlarmKey(user, id);
   app.getRedisClient().hgetall(_key, function (err, obj) {
-    var log = app.log;
     if (err) {
       log.error(err, 'error retrieving "%s" from redis', _key);
       return callback(err);
     }
     try {
-      var alarm = new Alarm(obj, app.log);
+      var alarm = new Alarm(obj, log);
     } catch (e) {
-      //XXX xform to our error hierarchy.
-      log.error(e, 'XXX');
+      log.error(e, 'XXX'); //XXX xform to our error hierarchy.
       return callback(e);
     }
     return callback(null, alarm);
@@ -206,7 +213,7 @@ Alarm.filter = function filter(app, options, callback) {
   var _alarmsKey = 'alarms:' + options.user;
   app.getRedisClient().smembers(_alarmsKey, function (err, alarmIds) {
     if (err) {
-      log.error(err, 'XXX');
+      log.error(err, 'redis error getting alarm ids'); // XXX translate error
       return callback(err);
     }
     var alarmKeys = alarmIds.map(function (id) {
@@ -219,14 +226,19 @@ Alarm.filter = function filter(app, options, callback) {
     }
     return async.map(alarmKeys, hgetall, function (hgetallerr, alarmObjs) {
       if (hgetallerr) {
-        log.error(hgetallerr, 'XXX');
+        log.error({err: hgetallerr, alarmKeys: alarmKeys},
+          'redis error getting alarm data');
         return callback(hgetallerr);
       }
       var alarms = [];
       for (var i = 0; i < alarmObjs.length; i++) {
-        // TODO:PERF:
-        // consider filtering `alarmObj` instead of `alarm` to avoid creation.
-        var alarm = new Alarm(alarmObjs[i], log);
+        try {
+          var alarm = new Alarm(alarmObjs[i], log);
+        } catch (invalidErr) {
+          log.warn({err: invalidErr, alarmObj: alarmObjs[i]},
+            'invalid alarm data in redis (ignoring this alarm)');
+          continue;
+        }
         // Filter.
         if (alarm.monitor !== options.monitor) {
           log.trace({alarm: alarm}, 'filter out alarm (monitor: %j != %j)',
@@ -258,14 +270,13 @@ Alarm.prototype.serializePublic = function serializePublic() {
     timeOpened: this.timeOpened,
     timeClosed: this.timeClosed,
     timeLastEvent: this.timeLastEvent,
-    //timeExpiry: this.timeExpiry,
-    //suppressNotifications: this.suppressNotifications,
-    numNotifications: this.numNotifications
+    suppressed: this.suppressed
   };
 };
 
 /**
- * Serialize this Alarm to a simple object for the public API endpoints.
+ * Serialize this Alarm to a simple object for *redis*. This serialization
+ * is a superset of `serializePublic`.
  */
 Alarm.prototype.serializeDb = function serializeDb() {
   var obj = this.serializePublic();
@@ -311,7 +322,7 @@ Alarm.prototype.save = function save(app, callback) {
       .hmset(self._key, self.serializeDb())
       .exec(function (err, replies) {
         if (err) {
-          log.error(err, 'XXX');
+          log.error(err, 'error saving alarm to redis');
           return callback(err);
         }
         return callback();
@@ -408,6 +419,67 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
 
 
 /**
+ * Close an alarm.
+ *
+ * @param app {App}
+ * @param callback {Function} `function (err)` where `err` is null on success
+ *    and a node_redis error on failure.
+ */
+Alarm.prototype.close = function close(app, callback) {
+  var redisClient = app.getRedisClient()
+  app.getRedisClient().hmset(this._key,
+    'closed', true,
+    'timeClosed', Date.now(),
+    callback);
+}
+
+
+/**
+ * Re-open an alarm.
+ *
+ * Note: This is to support "undo" of an accidental `close`. It does NOT
+ * reset `timeOpened`.
+ *
+ * @param app {App}
+ * @param callback {Function} `function (err)` where `err` is null on success
+ *    and a node_redis error on failure.
+ */
+Alarm.prototype.reopen = function close(app, callback) {
+  var redisClient = app.getRedisClient()
+  app.getRedisClient().hmset(this._key,
+    'closed', false,
+    'timeClosed', null,
+    callback);
+}
+
+
+/**
+ * Suppress an alarm, i.e. suppress notifications for this alarm.
+ *
+ * @param app {App}
+ * @param callback {Function} `function (err)` where `err` is null on success
+ *    and a node_redis error on failure.
+ */
+Alarm.prototype.suppress = function close(app, callback) {
+  var redisClient = app.getRedisClient()
+  app.getRedisClient().hset(this._key, 'suppressed', true, callback);
+}
+
+
+/**
+ * Unsuppress an alarm, i.e. allow notifications for this alarm.
+ *
+ * @param app {App}
+ * @param callback {Function} `function (err)` where `err` is null on success
+ *    and a node_redis error on failure.
+ */
+Alarm.prototype.unsuppress = function close(app, callback) {
+  var redisClient = app.getRedisClient()
+  app.getRedisClient().hset(this._key, 'suppressed', false, callback);
+}
+
+
+/**
  * Notify all contacts configured for this monitor about an event on this
  * alarm.
  *
@@ -428,6 +500,11 @@ Alarm.prototype.notify = function notify(app, user, event, monitor, callback) {
   var self = this;
   var log = this.log;
   log.trace('notify');
+
+  if (this.suppressed) {
+    log.debug('skipping notify (alarm notification is suppressed)');
+    return callback();
+  }
 
   function getAndNotifyContact(contactUrn, cb) {
     log.debug({contact: contactUrn, monitor: monitor.name}, 'notify contact');
@@ -469,6 +546,326 @@ Alarm.prototype.notify = function notify(app, user, event, monitor, callback) {
 };
 
 
+//---- /alarms/... endpoint handlers
+
+/**
+ * Internal API to list/search all alarms.
+ *
+ * See: <https://mo.joyent.com/docs/amon/master/#GetAllAlarms>
+ */
+function apiListAllAlarms(req, res, next) {
+  var log = req.log;
+  var i;
+  var redisClient = req._app.getRedisClient();
+
+  function alarmObjFromKey(key, cb) {
+    redisClient.hgetall(key, cb);
+  }
+
+  log.debug('ListAllAlarms: get "alarm:*" keys');
+  redisClient.keys('alarm:*', function (keysErr, alarmKeys) {
+    if (keysErr) {
+      return next(keysErr);
+    }
+    log.debug('ListAllAlarms: get alarm data for each key (%d keys)',
+      alarmKeys.length);
+    async.map(alarmKeys, alarmObjFromKey, function (mapErr, alarmObjs) {
+      if (mapErr) {
+        return next(mapErr);
+      }
+      var alarms = [];
+      for (i = 0; i < alarmObjs.length; i++) {
+        try {
+          alarms.push( new Alarm(alarmObjs[i], log) );
+        } catch (invalidErr) {
+          log.warn({err: invalidErr, alarmObj: alarmObjs[i]},
+            'invalid alarm data in redis');
+        }
+      }
+      var serialized = [];
+      for (i = 0; i < alarms.length; i++) {
+        serialized.push(alarms[i].serializeDb());
+      }
+      res.send(serialized);
+      next();
+    });
+  });
+}
+
+
+/**
+ * List a user's alarms.
+ *
+ * See: <https://mo.joyent.com/docs/amon/master/#ListAlarms>
+ */
+function apiListAlarms(req, res, next) {
+  var log = req.log;
+  var i, a;
+
+  if (!req._user) {
+    return next(
+      new restify.InternalError('ListAlarms: no user set on request'));
+  }
+  var userUuid = req._user.uuid;
+  var state = req.query.state || 'recent';
+  var validStates = ['recent', 'open', 'closed'];
+  if (validStates.indexOf(state) === -1) {
+    return next(new restify.InvalidArgumentError(
+      'invalid "state": "%s" (must be one of "%s")', state,
+      validStates.join('", "')));
+  }
+  var monitor = req.query.monitor;
+
+  var redisClient = req._app.getRedisClient();
+
+  function alarmObjFromId(id, cb) {
+    var key = format('alarm:%s:%s', userUuid, id);
+    redisClient.hgetall(key, cb);
+  }
+
+  var setKey = 'alarms:' + userUuid;
+  log.debug('get "%s" smembers', setKey);
+  redisClient.smembers(setKey, function (setErr, alarmIds) {
+    if (setErr) {
+      return next(setErr);
+    }
+    log.debug({alarmIds: alarmIds},
+      'get alarm data for each key (%d ids)', alarmIds.length);
+    async.map(alarmIds, alarmObjFromId, function (mapErr, alarmObjs) {
+      if (mapErr) {
+        return next(mapErr);
+      }
+
+      log.debug('create alarms (discarding invalid db data)')
+      var alarms = [];
+      for (i = 0; i < alarmObjs.length; i++) {
+        try {
+          alarms.push( new Alarm(alarmObjs[i], log) );
+        } catch (invalidErr) {
+          log.warn({err: invalidErr, alarmObj: alarmObjs[i]},
+            'invalid alarm data in redis');
+        }
+      }
+
+      var filtered;
+      if (monitor) {
+        log.debug('filter alarms for monitor="%s"', monitor);
+        filtered = [];
+        for (i = 0; i < alarms.length; i++) {
+          a = alarms[i];
+          if (a.monitor === monitor) {
+            filtered.push(a);
+          }
+        }
+        alarms = filtered;
+      }
+
+      log.debug('filter alarms for state="%s"', state);
+      filtered = [];
+      if (state === 'recent') {
+        var ONE_HOUR_AGO = Date.now() - 60 * 60 * 1000;
+        for (i = 0; i < alarms.length; i++) {
+          a = alarms[i];
+          if (!a.closed || a.timeClosed > ONE_HOUR_AGO) {
+            filtered.push(a);
+          }
+        }
+      } else if (state === 'open') {
+        for (i = 0; i < alarms.length; i++) {
+          if (!alarms[i].closed) {
+            filtered.push(alarms[i]);
+          }
+        }
+      } else { // state === 'closed'
+        for (i = 0; i < alarms.length; i++) {
+          if (alarms[i].closed) {
+            filtered.push(alarms[i]);
+          }
+        }
+      }
+      alarms = filtered;
+
+      var serialized = [];
+      for (i = 0; i < alarms.length; i++) {
+        serialized.push(alarms[i].serializePublic());
+      }
+      res.send(serialized);
+      next();
+    });
+  });
+}
+
+
+/**
+ * Restify handler to add `req._alarm` or respond with an appropriate error.
+ *
+ * This is for endpoints at or under '/pub/:user/alarm/:alarm'.
+ */
+function reqGetAlarm(req, res, next) {
+  var log = req.log;
+
+  // Validate inputs.
+  var userUuid = req._user.uuid;
+  var alarmId = Number(req.params.alarm);
+  if (isNaN(alarmId) || alarmId !== Math.floor(alarmId) || alarmId <= 0) {
+    return next(new restify.InvalidArgumentError(
+      'invalid "alarm" id: %j (must be an integer greater than 0)',
+      req.params.alarm));
+  }
+
+  var redisClient = req._app.getRedisClient();
+  var key = format('alarm:%s:%d', userUuid, alarmId);
+  log.debug({key: key}, 'GetAlarm');
+  redisClient.hgetall(key, function (getErr, alarmObj) {
+    if (getErr) {
+      return next(getErr);  // XXX translate node_redis error
+    }
+    if (Object.keys(alarmObj).length === 0) {
+      log.debug('get curr alarm id for user "%s" to disambiguate 404 and 410',
+        userUuid);
+      redisClient.hget('alarmIds', userUuid, function (idErr, currId) {
+        if (idErr) {
+          return next(idErr);  // XXX translate node_redis error
+        }
+        currId = Number(currId) || 0;
+        if (alarmId <= currId) {
+          return next(new restify.GoneError(
+            format('alarm %d has been expunged', alarmId)));
+        } else {
+          return next(new restify.ResourceNotFoundError(
+            'alarm %d not found', alarmId));
+        }
+      });
+    } else {
+      try {
+        req._alarm = new Alarm(alarmObj, log);
+      } catch (invalidErr) {
+        log.warn({err: invalidErr, alarmObj: alarmObj},
+          'invalid alarm data in redis');
+        return next(new restify.ResourceNotFoundError(
+          format('no such alarm: alarm=%s', alarmId)));
+      }
+      next();
+    }
+  });
+}
+
+
+/**
+ * Get a particular user's alarm.
+ * See: <https://mo.joyent.com/docs/amon/master/#GetAlarm>
+ */
+function apiGetAlarm(req, res, next) {
+  res.send(req._alarm.serializePublic());
+  next();
+}
+
+
+/**
+ * Close a user's alarm.
+ * See: <https://mo.joyent.com/docs/amon/master/#CloseAlarm>
+ */
+function apiCloseAlarm(req, res, next) {
+  if (req.query.action !== 'close')
+      return next();
+
+  req._alarm.close(req._app, function (err) {
+    if (err) {
+      return next(err);  // XXX translate redis error
+    }
+    res.send(202);
+    next(false);
+  });
+}
+
+
+/**
+ * Re-open a user's alarm (to support and 'undo' for an accidental close).
+ * See: <https://mo.joyent.com/docs/amon/master/#ReopenAlarm>
+ */
+function apiReopenAlarm(req, res, next) {
+  if (req.query.action !== 'reopen')
+      return next();
+
+  req._alarm.reopen(req._app, function (err) {
+    if (err) {
+      return next(err);  // XXX translate redis error
+    }
+    res.send(202);
+    next(false);
+  });
+}
+
+
+/**
+ * Suppress notifications for a user's alarm.
+ * See: <https://mo.joyent.com/docs/amon/master/#SuppressAlarmNotifications>
+ */
+function apiSuppressAlarmNotifications(req, res, next) {
+  if (req.query.action !== 'suppress')
+      return next();
+
+  req._alarm.suppress(req._app, function (err) {
+    if (err) {
+      return next(err);  // XXX translate redis error
+    }
+    res.send(202);
+    next(false);
+  });
+}
+
+
+/**
+ * Unsuppress notifications for a user's alarm.
+ * See: <https://mo.joyent.com/docs/amon/master/#UnsuppressAlarmNotifications>
+ */
+function apiUnsuppressAlarmNotifications(req, res, next) {
+  if (req.query.action !== 'unsuppress')
+      return next();
+
+  req._alarm.unsuppress(req._app, function (err) {
+    if (err) {
+      return next(err);  // XXX translate redis error
+    }
+    res.send(202);
+    next(false);
+  });
+}
+
+
+/**
+ * Mount API endpoints
+ *
+ * @param server {restify.Server}
+ */
+function mount(server) {
+  server.get({path: '/alarms', name: 'ListAllAlarms'}, apiListAllAlarms);
+  server.get({path: '/pub/:user/alarms', name: 'ListAlarms'},
+    apiListAlarms);
+  server.get({path: '/pub/:user/alarms/:alarm', name: 'GetAlarm'},
+    reqGetAlarm,
+    apiGetAlarm);
+  // These update handlers all check "should I run?" based on
+  // `req.query.action` and if they should the chain stops.
+  server.post({path: '/pub/:user/alarms/:alarm', name: 'UpdateAlarm'},
+    reqGetAlarm,  // add `req.alarm` for the subsequent handlers
+    apiCloseAlarm,
+    apiReopenAlarm,
+    apiSuppressAlarmNotifications,
+    apiUnsuppressAlarmNotifications,
+    function invalidAction(req, res, next) {
+      if (req.query.action)
+        return next(new restify.InvalidArgumentError(
+          '"%s" is not a valid action', req.query.action));
+      return next(new restify.MissingParameterError('"action" is required'));
+    });
+}
+
+
+
 //---- exports
 
-module.exports.Alarm = Alarm;
+module.exports = {
+  Alarm: Alarm,
+  mount: mount
+};

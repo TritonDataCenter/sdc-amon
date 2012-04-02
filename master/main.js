@@ -15,7 +15,6 @@ var Logger = require('bunyan');
 var restify = require('restify');
 
 var amon_common = require('amon-common');
-//var Config = amon_common.Config;
 var Constants = amon_common.Constants;
 var createApp = require('./lib/app').createApp;
 
@@ -28,6 +27,7 @@ var DEFAULT_CONFIG_PATH = './cfg/amon-master.json';
 var log = new Logger({
   name: 'amon-master',
   src: (process.platform === 'darwin'),
+  //src: true,
   serializers: {
     err: Logger.stdSerializers.err,
     req: Logger.stdSerializers.req,
