@@ -426,12 +426,12 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
  *    and a node_redis error on failure.
  */
 Alarm.prototype.close = function close(app, callback) {
-  var redisClient = app.getRedisClient()
-  app.getRedisClient().hmset(this._key,
+  var redisClient = app.getRedisClient();
+  redisClient().hmset(this._key,
     'closed', true,
     'timeClosed', Date.now(),
     callback);
-}
+};
 
 
 /**
@@ -444,13 +444,13 @@ Alarm.prototype.close = function close(app, callback) {
  * @param callback {Function} `function (err)` where `err` is null on success
  *    and a node_redis error on failure.
  */
-Alarm.prototype.reopen = function close(app, callback) {
-  var redisClient = app.getRedisClient()
-  app.getRedisClient().hmset(this._key,
+Alarm.prototype.reopen = function (app, callback) {
+  var redisClient = app.getRedisClient();
+  redisClient().hmset(this._key,
     'closed', false,
     'timeClosed', null,
     callback);
-}
+};
 
 
 /**
@@ -460,10 +460,10 @@ Alarm.prototype.reopen = function close(app, callback) {
  * @param callback {Function} `function (err)` where `err` is null on success
  *    and a node_redis error on failure.
  */
-Alarm.prototype.suppress = function close(app, callback) {
-  var redisClient = app.getRedisClient()
-  app.getRedisClient().hset(this._key, 'suppressed', true, callback);
-}
+Alarm.prototype.suppress = function (app, callback) {
+  var redisClient = app.getRedisClient();
+  redisClient().hset(this._key, 'suppressed', true, callback);
+};
 
 
 /**
@@ -473,10 +473,10 @@ Alarm.prototype.suppress = function close(app, callback) {
  * @param callback {Function} `function (err)` where `err` is null on success
  *    and a node_redis error on failure.
  */
-Alarm.prototype.unsuppress = function close(app, callback) {
-  var redisClient = app.getRedisClient()
-  app.getRedisClient().hset(this._key, 'suppressed', false, callback);
-}
+Alarm.prototype.unsuppress = function (app, callback) {
+  var redisClient = app.getRedisClient();
+  redisClient().hset(this._key, 'suppressed', false, callback);
+};
 
 
 /**
@@ -576,7 +576,7 @@ function apiListAllAlarms(req, res, next) {
       var alarms = [];
       for (i = 0; i < alarmObjs.length; i++) {
         try {
-          alarms.push( new Alarm(alarmObjs[i], log) );
+          alarms.push(new Alarm(alarmObjs[i], log));
         } catch (invalidErr) {
           log.warn({err: invalidErr, alarmObj: alarmObjs[i]},
             'invalid alarm data in redis');
@@ -636,11 +636,11 @@ function apiListAlarms(req, res, next) {
         return next(mapErr);
       }
 
-      log.debug('create alarms (discarding invalid db data)')
+      log.debug('create alarms (discarding invalid db data)');
       var alarms = [];
       for (i = 0; i < alarmObjs.length; i++) {
         try {
-          alarms.push( new Alarm(alarmObjs[i], log) );
+          alarms.push(new Alarm(alarmObjs[i], log));
         } catch (invalidErr) {
           log.warn({err: invalidErr, alarmObj: alarmObjs[i]},
             'invalid alarm data in redis');

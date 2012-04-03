@@ -874,7 +874,7 @@ App.prototype.chooseRelatedAlarm = function (candidateAlarms,
     // field sort to the end).
     function (x, y) { return y.timeLastEvent - x.timeLastEvent; });
   var a = candidateAlarms[0];
-  this.log.debug({alarm: a}, 'best candidate related alarm')
+  this.log.debug({alarm: a}, 'best candidate related alarm');
   if (a.timeLastEvent &&
       (options.event.clear ||
        (options.event.time - a.timeLastEvent) < ONE_HOUR)) {
