@@ -841,6 +841,33 @@ Watches http://google.com/ home page and fire when a non 2xx status code is retu
         }
     }'
 
+## Probe: icmp
+
+Performs an ICMP ping to a specific host and alarms when there are signs of
+packet loss
+
+### Config
+
+||**Parameter**||**Required?**||**Default**||**Description**||
+||host||Required||-||the host to check, ie `4.2.2.1`, or `example.com`||
+||npackets||Optional||5||number of packets to send per check||
+||interval||Optional||90||interval in seconds to check the specified host||
+||period||Optional||300||Integer number of seconds. Time window in which `threshold` number of matches must be found to alarm.||
+||threshold||Optional||1||Integer. Number of times packet loss is encountered within `period` before alarming||
+
+### Example
+
+Ping api.us-west.joyent.com periodically and alarm in case of network
+interuptions or packet loss.
+
+sdc-amon /pub/admin/monitors/ping/probes/ping -X PUT --data '
+    {
+      "type":"icmp",
+      "server":"564da583-a93e-7fe7-5d61-5c3190ba44fb",
+      "config": {
+        "host":"api.us-west.joyent.com"
+      }
+    }'
 
 # Glossary
 
