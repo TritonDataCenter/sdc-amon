@@ -645,18 +645,26 @@ if not useful.
     }
 
 
-## TestMonitorNotify (POST /pub/:user/monitors/:monitor/testnotify)
+## FakeMonitorFault (POST /pub/:user/monitors/:monitor?action=fakefault)
 
-Send a test notification for this monitor.
+Fake a fault on this monitor. This will send in fake event for this monitor.
+Typically this will result in creation of an alarm and sending a notification
+to all contacts for this monitor (depending on current suppression rules).
 
 ### Inputs
 
-None.
+||**Field**||**Type**||**Description**||
+||action||String||Required. An error code name, e.g. "ResourceNotFound" to simulate an error response.||
+||message||String||Optional. The error message to include in the simulated error response. Defaults to "pong".||
+||**Field**||**Type**||**Description**||
+||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||monitor (in URL)||String||The monitor name.||
+||action||String||"fakefault"||
+||clear||String||Optional. Use "true" to send a "clear" event. This should typically clear an alarm created by a previous fake fault call.||
 
 ### Example
 
-    $ sdc-amon /pub/admin/monitors/sdczones/testnotify
-    [root@headnode (coal:0) ~]# sdc-amon /pub/admin/monitors/sdczones/testnotify -X POST
+    $ sdc-amon /pub/admin/monitors/sdczones?action=fakefault -X POST
     HTTP/1.1 200 OK
     Access-Control-Allow-Origin: *
     Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
@@ -881,15 +889,17 @@ sdc-amon /pub/admin/monitors/ping/probes/ping -X PUT --data '
 - An **event** is a message sent from an Amon agent up to the Amon master that
   might create or update an alarm.
 - An open **alarm** is the state of a failing monitor. An alarm is created
-  when a monitor trips (i.e. one of its probes detects a fault). An alarm can
-  be closed by user action (via the API or in the Operator or User Portals)
-  or via an Amon *clear* event -- the failing state is no longer failing,
-  e.g. a halted machine has come back up. An alarm object lives until it is
-  closed.
+  when a monitor faults (i.e. one of its probes detects a fault). An alarm
+  can be closed by user action (via the API or in the Operator or User
+  Portals) or via an Amon *clear* event -- the failing state is no longer
+  failing, e.g. a halted machine has come back up. An alarm object lives
+  until it is closed.
+- A **fault** is a single probe failure (machine and probe type). An open
+  alarm has one or more faults: one for each probe that reported a fault
+  event.
 - A **notification** is a message sent for an alarm to one or more contacts
   associated with that monitor. An alarm may result in many notifications
   through its lifetime.
-
 
 
 # Use Cases

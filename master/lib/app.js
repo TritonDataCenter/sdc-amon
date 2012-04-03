@@ -19,6 +19,7 @@ var amonCommon = require('amon-common'),
   format = amonCommon.utils.format;
 var Contact = require('./contact');
 var alarms = require('./alarms'),
+  createAlarm = alarms.createAlarm,
   Alarm = alarms.Alarm;
 
 // Endpoint controller modules.
@@ -272,17 +273,7 @@ function App(config, ufds, mapi, log) {
 
   server.get({path: '/pub/:user', name: 'GetUser'}, getUser);
 
-  server.get({path: '/pub/:user/monitors', name: 'ListMonitors'},
-    monitors.listMonitors);
-  server.put({path: '/pub/:user/monitors/:name', name: 'PutMonitor'},
-    monitors.putMonitor);
-  server.get({path: '/pub/:user/monitors/:name', name: 'GetMonitor'},
-    monitors.getMonitor);
-  server.del({path: '/pub/:user/monitors/:name', name: 'DeleteMonitor'},
-    monitors.deleteMonitor);
-  server.post({path: '/pub/:user/monitors/:name/testnotify',
-               name: 'TestMonitorNotify'},
-    monitors.testMonitorNotify);
+  monitors.mount(server);
 
   server.get(
     {path: '/pub/:user/monitors/:monitor/probes', name: 'ListProbes'},
@@ -745,7 +736,7 @@ App.prototype.processEvent = function (event, callback) {
 
   if (event.type === 'probe') {
     /*jsl:pass*/
-  } else if (event.type === 'monitor') {
+  } else if (event.type === 'fake') {
     /*jsl:pass*/
   } else {
     return callback(new restify.InternalError(
@@ -829,14 +820,11 @@ App.prototype.getOrCreateAlarm = function (options, callback) {
             'not creating a new alarm for a clear event');
           callback(null, null);
         } else {
-          self.createAlarm(options, callback);
+          createAlarm(self, options.user.uuid, options.monitor.name, callback);
         }
       });
-      return true;
     }
   );
-
-  return true;
 };
 
 
@@ -878,41 +866,13 @@ App.prototype.chooseRelatedAlarm = function (candidateAlarms,
   if (a.timeLastEvent &&
       (options.event.clear ||
        (options.event.time - a.timeLastEvent) < ONE_HOUR)) {
-    this.log.debug({alarm: a}, 'related alarm');
-    return callback(null, a);
+    this.log.debug({alarmId: a.id}, 'related alarm');
+    callback(null, a);
+  } else {
+    this.log.debug('no related alarm');
+    callback(null, null);
   }
-  return callback(null, null);
 };
-
-
-/**
- * Create a new alarm for the given event.
- *
- * @param options {Object}
- *    - `event` {Object} Required. The Amon event.
- *    - `user` {Object} Required. The user (from `userFromId()`) to which
- *      this alarm belongs.
- * @param callback {Function} `function (err, alarm)`.
- */
-App.prototype.createAlarm = function (options, callback) {
-  if (!options) throw new TypeError('"options" (Object) required');
-  if (!options.event) throw new TypeError('"options.event" (Object) required');
-  if (!options.user) throw new TypeError('"options.user" required');
-
-  this.log.debug({event: options.event}, 'createAlarm');
-  var alarm = new Alarm({
-    user: options.user.uuid,
-    monitor: options.event.monitor
-  }, this.log);
-  alarm.save(this, function (err) {
-    if (err) {
-      callback(err);
-    } else {
-      callback(null, alarm);
-    }
-  });
-};
-
 
 
 /**

@@ -193,52 +193,96 @@ Monitor._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,31}$/;
 
 
 
+//---- API endpoints
+
+function apiListMonitors(req, res, next) {
+  return ufdsmodel.requestList(req, res, next, Monitor);
+}
+
+function apiPutMonitor(req, res, next) {
+  return ufdsmodel.requestPut(req, res, next, Monitor);
+}
+
+function apiGetMonitor(req, res, next) {
+  return ufdsmodel.requestGet(req, res, next, Monitor);
+}
+
+function apiDeleteMonitor(req, res, next) {
+  //XXX:TODO: handle traversing child Probes and deleting them
+  return ufdsmodel.requestDelete(req, res, next, Monitor);
+}
+
+/**
+ * Fake a fault for this monitor, by sending a 'fake' event.
+ * See: <https://mo.joyent.com/docs/amon/master/#FakeMonitorFault>
+ */
+function apiFakeMonitorFault(req, res, next) {
+  if (req.query.action !== 'fakefault')
+    return next();
+
+  var userUuid = req._user.uuid;
+  var monitorName = req.params.name;
+  var clear = (req.query.clear === 'true');
+  Monitor.get(req._app, userUuid, monitorName, function (err, monitor) {
+    if (err) {
+      return next(err);
+    }
+    var testEvent = {
+      v: 1,  //XXX constant for this
+      type: 'fake',
+      user: req._user.uuid,
+      monitor: monitor.name,
+      time: Date.now(),
+      clear: clear,
+      data: {
+        message: format('Fake fault%s.', clear ? ' (clear)' : '')
+      },
+      uuid: uuid()
+    };
+    req._app.processEvent(testEvent, function (processErr) {
+      if (processErr) {
+        req.log.error(processErr, 'error processing test event');
+        next(new restify.InternalError());
+      } else {
+        res.send({success: true});
+        next(false);
+      }
+    });
+  });
+}
+
+
+/**
+ * Mount API endpoints
+ *
+ * @param server {restify.Server}
+ */
+function mount(server) {
+  server.get({path: '/pub/:user/monitors', name: 'ListMonitors'},
+    apiListMonitors);
+  server.put({path: '/pub/:user/monitors/:name', name: 'PutMonitor'},
+    apiPutMonitor);
+  server.get({path: '/pub/:user/monitors/:name', name: 'GetMonitor'},
+    apiGetMonitor);
+  server.del({path: '/pub/:user/monitors/:name', name: 'DeleteMonitor'},
+    apiDeleteMonitor);
+
+  // These update handlers all check "should I run?" based on
+  // `req.query.action` and if they should the chain stops.
+  server.post({path: '/pub/:user/monitors/:name', name: 'UpdateMonitor'},
+    apiFakeMonitorFault,
+    function invalidAction(req, res, next) {
+      if (req.query.action)
+        return next(new restify.InvalidArgumentError(
+          '"%s" is not a valid action', req.query.action));
+      return next(new restify.MissingParameterError('"action" is required'));
+    });
+}
+
+
 //---- controllers
 
 module.exports = {
   Monitor: Monitor,
-  listMonitors: function listMonitors(req, res, next) {
-    return ufdsmodel.requestList(req, res, next, Monitor);
-  },
-  putMonitor: function putMonitor(req, res, next) {
-    return ufdsmodel.requestPut(req, res, next, Monitor);
-  },
-  getMonitor: function getMonitor(req, res, next) {
-    return ufdsmodel.requestGet(req, res, next, Monitor);
-  },
-  deleteMonitor: function deleteMonitor(req, res, next) {
-    //XXX:TODO: handle traversing child Probes and deleting them
-    return ufdsmodel.requestDelete(req, res, next, Monitor);
-  },
-  testMonitorNotify: function testMonitorNotify(req, res, next) {
-    var userUuid = req._user.uuid;
-    var monitorName = req.params.name;
-    Monitor.get(req._app, userUuid, monitorName, function (err, monitor) {
-      if (err) {
-        return next(err);
-      }
-      var testEvent = {
-        v: 1,  //XXX constant for this
-        type: 'monitor',
-        user: req._user.uuid,
-        monitor: monitor.name,
-        time: Date.now(),
-        data: {
-          message: 'Test notification.'
-        },
-        uuid: uuid()
-      };
-      req._app.processEvent(testEvent, function (processErr) {
-        if (processErr) {
-          req.log.error(processErr, 'error processing test event');
-          next(new restify.InternalError());
-        } else {
-          res.send({success: true});
-          next();
-        }
-      });
-      return true;
-    });
-    return true;
-  }
+  mount: mount
 };

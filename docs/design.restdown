@@ -13,12 +13,38 @@ in the future when Amon design might have moved on. *Add new sections to
 the top.*
 
 
+
+# alarm clearing (2-Apr-2012)
+
+Some alarms can be automatically closed by a probe event (a "clear" event).
+This is also called clearing an alarm. For example, a "machine-up" probe
+on a machine will send a "clear" event.
+
+Clearing alarms is a little more complicated than just closing the alarm when
+an event is attached, because a "clear" is for a particular probe type and
+machine and a monitor can have multiple probes. Therefore an alarm needs to
+track the current set of outstanding "faults". I'm intentionally using a
+name other than "probes" because probe instances may change on a monitor
+over the lifetime of an alarm.
+
+A **fault** is `(<machine|server>,  MACHINE-OR-SERVER-UUID, PROBE-TYPE)`
+3-tuple. (Actually probably represented with a JS object. In the general case
+we might need to add a "PROBE-INSTANCE-CONFIG" item there, but I'm not
+crossing that road until we have a clearable probe-type with config
+information.)
+
+An alarm will maintain a set of current outstanding faults. On receiving a
+"clear" event, if the last outstanding fault is removed, then the alarm
+will be closed.
+
+
 # webhook contact (30-Mar-2012)
 
 This discussion stems from <https://devhub.joyent.com/jira/browse/MON-97>
 
-First a discussion of using webhook contacts with the current Amon design
-that all contact info lives as fields on the UFDS sdcPerson entry.
+First a discussion of using webhook contacts (notification types) with the
+current Amon design that all contact info lives as fields on the UFDS
+sdcPerson entry.
 
 
 ## scenario A
@@ -119,5 +145,3 @@ Cons:
   separating the actions of adding named contacts (we'd want a "Manage
   Contacts" UI anyway) and selecting contacts for a monitor. Perhaps that
   wouldn't be so bad.
-
-

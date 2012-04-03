@@ -184,7 +184,7 @@ function ensureDataDir(next) {
  *    `{name: ZONENAME}` objects.
  */
 function listAllZones(callback) {
-  log.info('Getting compute node UUID from `sysinfo`.');
+  log.info('Getting list of all zones from `zoneadm`.');
   return execFile('/usr/sbin/zoneadm', ['list', '-c'],
                   function (err, stdout, stderr) {
     if (err || stderr) {

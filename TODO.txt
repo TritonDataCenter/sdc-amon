@@ -69,7 +69,6 @@
   from. Perhaps the "unknown" could be the zone name. Also perhaps "anonymous"
   could be the owner uuid (only if no cost to that).
     unknown - anonymous [23/11/2011:21:38:26 GMT] "HEAD /agentprobes HTTP/1.1" 200 0 1
-- endpoint to test sending to a contact "POST /pub/:uuid/testnotify"
 - disallow '/' in name fields (so can use that as sep char for a string id).
   If this isn't acceptable then update id'ification in agent.
   Perhaps ':' would be preferable for id'ification? Meh.
@@ -99,8 +98,7 @@
 
 # someday/maybe
 
-- should "POST /pub/:user/monitors/:monitor/:testnotify" instead be
-  "POST /pub/:user/monitors/:monitor?action=testnotify"?
+- endpoint to test sending to a contact "POST /pub/:uuid/testnotify"
 - "sdc-amon /pub/trent.mick" messes up on '.' in username -> restify upgrade
   Check for this being fixed with restify 1.x
 - amon-relay and amon-agent: move node to build/node (a la portal and others)
@@ -312,18 +310,16 @@ probe type (a "probe event"):
       "uuid":"1e5933ba-c813-44fc-bb54-8b75ebf53eff"
     }
 
-Test event from "POST /pub/:user/monitors/:monitor/:testnotify"
+Test event from "POST /pub/:user/monitors/:monitor?action=fakefault"
 (a "test event" or a "monitor event", i.e. associated with a monitor):
 
     {
       v: 1,
       time: Date.now(),
-      type: "monitor",
-      monitor: {
-        user: UUID,
-        monitor: NAME
-      },
-      clear: false,
+      type: "fake",
+      user: UUID,
+      monitor: NAME
+      clear: CLEAR,
       data:{
         message: "Test notification.",
       },

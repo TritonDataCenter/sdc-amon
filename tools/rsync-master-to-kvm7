@@ -1,0 +1,37 @@
+#!/bin/bash
+#
+# Rsync the master in this working copy to the install on the bh1-kvm7 headnode
+# GZ.
+#
+
+set -x
+TOP=$(cd $(dirname $0)/../; pwd)
+NODE=root@10.2.207.2
+
+if [[ -z "$AMON_ZONE" ]]; then
+    # XXX Want the first running one of these. Need `json -c ...` from json 3.
+    #     Until then, presume the last one is the running one.
+    # AMON_ZONE=$(ssh $NODE "/smartdc/bin/sdc-mapi /machines?tag.smartdc_role=amon" 2>/dev/null | jsondev -c 'running_status=="running"' -a name -H)
+    AMON_NUM_ZONES=$(ssh $NODE "/smartdc/bin/sdc-mapi /machines?tag.smartdc_role=amon" 2>/dev/null | json -H length)
+    AMON_ZONE_INDEX=$(($AMON_NUM_ZONES - 1))
+    AMON_ZONE=$(ssh $NODE "/smartdc/bin/sdc-mapi /machines?tag.smartdc_role=amon" 2>/dev/null | json -H $AMON_ZONE_INDEX.name)
+fi
+echo "AMON_ZONE: $AMON_ZONE"
+
+rsync -av ${TOP}/master/ \
+    $NODE:/zones/$AMON_ZONE/root/opt/smartdc/amon/ \
+    --exclude "*.node" \
+    --exclude amon-common \
+    --exclude amon-plugins \
+    --exclude tmp/
+rsync -av ${TOP}/common/ \
+    $NODE:/zones/$AMON_ZONE/root/opt/smartdc/amon/node_modules/amon-common/ \
+    --exclude "*.node" \
+    --exclude tmp/
+rsync -av ${TOP}/plugins/ \
+    $NODE:/zones/$AMON_ZONE/root/opt/smartdc/amon/node_modules/amon-plugins/ \
+    --exclude "*.node" \
+    --exclude tmp/
+
+ssh ${NODE} svcadm -z ${AMON_ZONE} clear amon-master
+ssh ${NODE} svcadm -z ${AMON_ZONE} restart amon-master

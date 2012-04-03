@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Joyent, Inc.  All rights reserved.
+ * Copyright 2012 Joyent, Inc.  All rights reserved.
  *
  * Amon 'email' notification plugin. See interface spec in "./README.md".
  */
@@ -98,13 +98,14 @@ Email.prototype.notify = function (alarm,
   var data = event.data;
   var monitorName = event.monitor;
   var body = format('%s\n\n'
-    + 'Alarm: %s\n'
+    + 'Alarm: %s (alarm is %s)\n'
     + 'Time: %s\n'
     + 'Monitor: %s (owned by %s)\n'
     + 'Data Center: %s\n'
     + '\n\n%s',
     data.message,
     alarm.id,
+    (alarm.closed ? 'closed' : 'open'),
     (new Date(event.time)).toUTCString(),
     monitorName, toNoQuotes,
     this.datacenterName,
