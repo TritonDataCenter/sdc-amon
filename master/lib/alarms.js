@@ -153,7 +153,6 @@ function faultObjFromRepr(repr) {
 function createAlarm(app, userUuid, monitor, callback) {
   var log = app.log;
   log.info({user: userUuid, monitor: monitor}, 'createAlarm');
-  var alarm = new Alarm({user: userUuid, monitor: monitor}, log);
 
   var data = {
     user: userUuid,
@@ -215,8 +214,6 @@ function Alarm(data, log) {
   if (!data.user || !UUID_RE.test(data.user))
     throw new TypeError('"data.user" (UUID) is required');
   if (!log) throw new TypeError('"log" (Bunyan Logger) is required');
-  var i;
-  var self = this;
 
   this.v = ALARM_MODEL_VERSION;
   this.user = data.user;
@@ -234,7 +231,7 @@ function Alarm(data, log) {
   this._faultsKey = ['faults', this.user, this.id].join(':');
   this._faultSet = {};
   if (data.faults) {
-    for (i = 0; i < data.faults.length; i++) {
+    for (var i = 0; i < data.faults.length; i++) {
       this._faultSet[data.faults[i]] = true;
     }
   }
@@ -328,7 +325,7 @@ Alarm.filter = function filter(app, options, callback) {
         return callback(getErr);
       }
       var filtered = alarms.filter(function (a) {
-        if (a == null) {
+        if (a === null) {
           // Alarm.get returns a null alarm for invalid data.
           return false;
         }
@@ -386,7 +383,7 @@ Alarm.prototype.addFault = function addFault(fault) {
     this._faultSet[fault] = true;
     this._updateFaults();
   }
-}
+};
 
 /**
  * Remove a fault from this alarm (i.e. for a new incoming *clear* event).
@@ -396,7 +393,7 @@ Alarm.prototype.removeFault = function removeFault(fault) {
     delete this._faultSet[fault];
     this._updateFaults();
   }
-}
+};
 
 Alarm.prototype._updateFaults = function _updateFaults() {
   // Faults stored in redis (and in `_faultSet`) are encoded as a
@@ -404,10 +401,10 @@ Alarm.prototype._updateFaults = function _updateFaults() {
   // Let's give a nicer representation for the API.
   this.faults = [];
   var faultReprs = Object.keys(this._faultSet);
-  for (i = 0; i < faultReprs.length; i++) {
+  for (var i = 0; i < faultReprs.length; i++) {
     this.faults.push(faultObjFromRepr(faultReprs[i]));
   }
-}
+};
 
 /**
  * Add an event to this alarm and notify, if necessary.
@@ -514,7 +511,7 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
                         'timeClosed', self.timeClosed,
                         function (closedErr) {
         if (closedErr) {
-          callback(closedErr) //XXX xlate error
+          callback(closedErr); //XXX xlate error
         } else {
           callback();
         }
@@ -672,19 +669,19 @@ function apiListAllAlarms(req, res, next) {
       return next(keysErr);
     }
     log.debug('get alarm data for each key (%d keys)', alarmKeys.length);
-    function alarmFromKey(key, next) {
+    function alarmFromKey(key, cb) {
       var bits = key.split(':');
-      Alarm.get(req._app, bits[1], bits[2], next);
+      Alarm.get(req._app, bits[1], bits[2], cb);
     }
     async.map(alarmKeys, alarmFromKey, function (getErr, alarms) {
       if (getErr) {
         log.error({err: getErr, alarmKeys: alarmKeys},
           'redis error getting alarm data');
-        return callback(getErr);
+        return next(getErr);
       }
       var serialized = [];
       for (i = 0; i < alarms.length; i++) {
-        if (alarms[i] == null) {
+        if (alarms[i] === null) {
           // Alarm.get returns a null alarm for invalid data.
           return false;
         }
@@ -736,14 +733,14 @@ function apiListAlarms(req, res, next) {
     log.debug({alarmIds: alarmIds},
       'get alarm data for each key (%d ids)', alarmIds.length);
 
-    function alarmFromId(id, next) {
-      Alarm.get(req._app, userUuid, id, next);
+    function alarmFromId(id, cb) {
+      Alarm.get(req._app, userUuid, id, cb);
     }
     async.map(alarmIds, alarmFromId, function (getErr, alarms) {
       if (getErr) {
         log.error({err: getErr, alarmIds: alarmIds},
           'redis error getting alarm data');
-        return callback(getErr);
+        return next(getErr);
       }
 
       var filtered = [];
@@ -831,7 +828,8 @@ function reqGetAlarm(req, res, next) {
     } else {
       log.debug('get curr alarm id for user "%s" to disambiguate 404 and 410',
         userUuid);
-      app.getRedisClient().hget('alarmIds', userUuid, function (idErr, currId) {
+      req._app.getRedisClient().hget('alarmIds', userUuid,
+                                     function (idErr, currId) {
         if (idErr) {
           return next(idErr);  // XXX translate node_redis error
         }
