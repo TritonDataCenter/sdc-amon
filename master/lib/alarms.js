@@ -427,7 +427,7 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
  */
 Alarm.prototype.close = function close(app, callback) {
   var redisClient = app.getRedisClient();
-  redisClient().hmset(this._key,
+  redisClient.hmset(this._key,
     'closed', true,
     'timeClosed', Date.now(),
     callback);
@@ -446,7 +446,7 @@ Alarm.prototype.close = function close(app, callback) {
  */
 Alarm.prototype.reopen = function (app, callback) {
   var redisClient = app.getRedisClient();
-  redisClient().hmset(this._key,
+  redisClient.hmset(this._key,
     'closed', false,
     'timeClosed', null,
     callback);
@@ -462,7 +462,7 @@ Alarm.prototype.reopen = function (app, callback) {
  */
 Alarm.prototype.suppress = function (app, callback) {
   var redisClient = app.getRedisClient();
-  redisClient().hset(this._key, 'suppressed', true, callback);
+  redisClient.hset(this._key, 'suppressed', true, callback);
 };
 
 
@@ -475,7 +475,7 @@ Alarm.prototype.suppress = function (app, callback) {
  */
 Alarm.prototype.unsuppress = function (app, callback) {
   var redisClient = app.getRedisClient();
-  redisClient().hset(this._key, 'suppressed', false, callback);
+  redisClient.hset(this._key, 'suppressed', false, callback);
 };
 
 
