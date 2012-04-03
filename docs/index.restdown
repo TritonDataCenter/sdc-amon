@@ -654,9 +654,6 @@ to all contacts for this monitor (depending on current suppression rules).
 ### Inputs
 
 ||**Field**||**Type**||**Description**||
-||action||String||Required. An error code name, e.g. "ResourceNotFound" to simulate an error response.||
-||message||String||Optional. The error message to include in the simulated error response. Defaults to "pong".||
-||**Field**||**Type**||**Description**||
 ||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
 ||monitor (in URL)||String||The monitor name.||
 ||action||String||"fakefault"||
