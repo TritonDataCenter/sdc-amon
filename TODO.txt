@@ -1,9 +1,6 @@
 # higher-level prios
 
-- persistent alarms:
-  - handle 'clear' event closing an alarm
-  - saving the events in redis
-  - test suite
+- test suites on staging (including adding for alarms) QA-101
 - design use cases, assign a use case driver for each prio
 - sysevent-based events: use case #2, machine-running-state probe type
 - agent in all zones
@@ -12,7 +9,6 @@
 - sdc-healthcheck
 - notification formatting: templating? Show open/closed state in notifications.
   Design section on what info should be included in notification.
-- more notification types: webhook, sms(?), pagerduty?
 - suppression support (alarms, monitors, everything)
 - upgrade plan: What if UFDS schema needs to change? How do we rev the Master
   with older agents in the wild. Upgrading Agent versions? What about
@@ -61,9 +57,6 @@
   came? Relay should also validate that given event is for a probe that
   *exists* for that zone, if not then drop it.
 - consistent `new restify.FooError(...)` usage and document this
-- cache invalidation on delete problem? Remove test data and observe how
-  long it takes for those probe deletions to propage to the amon-relay.
-  Is there a cache invalidate problem there?
 - send an op notification if Redis is down when attempting to process an event
 - relay: improve this log line to know which zone/zsock this request came
   from. Perhaps the "unknown" could be the zone name. Also perhaps "anonymous"
@@ -81,23 +74,22 @@
   case errors up the stack (portal, cloudapi, adminui) all would have to
   get all the edge cases correct including unicode, PITA for using the API
   on the CLI (hand quoting URL parts), inelegant URLs in the portals
-- throttling on TestMonitorNotify
 - walk through a server boot (and boot of all its zones): does Amon eventing
   go crazy?
 - http://circonus.com/resources/videos#play-video-rule-notifications for
   probe facilities.
-- notification types to consider (http://circonus.com/why-us/features/notifications):
-    Email
-    AOL and XMPP (Jabber, Google Talk, etc.) Instant Messages
-    Twitter (direct messages from @circonusops)
-    SMS
-    PagerDuty
-    HTTP WebHooks
 - probe types to consider: https://support.cloudkick.com/Category:Checks
 
 
 # someday/maybe
 
+- more notification types: (see http://circonus.com/why-us/features/notifications)
+    AOL and XMPP (Jabber, Google Talk, etc.) Instant Messages
+    Twitter (direct messages from @circonusops)
+    SMS
+    PagerDuty
+- saving the alarm events in redis? Are those needed for anything? Not
+  bothering until we have UI that would use this.
 - endpoint to test sending to a contact "POST /pub/:uuid/testnotify"
 - "sdc-amon /pub/trent.mick" messes up on '.' in username -> restify upgrade
   Check for this being fixed with restify 1.x
@@ -110,6 +102,7 @@
 - docs: move contact URN spec from master/lib/contact.js to the docs
 - Idea: have amon-master create event/alarm to operator if it cannot
   connect/work with UFDS.
+- throttling on MonitorFakeFault
 - [Trent] test suite for relay and agent
 - 'ping-agent' probe type. Basically this is a test that the amon-relay <->
   amon-agent socket is working and that the agent is responding.
