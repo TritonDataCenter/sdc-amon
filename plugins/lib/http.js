@@ -160,7 +160,7 @@ HttpProbe.prototype.doRequest = function () {
 
       if (self.maxResponseTime && responseTime >= self.maxResponseTime) {
         eventMessages.push(
-          format('Maximum Response Time (%sms) exceeded, was: %sms',
+          format('Maximum response time (%sms) exceeded, was: %sms',
             self.maxResponseTime, responseTime));
       }
 

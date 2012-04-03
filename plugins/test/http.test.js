@@ -101,7 +101,7 @@ test('HttpProbe', function (t) {
 
 
 
-  test('defualt config: success request', function (t) {
+  test('default config: success request', function (t) {
     var server = createServer(200, 'hello');
     t.ok(server);
     server.listen(9000, function _cb() {
