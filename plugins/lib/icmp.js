@@ -96,7 +96,7 @@ Icmp.prototype.doPing = function () {
     }
 
     if (metrics['packet loss'] > 0 || code !== 0) {
-      var msg = format('ICMP ping was not successful or exibited packet loss');
+      var msg = format('ICMP ping was not successful or exhibited packet loss');
       if (++self._count >= self.threshold) {
         self.emitEvent(msg, self._count, {
           metrics: metrics,
