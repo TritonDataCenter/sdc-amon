@@ -55,7 +55,7 @@ Webhook.prototype.notify = function (alarm, user, address, event, callback) {
   }
 
   var body = {
-    alarm: alarm.id,
+    alarm: alarm.serializePublic(),
     message: data.message,
     time: (new Date(event.time)).toUTCString(),
     monitor: monitorName,
