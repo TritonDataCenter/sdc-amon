@@ -26,6 +26,8 @@ Webhook.prototype.acceptsMedium = function (medium) {
 
 Webhook.prototype.notify = function (alarm, user, address, event, callback) {
   var log = this.log;
+  log.info({address: address, user: user.uuid, alarm: alarm.id,
+    event: event.uuid}, 'webhook notify');
 
   var data = event.data;
   var monitorName = event.monitor;
@@ -60,7 +62,7 @@ Webhook.prototype.notify = function (alarm, user, address, event, callback) {
     time: (new Date(event.time)).toUTCString(),
     monitor: monitorName,
     datacenter: this.datacenterName,
-    details: event
+    event: event
   };
 
   var serialized = JSON.stringify(body);
@@ -72,7 +74,7 @@ Webhook.prototype.notify = function (alarm, user, address, event, callback) {
   });
 
   req.on('error', function (e) {
-    log.error('Reqeust error: %s', e.message);
+    log.warn('Request error: %s', e.message);
   });
 
   req.end(serialized);
