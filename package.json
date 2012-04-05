@@ -11,7 +11,7 @@
     "ldapjs": "0.4.8",
     "async": "0.1",
     "http-signature": "0.9.8",
-    "tap": "0.1",
+    "tap": "0.2",
     "node-dev": "0.2",
     "node-uuid": "1.2",
     "redis": "0.7",

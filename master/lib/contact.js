@@ -108,7 +108,9 @@ Contact.parseUrn = function (app, urn) {
  */
 Contact.create = function (app, user, urn) {
   var bits = Contact.parseUrn(app, urn);
-  var address = user[bits.medium];
+  // Need to lowercase the 'medium' because UFDS/LDAP lowercases all
+  // sdcPerson field names.
+  var address = user[bits.medium.toLowerCase()];
   return new Contact(bits.scope, bits.medium, bits.notificationType,
     address);
 };

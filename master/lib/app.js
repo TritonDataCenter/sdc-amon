@@ -227,9 +227,6 @@ function App(config, ufds, mapi, log) {
   server.on('after', restify.auditLogger({
     log: log.child({component: 'audit'})
   }));
-  //server.on('after', function (req, res, route) {
-  //  req.log.info({snapshot: self.getStateSnapshot()}, "state snapshot")
-  //});
   server.on('uncaughtException', function (req, res, route, err) {
     req.log.error(err);
     res.send(err);
@@ -263,15 +260,33 @@ function App(config, ufds, mapi, log) {
 
   server.use(setup);
 
+  // Debugging/dev/testing endpoints.
   server.get({path: '/ping', name: 'Ping'}, ping);
-  // Debugging:
+  server.get({path: '/pub/:user', name: 'GetUser'}, getUser);
   // XXX Kang-ify (https://github.com/davepacheco/kang)
-  server.get('/state', function (req, res, next) {
+  server.get({path: '/state', name: 'GetState'}, function (req, res, next) {
     res.send(self.getStateSnapshot());
     next();
   });
-
-  server.get({path: '/pub/:user', name: 'GetUser'}, getUser);
+  server.post({path: '/state', name: 'UpdateState'},
+    function apiDropCaches(req, res, next) {
+      if (req.query.action !== 'dropcaches')
+        return next();
+      self.userCache.reset();
+      self.isOperatorCache.reset();
+      self.mapiServersCache.reset();
+      Object.keys(self._cacheFromScope).forEach(function (scope) {
+        self._cacheFromScope[scope].reset();
+      });
+      res.send(202);
+      next(false);
+    },
+    function invalidAction(req, res, next) {
+      if (req.query.action)
+        return next(new restify.InvalidArgumentError(
+          '"%s" is not a valid action', req.query.action));
+      return next(new restify.MissingParameterError('"action" is required'));
+    });
 
   monitors.mount(server);
 

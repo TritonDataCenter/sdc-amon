@@ -4,7 +4,7 @@
  * Load some play/dev data for Amon play.
  *
  * Usage:
- *    $ node bootstrap.js
+ *    $ node bootstrap.js [CONFIG-JSON-FILE]
  *
  * This will:
  * - create test users (bob, otto)
@@ -50,7 +50,22 @@ var amonClient;
 // Load config.json file, using the first argv argument or falling back to
 // "../test/config.json".
 function loadConfig(next) {
-  var configPath = process.argv[2] || (__dirname + '/../test/config.json');
+  var configPath = process.argv[2];
+
+  if (!configPath) {
+    log('bootstrap: error: no config path was given as an argument\n'
+      + '\n'
+      + 'Usage:\n'
+      + '   ./tools/bootstrap.js CONFIG-JSON-PATH\n'
+      + '\n'
+      + 'Create a config JSON file like this:\n'
+      + '   cp ./tools/bootstrap-config.json.in config.json\n'
+      + '   vi config.json              # fill in values\n'
+      + '   ./tools/bootstrap.js config.json\n');
+    process.exit(1);
+  }
+
+
   log('# Load config from "%s".', configPath)
   // 'config' is intentionally global.
   config = JSON.parse(fs.readFileSync(configPath, 'utf8'));

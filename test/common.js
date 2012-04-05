@@ -6,6 +6,7 @@
 
 var debug = console.log;
 var fs = require('fs');
+var path = require('path');
 var Logger = require('bunyan');
 var restify = require('restify');
 var async = require('async');
@@ -16,33 +17,37 @@ var format = require('util').format;
 
 //---- globals & constants
 
-var CONFIG_PATH = __dirname + '/config.json';
+var LOG_DIR = '/var/tmp/amontest';
+
+
+//---- support functions
+
+function ensureLogDir() {
+  if (!path.existsSync(LOG_DIR)) {
+    fs.mkdirSync(LOG_DIR);
+  }
+}
 
 
 
 /**
- * Setup the Amon master (from the given config file).
+ * Get an Amon Master client.
  *
- * @param options {Object} Setup options.
- *    t {Object} node-tap Test object
- *    users {Array} Optional. User records to add to UFDS for testing  (XXX NYI)
- *    masterLogPath {String}
- *    clientLogPath {String}
- * @param callback {Function} `function (err, config)` where:
- *    `config` is the loaded JSON config file.
- *    `masterClient` is an Amon Master client.
+ * @param slug {String} Short string identifier for this client, typically
+ *    named after the test file using this client. This is used for the
+ *    client log file, so must be safe for a filename.
+ * @environment AMON_URL
+ * @returns {restify JSON client} Amon Master client.
  */
-function setupMaster(options, callback) {
-  var t = options.t;
-  var config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
-  var master;
+function createAmonMasterClient(slug) {
+  ensureLogDir();
 
   var log = new Logger({
     name: 'masterClient',
-    src: (process.platform === 'darwin'),
+    src: true,
     streams: [
       {
-        path: options.clientLogPath,
+        path: path.join(LOG_DIR, slug + '-masterClient.log'),
         level: 'trace'
       }
     ],
@@ -52,77 +57,17 @@ function setupMaster(options, callback) {
       res: restify.bunyan.serializers.response
     }
   });
-  var masterClient = restify.createJsonClient({
-    // 8080 is the built-in default.
+  //XXX Change to use sdc-clients' Amon client.
+  return restify.createJsonClient({
     name: 'master',
-    url: 'http://localhost:' + (config.port || 8080),
+    url: process.env.AMON_URL,
     log: log,
     retry: {
       retries: 0,
       minTimeout: 250
     }
   });
-
-  function startMaster(next) {
-    // Start master.
-    master = spawn(process.execPath,
-      ['../master/main.js', '-vv', '-f', CONFIG_PATH],
-      {cwd: __dirname});
-    t.ok(options.masterLogPath, 'master log path: "'+options.masterLogPath+'"');
-    var masterLog = fs.createWriteStream(options.masterLogPath);
-    master.stdout.pipe(masterLog);
-    master.stderr.pipe(masterLog);
-    t.ok(master, 'master created');
-
-    // Wait until it is running.
-    var sentinel = 0;
-    function checkPing() {
-      masterClient.get('/ping', function (err, req, res, obj) {
-        if (err) {
-          sentinel++;
-          if (sentinel >= 10) {
-            t.ok(false, format('Master did not come up after %s seconds'
-              + ' (see \'%s\')', sentinel, options.masterLogPath));
-            t.end();
-            return;
-          } else {
-            setTimeout(checkPing, 1000);
-          }
-        } else {
-          t.equal(obj.pid, master.pid,
-            format(
-              'Master responding to ping (pid %d) vs. '+
-                'spawned master (pid %d).',
-              obj.pid, master.pid));
-          t.ok(true, 'master is running');
-          next();
-        }
-      });
-    }
-    setTimeout(checkPing, 1000);
-  }
-
-  async.series([startMaster], function (err) {
-    callback(err, masterClient, master);
-  });
 }
-
-
-/**
- * Teardown the Amon master.
- *
- * @param options {Object} Setup options.
- *    t {Object} node-tap Test object
- *    master {Object} The master process object.
- * @param callback {Function} `function (err)`
- */
-function teardownMaster(options, callback) {
-  if (options.master) {
-    options.master.kill();
-  }
-  callback();
-}
-
 
 
 //---- helpers
@@ -145,11 +90,7 @@ function objCopy(obj) {
 //---- exports
 
 module.exports = {
-  CONFIG_PATH: CONFIG_PATH,
-
-  // test setup/teardown support
-  setupMaster: setupMaster,
-  teardownMaster: teardownMaster,
+  createAmonMasterClient: createAmonMasterClient,
 
   // helpers
   objCopy: objCopy

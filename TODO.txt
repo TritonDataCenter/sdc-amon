@@ -1,6 +1,22 @@
 # higher-level prios
 
 - test suites on staging (including adding for alarms) QA-101
+  - add the other test files
+  - clean test data: clean out alarms for test users. Perhaps add an admin
+      DELETE /alarms/:user/:id ?  Or just use DELETE /pub/alarms/:user/:id?
+      Should DELETE be exposed to the user?
+  - make the test suite totally clean up users and zones by default,
+    with '--fast' option to skip that
+  - move test/notifications.test.js over to master/test and runtests.sh to call those
+  - TICKET: UpdateMonitor -> ?action=synccontacts.
+    This'll drop the userCache entry for that monitor owner (more complex
+    for groups).
+  - TICKET: add an amontestmonzone and probes in it using all probe types to
+    watch amontestzone. This is blocked on agents in the zone.
+  - TICKET: test case and support (see `Alarm.notify`): if event for a monitor
+    with a contact that isn't set on the user object, then should be an
+    alarm created for the monitor owner (defaulting to emailing them).
+    Test for that.
 - design use cases, assign a use case driver for each prio
 - sysevent-based events: use case #2, machine-running-state probe type
 - agent in all zones

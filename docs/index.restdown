@@ -135,6 +135,43 @@ TODO
 TODO
 
 
+## FakeMonitorFault (POST /pub/:user/monitors/:monitor?action=fakefault)
+
+Fake a fault on this monitor. This will send in fake event for this monitor.
+Typically this will result in creation of an alarm and sending a notification
+to all contacts for this monitor (depending on current suppression rules).
+
+### Inputs
+
+||**Field**||**Type**||**Description**||
+||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||monitor (in URL)||String||The monitor name.||
+||action||String||"fakefault"||
+||clear||String||Optional. Use "true" to send a "clear" event. This should typically clear an alarm created by a previous fake fault call.||
+
+### Example
+
+    $ sdc-amon /pub/admin/monitors/sdczones?action=fakefault -X POST
+    HTTP/1.1 200 OK
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    Server: Amon Master/1.0.0
+    X-Request-Id: 9fb2a9f3-f34d-4261-ac86-985dc376c442
+    Access-Control-Allow-Methods: POST
+    Connection: close
+    Content-Length: 16
+    Content-MD5: c2PoX+nt7m8FOksxlYjAhg==
+    Content-Type: application/json
+    Date: Wed, 07 Mar 2012 09:23:31 GMT
+    X-Response-Time: 479
+
+    {
+      "success": true
+    }
+
+
+
 
 # Master API: Probes
 
@@ -628,6 +665,7 @@ if not useful.
 
 ### Inputs
 
+||**Field**||**Type**||**Description**||
 ||user (in URL)||String||The user UUID or login||
 
 ### Example
@@ -645,40 +683,45 @@ if not useful.
     }
 
 
-## FakeMonitorFault (POST /pub/:user/monitors/:monitor?action=fakefault)
+## GetState (GET /state)
 
-Fake a fault on this monitor. This will send in fake event for this monitor.
-Typically this will result in creation of an alarm and sending a notification
-to all contacts for this monitor (depending on current suppression rules).
+Return internal state. **Note:** eventually this will probably migrate to
+[Kang](https://github.com/davepacheco/kang).
+
+### Inputs
+
+None.
+
+### Example
+
+    $ sdc-amon /state
+    HTTP/1.1 200 OK
+    ...
+
+    {
+      "cache": {
+        "user": {
+          "name": "user",
+          "expiry": 300000,
+    ...
+
+
+## DropCaches (POST /state?action=dropcaches)
+
+Drop in-process caches. This is important for running the test suite against
+a live Amon Master as a pre-existing cache can influence some of the test
+cases.
 
 ### Inputs
 
 ||**Field**||**Type**||**Description**||
-||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||monitor (in URL)||String||The monitor name.||
-||action||String||"fakefault"||
-||clear||String||Optional. Use "true" to send a "clear" event. This should typically clear an alarm created by a previous fake fault call.||
+||action||String||"dropcaches"||
 
 ### Example
 
-    $ sdc-amon /pub/admin/monitors/sdczones?action=fakefault -X POST
-    HTTP/1.1 200 OK
-    Access-Control-Allow-Origin: *
-    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
-    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
-    Server: Amon Master/1.0.0
-    X-Request-Id: 9fb2a9f3-f34d-4261-ac86-985dc376c442
-    Access-Control-Allow-Methods: POST
-    Connection: close
-    Content-Length: 16
-    Content-MD5: c2PoX+nt7m8FOksxlYjAhg==
-    Content-Type: application/json
-    Date: Wed, 07 Mar 2012 09:23:31 GMT
-    X-Response-Time: 479
-
-    {
-      "success": true
-    }
+    $ sdc-amon /state?dropcaches -X POST
+    HTTP/1.1 202 Accepted
+    ...
 
 
 
@@ -714,6 +757,7 @@ stable "Content-MD5" header to use for caching.
 
 ### Inputs
 
+||**Field**||**Type**||**Description**||
 ||machine||UUID||The machine (VM or SmartMachine, aka zone) for which to return probes.||
 ||server||UUID||The server GZ for which to return probes.||
 
@@ -865,7 +909,7 @@ packet loss
 Ping api.us-west.joyent.com periodically and alarm in case of network
 interuptions or packet loss.
 
-sdc-amon /pub/admin/monitors/ping/probes/ping -X PUT --data '
+    sdc-amon /pub/admin/monitors/ping/probes/ping -X PUT --data '
     {
       "type":"icmp",
       "server":"564da583-a93e-7fe7-5d61-5c3190ba44fb",
@@ -873,6 +917,8 @@ sdc-amon /pub/admin/monitors/ping/probes/ping -X PUT --data '
         "host":"api.us-west.joyent.com"
       }
     }'
+
+
 
 # Glossary
 

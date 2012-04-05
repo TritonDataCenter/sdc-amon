@@ -25,6 +25,13 @@ rsync -av ${TOP}/plugins/ \
     $NODE:/opt/smartdc/agents/lib/node_modules/amon-relay/node_modules/amon-plugins/ \
     --exclude "*.node" \
     --exclude tmp/
+rsync -av ${TOP}/test/ \
+    $NODE:/opt/smartdc/agents/lib/node_modules/amon-relay/test/ \
+    --exclude "*.node" \
+    --exclude "*.log" \
+    --exclude "config.json" \
+    --exclude "prep.json" \
+    --exclude tmp/
 
 ssh ${NODE} svcadm clear amon-relay
 ssh ${NODE} svcadm restart amon-relay

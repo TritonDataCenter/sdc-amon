@@ -45,7 +45,7 @@ include ./tools/mk/Makefile.smf.defs
 # Repo-specific targets
 #
 
-all: common plugins agent relay master dev
+all: common plugins agent testbuild relay master dev
 
 
 #
@@ -65,7 +65,7 @@ agent: common plugins | $(NPM_EXEC)
 	(cd agent && $(NPM) update && $(NPM) link amon-common amon-plugins)
 
 .PHONY: relay
-relay: common | $(NPM_EXEC) deps/node-sdc-clients/.git
+relay: common testbuild | $(NPM_EXEC) deps/node-sdc-clients/.git
 	(cd relay && $(NPM) update && $(NPM) install ../deps/node-sdc-clients && $(NPM) link amon-common amon-plugins)
 	# Workaround https://github.com/isaacs/npm/issues/2144#issuecomment-4062165
 	(cd relay && rm -rf node_modules/zutil/build && $(NPM) rebuild zutil)
@@ -74,7 +74,13 @@ relay: common | $(NPM_EXEC) deps/node-sdc-clients/.git
 master: common plugins | $(NPM_EXEC) deps/node-sdc-clients/.git
 	(cd master && $(NPM) update && $(NPM) install ../deps/node-sdc-clients && $(NPM) link amon-common amon-plugins)
 
-# "dev" is the name for the top-level test/dev package
+# 'testbuild' is the name for building in the 'test' dir. Want 'make test'
+# to actually *run* the tests.
+.PHONY: testbuild
+testbuild: | $(NPM_EXEC) deps/node-sdc-clients/.git
+	(cd test && $(NPM) update && $(NPM) install ../deps/node-sdc-clients)
+
+# "dev" is the name for the top-level dev package
 .PHONY: dev
 dev: common | $(NPM_EXEC) deps/node-sdc-clients/.git
 	$(NPM) install deps/node-sdc-clients
@@ -107,6 +113,7 @@ pkg_relay:
 		relay/pkg \
 		relay/bin \
 		relay/.npmignore \
+		test \
 		$(BUILD)/pkg/relay/
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.

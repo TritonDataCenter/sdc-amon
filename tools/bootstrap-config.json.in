@@ -1,0 +1,16 @@
+{
+  "ufds": {
+    "url": "ldaps://10.88.88.50:636",
+    "rootDn": "cn=root",
+    "password": "XXX"
+  },
+  "mapi": {
+    "url": "http://10.99.99.8:80",
+    "username": "admin",
+    "password": "XXX"
+  },
+  "redis": {
+    "host": "XXX-REDIS-ZONE-IP-ADDR-LIKE-10.99.99.23",
+    "port": "6379"
+  }
+}

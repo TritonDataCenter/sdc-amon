@@ -5,10 +5,8 @@ node_modules
 /amon.sublime*
 
 /build
-/bootstrap.json
-/agent/*.json
+/config*.json
 /test/config.json
-/test/prep.json
 /master/config.json
 /screencasts
 

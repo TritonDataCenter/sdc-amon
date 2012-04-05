@@ -4,14 +4,14 @@
  * Prepare for testing Amon.
  *
  * Usage:
+ *   $ export MAPI_URL=...
+ *   $ export MAPI_USERNAME=...
+ *   $ export MAPI_PASSWORD=...
+ *   $ export XXX    # others
  *   $ node prep.js
- *   {
- *     ...
- *   }
  *
- * This creates test users (if necessary), key and test zone (if necessary);
- * and writes out prep.json (and emits that to stdout). Exits non-zero if
- * there was a problem.
+ * This creates test users (if necessary), key and test zone (if necessary).
+ * Exits non-zero if there was a problem.
  */
 
 var log = console.error;
@@ -20,7 +20,7 @@ var path = require('path');
 var restify = require('restify');
 var async = require('async');
 var child_process = require('child_process'),
-    spawn = child_process.spawn;
+    exec = child_process.exec;
 var format = require('amon-common').utils.format;
 var httpSignature = require('http-signature');
 var ldap = require('ldapjs');
@@ -32,60 +32,51 @@ var sdcClients = require('sdc-clients'),
 
 //---- globals and constants
 
-var config = JSON.parse(fs.readFileSync(__dirname + '/config.json', 'utf8'));
-var sulkybob = JSON.parse(
-  fs.readFileSync(__dirname + '/sulkybob.json', 'utf8')
-);
-var adminbob = JSON.parse(
-  fs.readFileSync(__dirname + '/adminbob.json', 'utf8')
-);
+var ulrich = JSON.parse(
+  fs.readFileSync(__dirname + '/user-amontestuserulrich.json', 'utf8'));
+var odin = JSON.parse(
+  fs.readFileSync(__dirname + '/user-amontestoperatorodin.json', 'utf8'));
 var ldapClient;
 var ufdsClient;
-var adminUuid;
-var sulkyzone; // the test zone to use
-var mapi;
-var mapizone;
+var mapiClient;
+var amontestzone; // the test zone to use
 var headnodeUuid;
+var mapiZonename;
+var gzIp;
 
+
+//---- internal support functions
+
+function ensureDirSync(dir) {
+  if (!path.existsSync(dir)) {
+    fs.mkdirSync(dir);
+  }
+}
 
 
 //---- prep steps
 
+function ldapClientBind(next) {
+  log('# LDAP client bind.');
+  ldapClient = ldap.createClient({
+    url: process.env.UFDS_URL,
+    reconnect: false
+  });
+  ldapClient.bind(process.env.UFDS_ROOTDN, process.env.UFDS_PASSWORD, next);
+}
+
 function ufdsClientBind(next) {
   log('# UFDS client bind.');
   ufdsClient = new UFDS({
-    url: config.ufds.url,
-    bindDN: config.ufds.rootDn,
-    bindPassword: config.ufds.password
+    url: process.env.UFDS_URL,
+    bindDN: process.env.UFDS_ROOTDN,
+    bindPassword: process.env.UFDS_PASSWORD
   });
   ufdsClient.on('ready', function () {
     next();
   });
   ufdsClient.on('error', function (err) {
     next(err);
-  });
-}
-
-function ldapClientBind(next) {
-  log('# LDAP client bind.');
-  ldapClient = ldap.createClient({
-    url: config.ufds.url,
-    reconnect: false
-  });
-  ldapClient.bind(config.ufds.rootDn, config.ufds.password, function (err) {
-    next(err);
-  });
-}
-
-
-function getAdminUuid(next) {
-  log('# Get \'admin\' UUID.');
-  ufdsClient.getUser('admin', function (err, user) {
-    if (err) {
-      return next(err);
-    }
-    adminUuid = user.uuid;
-    next();
   });
 }
 
@@ -117,34 +108,34 @@ function createUser(user, next) {
 
 function createUsers(next) {
   log('# Create users.');
-  async.map([sulkybob, adminbob], createUser, function (err, _) {
+  async.map([ulrich, odin], createUser, function (err, _) {
     next(err);
   });
 }
 
 
-function makeAdminbobOperator(next) {
-  var dn = format('uuid=%s, ou=users, o=smartdc', adminbob.uuid);
+function makeOdinAnOperator(next) {
+  var dn = format('uuid=%s, ou=users, o=smartdc', odin.uuid);
   var change = {
     type: 'add',
     modification: {
       uniquemember: dn
     }
   };
-  log('# Make user %s (%s) an operator', adminbob.uuid, adminbob.login);
+  log('# Make user %s (%s) an operator', odin.uuid, odin.login);
   ufdsClient.modify('cn=operators, ou=groups, o=smartdc', change,
                     function (err) {
     next(err);
   });
 }
 
-function addKey(next) {
-  log('# Add key for sulkybob.');
+function addUlrichKey(next) {
+  log('# Add key for ulrich.');
   // Note: We should probably just use the CAPI api for this, but don't want
   // to encode the pain of getting the CAPI auth.
   var key = fs.readFileSync(__dirname + '/id_rsa.amontest.pub', 'utf8');
   var fp = httpSignature.sshKeyFingerprint(key);
-  var userDn = format('uuid=%s, ou=users, o=smartdc', sulkybob.uuid);
+  var userDn = format('uuid=%s, ou=users, o=smartdc', ulrich.uuid);
   var dn = format('fingerprint=%s, %s', fp, userDn);
   var entry = {
     name: ['amontest'],
@@ -175,6 +166,33 @@ function addKey(next) {
   );
 }
 
+/**
+ * Want a 'testWebhook' on ulrich for the test suite. Should be:
+ *    http://<global zone ip>:8000/
+ */
+function addUlrichTestWebhookContact(next) {
+  log('# Add/update "testWebhook" contact for ulrich.')
+
+  // Use the *admin* network for the GZ because the GZ's default gateway
+  // is on the admin network, so that is how it can get traffic out.
+  // XXX Not sure if 'bnx0' is stable/valid here.
+  var cmd = 'ifconfig bnx0 | grep inet | cut -d" " -f2';
+  exec(cmd, function (ifconfigErr, stdout, stderr) {
+    if (ifconfigErr)
+      return next(ifconfigErr);
+    gzIp = stdout.trim();
+    ufdsClient.getUser(ulrich.login, function (err, user) {
+      if (err)
+        return next(err);
+      var changes = {
+        'testWebhook': format('http://%s:8000/', gzIp)
+      };
+      ufdsClient.updateUser(user, changes, next);
+    });
+  });
+
+}
+
 function ufdsClientUnbind(next) {
   if (ufdsClient) {
     ufdsClient.close(next);
@@ -192,112 +210,18 @@ function ldapClientUnbind(next) {
 }
 
 
-function getMapi(next) {
-  var clientOptions;
-  if (config.mapi.url && config.mapi.username && config.mapi.password) {
-    clientOptions = {
-      url: config.mapi.url,
-      username: config.mapi.username,
-      password: config.mapi.password
-    };
-  } else {
-    return next('invalid `config.mapi`: must have '
-      + 'url/username/password keys');
-  }
-
-  mapi = new MAPI(clientOptions);
+function getMapiClient(next) {
+  mapiClient = new MAPI({   // intentionally global
+    url: process.env.MAPI_URL,
+    username: process.env.MAPI_USERNAME,
+    password: process.env.MAPI_PASSWORD
+  });
   next();
-}
-
-function createSulkyzone(next) {
-  // First check if there is a zone for sulkybob.
-  mapi.listMachines(sulkybob.uuid, function (err, zones, headers) {
-    if (err) {
-      return next(err);
-    }
-    if (zones.length > 0) {
-      sulkyzone = zones[0];
-      log('# Sulkybob already has a zone (%s).', sulkyzone.name);
-      return next();
-    }
-    log('# Create a test zone for sulkybob.');
-    mapi.listServers(function (err2, servers) {
-      if (err2) {
-        return next(err2);
-      }
-      var hnuuid = servers[0].uuid;
-      mapi.createMachine(sulkybob.uuid, {
-          package: 'regular_128',
-          alias: 'sulkyzone',
-          dataset_urn: 'smartos',
-          server_uuid: hnuuid,
-          force: 'true'  // XXX does MAPI client support `true -> 'true'`
-        },
-        function (err3, newZone) {
-          log('# Waiting up to ~2min for new zone %s to start up.',
-              newZone.name);
-          if (err3) {
-            return next(err3);
-          }
-          var zone = newZone;
-          var zoneName = zone.name;
-          var sentinel = 40;
-          async.until(
-            function () {
-              return zone.running_status === 'running';
-            },
-            function (nextCheck) {
-              sentinel--;
-              if (sentinel <= 0) {
-                return nextCheck('took too long for test zone status to '
-                  + 'become \'running\'');
-              }
-              setTimeout(function () {
-                mapi.listMachines(sulkybob.uuid, {name: zoneName},
-                                  function (err4, zones_) {
-                  if (err4) {
-                    return nextCheck(err3);
-                  }
-                  if (zones_.length === 0) {
-                    return nextCheck();
-                  }
-                  zone = zones_[0];
-                  nextCheck();
-                });
-              }, 3000);
-            },
-            function (err4) {
-              if (!err4) {
-                sulkyzone = zone;
-                log('# Zone %s is running.', sulkyzone.name);
-              }
-              next(err4);
-            }
-          );
-        }
-      );
-    });
-  });
-}
-
-function getMapizone(next) {
-  log('# Get MAPI zone.');
-  mapi.listMachines(adminUuid, {alias: 'mapi'}, function (err, zones) {
-    if (err) {
-      return next(err);
-    }
-    if (zones.length === 0) {
-      return next(new Error('no \'mapi\' zone'));
-    }
-    log('# MAPI zone is "%s".', zones[0].name);
-    mapizone = zones[0];
-    next();
-  });
 }
 
 function getHeadnodeUuid(next) {
   log('# Get headnode UUID.');
-  mapi.listServers(function (err, servers) {
+  mapiClient.listServers(function (err, servers) {
     if (err) {
       return next(err);
     }
@@ -315,16 +239,99 @@ function getHeadnodeUuid(next) {
   });
 }
 
+
+function createAmontestzone(next) {
+  // First check if there is a zone for ulrich.
+  mapiClient.listMachines(ulrich.uuid, function (err, zones, headers) {
+    if (err) {
+      return next(err);
+    }
+    if (zones.length > 0) {
+      amontestzone = zones[0];
+      log('# Ulrich already has a zone (%s).', amontestzone.name);
+      return next();
+    }
+    log('# Create a test zone for ulrich.');
+    mapiClient.createMachine(ulrich.uuid, {
+        package: 'regular_128',
+        alias: 'amontestzone',
+        dataset_urn: 'smartos',
+        server_uuid: headnodeUuid,
+        force: 'true'
+      },
+      function (err2, newZone) {
+        log('# Waiting up to ~2min for new zone %s to start up.',
+            newZone.name);
+        if (err2) {
+          return next(err2);
+        }
+        var zone = newZone;
+        var zoneName = zone.name;
+        var sentinel = 40;
+        async.until(
+          function () {
+            return zone.running_status === 'running';
+          },
+          function (nextCheck) {
+            sentinel--;
+            if (sentinel <= 0) {
+              return nextCheck('took too long for test zone status to '
+                + 'become \'running\'');
+            }
+            setTimeout(function () {
+              mapiClient.listMachines(ulrich.uuid, {name: zoneName},
+                                      function (err3, zones_) {
+                if (err3) {
+                  return nextCheck(err3);
+                }
+                if (zones_.length === 0) {
+                  return nextCheck();
+                }
+                zone = zones_[0];
+                nextCheck();
+              });
+            }, 3000);
+          },
+          function (err4) {
+            if (!err4) {
+              amontestzone = zone;
+              log('# Zone %s is running.', amontestzone.name);
+            }
+            next(err4);
+          }
+        );
+      }
+    );
+  });
+}
+
+function getMapiZonename(next) {
+  log('# Get MAPI zonename.');
+
+  child = exec('vmadm lookup -1 alias=mapi', function (err, stdout, stderr) {
+    if (err) {
+      return next(err);
+    }
+    mapiZonename = stdout.trim();
+    log('# MAPI zonename is "%s".', mapiZonename);
+    next();
+  });
+}
+
+
 function writePrepJson(next) {
-  log('# Write "%s/prep.json".', __dirname);
-  var prepJson = __dirname + '/prep.json';
+  var prepJson = '/var/tmp/amontest/prep.json';
   log('# Write "%s".', prepJson);
+  ensureDirSync(path.dirname(prepJson));
   var prep = {
-    sulkyzone: sulkyzone,
-    mapizone: mapizone,
+    amontestzone: amontestzone,
     headnodeUuid: headnodeUuid,
-    sulkybob: sulkybob,
-    adminbob: adminbob
+    mapiZonename: mapiZonename,
+    // This GZ ip will be used to setup a server listening for webhook
+    // notifications.
+    gzIp: gzIp,
+    ulrich: ulrich,
+    odin: odin
   };
   fs.writeFileSync(prepJson, JSON.stringify(prep, null, 2), 'utf8');
   next();
@@ -337,16 +344,16 @@ function writePrepJson(next) {
 async.series([
     ldapClientBind,
     ufdsClientBind,
-    getAdminUuid,
     createUsers,
-    addKey,
-    makeAdminbobOperator,
+    addUlrichKey,
+    addUlrichTestWebhookContact,
+    makeOdinAnOperator,
     ldapClientUnbind,
     ufdsClientUnbind,
-    getMapi,
-    createSulkyzone,
-    getMapizone,
+    getMapiClient,
     getHeadnodeUuid,
+    createAmontestzone,
+    getMapiZonename,
     writePrepJson
   ],
   function (err) {

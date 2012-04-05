@@ -79,7 +79,7 @@ Email.prototype.notify = function (alarm,
   if (!contactAddress) throw new TypeError('"contactAddress" required');
   if (!event) throw new TypeError('"event" required');
   if (!callback) throw new TypeError('"callback" required');
-  var log = this.log.child({alarm: {user: alarm.user, id: alarm.id}}, true);
+  var log = this.log.child({alarm: alarm.user + ':' + alarm.id}, true);
 
   // Add name to the email address if have it.
   // XXX While we don't have UFDS *groups* the `contactAddress` and `user`
