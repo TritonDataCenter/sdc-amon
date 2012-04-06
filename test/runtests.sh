@@ -25,6 +25,9 @@ TOP=$(cd $(dirname $0)/../; pwd)
 NODE_INSTALL=$TOP/build/node
 TAP=./test/node_modules/.bin/tap
 
+# Get the operator toolkit (specifically 'sdc-amon') on the PATH.
+PATH=/smartdc/bin:$PATH
+
 
 # Gather datacenter data to be used by the test suite.
 source /lib/sdc/config.sh
