@@ -88,4 +88,5 @@ echo ""
 #PATH=$NODE_INSTALL/bin:$PATH node test/master.test.js
 PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP \
     test/master.test.js \
+    test/master-caching.test.js \
     node_modules/amon-plugins/test/*.test.js

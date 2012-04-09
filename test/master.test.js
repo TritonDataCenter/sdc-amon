@@ -653,12 +653,3 @@ test('teardown: stop webhook collector', function (t) {
   }
   t.end();
 });
-
-//process.on('uncaughtException', function (err) {
-//  if (master) {
-//    master.kill();
-//  }
-//  console.log('* * *\n%s\n\nTry looking in "%s".\n* * *\n',
-//    err.stack, masterLogPath);
-//  process.exit(1);
-//});
