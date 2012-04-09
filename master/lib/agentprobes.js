@@ -12,7 +12,7 @@ var RestCodes = restify.RestCodes;
 
 var amonCommon = require('amon-common'),
   format = amonCommon.utils.format,
-  compareProbes = amonCommon.compareProbes;
+  compareProbes = amonCommon.utils.compareProbes;
 var Probe = require('./probes').Probe;
 
 
@@ -136,6 +136,7 @@ function listAgentProbes(req, res, next) {
       req.log.error(err, 'error getting probes for %s "%s"', field, uuid);
       next(new restify.InternalError());
     } else {
+      req.log.trace({probes: probes}, 'found probes');
       res.send(200, probes);
       next();
     }
@@ -166,7 +167,7 @@ function headAgentProbes(req, res, next) {
   var cacheKey = format('%s:%s', field, uuid);
   var cacheContentMD5 = req._app.cacheGet('headAgentProbes', cacheKey);
   if (cacheContentMD5) {
-    req.log.trace({contentMD5: cacheContentMD5},
+    req.log.debug({contentMD5: cacheContentMD5},
       'headAgentProbes respond (cached)');
     return respond(cacheContentMD5);
   }
@@ -182,7 +183,7 @@ function headAgentProbes(req, res, next) {
       hash.update(data);
       var contentMD5 = hash.digest('base64');
       req._app.cacheSet('headAgentProbes', cacheKey, contentMD5);
-      req.log.trace({contentMD5: contentMD5}, 'headAgentProbes respond');
+      req.log.debug({contentMD5: contentMD5}, 'headAgentProbes respond');
       respond(contentMD5);
     }
   });
