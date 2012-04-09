@@ -490,7 +490,7 @@ test('probes: get 404', function (t) {
 
 var amontestzoneContentMD5;
 
-test('relay api: GetAgentProbes', function (t) {
+test('relay api: ListAgentProbes', function (t) {
   var probe = FIXTURES.ulrich.monitors.whistle.probes.whistlelog;
   masterClient.get('/agentprobes?machine=' + prep.amontestzone.name,
     function (err, req, res, obj) {
@@ -613,9 +613,10 @@ test('delete monitors and probes', function (t) {
   }
 
   var users = ['amontestuserulrich', 'amontestoperatorodin'];
-  async.forEach(users, function (user, nextMonitor) {
+  async.forEach(users, function (user, nextUser) {
     var url = format('/pub/%s/monitors', user);
     masterClient.get(url, function (err, req, res, monitors) {
+      t.ifError(err, 'error getting monitors for ' + user);
       t.ok(monitors.length > 0, 'should be some monitors to delete');
       async.forEach(monitors, function (monitor, nextMonitor) {
         url = format('/pub/%s/monitors/%s/probes', user, monitor.name);
@@ -631,9 +632,13 @@ test('delete monitors and probes', function (t) {
           });
         });
       }, function (err) {
-        t.end();
+        //t.ifError(err, 'error deleting monitors for ' + user);
+        nextUser(err);
       });
     });
+  }, function (err) {
+    t.ifError(err);
+    t.end();
   });
 });
 
