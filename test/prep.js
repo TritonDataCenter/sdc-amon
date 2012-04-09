@@ -16,6 +16,7 @@
 
 var log = console.error;
 var fs = require('fs');
+var os = require('os');
 var path = require('path');
 var restify = require('restify');
 var async = require('async');
@@ -173,24 +174,32 @@ function addUlrichKey(next) {
 function addUlrichTestWebhookContact(next) {
   log('# Add/update "testWebhook" contact for ulrich.')
 
-  // Use the *admin* network for the GZ because the GZ's default gateway
-  // is on the admin network, so that is how it can get traffic out.
-  // XXX Not sure if 'bnx0' is stable/valid here.
-  var cmd = 'ifconfig bnx0 | grep inet | cut -d" " -f2';
-  exec(cmd, function (ifconfigErr, stdout, stderr) {
-    if (ifconfigErr)
-      return next(ifconfigErr);
-    gzIp = stdout.trim();
-    ufdsClient.getUser(ulrich.login, function (err, user) {
-      if (err)
-        return next(err);
-      var changes = {
-        'testWebhook': format('http://%s:8000/', gzIp)
-      };
-      ufdsClient.updateUser(user, changes, next);
-    });
-  });
+  // The test suite runs a webhook collector in the zone from which the test
+  // suite is being run: typically the headnode GZ. We need the Amon Master
+  // running in the 'amon' zone to be able to reach this server.
+  //
+  // Not sure if it matters if we get the 'admin' or the 'external' network
+  // address here, so for now we'll just choose whichever.
+  var interfaces = os.networkInterfaces();
+  var interfaceNames = Object.keys(interfaces);
+  for (var i = 0; i < interfaceNames.length; i++) {
+    if (interfaceNames[i].slice(0, 3) === 'bnx') {
+      gzIp = interfaces[interfaceNames[i]][0].address; // intentionally global
+      break;
+    }
+  }
+  if (!gzIp) {
+    return next(new Error('cannot determine IP'));
+  }
 
+  ufdsClient.getUser(ulrich.login, function (err, user) {
+    if (err)
+      return next(err);
+    var changes = {
+      'testWebhook': format('http://%s:8000/', gzIp)
+    };
+    ufdsClient.updateUser(user, changes, next);
+  });
 }
 
 function ufdsClientUnbind(next) {
