@@ -40,6 +40,7 @@ export UFDS_PASSWORD=$CONFIG_ufds_ldap_root_pw
 export MAPI_URL="http://$CONFIG_mapi_admin_ip"
 export MAPI_USERNAME="$CONFIG_mapi_http_admin_user"
 export MAPI_PASSWORD="$CONFIG_mapi_http_admin_pw"
+export MAPI_CREDENTIALS="$MAPI_USERNAME:$MAPI_PASSWORD"
 export REDIS_HOST=$(echo $CONFIG_redis_admin_ips | cut -d, -f1)
 export REDIS_PORT=6379
 export DATACENTER_NAME=$CONFIG_datacenter_name
@@ -79,14 +80,34 @@ echo ""
 echo "# Drop Amon Master caches."
 sdc-amon /state?action=dropcaches -X POST >/dev/null
 
-# Run the tests.
+# Run the tests includes with the relay.
 echo ""
 #XXX Not yet running all tests (see QA-101).
 #PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP test/*.test.js
-#PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP node_modules/amon-plugins/test/*.test.js
-#PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP test/master.test.js
-#PATH=$NODE_INSTALL/bin:$PATH node test/master.test.js
 PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP \
     test/master.test.js \
     test/master-caching.test.js \
     node_modules/amon-plugins/test/*.test.js
+
+# Also run the tests in the Amon Master(s).
+echo ""
+amon_masters=$(/smartdc/bin/sdc-mapi /machines?tag.smartdc_role=amon \
+    | ./test/node_modules/.bin/json3 -H -c 'running_status==="running"' -a server.uuid name -d: \
+    | xargs)
+for amon_master in $amon_masters; do
+    amon_master_node=${amon_master%:*}
+    amon_master_zonename=${amon_master#*:}
+    echo ""
+    echo "# Run Amon Master ${amon_master_zonename} test suite (on CN ${amon_master_node})."
+
+    output=$(/smartdc/bin/sdc-oneachnode -j -n ${amon_master_node} \
+        zlogin ${amon_master_zonename} \
+        /opt/smartdc/amon/node/bin/node /opt/smartdc/amon/test/*.test.js  \
+        | json 0)
+    echo $output | json result.stdout
+    echo $output | json result.stderr >2
+    exit_status=$(echo $output | json result.exit_status)
+    if [[ "$exit_status" != "0" ]]; then
+        exit $exit_status
+    fi
+done

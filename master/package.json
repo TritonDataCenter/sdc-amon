@@ -15,7 +15,8 @@
     "ldapjs": "0.4.8",
     "expiring-lru-cache": "2.0.x, >=2.0.1",
     "redis": "0.7",
-    "hiredis": "0.1"
+    "hiredis": "0.1",
+    "tap": "0.2"
   },
   "bundledDependences": [
     "sdc-clients"

@@ -167,6 +167,7 @@ pkg_master:
 	cp -PR master/bin \
 		master/lib \
 		master/smf \
+		master/test \
 		master/factory-settings.json \
 		master/main.js \
 		master/package.json \
