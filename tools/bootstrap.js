@@ -241,7 +241,9 @@ function createDevzone(next) {
       var headnodeUuid = servers[0].uuid;
       mapi.createMachine(bob.uuid, {
           package: "regular_128",
-          ram: 64,
+          //XXX I can't update my pkgsrc database in a zone with 64MB for
+          //    some reason. Don't want to debug that now.
+          //ram: 64,
           alias: "amondevzone",
           dataset_urn: "smartos",
           server_uuid: headnodeUuid,
