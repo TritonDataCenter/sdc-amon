@@ -1,0 +1,20 @@
+#!/bin/bash
+#
+# Rsync the *test suite* files in this working copy to the install on the QA
+# "nightly" staging setup (i.e. the small DC setup from last night's build of
+# SDC master).
+#
+
+#set -x
+TOP=$(cd $(dirname $0)/../; pwd)
+RELAY_DIR=$TOP/relay
+NODE=root@10.99.99.7
+
+rsync -av ${TOP}/test/ \
+    $NODE:/opt/smartdc/agents/lib/node_modules/amon-relay/test/ \
+    --exclude "*.node" \
+    --exclude "*.log" \
+    --exclude "config.json" \
+    --exclude "prep.json" \
+    --exclude tmp/
+
