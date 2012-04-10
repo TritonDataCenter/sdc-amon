@@ -1,7 +1,6 @@
 # higher-level prios
 
 - test suites on staging (including adding for alarms) QA-101
-  - add the other test files
   - clean test data: clean out alarms for test users. Perhaps add an admin
       DELETE /alarms/:user/:id ?  Or just use DELETE /pub/alarms/:user/:id?
       Should DELETE be exposed to the user?
@@ -115,9 +114,12 @@
     //XXX validate the type is an existing probe type
     //XXX validate data for that probe type
 - [Trent] :login -> :uuid
+- Amon test cases for alarming
 - docs: move contact URN spec from master/lib/contact.js to the docs
 - Idea: have amon-master create event/alarm to operator if it cannot
   connect/work with UFDS.
+- look at New Relic: http://newrelic.com/
+- test Amon on CN
 - throttling on MonitorFakeFault
 - [Trent] test suite for relay and agent
 - 'ping-agent' probe type. Basically this is a test that the amon-relay <->
