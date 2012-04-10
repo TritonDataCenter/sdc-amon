@@ -85,8 +85,7 @@ echo ""
 #XXX Not yet running all tests (see QA-101).
 #PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP test/*.test.js
 PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP \
-    test/master.test.js \
-    test/master-caching.test.js \
+    test/*.test.js \
     node_modules/amon-plugins/test/*.test.js
 
 # Also run the tests in the Amon Master(s).
@@ -99,14 +98,14 @@ for amon_master in $amon_masters; do
     amon_master_zonename=${amon_master#*:}
     echo ""
     echo "# Run Amon Master ${amon_master_zonename} test suite (on CN ${amon_master_node})."
-
     output=$(/smartdc/bin/sdc-oneachnode -j -n ${amon_master_node} \
         zlogin ${amon_master_zonename} \
-        /opt/smartdc/amon/node/bin/node /opt/smartdc/amon/test/*.test.js  \
-        | json 0)
-    echo $output | json result.stdout
-    echo $output | json result.stderr >2
-    exit_status=$(echo $output | json result.exit_status)
+        /opt/smartdc/amon/test/runtests.sh \
+        || true)
+    #echo $output | json 0
+    echo $output | json 0.result.stdout
+    echo $output | json 0.result.stderr >&2
+    exit_status=$(echo $output | json 0.result.exit_status)
     if [[ "$exit_status" != "0" ]]; then
         exit $exit_status
     fi
