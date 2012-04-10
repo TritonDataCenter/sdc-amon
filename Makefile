@@ -162,7 +162,7 @@ pkg_master:
 	cp -PR $(NODE_INSTALL) $(BUILD)/pkg/pkg_master/root/opt/smartdc/amon/node
 	mkdir -p $(BUILD)/pkg/pkg_master/root/opt/smartdc/amon/node_modules
 	# '-H' to follow symlink for amon-common and amon-plugins node modules.
-	ls -d master/node_modules/* \
+	ls -d master/node_modules/* master/node_modules/.bin \
 		| xargs -n1 -I{} cp -HR {} $(BUILD)/pkg/pkg_master/root/opt/smartdc/amon/node_modules/
 	cp -PR master/bin \
 		master/lib \

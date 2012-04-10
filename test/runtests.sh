@@ -6,6 +6,10 @@
 # install dir (i.e. "/opt/smartdc/agents/lib/node_modules/amon-relay"
 # in the GZ).
 #
+# This creates .tap files in the OUTPUT_DIR (/var/tmp/amontest) that
+# can be processed by a TAP reader. Testing config and log files are
+# also placed in this dir.
+#
 # Options:
 #   --just-clean        Stop after cleaning out old data. Must be first arg.
 #
@@ -25,8 +29,16 @@ TOP=$(cd $(dirname $0)/../; pwd)
 NODE_INSTALL=$TOP/build/node
 TAP=./test/node_modules/.bin/tap
 
+
 # Get the operator toolkit (specifically 'sdc-amon') on the PATH.
 PATH=/smartdc/bin:$PATH
+
+
+# Setup a clean output dir.
+OUTPUT_DIR=/var/tmp/amontest
+echo "# Setup a clean output dir ($OUTPUT_DIR)."
+rm -rf /var/tmp/amontest
+mkdir -p /var/tmp/amontest
 
 
 # Gather datacenter data to be used by the test suite.
@@ -45,6 +57,7 @@ export REDIS_HOST=$(echo $CONFIG_redis_admin_ips | cut -d, -f1)
 export REDIS_PORT=6379
 export DATACENTER_NAME=$CONFIG_datacenter_name
 
+echo ""
 echo "# Datacenter config:"
 echo "# AMON_URL is $AMON_URL"
 echo "# UFDS_URL is $UFDS_URL"
@@ -60,7 +73,6 @@ echo "# DATACENTER_NAME is $DATACENTER_NAME"
 
 # Currently not sure if we need to run from $TOP. Let's just do so.
 cd $TOP
-
 
 # Clean old test data.
 echo ""
@@ -82,30 +94,37 @@ sdc-amon /state?action=dropcaches -X POST >/dev/null
 
 # Run the tests includes with the relay.
 echo ""
-#XXX Not yet running all tests (see QA-101).
-#PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP test/*.test.js
 PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP \
     test/*.test.js \
-    node_modules/amon-plugins/test/*.test.js
+    node_modules/amon-plugins/test/*.test.js \
+    | tee $OUTPUT_DIR/amon-relay.tap
 
 # Also run the tests in the Amon Master(s).
 echo ""
 amon_masters=$(/smartdc/bin/sdc-mapi /machines?tag.smartdc_role=amon \
-    | ./test/node_modules/.bin/json3 -H -c 'running_status==="running"' -a server.uuid name -d: \
+    | ./test/node_modules/.bin/json3 -H -c 'running_status==="running"' -a server.uuid name alias -d: \
     | xargs)
 for amon_master in $amon_masters; do
-    amon_master_node=${amon_master%:*}
-    amon_master_zonename=${amon_master#*:}
+    # Parse "$server_uuid:$zonename:$alias".
+    amon_master_node=$(echo $amon_master | cut -d: -f1)
+    amon_master_zonename=$(echo $amon_master | cut -d: -f2)
+    amon_master_alias=$(echo $amon_master | cut -d: -f3)
     echo ""
-    echo "# Run Amon Master ${amon_master_zonename} test suite (on CN ${amon_master_node})."
+    echo "# Run Amon Master ${amon_master_zonename} (alias $amon_master_alias) test suite (on CN ${amon_master_node})."
     output=$(/smartdc/bin/sdc-oneachnode -j -n ${amon_master_node} \
         zlogin ${amon_master_zonename} \
         /opt/smartdc/amon/test/runtests.sh \
         || true)
     #echo $output | json 0
+    amon_master_output=$OUTPUT_DIR/amon-master-$amon_master_alias.tap
+    echo $output | json 0.result.stdout > $amon_master_output
+    echo "# Wrote '$amon_master_output'."
+    echo "stdout:"
     echo $output | json 0.result.stdout
+    echo "stderr:"
     echo $output | json 0.result.stderr >&2
     exit_status=$(echo $output | json 0.result.exit_status)
+    echo "exit_status: $exit_status"
     if [[ "$exit_status" != "0" ]]; then
         exit $exit_status
     fi
