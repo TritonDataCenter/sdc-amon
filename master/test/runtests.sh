@@ -14,7 +14,7 @@ set -o pipefail
 
 
 TOP=$(cd $(dirname $0)/../; pwd)
-NODE_INSTALL=$TOP/node
+NODE_INSTALL=$TOP/build/node
 TAP=./node_modules/.bin/tap
 
 cd $TOP

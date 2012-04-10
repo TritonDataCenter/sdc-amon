@@ -157,13 +157,13 @@ pkg_agent:
 
 .PHONY: pkg_master
 pkg_master:
-	rm -fr $(BUILD)/pkg/pkg_master
-	mkdir -p $(BUILD)/pkg/pkg_master/root/opt/smartdc/amon
-	cp -PR $(NODE_INSTALL) $(BUILD)/pkg/pkg_master/root/opt/smartdc/amon/node
-	mkdir -p $(BUILD)/pkg/pkg_master/root/opt/smartdc/amon/node_modules
+	rm -fr $(BUILD)/pkg/master
+	mkdir -p $(BUILD)/pkg/master/root/opt/smartdc/amon/build
+	cp -PR $(NODE_INSTALL) $(BUILD)/pkg/master/root/opt/smartdc/amon/build/node
+	mkdir -p $(BUILD)/pkg/master/root/opt/smartdc/amon/node_modules
 	# '-H' to follow symlink for amon-common and amon-plugins node modules.
 	ls -d master/node_modules/* master/node_modules/.bin \
-		| xargs -n1 -I{} cp -HR {} $(BUILD)/pkg/pkg_master/root/opt/smartdc/amon/node_modules/
+		| xargs -n1 -I{} cp -HR {} $(BUILD)/pkg/master/root/opt/smartdc/amon/node_modules/
 	cp -PR master/bin \
 		master/lib \
 		master/smf \
@@ -171,17 +171,17 @@ pkg_master:
 		master/factory-settings.json \
 		master/main.js \
 		master/package.json \
-		$(BUILD)/pkg/pkg_master/root/opt/smartdc/amon/
+		$(BUILD)/pkg/master/root/opt/smartdc/amon/
 
 	# Trim out some unnecessary, duplicated, or dev-only pieces.
-	find $(BUILD)/pkg/pkg_master -name "*.pyc" | xargs rm -f
-	find $(BUILD)/pkg/pkg_master -name "*.o" | xargs rm -f
-	find $(BUILD)/pkg/pkg_master -name c4che | xargs rm -rf   # waf build file
-	find $(BUILD)/pkg/pkg_master -name .wafpickle* | xargs rm -rf   # waf build file
-	find $(BUILD)/pkg/pkg_master -name .lock-wscript | xargs rm -rf   # waf build file
-	find $(BUILD)/pkg/pkg_master -name config.log | xargs rm -rf   # waf build file
+	find $(BUILD)/pkg/master -name "*.pyc" | xargs rm -f
+	find $(BUILD)/pkg/master -name "*.o" | xargs rm -f
+	find $(BUILD)/pkg/master -name c4che | xargs rm -rf   # waf build file
+	find $(BUILD)/pkg/master -name .wafpickle* | xargs rm -rf   # waf build file
+	find $(BUILD)/pkg/master -name .lock-wscript | xargs rm -rf   # waf build file
+	find $(BUILD)/pkg/master -name config.log | xargs rm -rf   # waf build file
 
-	(cd $(BUILD)/pkg/pkg_master \
+	(cd $(BUILD)/pkg/master \
 		&& $(TAR) cjf $(shell unset CDPATH; cd $(BUILD); pwd)/amon-pkg-$(STAMP).tar.bz2 *)
 	@echo "Created '$(BUILD)/amon-pkg-$(STAMP).tar.bz2'."
 
