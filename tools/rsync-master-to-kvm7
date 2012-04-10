@@ -4,7 +4,7 @@
 # GZ.
 #
 
-set -x
+#set -x
 TOP=$(cd $(dirname $0)/../; pwd)
 NODE=root@10.2.207.2
 

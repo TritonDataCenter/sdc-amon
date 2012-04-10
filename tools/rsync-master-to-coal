@@ -3,7 +3,7 @@
 # Rsync the master in this working copy to the install on the COAL headnode GZ.
 #
 
-set -x
+#set -x
 TOP=$(cd $(dirname $0)/../; pwd)
 COAL=root@10.99.99.7
 

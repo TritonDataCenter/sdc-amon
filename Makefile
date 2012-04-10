@@ -216,16 +216,42 @@ dumpvar:
 #XXX Add to check:: target as check-jshint
 .PHONY: jshint
 jshint:
-	$(JSHINT) common/lib plugins/lib master/main.js master/lib relay/main.js relay/lib agent/main.js agent/lib
+	$(JSHINT) common/lib \
+		plugins/lib plugins/test \
+		master/main.js master/lib master/test \
+		relay/main.js relay/lib \
+		agent/main.js agent/lib \
+		test
 
 .PHONY: test
 test:
-	[ -f test/config.json ] \
-		|| (echo "error: no 'test/config.json', use 'test/config.json.in'" && exit 1)
-	[ -f test/prep.json ] \
-		|| (echo "error: no 'test/prep.json', run 'cd test && node prep.js'" && exit 1)
-	./test/clean-test-data.sh
-	PATH=$(NODE_INSTALL)/bin:$(PATH) TAP=1 $(TAP) test/*.test.js
+	[ $(shell uname) == "SunOS" ] \
+		|| (echo "error: can only run test suite on smartos GZ (perhaps try 'make test-coal'" && exit 1)
+	./test/runtests.sh
+
+.PHONY: test-coal
+COAL=root@10.99.99.7
+test-coal:
+	./tools/rsync-master-to-coal
+	./tools/rsync-relay-to-coal
+	./tools/rsync-agent-to-coal
+	ssh $COAL /opt/smartdc/agents/lib/node_modules/amon-relay/test/runtests.sh
+
+# Test on Trent's kvm7.
+.PHONY: test-kvm7
+test-kvm7:
+	./tools/rsync-master-to-kvm7
+	./tools/rsync-relay-to-kvm7
+	./tools/rsync-agent-to-kvm7
+	ssh kvm7 /opt/smartdc/agents/lib/node_modules/amon-relay/test/runtests.sh
+
+# Test on Trent's kvm7.
+.PHONY: test-kvm7
+test-kvm7:
+	./tools/rsync-master-to-kvm7
+	./tools/rsync-relay-to-kvm7
+	./tools/rsync-agent-to-kvm7
+	ssh kvm7 /opt/smartdc/agents/lib/node_modules/amon-relay/test/runtests.sh
 
 tmp:
 	mkdir -p tmp

@@ -410,39 +410,26 @@ What should happen now:
 
 ## Testing
 
-The test suite is in the 'test' directory.
+Currently the primary client of the test suite is testing *in a full
+install of all Amon components in a full SDC setup*. The bulk of the test
+suite (everything under "test/...") is installed with the Amon Relay
+(i.e. in the GZ).
 
-First, create the test configuration:
+You can run the test suite from there as follows:
 
-    cd test && cp config.json.in config.json
-    vi config.json   # enter MAPI_PASSWORD and DATACENTER_NAME
+    cd /opt/smartdc/agents/lib/node_modules/amon-relay
+    ./test/runtests.sh
 
-Default config notes:
+This will run all the main tests against the running Amon system and also
+login to the Amon Master zone(s) and run its local test suite. Results
+are dumped to "/var/tmp/amontest/*.tap" (also to stdout).
 
-- Presumes a UFDS running in COAL.
-- Master tests use a 'email' notification plugin using the 'testy' module.
-- Uses port 7000 to intentionally differ from the master default of 8080,
-  which you might already be using for a dev server.
+To test your local changes on COAL try:
 
-Second, prepare your COAL for testing with a test user, key and zone:
+    make test-coal
 
-    cd test
-    node prep.js   # creates prep.json used by test suite.
-
-Now run the test suite:
-
-    make test
-
-You can run individual test files to get more detailed output, for example:
-
-    cd test
-    ../bin/node master.test.js
-
-If you are getting spurious errors, it may be that a previous test run
-has left crud data in UFDS. Clean it out by running:
-
-    ./test/clean-test-data.sh   # `make test` does this as well
-
+This will rsync your master/relay/agent changes to COAL and run the
+test suite there.
 
 
 # Screencasts

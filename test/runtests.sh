@@ -129,3 +129,8 @@ for amon_master in $amon_masters; do
         exit $exit_status
     fi
 done
+
+
+echo ""
+echo "# test output:"
+ls $OUTPUT_DIR/*.tap
