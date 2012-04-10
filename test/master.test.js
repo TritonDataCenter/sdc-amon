@@ -123,11 +123,11 @@ var webhooks = [];
 
 test('setup: webhook collector', function (t) {
   webhookCollector = http.createServer(function (req, res) {
-    console.log("# webhookCollector request (%s %s)", req.method, req.url);
+    console.log('# webhookCollector request (%s %s)', req.method, req.url);
     var hit = {
       time: Date.now(),
       url: req.url,
-      method: req.method,
+      method: req.method
     };
     var body = '';
     req.on('data', function (chunk) {
@@ -136,7 +136,7 @@ test('setup: webhook collector', function (t) {
     req.on('end', function () {
       try {
         hit.body = JSON.parse(body);
-      } catch(err) {
+      } catch (err) {
         hit.body = body;
       }
       webhooks.push(hit); // global 'webhooks'
@@ -188,7 +188,8 @@ test('user', function (t) {
 //---- test: monitors
 
 test('monitors: list empty', function (t) {
-  masterClient.get('/pub/amontestuserulrich/monitors', function (err, req, res, obj) {
+  masterClient.get('/pub/amontestuserulrich/monitors',
+                   function (err, req, res, obj) {
     t.ifError(err, '/pub/amontestuserulrich/monitors');
     t.ok(Array.isArray(obj), 'response is an array');
     t.equal(obj.length, 0, 'empty array');
@@ -255,7 +256,8 @@ test('monitors: create with bogus contact', function (t) {
 
 test('monitors: list', function (t) {
   var monitors = FIXTURES.ulrich.monitors;
-  masterClient.get('/pub/amontestuserulrich/monitors', function (err, req, res, obj) {
+  masterClient.get('/pub/amontestuserulrich/monitors',
+                   function (err, req, res, obj) {
     t.ifError(err);
     t.ok(Array.isArray(obj));
     t.equal(obj.length, Object.keys(monitors).length);
@@ -294,8 +296,8 @@ test('monitors: get 404', function (t) {
 test('probes: list empty', function (t) {
   var monitors = FIXTURES.ulrich.monitors;
   async.forEach(Object.keys(monitors), function (monitorName, next) {
-     var probes = monitors[monitorName].probes;
-    var path = format('/pub/amontestuserulrich/monitors/%s/probes', monitorName);
+    var path = format('/pub/amontestuserulrich/monitors/%s/probes',
+                      monitorName);
     masterClient.get(path, function (err, req, res, obj) {
       t.ifError(err, path);
       t.ok(Array.isArray(obj), 'response is an array');
@@ -337,7 +339,6 @@ test('probes: create', function (t) {
 
 
 test('probes: create without owning zone', function (t) {
-   var monitor = FIXTURES.ulrich.monitors.whistle;
   var probes = {
     'donotown': {
       'machine': prep.mapiZonename, // Just using any zone ulrich doesn't own.
@@ -382,7 +383,8 @@ test('probes: create for server without being operator', function (t) {
   var probes = FIXTURES.ulrich.monitors.gz.probes;
   async.forEach(Object.keys(probes), function (probeName, nextProbe) {
     var probe = probes[probeName];
-    var path = format('/pub/amontestuserulrich/monitors/gz/probes/%s', probeName);
+    var path = format('/pub/amontestuserulrich/monitors/gz/probes/%s',
+                      probeName);
     masterClient.put(path, probe,
       function (err, req, res, obj) {
         t.ok(err);
@@ -431,7 +433,8 @@ test('probes: list', function (t) {
   var monitors = FIXTURES.ulrich.monitors;
   async.forEach(['whistle', 'sanscontactfield'], function (monitorName, next) {
     var probes = monitors[monitorName].probes;
-    var path = format('/pub/amontestuserulrich/monitors/%s/probes', monitorName);
+    var path = format('/pub/amontestuserulrich/monitors/%s/probes',
+                      monitorName);
     masterClient.get(path, function (err, req, res, obj) {
       t.ifError(err, path);
       t.ok(Array.isArray(obj), 'listProbes response is an array');
@@ -455,7 +458,8 @@ test('probes: get', function (t) {
     async.forEach(Object.keys(probes), function (probeName, nextProbe) {
       var probe = probes[probeName];
       masterClient.get(
-        format('/pub/amontestuserulrich/monitors/%s/probes/%s', monitorName, probeName),
+        format('/pub/amontestuserulrich/monitors/%s/probes/%s', monitorName,
+               probeName),
         function (err, req, res, obj) {
           t.ifError(err);
           t.equal(obj.name, probeName);
@@ -514,7 +518,6 @@ test('relay api: ListAgentProbes', function (t) {
 });
 
 test('relay api: HeadAgentProbes', function (t) {
-  var probe = FIXTURES.ulrich.monitors.whistle.probes.whistlelog;
   masterClient.head('/agentprobes?machine=' + prep.amontestzone.name,
     function (err, headers, res) {
       t.ifError(err);
@@ -540,7 +543,7 @@ test('relay api: AddEvents', function (t) {
       value: null,
       details: {
         machine: prep.amontestzone.name
-      },
+      }
     },
     machine: prep.amontestzone.name,
     server: prep.headnodeUuid,
@@ -554,14 +557,15 @@ test('relay api: AddEvents', function (t) {
       t.ifError(err);
       var sentinel = 5;
       var poll = setInterval(function () {
-        console.log("# webhook poll (sentinel=%d)", sentinel);
+        console.log('# webhook poll (sentinel=%d)', sentinel);
         if (--sentinel <= 0) {
           t.ok(false, 'timeout waiting for webhook notification');
           clearInterval(poll);
           t.end();
         }
         if (webhooks.length > nBefore) {
-          t.equal(webhooks.length, nBefore + 1, 'only one webhook notification');
+          t.equal(webhooks.length, nBefore + 1,
+                  'only one webhook notification');
           var hit = webhooks[nBefore];
           t.equal(hit.method, 'POST', 'webhook is a POST');
           var notification = hit.body;
@@ -620,24 +624,26 @@ test('delete monitors and probes', function (t) {
       t.ok(monitors.length > 0, 'should be some monitors to delete');
       async.forEach(monitors, function (monitor, nextMonitor) {
         url = format('/pub/%s/monitors/%s/probes', user, monitor.name);
-        masterClient.get(url, function (err, req, res, probes) {
+        masterClient.get(url, function (pErr, pReq, pRes, probes) {
+          t.ifError(pErr, 'error getting probes: ' + url);
           async.forEach(probes, function (probe, nextProbe) {
             del(probe.user, probe.monitor, probe.name, nextProbe);
-          }, function (err) {
+          }, function (probesDelErr) {
             // Give riak some time to delete this so don't get 'UFDS:
-            // NotAllowedOnNonLeafError' error deleting the parent monitor below.
+            // NotAllowedOnNonLeafError' error deleting the parent monitor
+            // below.
             setTimeout(function () {
               del(monitor.user, monitor.name, null, nextMonitor);
             }, 3000);
           });
         });
-      }, function (err) {
-        //t.ifError(err, 'error deleting monitors for ' + user);
-        nextUser(err);
+      }, function (monitorsDelErr) {
+        //t.ifError(monitorsDelErr, 'error deleting monitors for ' + user);
+        nextUser(monitorsDelErr);
       });
     });
-  }, function (err) {
-    t.ifError(err);
+  }, function (usersClearErr) {
+    t.ifError(usersClearErr);
     t.end();
   });
 });

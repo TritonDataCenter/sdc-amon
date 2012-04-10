@@ -25,32 +25,32 @@ var log = new Logger({
 });
 
 var CONFIG = {
-  "datacenterName": "testdc",
-  "notificationPlugins": {
-    "sms": {
-      "path": "../lib/notifications/twilio",
-      "config": {
-        "accountSid": "TODO",
-        "authToken": "TODO",
-        "from": "+15555555555",
-        "url": "https://todo.local/todo"
+  'datacenterName': 'testdc',
+  'notificationPlugins': {
+    'sms': {
+      'path': '../lib/notifications/twilio',
+      'config': {
+        'accountSid': 'TODO',
+        'authToken': 'TODO',
+        'from': '+15555555555',
+        url: 'https://todo.local/todo'
       }
     },
-    "email": {
-      "path": "../lib/notifications/email",
-      "config": {
-        "smtp": {
-          "host": "127.0.0.1",
-          "port": 25,
-          "ssl": false,
-          "use_authentication": false
+    'email': {
+      'path': '../lib/notifications/email',
+      'config': {
+        'smtp': {
+          'host': '127.0.0.1',
+          'port': 25,
+          'ssl': false,
+          'use_authentication': false
         },
-        "from": "\"Monitoring\" <no-reply@joyent.com>"
+        'from': '\"Monitoring\" <no-reply@joyent.com>'
       }
     },
-    "webhook": {
-      "path": "../lib/notifications/webhook",
-      "config": {}
+    'webhook': {
+      'path': '../lib/notifications/webhook',
+      'config': {}
     }
   }
 };

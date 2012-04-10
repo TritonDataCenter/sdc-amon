@@ -49,7 +49,8 @@ var FIXTURES = {
 //---- test: monitors
 
 test('monitors: list empty', function (t) {
-  masterClient.get('/pub/amontestuserulrich/monitors', function (err, req, res, obj) {
+  masterClient.get('/pub/amontestuserulrich/monitors',
+                   function (err, req, res, obj) {
     t.ifError(err);
     t.ok(Array.isArray(obj));
     t.equal(obj.length, 0);
@@ -105,7 +106,8 @@ test('monitors: create', function (t) {
 // the new value.
 test('monitors: list', function (t) {
   var monitors = FIXTURES.ulrich.monitors;
-  masterClient.get('/pub/amontestuserulrich/monitors', function (err, req, res, obj) {
+  masterClient.get('/pub/amontestuserulrich/monitors',
+                   function (err, req, res, obj) {
     t.ifError(err);
     t.ok(Array.isArray(obj));
     t.equal(obj.length, Object.keys(monitors).length);
@@ -197,7 +199,8 @@ test('probes: list empty', function (t) {
   var monitors = FIXTURES.ulrich.monitors;
   async.forEach(Object.keys(monitors), function (monitorName, next) {
     // var probes = monitors[monitorName].probes;
-    masterClient.get(format('/pub/amontestuserulrich/monitors/%s/probes', monitorName),
+    masterClient.get(
+      format('/pub/amontestuserulrich/monitors/%s/probes', monitorName),
       function (err, req, res, obj) {
         t.ifError(err);
         t.ok(Array.isArray(obj));
@@ -277,7 +280,8 @@ test('probes: list', function (t) {
   var monitors = FIXTURES.ulrich.monitors;
   async.forEach(Object.keys(monitors), function (monitorName, next) {
     var probes = monitors[monitorName].probes;
-    masterClient.get(format('/pub/amontestuserulrich/monitors/%s/probes', monitorName),
+    masterClient.get(
+      format('/pub/amontestuserulrich/monitors/%s/probes', monitorName),
       function (err, req, res, obj) {
         t.ifError(err);
         t.ok(Array.isArray(obj), 'listProbes response is an array');
@@ -308,7 +312,8 @@ test('probes: get', function (t) {
     async.forEach(Object.keys(probes), function (probeName, nextProbe) {
       var probe = probes[probeName];
       masterClient.get(
-        format('/pub/amontestuserulrich/monitors/%s/probes/%s', monitorName, probeName),
+        format('/pub/amontestuserulrich/monitors/%s/probes/%s', monitorName,
+               probeName),
         function (err, req, res, obj) {
           t.ifError(err);
           t.equal(obj.name, probeName);
@@ -397,7 +402,8 @@ test('probes: delete', function (t) {
     async.forEach(Object.keys(probes), function (probeName, nextProbe) {
       // var probe = probes[probeName];
       masterClient.del(
-        format('/pub/amontestuserulrich/monitors/%s/probes/%s', monitorName, probeName),
+        format('/pub/amontestuserulrich/monitors/%s/probes/%s', monitorName,
+               probeName),
         function (err, headers, res) {
           t.ifError(err);
           t.equal(res.statusCode, 204);
@@ -436,7 +442,8 @@ test('monitors: delete', function (t) {
 //---- test that list/get are now empty again
 
 test('monitors: list empty again', function (t) {
-  masterClient.get('/pub/amontestuserulrich/monitors', function (err, req, res, obj) {
+  masterClient.get('/pub/amontestuserulrich/monitors',
+                   function (err, req, res, obj) {
     t.ifError(err);
     t.ok(Array.isArray(obj));
     t.equal(obj.length, 0);

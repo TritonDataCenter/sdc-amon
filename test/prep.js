@@ -172,7 +172,7 @@ function addUlrichKey(next) {
  *    http://<global zone ip>:8000/
  */
 function addUlrichTestWebhookContact(next) {
-  log('# Add/update "testWebhook" contact for ulrich.')
+  log('# Add/update "testWebhook" contact for ulrich.');
 
   // The test suite runs a webhook collector in the zone from which the test
   // suite is being run: typically the headnode GZ. We need the Amon Master
@@ -317,7 +317,7 @@ function createAmontestzone(next) {
 function getMapiZonename(next) {
   log('# Get MAPI zonename.');
 
-  child = exec('vmadm lookup -1 alias=mapi', function (err, stdout, stderr) {
+  exec('vmadm lookup -1 alias=mapi', function (err, stdout, stderr) {
     if (err) {
       return next(err);
     }
