@@ -38,7 +38,6 @@
  *   'server:$server-uuid:$probe-type') for that alarm.
  * - 'alarmIds' is a hash with a (lazy) alarm id counter for each user.
  *   `HINCRBY alarmIds $userUuid 1` to get the next alarm id for that user.
- * - Storing events: XXX
  *
  *
  * Alarm Id:
@@ -930,6 +929,29 @@ function apiUnsuppressAlarmNotifications(req, res, next) {
 
 
 /**
+ * Delete a given alarm.
+ * See: <https://mo.joyent.com/docs/amon/master/#DeleteAlarm>
+ */
+function apiDeleteAlarm(req, res, next) {
+  var userUuid = req._user.uuid;
+  var alarm = req._alarm;
+  var alarmsKey = 'alarms:' + userUuid;
+
+  var multi = req._app.getRedisClient().multi();
+  multi.srem(alarmsKey, alarm.id);
+  multi.del(alarm._key);
+  multi.del(alarm._faultsKey);
+  multi.exec(function (err, replies) {
+    if (err) {
+      return next(err);  //XXX xlate redis err
+    }
+    res.send(204);
+    next();
+  });
+}
+
+
+/**
  * Mount API endpoints
  *
  * @param server {restify.Server}
@@ -955,6 +977,9 @@ function mount(server) {
           '"%s" is not a valid action', req.query.action));
       return next(new restify.MissingParameterError('"action" is required'));
     });
+  server.del({path: '/pub/:user/alarms/:alarm', name: 'DeleteAlarm'},
+    reqGetAlarm,  // add `req.alarm` for the subsequent handlers
+    apiDeleteAlarm);
 }
 
 

@@ -484,6 +484,7 @@ More detail:
 - Ability to disable a monitor.
 - Ability for customer to set a maintenance window on a monitor (alert
   suppression for a pre-defined period of time).
+  Q: How about for a customer to set a maint window on "all my monitors"?
 - Ability for operator to set a maintenance window on a CN and on the whole
   cloud. This would disable alerts to operator.
   Q: Disable alerts to customers? How about it adds a "BTW, this is during a

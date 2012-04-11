@@ -6,7 +6,6 @@
       Should DELETE be exposed to the user?
   - make the test suite totally clean up users and zones by default,
     with '--fast' option to skip that
-  - move test/notifications.test.js over to master/test and runtests.sh to call those
   - TICKET: UpdateMonitor -> ?action=synccontacts.
     This'll drop the userCache entry for that monitor owner (more complex
     for groups).
@@ -41,6 +40,7 @@
 - update to latest ldapjs for #49 and #50 fixes
 - update others to restify 1.1
 - update to and use npm shrinkwrap
+- removing old alarms
 - Relay needs to have guards for run away agents. One case is an infinite
   loop: a probe watching for "ERROR" in amon logs, where sending the
   event results in an "ERROR". Handle this with relay per-agent throttling

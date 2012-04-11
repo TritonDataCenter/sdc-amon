@@ -130,11 +130,6 @@ TODO
 
 TODO
 
-## DeleteMonitor (DELETE /pub/:user/monitors/:monitor)
-
-TODO
-
-
 ## FakeMonitorFault (POST /pub/:user/monitors/:monitor?action=fakefault)
 
 Fake a fault on this monitor. This will send in fake event for this monitor.
@@ -169,6 +164,11 @@ to all contacts for this monitor (depending on current suppression rules).
     {
       "success": true
     }
+
+## DeleteMonitor (DELETE /pub/:user/monitors/:monitor)
+
+TODO
+
 
 
 
@@ -230,11 +230,11 @@ TODO
     ]
 
 
-## PutProbe (PUT /pub/:user/monitors/:monitor/probes/:probe)
+## GetProbe (GET /pub/:user/monitors/:monitor/probes/:probe)
 
 TODO
 
-## GetProbe (GET /pub/:user/monitors/:monitor/probes/:probe)
+## PutProbe (PUT /pub/:user/monitors/:monitor/probes/:probe)
 
 TODO
 
@@ -579,6 +579,45 @@ For all possible errors, see [Error Response](#error-responses) above.
     Date: Mon, 02 Apr 2012 17:15:52 GMT
     X-Response-Time: 3
 
+
+## DeleteAlarm (DELETE /pub/:user/alarms/:alarm)
+
+Delete the given alarm. This is more severe than [*closing* an
+alarm](#CloseAlarm) and typically should not be something a user is doing.
+At least for first blush I'd suggest *not* exposing this to the user.
+
+
+### Inputs
+
+||**Field**||**Type**||**Description**||
+||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||alarm (in URL)||Integer||The alarm id for this user.||
+
+### Returns
+
+Nothing. Responds with an HTTP 204 (Accepted) on success.
+
+### Errors
+
+For all possible errors, see [Error Response](#error-responses) above.
+
+||**Error Code**||**HTTP Code**||**Description**||
+||ResourceNotFound||404||If `user` does not exist or the `alarm` id does not exist.||
+
+### Example
+
+    $ sdc-amon /pub/bob/alarms/123 -X DELETE
+    HTTP/1.1 204 No Content
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    Server: Amon Master/1.0.0
+    X-Request-Id: 727e929a-d735-c748-96ae-5e2762764531
+    Access-Control-Allow-Methods: DELETE
+    Connection: close
+    Content-Length: 0
+    Date: Mon, 02 Apr 2012 17:15:52 GMT
+    X-Response-Time: 3
 
 
 # Master API: Miscellaneous
