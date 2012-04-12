@@ -2,6 +2,9 @@
 #
 # Clean out Amon test data.
 #
+# Usage:
+#       ./clean-test-data.sh [-q]
+#
 
 if [[ -n "$TRACE" ]]; then
     export PS4='${BASH_SOURCE}:${LINENO}: ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
@@ -11,6 +14,10 @@ set -o errexit
 set -o pipefail
 
 
+TOP=$(unset CDPATH; cd $(dirname $0)/../; pwd)
+JSON3=$TOP/test/node_modules/.bin/json
+
+
 function cleanup () {
     local status=$?
     if [[ $status -ne 0 ]]; then
@@ -18,10 +25,6 @@ function cleanup () {
     fi
 }
 trap 'cleanup' EXIT
-
-
-TOP=$(unset CDPATH; cd $(dirname $0)/../; pwd)
-JSON3=$TOP/test/node_modules/.bin/json
 
 
 function clearUser() {
@@ -50,28 +53,51 @@ function clearUser() {
         sdc-amon /pub/$login/alarms/$alarm -X DELETE -f >/dev/null
     done
 
-    local machines=$(sdc-mapi /machines?owner_uuid=$uuid \
-        | $JSON3 -c 'this.running_status==="running"' -Ha name | xargs)
-    for machine in $machines; do
-        echo "# DELETE /machines/$machine"
-        sdc-mapi /machines/$machine -X DELETE -f >/dev/null
-    done
+    if [[ ! -n "$opt_quick_clean" ]]; then
+        local machines=$(sdc-mapi /machines?owner_uuid=$uuid \
+            | $JSON3 -c 'this.running_status==="running"' -Ha name | xargs)
+        for machine in $machines; do
+            echo "# DELETE /machines/$machine"
+            sdc-mapi /machines/$machine -X DELETE -f >/dev/null
+        done
 
-    local person="uuid=$uuid, ou=users, o=smartdc"
+        local person="uuid=$uuid, ou=users, o=smartdc"
 
-    # keys (Basically we are explicitly going through any objects under the
-    # sdcPerson).
-    local keys=$(sdc-ldap search -b "$person" objectclass=sdckey dn \
-        | sed "s/^dn: //" | sed 's/, /,/g' | xargs)
-    for key in $keys; do
-        echo "# Delete sdckey '$key'"
-        sdc-ldap delete "$key"
-    done
-    #XXX Need sleep after these to avoid non-leaf deletes?
+        # Blow away all children of the user to avoid "ldap_delete: Operation
+        # not allowed on non-leaf (66)".
+        local children=$(sdc-ldap search -b "$person" dn \
+            | (grep dn || true) \
+            | grep -v "dn: $person" \
+            | sed 's/^dn: //' \
+            | sed 's/, /,/g' | xargs)
+        for child in $children; do
+            echo "# Delete '$child'"
+            sdc-ldap delete "$child"
+            # Lame attempt to avoid "ldap_delete: Operation not allowed on
+            # non-leaf (66)" delete error race on deleting the sdc-person.
+            sleep 1
+        done
 
-    echo "# Delete sdcperson '$person'."
-    sdc-ldap delete "$person"
+        echo "# Delete sdcperson '$person'."
+        sdc-ldap delete "$person"
+    fi
 }
+
+
+# Options.
+opt_quick_clean=
+while getopts "q" opt
+do
+    case "$opt" in
+        q)
+            opt_quick_clean=yes
+            ;;
+        *)
+            exit 1
+            ;;
+    esac
+done
+
 
 
 clearUser 'amontestuserulrich'

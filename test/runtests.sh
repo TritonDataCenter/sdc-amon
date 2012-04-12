@@ -10,11 +10,7 @@
 # can be processed by a TAP reader. Testing config and log files are
 # also placed in this dir.
 #
-# Options:
-#   --just-clean        Stop after cleaning out old data. Must be first arg.
-#
-#
-# XXX -f|--fast for a quick test run, i.e. don't blow away test users and zone
+# Run `./runtests.sh -h` for usage info.
 #
 
 if [ "$TRACE" != "" ]; then
@@ -34,6 +30,16 @@ function fatal
     exit 1
 }
 
+function usage
+{
+    echo "Usage:"
+    echo "  runtests.sh [OPTIONS...]"
+    echo ""
+    echo "Options:"
+    echo "  -c          Just clean up test data, don't run the tests."
+    echo "  -q          Quick clean (don't blow away test users and machines)."
+}
+
 
 
 #---- mainline
@@ -45,6 +51,30 @@ TAP=./test/node_modules/.bin/tap
 
 # Get the operator toolkit (specifically 'sdc-amon') on the PATH.
 PATH=/smartdc/bin:$PATH
+
+
+# Options.
+opt_just_clean=
+opt_quick_clean=
+while getopts "hcq" opt
+do
+    case "$opt" in
+        h)
+            usage
+            exit 0
+            ;;
+        c)
+            opt_just_clean=yes
+            ;;
+        q)
+            opt_quick_clean=yes
+            ;;
+        *)
+            usage
+            exit 1
+            ;;
+    esac
+done
 
 
 # Setup a clean output dir.
@@ -93,8 +123,12 @@ cd $TOP
 
 # Clean old test data.
 echo ""
-bash $TOP/test/clean-test-data.sh
-if [[ "$1" == "--just-clean" ]]; then
+clean_opts=
+if [[ -n "$opt_quick_clean" ]]; then
+    clean_opts+=" -q"
+fi
+bash $TOP/test/clean-test-data.sh $clean_opts
+if [[ -n "$opt_just_clean" ]]; then
     exit 0;
 fi
 
