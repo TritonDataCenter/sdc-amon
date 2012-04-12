@@ -25,6 +25,19 @@ set -o errexit
 set -o pipefail
 
 
+
+#---- support functions
+
+function fatal
+{
+    echo "$(basename $0): fatal error: $*"
+    exit 1
+}
+
+
+
+#---- mainline
+
 TOP=$(cd $(dirname $0)/../; pwd)
 NODE_INSTALL=$TOP/build/node
 TAP=./test/node_modules/.bin/tap
@@ -44,6 +57,10 @@ mkdir -p /var/tmp/amontest
 # Gather datacenter data to be used by the test suite.
 source /lib/sdc/config.sh
 load_sdc_config
+
+if [[ -z "$CONFIG_amon_admin_ips" ]]; then
+    fatal "No 'amon_admin_ips' config var. Is there an amon zone in 'sdc-setup -l'?"
+fi
 
 export AMON_URL=http://$(echo $CONFIG_amon_admin_ips | cut -d, -f1)
 export UFDS_URL=ldaps://$(echo $CONFIG_ufds_external_ips | cut -d, -f1):636
