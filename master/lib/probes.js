@@ -7,7 +7,6 @@
 
 var debug = console.warn;
 var events = require('events');
-var assert = require('assert');
 
 var ldap = require('ldapjs');
 var restify = require('restify');
@@ -53,12 +52,16 @@ var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
  */
 /* END JSSTYLED */
 function Probe(app, data) {
-  assert.ok(app);
-  assert.ok(data);
+  if (!app) throw new TypeError('"app" is required');
+  if (!data) throw new TypeError('"data" is required');
 
   var raw;
   if (data.objectclass) {  // from UFDS
-    assert.equal(data.objectclass, Probe.objectclass);
+    if (data.objectclass !== Probe.objectclass) {
+      throw new TypeError(format(
+        'invalid probe data: objectclass "%s" !== "%s"',
+        data.objectclass, Probe.objectclass));
+    }
     this.dn = data.dn;
     raw = objCopy(data);
     delete raw.dn;
@@ -66,9 +69,12 @@ function Probe(app, data) {
     this.user = parsed.user;
     this.monitor = parsed.monitor;
   } else {
-    assert.ok(data.name);
-    assert.ok(data.monitor);
-    assert.ok(data.user);
+    if (!data.name)
+      throw new TypeError('invalid probe data: no "name": ' + data);
+    if (!data.monitor)
+      throw new TypeError('invalid probe data: no "monitor": ' + data);
+    if (!data.user)
+      throw new TypeError('invalid probe data: no "user": ' + data);
     this.dn = Probe.dn(data.user, data.monitor, data.name);
     raw = {
       amonprobe: data.name,

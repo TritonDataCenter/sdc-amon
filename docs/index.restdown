@@ -785,7 +785,7 @@ the given probes and send an event when a probe test trips/fails.
 TODO
 
 
-## GetAgentProbes (GET /agentprobes)
+## ListAgentProbes (GET /agentprobes)
 
 Amon Relays periodically get agent control data (probes to run on a
 particular agent) from the master. From there, agents poll their relay for
@@ -815,7 +815,7 @@ TODO
 
 ## HeadAgentProbes (HEAD /agentprobes)
 
-This "HEAD" form of `GetAgentProbes` allows for relays and agents to check
+This "HEAD" form of `ListAgentProbes` allows for relays and agents to check
 for agent control data changes with less network overhead.
 
 TODO

@@ -73,9 +73,9 @@ test('monitors: list empty', function (t) {
 test('monitors: get a monitor not yet added', function (t) {
   async.forEach(Object.keys(FIXTURES.ulrich.monitors), function (name, next) {
     // var data = FIXTURES.ulrich.monitors[name];
-    masterClient.get('/pub/amontestuserulrich/monitors/'+name,
-                     function (err, req, res, obj) {
-      t.equal(err.httpCode, 404);
+    var url = '/pub/amontestuserulrich/monitors/' + name;
+    masterClient.get(url, function (err, req, res, obj) {
+      t.equal(err.httpCode, 404, 'should be 404 for GET ' + url);
       t.equal(err.restCode, 'ResourceNotFound');
       next();
     });
@@ -157,13 +157,13 @@ test('monitors: get', function (t) {
 
 var sulkyzoneContentMD5;
 
-test('GetAgentProbes before any probes', function (t) {
+test('ListAgentProbes before any probes', function (t) {
   // var probe = FIXTURES.ulrich.monitors.whistle.probes.whistlelog;
   masterClient.get('/agentprobes?machine=' + prep.amontestzone.name,
     function (err, req, res, obj) {
       t.ifError(err);
       sulkyzoneContentMD5 = res.headers['content-md5'];
-      t.ok(Array.isArray(obj), 'GetAgentProbes response is an array');
+      t.ok(Array.isArray(obj), 'ListAgentProbes response is an array');
       t.equal(obj.length, 0);
       t.end();
     }
@@ -378,7 +378,7 @@ test('HeadAgentProbes changed after probe added',
   );
 });
 
-test('GetAgentProbes', function (t) {
+test('ListAgentProbes', function (t) {
   // var probe = FIXTURES.ulrich.monitors.whistle.probes.whistlelog;
   masterClient.get('/agentprobes?machine=' + prep.amontestzone.name,
     function (err, req, res, obj) {

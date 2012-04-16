@@ -500,7 +500,7 @@ test('relay api: ListAgentProbes', function (t) {
     function (err, req, res, obj) {
       t.ifError(err);
       amontestzoneContentMD5 = res.headers['content-md5'];
-      t.ok(Array.isArray(obj), 'GetAgentProbes response is an array');
+      t.ok(Array.isArray(obj), 'ListAgentProbes response is an array');
       t.equal(obj.length, 2);
       var whistleprobe;
       obj.forEach(function (p) {

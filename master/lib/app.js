@@ -13,6 +13,7 @@ var restify = require('restify');
 var MAPI = require('sdc-clients').MAPI;
 var Cache = require('expiring-lru-cache');
 var redis = require('redis');
+var Pool = require('generic-pool').Pool;
 
 var amonCommon = require('amon-common'),
   Constants = amonCommon.Constants,
@@ -110,25 +111,12 @@ function createApp(config, log, callback) {
     password: config.mapi.password
   });
 
-  // TODO: should change to sdc-clients.UFDS at some point.
-  var ufds = ldap.createClient({
-    url: config.ufds.url
-    //connectTimeout: 30 * 1000   // 30 seconds
-  });
-
-  log.trace({rootDn: config.ufds.rootDn}, 'bind to UFDS');
-  ufds.bind(config.ufds.rootDn, config.ufds.password, function (err) {
-    if (err) {
-      return callback(err);
-    }
-    var app;
-    try {
-      app = new App(config, ufds, mapi, log);
-    } catch (e) {
-      return callback(e);
-    }
+  try {
+    var app = new App(config, mapi, log);
     return callback(null, app);
-  });
+  } catch (e) {
+    return callback(e);
+  }
 }
 
 
@@ -136,23 +124,67 @@ function createApp(config, log, callback) {
  * Constructor for the amon 'application'.
  *
  * @param config {Object} Config object.
- * @param ufds {ldapjs.Client} LDAP client to UFDS.
  * @param mapi {sdc-clients.MAPI} MAPI client.
  * @param log {Bunyan Logger instance}
  */
-function App(config, ufds, mapi, log) {
+function App(config, mapi, log) {
   var self = this;
   if (!config) throw TypeError('config is required');
   if (!config.port) throw TypeError('config.port is required');
-  if (!ufds) throw TypeError('ufds is required');
+  if (!config.ufds) throw new TypeError('config.ufds (Object) required');
   if (!mapi) throw TypeError('mapi is required');
 
   this.config = config;
-  this.ufds = ufds;
   this._ufdsCaching = (config.ufds.caching === undefined
     ? true : config.ufds.caching);
   this.mapi = mapi;
   this.log = log;
+
+  var ufdsPoolLog = log.child({'ufdsPool': true}, true);
+  this.ufdsPool = Pool({
+    name: 'ufds',
+    max: 10,
+    idleTimeoutMillis : 30000,
+    reapIntervalMillis: 5000,
+    create: function createUfdsClient(callback) {
+      // TODO: should change to sdc-clients.UFDS at some point.
+      var client = ldap.createClient({
+        url: config.ufds.url,
+        connectTimeout: 2 * 1000,  // 2 seconds (fail fast)
+        log: ufdsPoolLog
+      });
+      function onFail(failErr) {
+        callback(failErr);
+      }
+      client.once('error', onFail);
+      client.once('connectTimeout', onFail);
+      client.on('connect', function () {
+        client.removeListener('error', onFail);
+        client.removeListener('connectTimeout', onFail);
+        ufdsPoolLog.debug({rootDn: config.ufds.rootDn}, 'bind to UFDS');
+        client.bind(config.ufds.rootDn, config.ufds.password, function (bErr) {
+          if (bErr) {
+            return callback(bErr);
+          }
+          return callback(null, client);
+        });
+      });
+    },
+    destroy: function destroyUfdsClient(client) {
+      client.unbind(function () {
+        log.debug('unbound from UFDS');
+      });
+    },
+    log: function (msg, level) {
+      var fn = {
+        //'verbose': ufdsPoolLog.trace,  // disable this for prod, little wordy
+        'info': ufdsPoolLog.trace,
+        'warn': ufdsPoolLog.warn,
+        'error': ufdsPoolLog.error
+      }[level];
+      if (fn) fn.call(ufdsPoolLog, msg);
+    }
+  });
 
   this.notificationPlugins = {};
   if (config.notificationPlugins) {
@@ -234,7 +266,6 @@ function App(config, ufds, mapi, log) {
 
   function setup(req, res, next) {
     req._app = self;
-    req._ufds = self.ufds;
 
     // Handle ':user' in route: add `req._user` or respond with
     // appropriate error.
@@ -506,6 +537,131 @@ App.prototype.getStateSnapshot = function () {
   return snapshot;
 };
 
+
+/**
+ * UFDS search
+ *
+ * @param base {String}
+ * @param opts {String} Search options for `ufdsClient.search()`
+ * @param callback {Function} `function (err, items)`
+ */
+App.prototype.ufdsSearch = function ufdsSearch(base, opts, callback) {
+  var log = this.log;
+  var pool = this.ufdsPool;
+  pool.acquire(function (poolErr, client) {
+    if (poolErr) {
+      log.warn(poolErr, 'UFDS pool error');
+      return callback(new restify.ServiceUnavailableError(
+        'service unavailable'));
+    }
+
+    log.trace({filter: opts.filter}, 'ldap search');
+    client.search(base, opts, function (sErr, result) {
+      if (sErr) {
+        pool.release(client);
+        log.warn(sErr, 'UFDS search error');
+        // 503: presuming this is a "can't connect to UFDS" error.
+        return callback(new restify.ServiceUnavailableError(
+          'service unavailable'));
+      }
+
+      var items = [];
+      result.on('searchEntry', function (entry) {
+        items.push(entry.object);
+      });
+
+      result.on('error', function (err) {
+        pool.release(client);
+        return callback(err);  // XXX xlate err
+      });
+
+      result.on('end', function (res) {
+        pool.release(client);
+        if (res.status !== 0) {
+          return callback(new restify.InternalError(
+            'non-zero status from LDAP search: ' + res));
+        }
+        callback(null, items);
+      });
+    });
+  });
+};
+
+/**
+ * Add an item to UFDS
+ *
+ * @param dn {String}
+ * @param data {Object}
+ * @param callback {Function} `function (err)`
+ */
+App.prototype.ufdsAdd = function ufdsAdd(dn, data, callback) {
+  var log = this.log;
+  var pool = this.ufdsPool;
+  pool.acquire(function (poolErr, client) {
+    if (poolErr) {
+      log.warn(poolErr, 'UFDS pool error');
+      return callback(new restify.ServiceUnavailableError(
+        'service unavailable'));
+    }
+    client.add(dn, data, function (addErr) {
+      pool.release(client);
+      if (addErr) {
+        if (addErr instanceof ldap.EntryAlreadyExistsError) {
+          return callback(new restify.InternalError(
+            'XXX DN "'+dn+'" already exists. Can\'t nicely update '
+            + '(with LDAP modify/replace) until '
+            + '<https://github.com/mcavage/node-ldapjs/issues/31> is fixed.'));
+          //XXX Also not sure if there is another bug in node-ldapjs if
+          //    "objectclass" is specified in here. Guessing it is same bug.
+          //var change = new ldap.Change({
+          //  operation: 'replace',
+          //  modification: item.raw
+          //});
+          //client.modify(dn, change, function (err) {
+          //  if (err) console.warn("client.modify err: %s", err)
+          //  client.unbind(function (err) {});
+          //});
+          //XXX Does replace work if have children?
+        }
+        return callback(addErr); //XXX xlate error
+      }
+      callback();
+    });
+  });
+};
+
+/**
+ * Delete an item from UFDS
+ *
+ * @param dn {String}
+ * @param callback {Function} `function (err)`
+ */
+App.prototype.ufdsDelete = function ufdsDelete(dn, callback) {
+  var log = this.log;
+  var pool = this.ufdsPool;
+  pool.acquire(function (poolErr, client) {
+    if (poolErr) {
+      log.warn(poolErr, 'UFDS pool error');
+      return callback(new restify.ServiceUnavailableError(
+        'service unavailable'));
+    }
+    client.del(dn, function (delErr) {
+      pool.release(client);
+      if (delErr) {
+        if (delErr instanceof ldap.NoSuchObjectError) {
+          callback(new restify.ResourceNotFoundError());
+        } else {
+          log.error(delErr, 'Error deleting "%s" from UFDS', dn);
+          callback(new restify.InternalError());
+        }
+      } else {
+        callback();
+      }
+    });
+  });
+};
+
+
 /**
  * Facilitate getting user info (and caching it) from a login/username.
  *
@@ -564,7 +720,6 @@ App.prototype.userFromId = function (userId, callback) {
       self.userCache.set(userId, obj);
     }
     callback(err, user);
-    return;
   }
 
   // Look up the user, cache the result and return.
@@ -574,49 +729,30 @@ App.prototype.userFromId = function (userId, callback) {
       : '(&(login=' + login + ')(objectclass=sdcperson))'),
     scope: 'one'
   };
-  log.trace('search for user: ldap filter: %s', searchOpts.filter);
-  this.ufds.search('ou=users, o=smartdc', searchOpts, function (sErr, result) {
+  this.ufdsSearch('ou=users, o=smartdc', searchOpts, function (sErr, users) {
     if (sErr) {
-      cacheAndCallback(sErr);
-      return;
+      if (sErr.httpCode === 503) {
+        return callback(sErr);  // don't cache 503
+      } else {
+        return cacheAndCallback(sErr);
+      }
     }
-
-    var users = [];
-    result.on('searchEntry', function (entry) {
-      users.push(entry.object);
-    });
-
-    result.on('error', function (err) {
-      // `err` is an ldapjs error (<http://ldapjs.org/errors.html>) which is
-      // currently compatible enough so that we don't bother wrapping it in
-      // a `restify.RESTError`. (TODO: verify that)
-      cacheAndCallback(err);
-      return;
-    });
-
-    result.on('end', function (res) {
-      if (res.status !== 0) {
-        cacheAndCallback('non-zero status from LDAP search: ' + res);
-        return;
-      }
-      switch (users.length) {
-      case 0:
-        cacheAndCallback(null, null);
-        return;
-      case 1:
-        cacheAndCallback(null, users[0]);
-        return;
-      default:
-        log.error({searchOpts: searchOpts, users: users},
-          'unexpected number of users (%d) matching user id "%s"',
-          users.length, userId);
-        cacheAndCallback(new restify.InternalError(
-          format('error determining user for "%s"', userId)));
-          return;
-      }
-    });
+    switch (users.length) {
+    case 0:
+      cacheAndCallback(null, null);
+      break;
+    case 1:
+      cacheAndCallback(null, users[0]);
+      break;
+    default:
+      log.error({searchOpts: searchOpts, users: users},
+        'unexpected number of users (%d) matching user id "%s"',
+        users.length, userId);
+      cacheAndCallback(new restify.InternalError(
+        format('error determining user for "%s"', userId)));
+      break;
+    }
   });
-  return;
 };
 
 
@@ -660,33 +796,13 @@ App.prototype.isOperator = function (userUuid, callback) {
   };
   log.trace('search if user is operator: search opts: %s',
     JSON.stringify(searchOpts));
-  this.ufds.search(base, searchOpts, function (searchErr, result) {
+  this.ufdsSearch(base, searchOpts, function (searchErr, entries) {
     if (searchErr) {
       return callback(searchErr);
     }
-
-    var entries = [];
-    result.on('searchEntry', function (entry) {
-      return entries.push(entry.object);
-    });
-
-    result.on('error', function (err) {
-      // `err` is an ldapjs error (<http://ldapjs.org/errors.html>) which is
-      // currently compatible enough so that we don't bother wrapping it in
-      // a `restify.RESTError`. (TODO: verify that)
-      return callback(err);
-    });
-
-    result.on('end', function (res) {
-      if (res.status !== 0) {
-        //XXX restify this error
-        return callback('non-zero status from LDAP search: '+res);
-      }
-      var isOperator = (entries.length > 0);
-      self.isOperatorCache.set(userUuid, {isOperator: isOperator});
-      return callback(null, isOperator);
-    });
-    return true;
+    var isOperator = (entries.length > 0);
+    self.isOperatorCache.set(userUuid, {isOperator: isOperator});
+    return callback(null, isOperator);
   });
   return true;
 };
@@ -973,12 +1089,12 @@ App.prototype.notifyContact = function (alarm, user, monitor, contact, event,
  * @param {Function} callback called when closed. Takes no arguments.
  */
 App.prototype.close = function (callback) {
-  // var log = this.log;
   var self = this;
   this.server.on('close', function () {
     self.quitRedisClient();
-    self.ufds.unbind(function () {
-      return callback();
+    self.ufdsPool.drain(function () {
+      self.ufdsPool.destroyAllNow();
+      callback();
     });
   });
   this.server.close();

@@ -12,10 +12,11 @@
     "nopt": "1.0.10",
     "retry": "0.6.0",
     "nodemailer": "0.3.2",
-    "ldapjs": "0.4.8",
+    "ldapjs": "git://github.com/mcavage/node-ldapjs.git#7d9b6debde",
     "expiring-lru-cache": "2.0.x, >=2.0.1",
     "redis": "0.7",
     "hiredis": "0.1",
+    "generic-pool": "1.0",
     "tap": "0.2"
   },
   "bundledDependences": [

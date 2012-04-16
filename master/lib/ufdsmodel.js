@@ -76,42 +76,32 @@ function modelList(app, Model, parentDn, log, callback) {
     filter: '(objectclass=' + Model.objectclass + ')',
     scope: 'sub'
   };
-
   log.trace({searchOpts: opts}, '<%s> modelList: ufds search: parentDn=\'%s\'',
     Model.name, parentDn);
-
-  app.ufds.search(parentDn, opts, function (err, result) {
+  app.ufdsSearch(parentDn, opts, function (err, rawItems) {
     if (err) {
-      return cacheAndCallback(err);
+      if (err.httpCode === 503) {
+        return callback(err);  // don't cache 503
+      } else {
+        return cacheAndCallback(err);
+      }
     }
-
-    var models = [];
-    result.on('searchEntry', function (entry) {
+    var instances = [];
+    for (var i = 0; i < rawItems.length; i++) {
       try {
-        models.push(new Model(app, entry.object));
+        instances.push(new Model(app, rawItems[i]));
       } catch (err2) {
         if (err2 instanceof restify.RESTError) {
           log.warn('Ignoring invalid %s (dn=\'%s\'): %s', Model.name,
-            entry.object.dn, err2);
+            rawItems[i].dn, err2);
         } else {
           log.error(err2, 'Unknown error with %s entry:', Model.name,
-            entry.object);
+            rawItems[i]);
         }
       }
-    });
-    result.on('error', function (err1) {
-      log.error(err1, 'Error searching UFDS (opts: %s)', JSON.stringify(opts));
-      callback(new restify.InternalError());
-    });
-    result.on('end', function (res) {
-      if (res.status !== 0) {
-        log.error('Non-zero status from UFDS search: %s (opts: %s)',
-          res, JSON.stringify(opts));
-        return callback(new restify.InternalError());
-      }
-      log.trace('%s items:', Model.name, models);
-      cacheAndCallback(null, models);
-    });
+    }
+    log.trace('%s instances:', Model.name, instances);
+    cacheAndCallback(null, instances);
   });
 }
 
@@ -149,34 +139,14 @@ function modelPut(app, Model, data, log, callback) {
 
     // Add it.
     var dn = item.dn;
-    app.ufds.add(dn, item.raw, function (ufdsErr) {
-      if (ufdsErr) {
-        if (ufdsErr instanceof ldap.EntryAlreadyExistsError) {
-          return callback(new restify.InternalError(
-            'XXX DN "'+dn+'" already exists. Can\'t nicely update '
-            + '(with LDAP modify/replace) until '
-            + '<https://github.com/mcavage/node-ldapjs/issues/31> is fixed.'));
-          //XXX Also not sure if there is another bug in node-ldapjs if
-          //    "objectclass" is specified in here. Guessing it is same bug.
-          //var change = new ldap.Change({
-          //  operation: 'replace',
-          //  modification: item.raw
-          //});
-          //client.modify(dn, change, function (err) {
-          //  if (err) console.warn("client.modify err: %s", err)
-          //  client.unbind(function (err) {});
-          //});
-          //XXX Does replace work if have children?
-        } else {
-          log.error(ufdsErr, 'Error saving to UFDS (dn=\'%s\')', dn);
-          return callback(
-            new restify.InternalError('Error saving '+Model.name)
-          );
-        }
+    app.ufdsAdd(dn, item.raw, function (addErr) {
+      if (addErr) {
+        log.error(addErr, 'Error saving to UFDS (dn="%s")', dn);
+        callback(addErr);
       } else {
         log.trace('<%s> create item:', Model.name, item);
         app.cacheInvalidatePut(Model.name, item);
-        return callback(null, item);
+        callback(null, item);
       }
     });
   });
@@ -232,50 +202,35 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
   }
 
   var opts = {scope: 'base'};
-  app.ufds.search(dn, opts, function (err, result) {
+  app.ufdsSearch(dn, opts, function (err, entries) {
     if (err) {
-      return cacheAndCallback(err);
+      if (err.httpCode === 503) {
+        return callback(err);  // don't cache 503
+      } else if (err instanceof ldap.NoSuchObjectError) {
+        return cacheAndCallback(new restify.ResourceNotFoundError('not found'));
+      } else {
+        return cacheAndCallback(err);
+      }
     }
-
-    var item = null;
-    result.on('searchEntry', function (entry) {
-      // Should only one entry with this DN.
-      assert.ok(item === null, 'more than one item with dn="'+dn+'": '+item);
+    if (entries.length === 1) {
+      var entry = entries[0];
       try {
-        item = new Model(app, entry.object);
+        var item = new Model(app, entry);
       } catch (err2) {
         if (err2 instanceof restify.RESTError) {
           log.warn('Ignoring invalid %s (dn=\'%s\'): %s', Model.name,
-            entry.object.dn, err2);
+            entry.dn, err2);
         } else {
           log.error(err2, 'Unknown error with %s entry:', Model.name,
-            entry.object);
+            entry);
         }
+        return callback(new restify.InternalError('invalid entry'));
       }
-    });
-
-    result.on('error', function (err1) {
-      if (err1 instanceof ldap.NoSuchObjectError) {
-        cacheAndCallback(new restify.ResourceNotFoundError());
-      } else {
-        log.error(err1,
-                  'Error searching UFDS (opts: %s)', JSON.stringify(opts));
-        callback(new restify.InternalError());
-      }
-    });
-
-    result.on('end', function (res) {
-      if (res.status !== 0) {
-        log.error('Non-zero status from UFDS search: %s (opts: %s)',
-          res, JSON.stringify(opts));
-        return callback(new restify.InternalError());
-      }
-      if (item) {
-        return cacheAndCallback(null, item);
-      } else {
-        return cacheAndCallback(new restify.ResourceNotFoundError());
-      }
-    });
+      return cacheAndCallback(null, item);
+    } else {
+      log.error({entries: entries, dn: dn}, 'multiple hits in UFDS for one dn');
+      return callback(new restify.InternalError('conflicting entries'));
+    }
   });
 }
 
@@ -298,19 +253,13 @@ function modelDelete(app, Model, dn, log, callback) {
 
   // We need to first get the item (we'll need it for proper cache
   // invalidation).
-  modelGet(app, Model, dn, log, true, function (err, item) {
-    if (err) {
-      return callback(err);
+  modelGet(app, Model, dn, log, true, function (getErr, item) {
+    if (getErr) {
+      return callback(getErr);
     }
-
-    app.ufds.del(dn, function (err1) {
-      if (err1) {
-        if (err1 instanceof ldap.NoSuchObjectError) {
-          callback(new restify.ResourceNotFoundError());
-        } else {
-          log.error(err, 'Error deleting \'%s\' from UFDS', dn);
-          callback(new restify.InternalError());
-        }
+    app.ufdsDelete(dn, function (delErr) {
+      if (delErr) {
+        callback(delErr);
       } else {
         app.cacheInvalidateDelete(Model.name, item);
         callback();

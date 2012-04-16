@@ -43,40 +43,25 @@ function findProbes(app, field, uuid, log, callback) {
     filter: '(&(' + field + '=' + uuid + ')(objectclass=amonprobe))',
     scope: 'sub'
   };
-
-  log.trace({opts: opts}, 'findProbes UFDS search');
-  app.ufds.search('ou=users, o=smartdc', opts, function (err, result) {
+  app.ufdsSearch('ou=users, o=smartdc', opts, function (err, entries) {
     if (err) {
       return callback(err);
     }
 
     var probes = [];
-    result.on('searchEntry', function (entry) {
+    for (var i = 0; i < entries.length; i++) {
       try {
-        probes.push((new Probe(app, entry.object)).serialize(true));
+        probes.push((new Probe(app, entries[i])).serialize(true));
       } catch (e) {
         log.warn(e, 'invalid probe in UFDS (ignoring)');
       }
-    });
+    }
 
-    result.on('error', function (e) {
-      callback(e);
-    });
-
-    result.on('end', function (res) {
-      if (res.status !== 0) {
-        return callback(
-          format('Non-zero status from UFDS search: %s (opts: %s)',
-            res, JSON.stringify(opts)));
-      }
-
-      // To enable meaningful usage of Content-MD5 we need a stable order
-      // of results here.
-      probes.sort(compareProbes);
-
-      log.trace({probes: probes}, 'probes for %s "%s"', field, uuid);
-      callback(null, probes);
-    });
+    // To enable meaningful usage of Content-MD5 we need a stable order
+    // of results here.
+    probes.sort(compareProbes);
+    log.trace({probes: probes}, 'probes for %s "%s"', field, uuid);
+    callback(null, probes);
   });
 }
 

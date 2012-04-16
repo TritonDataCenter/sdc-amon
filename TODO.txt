@@ -38,9 +38,10 @@
 # todo (in no particular order)
 
 - update to latest ldapjs for #49 and #50 fixes
-- update others to restify 1.1
+- update others to restify 1.4
 - update to and use npm shrinkwrap
-- removing old alarms
+- removing old alarms after a week
+- err cleanup (MON-108)
 - Relay needs to have guards for run away agents. One case is an infinite
   loop: a probe watching for "ERROR" in amon logs, where sending the
   event results in an "ERROR". Handle this with relay per-agent throttling
