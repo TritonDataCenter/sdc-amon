@@ -70,9 +70,11 @@ relay: common testbuild | $(NPM_EXEC) deps/node-sdc-clients/.git
 	# Workaround https://github.com/isaacs/npm/issues/2144#issuecomment-4062165
 	(cd relay && rm -rf node_modules/zutil/build && $(NPM) rebuild zutil)
 
+# Use 'npm install' before 'npm update' to attempt to avoid problem with
+# git dependency for ldapjs.
 .PHONY: master
 master: common plugins | $(NPM_EXEC) deps/node-sdc-clients/.git
-	(cd master && $(NPM) update && $(NPM) install ../deps/node-sdc-clients && $(NPM) link amon-common amon-plugins)
+	(cd master && $(NPM) install && $(NPM) update && $(NPM) install ../deps/node-sdc-clients && $(NPM) link amon-common amon-plugins)
 
 # 'testbuild' is the name for building in the 'test' dir. Want 'make test'
 # to actually *run* the tests.
