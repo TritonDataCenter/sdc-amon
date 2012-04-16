@@ -92,6 +92,23 @@ to explicitly update.
 And start running (see section below).
 
 
+# SmartOS Development
+
+This is based on having setup a basic dev zone in BH-1 as per
+<https://hub.joyent.com/wiki/display/dev/Building+the+SmartOS+live+image+in+a+SmartOS+zone#BuildingtheSmartOSliveimageinaSmartOSzone-HiddenWIPinstructionsfromJoshforsettingthisuponbh1build2>.
+
+Setup and install the necessary dev tools in the global zone:
+
+    pkgin -y install gmake gcc-compiler-4.5.2 binutils
+
+Then get the Amon code to work with:
+
+    git clone git@git.joyent.com:amon.git
+    cd amon
+    make all
+
+
+
 # COAL Development
 
 Setup and install the necessary dev tools in the global zone:
@@ -99,7 +116,7 @@ Setup and install the necessary dev tools in the global zone:
     /usbkey/scripts/mount-usb.sh; \
     /usbkey/devtools/devmode.sh; \
     pkgin -y install gmake scmgit gcc-compiler-4.5.2 gcc-runtime-4.5.2 \
-          binutils python26 grep pkg_alternatives patch mtail; \
+          binutils python26 grep pkg_alternatives patch; \
     ln -sf /opt/local/bin/python2.6 /opt/local/bin/python; \
     export PATH=/opt/local/bin:$PATH && \
     export CC=gcc
