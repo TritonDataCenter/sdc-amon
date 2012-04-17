@@ -58,12 +58,23 @@ function ensureDirSync(dir) {
 //---- prep steps
 
 function ldapClientBind(next) {
-  log('# LDAP client bind.');
+  log('# Setup LDAP client.');
   ldapClient = ldap.createClient({
     url: process.env.UFDS_URL,
-    reconnect: false
+    connectTimeout: 2 * 1000  // 2 seconds (fail fast)
   });
-  ldapClient.bind(process.env.UFDS_ROOTDN, process.env.UFDS_PASSWORD, next);
+
+  function onFail(failErr) {
+    next(failErr);
+  }
+  ldapClient.once('error', onFail);
+  ldapClient.once('connectTimeout', onFail);
+  ldapClient.on('connect', function () {
+    log('# LDAP client: connected, binding now.');
+    ldapClient.removeListener('error', onFail);
+    ldapClient.removeListener('connectTimeout', onFail);
+    ldapClient.bind(process.env.UFDS_ROOTDN, process.env.UFDS_PASSWORD, next);
+  });
 }
 
 function ufdsClientBind(next) {

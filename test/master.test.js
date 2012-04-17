@@ -169,7 +169,7 @@ test('ping', function (t) {
     t.ok(headers.date);
     t.ok(headers['x-request-id']);
     t.ok(headers['x-response-time']);
-    t.equal(headers.connection, 'close');
+    t.equal(headers.connection, 'Keep-Alive');
 
     t.end();
   });

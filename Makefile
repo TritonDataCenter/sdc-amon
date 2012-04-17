@@ -4,16 +4,6 @@
 # Makefile for Amon
 #
 
-
-#
-# Tools
-#
-NODE_DEV := ./node_modules/.bin/node-dev
-TAP := ./node_modules/.bin/tap
-JSHINT := node_modules/.bin/jshint
-JSSTYLE_FLAGS := -f tools/jsstyle.conf
-NPM_FLAGS = --tar=$(TAR) --cache=$(shell pwd)/tmp/npm-cache
-
 #
 # Files
 #
@@ -29,9 +19,9 @@ SMF_MANIFESTS_IN = agent/smf/manifests/amon-agent.xml.in \
 	master/smf/amon-relay.smf.in
 CLEAN_FILES += agent/node_modules relay/node_modules \
 	master/node_modules common/node_modules plugins/node_modules \
-	./node_modules build/amon-*.tgz \
+	./node_modules test/node_modules build/amon-*.tgz \
 	tmp/npm-cache build/amon-*.tar.bz2 \
-	lib
+	lib build/pkg
 
 #
 # Included definitions
@@ -39,6 +29,16 @@ CLEAN_FILES += agent/node_modules relay/node_modules \
 include ./tools/mk/Makefile.defs
 include ./tools/mk/Makefile.node.defs
 include ./tools/mk/Makefile.smf.defs
+
+
+#
+# Tools
+#
+NODE_DEV := ./node_modules/.bin/node-dev
+TAP := ./node_modules/.bin/tap
+JSHINT := node_modules/.bin/jshint
+JSSTYLE_FLAGS := -f tools/jsstyle.conf
+NPM_FLAGS = --tar=$(TAR) --cache=$(shell pwd)/tmp/npm-cache
 
 
 #
@@ -51,27 +51,27 @@ all: common plugins agent testbuild relay master dev
 #
 # The main amon components
 #
+# Note: Use 'npm install' before 'npm update' to attempt to avoid problem with
+# git dependency for ldapjs. See <https://github.com/isaacs/npm/issues/2374>.
 
 .PHONY: common
 common: | $(NPM_EXEC)
-	(cd common && $(NPM) update && $(NPM) link)
+	(cd common && $(NPM) install && $(NPM) update && $(NPM) link)
 
 .PHONY: plugins
 plugins: | $(NPM_EXEC)
-	(cd plugins && $(NPM) update && $(NPM) link)
+	(cd plugins && $(NPM) install && $(NPM) update && $(NPM) link)
 
 .PHONY: agent
 agent: common plugins | $(NPM_EXEC)
-	(cd agent && $(NPM) update && $(NPM) link amon-common amon-plugins)
+	(cd agent && $(NPM) install && $(NPM) update && $(NPM) link amon-common amon-plugins)
 
 .PHONY: relay
 relay: common testbuild | $(NPM_EXEC) deps/node-sdc-clients/.git
-	(cd relay && $(NPM) update && $(NPM) install ../deps/node-sdc-clients && $(NPM) link amon-common amon-plugins)
+	(cd relay && $(NPM) install && $(NPM) update && $(NPM) install ../deps/node-sdc-clients && $(NPM) link amon-common amon-plugins)
 	# Workaround https://github.com/isaacs/npm/issues/2144#issuecomment-4062165
 	(cd relay && rm -rf node_modules/zutil/build && $(NPM) rebuild zutil)
 
-# Use 'npm install' before 'npm update' to attempt to avoid problem with
-# git dependency for ldapjs.
 .PHONY: master
 master: common plugins | $(NPM_EXEC) deps/node-sdc-clients/.git
 	(cd master && $(NPM) install && $(NPM) update && $(NPM) install ../deps/node-sdc-clients && $(NPM) link amon-common amon-plugins)
@@ -80,7 +80,7 @@ master: common plugins | $(NPM_EXEC) deps/node-sdc-clients/.git
 # to actually *run* the tests.
 .PHONY: testbuild
 testbuild: | $(NPM_EXEC) deps/node-sdc-clients/.git
-	(cd test && $(NPM) update && $(NPM) install ../deps/node-sdc-clients)
+	(cd test && $(NPM) install && $(NPM) update && $(NPM) install ../deps/node-sdc-clients)
 
 # "dev" is the name for the top-level dev package
 .PHONY: dev

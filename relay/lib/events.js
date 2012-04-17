@@ -4,8 +4,6 @@
  * Controller for relay "POST /events" endpoint.
  */
 
-var assert = require('assert');
-var restify = require('restify');
 var uuid = require('node-uuid');
 
 
