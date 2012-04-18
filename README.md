@@ -517,4 +517,3 @@ More detail:
 - Integration of Monitor management into AdminUI and Portal.
 - Upgradable amon system.
 
-
