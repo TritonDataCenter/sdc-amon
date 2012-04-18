@@ -501,11 +501,18 @@ More detail:
 - Ability to disable a monitor.
 - Ability for customer to set a maintenance window on a monitor (alert
   suppression for a pre-defined period of time).
-  Q: How about for a customer to set a maint window on "all my monitors"?
 - Ability for operator to set a maintenance window on a CN and on the whole
   cloud. This would disable alerts to operator.
-  Q: Disable alerts to customers? How about it adds a "BTW, this is during a
-  maint window" ps to each alert?
+  Q:    Disable alerts to customers? How about it adds a "BTW, this is during a
+        maint window" ps to each alert? To do this I think we should require an
+        explicit operator action to allow that. I.e. a "notifyCustomers=true"
+        boolean on the maint window or something. Bletch. Punt for now.
+  Q:    If op sets maint on CN-3, for example, there is no way to know to
+        disable a "ping" monitor that is running on CN-2 to check a zone
+        on CN-3.... unless we add "target_machine" field or something for
+        these purposes. Might be reasonable in the UI because the user
+        would start with the target machine: "Add ping check to this
+        machine. Run it from this other machine."  Do we need this?
 - Amon Master API integrated into Cloud API.
 - Integration of Monitor management into AdminUI and Portal.
 - Upgradable amon system.
