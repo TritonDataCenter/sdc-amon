@@ -1,29 +1,14 @@
 # higher-level prios
 
-- test suites on staging (including adding for alarms) QA-101
-  - clean test data: clean out alarms for test users. Perhaps add an admin
-      DELETE /alarms/:user/:id ?  Or just use DELETE /pub/alarms/:user/:id?
-      Should DELETE be exposed to the user?
-  - make the test suite totally clean up users and zones by default,
-    with '--fast' option to skip that
-  - TICKET: UpdateMonitor -> ?action=synccontacts.
-    This'll drop the userCache entry for that monitor owner (more complex
-    for groups).
-  - TICKET: add an amontestmonzone and probes in it using all probe types to
-    watch amontestzone. This is blocked on agents in the zone.
-  - TICKET: test case and support (see `Alarm.notify`): if event for a monitor
-    with a contact that isn't set on the user object, then should be an
-    alarm created for the monitor owner (defaulting to emailing them).
-    Test for that.
 - design use cases, assign a use case driver for each prio
 - sysevent-based events: use case #2, machine-running-state probe type
 - agent in all zones
-- authorizeDelete finish (should merge with authorizePut logic)
+- MON-120: authorizeDelete finish (should merge with authorizePut logic)
 - finish CRUD on UFDS objects
 - sdc-healthcheck
 - notification formatting: templating? Show open/closed state in notifications.
   Design section on what info should be included in notification.
-- suppression support (alarms, monitors, everything)
+- MON-113: suppression support (alarms, monitors, everything) -> maintenance windows
 - upgrade plan: What if UFDS schema needs to change? How do we rev the Master
   with older agents in the wild. Upgrading Agent versions? What about
   an old amon-agent? old amon-relay?
@@ -37,8 +22,17 @@
 
 # todo (in no particular order)
 
-- update to latest ldapjs for #49 and #50 fixes
-- update others to restify 1.4
+- dogfood:
+    - devs using in kvm test machines
+    - devs using in COAL
+    - trevor using it in BH-1. For what exactly?
+    - monitoring jenkins builds? or space usage in jenkins?
+    - space usage on stuff
+    - is DSAPI up?
+    - is mo.jo up?
+    - others? email around
+- update to latest ldapjs for #49 and #50 fixes (already done I think)
+- update to restify 1.4.1 when that is released (there is a ticket for this)
 - update to and use npm shrinkwrap
 - removing old alarms after a week
 - err cleanup (MON-108)
@@ -197,6 +191,133 @@
 Ensure do "SELECT 1" (or some value of N) to stay indep of other users of
 redis. TODO: Come up with a system for sharing this out. Suggest not using 0
 such that any usage of it is an error to trap faulty users.
+
+
+
+# Notes: maintenance windows
+
+Related to "suppression" section next.
+From MVP:
+
+1.  Ability for customer to set a maintenance window on a monitor (alert
+    suppression for a pre-defined period of time).
+2.  Ability for operator to set a maintenance window on a CN and on the whole
+    cloud. This would disable alerts to operator.
+
+Scope:
+
+- what is scope? Low-level: per zone name and per monitor name. Optionally
+  just per monitor name for all applicable zones?
+    "Suppress this monitor [until enabled again later]."
+    "Suppress this monitor for machines X, Y and Z."
+    "Suppress all monitors for machines X, Y and Z."
+  Or is this only about suppressing *alarms*? I.e. only at the master-level.
+  Yes.
+    "Suppress alarms for monitors M and N [until enabled again later]."
+    "Suppress alarms for monitor M for N for machines X, Y, and Z."
+    "... for the next hour."
+  general:
+    "Suppress alarms
+      for monitors M and N (or all)
+      for machines X, Y and Z (or all)
+      for a certain amount of time (or until re-enabled)."
+
+Customer endpoints for MVP #1:
+
+    PUT /pub/:login/monitors/:foo/maintenance
+          start {RFC date, timestamp, or "now"}
+          stop {RFC date, timestamp, <digit>[mhd] (minute, hour, day)}
+          notes {String} Short notes on why the maintenance window. Optional.
+    DELETE /pub/:login/monitors/:foo/maintenance    # DeleteMonitorMaintenance
+
+Sufficient? This goes to whether to group probes in one or few monitors or
+to have many monitors (up to one for each probe). A "monitor" is good for:
+
+- not repeating relevant contacts for one grouping of probes
+- grouping alarms: one alarm instance per monitor (mostly)
+- logically grouping probes
+- setting a maint window once for a group of related probes
+
+A possible addition would be to limit the maint window for a monitor to
+a subset of probes. or a subset of machines. The latter more convenient for
+the user. Could add a 'targets' or 'machines' field to the maintenance
+later to support this.
+
+IOW, let's try the simpler design (maintenance windows on the monitor obj,
+no "machines" filter) for now and feel it out.
+
+Special end points for operators for MVP #2: Could this not use the same?
+I.e. the operator would just set a maint on their own monitors.
+
+
+Discussion with Trevor: Maint should be in terms of *machine*, because that
+is the user's p.o.v. for doing maintenance. It is possible that a user
+would want to drill down and do it by service, which logically might best
+map to an Amon *monitor*... or even could be by probe, but don't want to
+go to fine grain of probes.
+
+Circonus maint is at the check, Amon probe, level. We won't go there yet.
+Just have it at the top-level and can limit only by machine/server.
+
+  POST /pub/:login/maintenance         # CreateMaintenanceWindow
+          start {RFC date, timestamp, or "now"}
+          stop {RFC date, timestamp, <digit>[mhd] (minute, hour, day)}
+          machines {Set of machine UUIDs}
+          notes {String} Short notes on why the maintenance window. Optional.
+          :id {Number} incrementing per-user id (a la alarms)
+  PUT /pub/:login/maintenance/:id      # UpdateMaintenanceWindow
+          start: change start time
+          stop: change stop time
+          addMachines: add machines to the set
+          removeMachines: remove these machines from the set
+          notes: change notes
+  DELETE /pub/:login/maintenance/:id   # DeleteMaintenanceWindow
+
+TODO: I'd really like to ditch the machine/server thing. Unify with
+"machine". How hard would that be?
+
+TODO: Also add "targetMachine" and perhaps rename current "machine" to
+"runOnMachine" (blech, better name needed).
+
+
+Walk through alarm scenarios with maintenance windows:
+
+1. Set a maint window on amontestzone. Then machine-up trips because
+   amontestzone is rebooted: Alarm 1. amontestzone comes back up during maint
+   window (clears): Alarm 1 is closed. [According to Circ screencast, its
+   alarm would not clear until the end of the maint window. Not sure tho.]
+   Maint window closes. TODO: `alarm.openedDuringMaintenance=true`.
+   TODO: `alarm.closedDuringMaintenance`? or `alarm.clearedDuringMaintenance`.
+   TODO: merge "close" and "clear" language?
+
+Q: Am I missing something? Should *all* probe types support clearing? E.g.
+should "logscan" clear if during the next period there are less than
+threshold hits? TODO: Ask Mark and Trevor. Does one expect the monitoring
+dashboard to show an *open* alarm for the single probe failure incident from,
+say, 4 hours ago?  Same answer for a ping check? Same answer for a http
+response time check?
+
+  GET /pub/:login/updates
+    Persistent connection that streams JSON objects of updates to Amon status
+    for that user: alarm opened, alarm cleared, alarm closed, maint window
+    expired, new event for alarm. Options to filter on these, and throttling.
+
+2. Set a maint window on amontestzone. Machine-up probe trips (only probe
+   in that monitor) as zone goes down: Alarm 1. Maint window closes:
+   amontestzone is still down. Notification sent for that alarm.
+   TODO: add 'reason' code field to `.notify(...)` for the notification
+   types to handle the different reasons.
+
+3. Set a maint window on amontestzone. There is a 'mystuff' monitor with
+   two probes: 'machine-up' on amontestzone, 'machine-up' on amontestzone2.
+   - amontestzone goes down -> Alarm 1 (no notification).
+     TODO: might want separate set of "maintFaults" rather than just "faults"
+   - amontestzone2 goes down -> attach to Alarm 1, send notification because
+     now has a fault not in maint
+   - amontestzone comes up (clears)
+   - maint window expires: *no* new notification because coming out of
+     maint did not add to the set of faults
+
 
 
 

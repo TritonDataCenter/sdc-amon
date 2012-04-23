@@ -784,7 +784,7 @@ App.prototype.isOperator = function (userUuid, callback) {
   var self = this;
   var base = 'cn=operators, ou=groups, o=smartdc';
   var searchOpts = {
-    // Must use EqualityFilter until
+    // TODO: Must use EqualityFilter until
     // <https://github.com/mcavage/node-ldapjs/issues/50> is fixed.
     //filter: format('(uniquemember=uuid=%s, ou=users, o=smartdc)', userUuid),
     filter: new ldap.filters.EqualityFilter({
