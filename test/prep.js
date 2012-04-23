@@ -194,7 +194,8 @@ function addUlrichTestWebhookContact(next) {
   var interfaces = os.networkInterfaces();
   var interfaceNames = Object.keys(interfaces);
   for (var i = 0; i < interfaceNames.length; i++) {
-    if (interfaceNames[i].slice(0, 3) === 'bnx') {
+    if (interfaceNames[i].slice(0, 3) === 'bnx'
+        || interfaceNames[i] === 'e1000g1'  /* for COAL */) {
       gzIp = interfaces[interfaceNames[i]][0].address; // intentionally global
       break;
     }
