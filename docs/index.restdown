@@ -1,6 +1,6 @@
 ---
 title: Amon (SDC Monitoring and Alarming)
-markdown2extras: wiki-tables
+markdown2extras: wiki-tables, code-friendly, cuddled-lists
 apisections: Master API: Monitors, Master API: Probes, Master API: Alarms, Master API: Miscellaneous, Relay API
 ---
 
