@@ -1296,3 +1296,143 @@ healthcheck on KVM.
                 "interval": 60  // how frequently to check.
             }
         }
+
+
+## 7. Monitoring a multi-machine webapp
+
+Say we have a set of the following machines for a relatively busy service:
+
+- UUID_MON is our monitor zone
+- UUID_DB1 master db zone
+- UUID_DB2 slave db zone
+- UUID_LB load balancer zone
+- UUID_WEBHEAD1 webhead 1 zone
+- UUID_WEBHEAD2 webhead 2 zone
+
+We might want monitors like the following. Note that this is using some
+probe types that don't exist yet and that aren't a high priority right now.
+
+    # Setup a monitor for the service as a whole. Bad news if this one fails,
+    # i.e. that's an argument for severities (TODO: severity).
+    sdc-amon /pub/trent/monitors/myservice -X PUT -d '{
+      contacts: ["email", "sms"],
+      severity: 1
+    }'
+    sdc-amon /pub/trent/monitors/myservice/probes/ping -X PUT -d '{
+      type: "icmp",
+      agent: UUID_MON,
+      config: {
+        "host": "myservice.example.com"
+      }
+    }'
+    sdc-amon /pub/trent/monitors/myservice/probes/http -X PUT -d '{
+      type: "http",
+      agent: UUID_MON,
+      config: {
+        "host": "http://myservice.example.com/status"
+      }
+    }'
+
+    # Setup monitors for each of the other machines: is it up? errors in logs?
+    # relevant services up? Slightly lower prio. For example, for WEBHEAD1
+    # we might have:
+    sdc-amon /pub/trent/monitors/webhead1 -X PUT -d '{
+      contacts: ["email", "sms"],
+      severity: 2
+    }'
+    sdc-amon /pub/trent/monitors/webhead1/probes/machineup -X PUT -d '{
+      type: "machine-up"
+      machine: UUID_WEBHEAD1,
+      // This probe type doesn't accept an agent: it runs from the compute
+      // node GZ for `machine`.
+    }'
+    sdc-amon /pub/trent/monitors/webhead1/probes/ping -X PUT -d '{
+      type: "icmp",
+      agent: UUID_MON,
+      config: {
+        "host": "1.2.3.4"
+      }
+    }'
+    sdc-amon /pub/trent/monitors/webhead1/probes/http -X PUT -d '{
+      type: "http",
+      agent: UUID_MON,
+      config: {
+        "host": "http://1.2.3.4/status",
+        "headers": {
+          "Host": "myservice.example.com"
+        }
+      }
+    }'
+    sdc-amon /pub/trent/monitors/webhead1/probes/myservice -X PUT -d '{
+      type: "smf",    // Not yet implemented
+      machine: UUID_WEBHEAD1,
+      config: {
+        "fmri": "myservice"
+      }
+    }'
+    sdc-amon /pub/trent/monitors/webhead1/probes/logerrors -X PUT -d '{
+      type: "log-scan",   // or 'smf-log-scan' if/when that is added
+      machine: UUID_WEBHEAD1,
+      config: {
+        "path": "/var/log/myservice.log",
+        "regex": "ERROR"
+      }
+    }'
+
+    # Might want a lower-prio "maintenance" monitor for each machine.
+    # For example, WEBHEAD1:
+    sdc-amon /pub/trent/monitors/webhead1maint -X PUT -d '{
+      contacts: ["email"],
+      severity: 3
+    }'
+    sdc-amon /pub/trent/monitors/webhead1maint/probes/disk -X PUT -d '{
+      type: "disk-free",   // Not yet implemented
+      machine: UUID_WEBHEAD1,
+      config: {
+        "path": "/",        // or call this 'mount'?
+        "capacity": 0.8   // alarm if disk usage is over 80%
+      }
+    }'
+    sdc-amon /pub/trent/monitors/webhead1maint/probes/ram -X PUT -d '{
+      type: "ram-free",   // Not yet implemented
+      machine: UUID_WEBHEAD1,
+      config: {
+        "capacity": 0.9,   // alarm if RAM usage is over 90% 3 times in 5 minutes
+        "threshold": 3,
+        "period": 300
+      }
+    }'
+
+How would I set a maintenance window to upgrade the DBs?
+
+- Visit the UUID_DB2 machine page in the portal and set a maint window on
+  UUID_DB2 (upgrade slave first).
+- Do upgrades on UUID_DB2 and bring it back up.
+- Check monitoring dashboard, if all is well, close the maint window.
+- Switch over DB master/slave for maint on DB1.
+- Visit the UUID_DB1 machine page in the portal and set a maint window on
+  UUID_DB1.
+- Do upgrades on UUID_DB2 and bring it back up.
+- Check monitoring dashboard, if all is well, close the maint window.
+
+Or, if the user doesn't think about setting a maint window (doesn't know
+about the feature):
+
+- Start upgrades on UUID_DB2.
+- Get notification for a db2 monitor alarm (presuming he is on the contact
+  list for these monitors), and/or gets a flash message in the portal that
+  a new alarm has been raised. Click link to alarm page.
+- Visit alarm page. (This alarm page should include info on other
+  recent alarms -- perhaps highlighting those related to the same machine.)
+- "Set maintenance window" for this alarm. Really this translates to a
+  maint window on the *monitor* (which is basically but not exactly the
+  same thing). Also an option when creating the maint window on an alarm
+  page is to instead set it on the *machine*.
+- ... continue as above.
+
+
+Notes:
+- TODO: ask around. Learn about joyent.com setup. Learn about voxer setup.
+  Ask ops about what kinds of monitoring checks they have setup typically.
+- TODO: how to monitor percentiles? E.g. prio1 alarm if 90th percentile
+  response time is >200ms or something?
