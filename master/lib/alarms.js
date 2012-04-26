@@ -25,7 +25,8 @@
  *    denorm from `events` field.
  * - suppressed {Boolean} Whether notifications for this alarm are suppressed.
  * - closed {Boolean} Whether this alarm is closed.
- * - faults {Set} A set of current outstanding faults
+ * - faults {Set} A set of current outstanding faults (a fault is a single
+ *   probe failure).
  *
  *
  * Layout in redis:
@@ -33,9 +34,9 @@
  * - Amon uses redis db 1: `SELECT 1`.
  * - 'alarms:$userUuid' is a set of alarm ids for that user.
  * - 'alarm:$userUuid:$alarmId' is a hash with the alarm data.
- * - 'faults:$userUuid:$alarmId' is a set of
- *   'machine:$machine-uuid:$probe-type' strings (or
- *   'server:$server-uuid:$probe-type') for that alarm.
+ * - 'faults:$userUuid:$alarmId' is a set of strings representing each fault
+ *   for that alarm. `faultReprFromEvent` and `faultObjFromRepr` handle
+ *   encoding/decoding those strings.
  * - 'alarmIds' is a hash with a (lazy) alarm id counter for each user.
  *   `HINCRBY alarmIds $userUuid 1` to get the next alarm id for that user.
  *
@@ -104,9 +105,7 @@ function boolFromRedisString(value, default_, errName) {
  */
 function faultReprFromEvent(event) {
   if (event.type === 'probe') {
-    return (event.machine
-      ? format('machine:%s:%s', event.machine, event.probeType)
-      : format('server:%s:%s', event.server, event.probeType));
+    return format('probe:%s', event.probe);
   } else if (event.type === 'fake') {
     return 'fake';
   } else {
@@ -116,20 +115,13 @@ function faultReprFromEvent(event) {
 }
 
 function faultObjFromRepr(repr) {
-  var bits = repr.split(':');
-  if (bits[0] === 'fake') {
+  var fields = repr.split(':');
+  if (fields[0] === 'fake') {
     return {type: 'fake'};
-  } else if (bits[0] === 'machine') {
+  } else if (fields[0] === 'probe') {
     return {
       type: 'machine',
-      uuid: bits[1],
-      probeType: bits[2]
-    };
-  } else if (bits[0] === 'server') {
-    return {
-      type: 'server',
-      uuid: bits[1],
-      probeType: bits[2]
+      probe: fields[1]
     };
   } else {
     throw TypeError(format('cannot create fault obj from "%s"', repr));

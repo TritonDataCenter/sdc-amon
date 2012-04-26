@@ -58,6 +58,7 @@ function LogScanProbe(options) {
 }
 util.inherits(LogScanProbe, Probe);
 
+LogScanProbe.runLocally = true;
 LogScanProbe.prototype.type = 'logscan';
 
 LogScanProbe.validateConfig = function (config) {

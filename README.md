@@ -1,7 +1,7 @@
 # Amon (SDC Monitoring and Alarming)
 
 - Repository: <git@git.joyent.com:amon.git>, <https://mo.joyent.com/amon>
-- Who: Trent Mick, Mark Cavage, Yunong Xiao
+- Who: Trent Mick, Mark Cavage
 - API Docs: <https://head.no.de/docs/amon>
 - Pitch: <https://hub.joyent.com/wiki/display/dev/Amon>
 - XMPP/Jabber: <monitoring@groupchat.joyent.com>
@@ -135,10 +135,12 @@ And start running (see next section).
 
 # COAL Notes: Getting email notifications
 
+(Note: Amon master sending email works fine in the BH-1 lab.)
+
 At least in the Vancouver office, outbound SMTP traffic (port 25) is blocked.
-This means that Amon Master's usage of sendmail (with its default config)
-results in no outbound email notifications. One way around that is to use
-your gmail account like this:
+This means that Amon Master's default mail config results in no outbound
+email notifications. One way around that is to use your gmail account like
+this:
 
     $ ssh coal
     $ sdc-login amon
@@ -159,8 +161,6 @@ your gmail account like this:
 
 Personally, I'm using a separate gmail account for this so I don't have
 to put my personal gmail password in that config file.
-
-TODO: write a tool to automate this.
 
 
 
@@ -257,20 +257,24 @@ In a separate shell run an **amon-agent**:
 
 There is a bootstrap tool that will add some Amon data for playing with:
 
-    bin/node ./tools/bootstrap.js
+    bin/node ./tools/bootstrap.js [HEADNODE-IP-OR-HOST]
 
-It'll create test users 'amonuserbob' and 'amonoperatorotto'. Create a
+For example to bootstrap Amon data into COAL:
+
+    ./tools/bootstrap.js root@10.99.99.7   # you can use a ~/.ssh/config alias as well
+
+It'll create test users 'amondevuserbob' and 'amondevoperatorotto'. Create a
 'amondevzone' for Bob and add an Amon monitor and probe for each of them.
 Try some of the following to query the data:
 
-    ssh coal   # only because `sdc-amon` is setup to find the Amon URL there
-    sdc-amon /pub/amonuserbob
-    sdc-amon /pub/amonuserbob/monitors/whistle/probes
-    sdc-amon /pub/amonoperatorotto/monitors/gz/probes
+    ssh root@10.99.99.7   # run from HN GZ because `sdc-amon` works there
+    sdc-amon /pub/amondevuserbob
+    sdc-amon /pub/amondevuserbob/monitors/whistle/probes
+    sdc-amon /pub/amondevoperatorotto/monitors/gz/probes
 
 If you have email notifications sending through properly (see "COAL Notes:
 Getting email notifications" above) then the
-`/pub/amonoperatorotto/monitors/gz/probes/smartlogin` probe can be easily
+`/pub/amondevoperatorotto/monitors/gz/probes/smartlogin` probe can be easily
 tickled by restarting smartlogin:
 
     ssh coal svcadm restart smartlogin
@@ -474,4 +478,3 @@ Notes for making a screencast:
         email: trentm+coaladmin@gmail.com
         [root@headnode (coal:0) /var/tmp]# sdc-ldap modify -f admin-change.ldif
         ...
-

@@ -59,7 +59,7 @@ var FIXTURES = {
         contacts: ['email'],
         probes: {
           smartlogin: {
-            'server': prep.headnodeUuid,
+            'machine': prep.headnodeUuid,
             'type': 'logscan',
             'config': {
               'path': '/var/svc/log/smartdc-agent-smartlogin:default.log',
@@ -89,7 +89,7 @@ var FIXTURES = {
         contacts: ['email'],
         probes: {
           smartlogin: {
-            'server': prep.headnodeUuid,
+            'machine': prep.headnodeUuid,
             'type': 'logscan',
             'config': {
               'path': '/var/svc/log/smartdc-agent-smartlogin:default.log',
@@ -99,7 +99,7 @@ var FIXTURES = {
             }
           },
           bogusserver: {
-            'server': '9b07ce48-52e4-3c49-b445-3c135c55311b', // bogus uuid
+            'machine': '9b07ce48-52e4-3c49-b445-3c135c55311b', // bogus uuid
             'type': 'logscan',
             'config': {
               'path': '/var/svc/log/smartdc-agent-smartlogin:default.log',
@@ -379,7 +379,7 @@ test('probes: create without owning zone', function (t) {
   });
 });
 
-test('probes: create for server without being operator', function (t) {
+test('probes: create for physical machine without being operator', function (t) {
   var probes = FIXTURES.ulrich.monitors.gz.probes;
   async.forEach(Object.keys(probes), function (probeName, nextProbe) {
     var probe = probes[probeName];
@@ -416,15 +416,16 @@ test('probes: create GZ probe on headnode for odin', function (t) {
 });
 
 
-test('probes: create GZ probe on bogus server for odin', function (t) {
+test('probes: create GZ probe on bogus machine for odin', function (t) {
   var probe = FIXTURES.odin.monitors.gz.probes.bogusserver;
   var path = '/pub/amontestoperatorodin/monitors/gz/probes/bogusserver';
   masterClient.put(path, probe, function (err, req, res, obj) {
     t.ok(err, path);
-    t.equal(err.httpCode, 409);
-    t.equal(err.code, 'InvalidArgument');
-    t.ok(err.message.indexOf('server') !== -1);
-    t.ok(err.message.indexOf('invalid') !== -1);
+    t.equal(err.httpCode, 409, '409 http response');
+    t.equal(err.code, 'InvalidArgument', 'error code in ' + res.body);
+    t.ok(err.message.indexOf('machine') !== -1,
+      format('"machine" in err message: "%s"', err.message));
+    t.ok(err.message.toLowerCase().indexOf('invalid') !== -1);
     t.end();
   });
 });
@@ -496,7 +497,7 @@ var amontestzoneContentMD5;
 
 test('relay api: ListAgentProbes', function (t) {
   var probe = FIXTURES.ulrich.monitors.whistle.probes.whistlelog;
-  masterClient.get('/agentprobes?machine=' + prep.amontestzone.name,
+  masterClient.get('/agentprobes?agent=' + prep.amontestzone.name,
     function (err, req, res, obj) {
       t.ifError(err);
       amontestzoneContentMD5 = res.headers['content-md5'];
@@ -518,7 +519,7 @@ test('relay api: ListAgentProbes', function (t) {
 });
 
 test('relay api: HeadAgentProbes', function (t) {
-  masterClient.head('/agentprobes?machine=' + prep.amontestzone.name,
+  masterClient.head('/agentprobes?agent=' + prep.amontestzone.name,
     function (err, headers, res) {
       t.ifError(err);
       t.equal(res.headers['content-md5'], amontestzoneContentMD5);

@@ -35,8 +35,6 @@ var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
  * Create a Probe. `new Probe(app, data)`.
  *
  * @param app
- * @param name {String} The instance name. Can be skipped if `data` includes
- *    "amonprobe" (which a UFDS response does).
  * @param data {Object} The instance data. This can either be the public
  *    representation (augmented with 'name', 'monitor' and 'user'), e.g.:
  *      { name: 'whistlelog',
@@ -70,20 +68,21 @@ function Probe(app, data) {
     this.monitor = parsed.monitor;
   } else {
     if (!data.name)
-      throw new TypeError('invalid probe data: no "name": ' + data);
+      throw new TypeError(format('invalid probe data: no "name": %j', data));
     if (!data.monitor)
-      throw new TypeError('invalid probe data: no "monitor": ' + data);
+      throw new TypeError(format('invalid probe data: no "monitor": %j', data));
     if (!data.user)
-      throw new TypeError('invalid probe data: no "user": ' + data);
+      throw new TypeError(format('invalid probe data: no "user": %j', data));
     this.dn = Probe.dn(data.user, data.monitor, data.name);
     raw = {
       amonprobe: data.name,
       type: data.type,
+      agent: data.agent,
       objectclass: Probe.objectclass
     };
     if (data.config) raw.config = JSON.stringify(data.config);
+    if (data.agent) raw.agent = data.agent;
     if (data.machine) raw.machine = data.machine;
-    if (data.server) raw.server = data.server;
     this.user = data.user;
     this.monitor = data.monitor;
   }
@@ -98,14 +97,14 @@ function Probe(app, data) {
   this.__defineGetter__('type', function () {
     return self.raw.type;
   });
+  this.__defineGetter__('agent', function () {
+    return self.raw.agent;
+  });
   this.__defineGetter__('machine', function () {
     return self.raw.machine;
   });
-  this.__defineGetter__('server', function () {
-    return self.raw.server;
-  });
-  this.__defineGetter__('global', function () {
-    return self.raw.global;
+  this.__defineGetter__('runInVmHost', function () {
+    return self.raw.runInVmHost;
   });
   this.__defineGetter__('config', function () {
     if (!self.raw.config) {
@@ -161,13 +160,13 @@ Probe.prototype.serialize = function serialize(priv) {
     user: this.user,
     monitor: this.monitor,
     name: this.name,
-    type: this.type
+    type: this.type,
+    agent: this.agent
   };
   if (this.config) data.config = this.config;
   if (this.machine) data.machine = this.machine;
-  if (this.server) data.server = this.server;
   if (priv) {
-    if (this.global) data.global = this.global;
+    if (this.runInVmHost) data.runInVmHost = this.runInVmHost;
   }
   return data;
 };
@@ -177,33 +176,35 @@ Probe.prototype.serialize = function serialize(priv) {
  * Authorize that this Probe can be added/updated.
  *
  * One of the following must be true
- * 1. The probe targets an existing machine and the user is an owner
+ * 1. The probe targets an existing physical machine (i.e. compute node,
+ *    phyical server, box, the GZ) and the user is an operator.
+ * 2. The probe targets an existing virtual machine and the user is an owner
  *    of the machine.
- * 2. The probe targets an existing server (i.e. the GZ) and the user
- *    is an operator.
- * 3. The probe targets a existing machine, the probe type
- *    is `runInGlobal=true`, and the user is an operator.
+ * 3. The probe targets a existing virtual machine, the probe type
+ *    is `runInVmHost=true`, and the user is an operator.
  *
  * @param app {App} The amon-master app.
  * @param callback {Function} `function (err)`. `err` may be:
  *    undefined: put is authorized
- *    restify.InvalidArgumentError: the named machine doesn't
+ *    InvalidArgumentError: the named machine doesn't
  *        exist or isn't owned by the monitor owner
- *    restify.InternalError: some other error in authorizing
+ *    InternalError: some other error in authorizing
  */
 Probe.prototype.authorizePut = function (app, callback) {
   var self = this;
   var log = app.log;
+  var machineUuid = this.agent;
 
   function isRunInGlobalOrErr(next) {
-    if (plugins[self.type].runInGlobal) {
+    if (plugins[self.type].runInVmHost) {
       next();
     } else {
-      next('not runInGlobal: ' + self.type);
+      next('not runInVmHost: ' + self.type);
     }
   }
 
   function isExistingMachineOrErr(next) {
+    // Empty "user" uuid string is the sdc-clients hack to not scope to a user.
     app.mapi.getMachine('', self.machine, function (err, machine) {
       if (err && err.code !== 'ResourceNotFound') {
         log.error(err, 'unexpected error getting machine');
@@ -217,11 +218,10 @@ Probe.prototype.authorizePut = function (app, callback) {
   }
 
   function userIsOperatorOrErr(next) {
-    app.isOperator(self.user, function (err, isOperator) {
-      if (err) {
-        log.error('unexpected error authorizing probe put: '
-          + 'probe=%s, error=%s', JSON.stringify(self.serialize()),
-          err.stack || err);
+    app.isOperator(self.user, function (opErr, isOperator) {
+      if (opErr) {
+        log.error({err: opErr, probe: self.serialize()},
+          'unexpected error authorizing probe put');
         next('err determining if operator');
       } else if (isOperator) {
         next();
@@ -231,79 +231,65 @@ Probe.prototype.authorizePut = function (app, callback) {
     });
   }
 
-  if (this.machine) {
-    // 1. A machine owned by this user.
-    app.mapi.getMachine(this.user, this.machine, function (err, machine) {
-      if (err) {
-        if (err.httpCode === 404) {
-          // 3. Operator setting 'runInGlobal' monitor.
-          var conditions3 = [
-            isRunInGlobalOrErr,
-            isExistingMachineOrErr,
-            userIsOperatorOrErr
-          ];
-          async.series(conditions3, function (not3) {
-            if (not3) {
-              // Not "3.", return error for "1."
-              callback(new restify.InvalidArgumentError(format(
-                'Invalid \'machine\': machine \'%s\' does not exist or is not '
-                + 'owned by user \'%s\'.', self.machine, self.user)));
-            } else {
-              callback();
-            }
-          });
-        } else {
-          log.error({err: err, probe: self.serialize()},
-            'unexpected error authorizing probe put against MAPI');
-          callback(new restify.InternalError(
+  // 1. Is this an existing physical machine?
+  app.serverExists(machineUuid, function (physErr, serverExists) {
+    if (physErr) {
+      log.error({err: physErr, probe: self.serialize()},
+        'unexpected error authorizing probe put against MAPI');
+      callback(new restify.InternalError(
+        'Internal error authorizing probe put.'));
+      return;
+    }
+    if (serverExists) {
+      // 1. Must be operator to add probe for physical machine.
+      app.isOperator(self.user, function (opErr, isOperator) {
+        if (opErr) {
+          log.error({err: opErr, probe: self.serialize()},
+            'unexpected error authorizing probe put');
+          return callback(new restify.InternalError(
             'Internal error authorizing probe put.'));
         }
-      } else {
-        callback();
-      }
-    });
-  } else if (this.server) {
-    // 2. Must be an operator to add a probe to a GZ.
-    app.isOperator(this.user, function (err, isOperator) {
-      if (err) {
-        log.error('unexpected error authorizing probe put: '
-          + 'probe=%s, error=%s', JSON.stringify(self.serialize()),
-          err.stack || err);
-        callback(new restify.InternalError(
-          'Internal error authorizing probe put.'));
-        return;
-      }
-      if (!isOperator) {
-        callback(new restify.InvalidArgumentError(format(
-          'Must be operator put a probe on a server (server=%s): '
-          + 'user \'%s\' is not an operator.', self.server, self.user)));
-        return;
-      }
-
-      // Server must exist.
-      app.serverExists(self.server, function ($err, serverExists) {
-        if (err) {
-          log.error({err: $err, probe: self.serialize()},
-            'unexpected error authorizing probe put against MAPI');
-          callback(new restify.InternalError(
-            'Internal error authorizing probe put.'));
-          return;
-        }
-        if (!serverExists) {
+        if (!isOperator) {
           callback(new restify.InvalidArgumentError(format(
-            '\'server\', %s, is invalid: no such server', self.server)));
-          return;
+            'Must be operator put a probe on a physical machine (%s): '
+            + 'user \'%s\' is not an operator.', machineUuid, self.user)));
+        } else {
+          callback(); // 1. PUT authorized
         }
-        callback();
       });
-    });
-  } else {
-    log.error('Attempting to authorize PUT on an invalid probe: '
-      + 'no \'machine\' or \'server\' value: %s',
-      JSON.stringify(this.serialize()));
-    callback(new restify.InternalError(
-      'Internal error authorizing probe put.'));
-  }
+    } else {
+      // 2. A virual machine owned by this user.
+      app.mapi.getMachine(self.user, machineUuid, function (machErr, machine) {
+        if (machErr) {
+          if (machErr.httpCode === 404) {
+            // 3. Operator setting 'runInVmHost' monitor on virtual machine.
+            var conditions3 = [
+              isRunInGlobalOrErr,
+              isExistingMachineOrErr,
+              userIsOperatorOrErr
+            ];
+            async.series(conditions3, function (not3) {
+              if (not3) {
+                // Not "3.", return error for "2."
+                callback(new restify.InvalidArgumentError(format(
+                  'Invalid agent: machine \'%s\' does not exist or is not '
+                  + 'owned by user \'%s\'.', machineUuid, self.user)));
+              } else {
+                callback(); // 3. PUT authorized
+              }
+            });
+          } else {
+            log.error({err: machErr, probe: self.serialize()},
+              'unexpected error authorizing probe put against MAPI');
+            callback(new restify.InternalError(
+              'Internal error authorizing probe put.'));
+          }
+        } else {
+          callback(); // 2. PUT authorized
+        }
+      });
+    }
+  });
 };
 
 Probe.prototype.authorizeDelete = function (app, callback) {
@@ -343,6 +329,31 @@ Probe.get = function get(app, user, monitor, name, callback) {
  * @throws {restify Error} if the raw data is invalid.
  */
 Probe.validate = function validate(app, raw) {
+  var ProbeType = plugins[raw.type];
+  if (!ProbeType) {
+    throw new restify.InvalidArgumentError(
+      format('probe type is invalid: "%s"', raw.type));
+  }
+
+  // 'agent' can be implied from 'machine', and vice versa for 'runLocally'
+  // probe types.
+  if (ProbeType.runLocally) {
+    if (!raw.agent && !raw.machine) {
+      throw new restify.MissingParameterError(format(
+        'one of "agent" or "machine" fields is required for a "%s" probe',
+        raw.type));
+    } else if (!raw.agent) {
+      raw.agent = raw.machine;
+    } else if (!raw.machine) {
+      raw.machine = raw.agent;
+    } else if (raw.agent !== raw.machine) {
+      throw new restify.InvalidArgumentError(format(
+        'invalid "agent" and "machine": they must be the same for '
+        + 'a "%s" probe (agent=%s, machine=%s)',
+        raw.type, raw.agent, raw.machine));
+    }
+  }
+
   var requiredFields = {
     // <raw field name>: <exported name>
     'amonprobe': 'name',
@@ -350,44 +361,22 @@ Probe.validate = function validate(app, raw) {
   };
   Object.keys(requiredFields).forEach(function (field) {
     if (!raw[field]) {
-      //TODO: This error response is confusing for, e.g., a
-      //      "GET /pub/:user/contacts/:contact" where the contact info
-      //      in the DB is bogus/insufficient.  Not sure best way to handle
-      //      that. Would be a pain to have a separate error hierarchy here
-      //      that is translated higher up.
       throw new restify.MissingParameterError(
         format('\'%s\' is a required parameter for a probe',
           requiredFields[field]));
     }
   });
 
-  // One of 'machine' or 'server' is required.
-  if (raw.machine && raw.server) {
+  if (!UUID_RE.test(raw.agent)) {
     throw new restify.InvalidArgumentError(
-      format('must specify only one of \'machine\' or \'server\' for a '
-        + 'probe: %j', raw));
-  } else if (raw.machine) {
-    if (! UUID_RE.test(raw.machine)) {
-      throw new restify.InvalidArgumentError(
-        format('invalid probe machine UUID: \'%s\'', raw.machine));
-    }
-  } else if (raw.server) {
-    if (! UUID_RE.test(raw.server)) {
-      throw new restify.InvalidArgumentError(
-        format('invalid probe server UUID: \'%s\'', raw.server));
-    }
-  } else {
-    throw new restify.MissingParameterError(
-      format('must specify one of \'machine\' or \'server\' for a probe: %j',
-        raw));
+      format('invalid probe agent UUID: \'%s\'', raw.agent));
+  }
+  if (raw.machine && !UUID_RE.test(raw.machine)) {
+    throw new restify.InvalidArgumentError(
+      format('invalid probe machine UUID: \'%s\'', raw.machine));
   }
 
-  // Validate the probe type and config.
-  var ProbeType = plugins[raw.type];
-  if (!ProbeType) {
-    throw new restify.InvalidArgumentError(
-      format('probe type is invalid: "%s"', raw.type));
-  }
+  // Validate the probe-type-specific config.
   if (raw.config) {
     var config;
     try {
@@ -403,8 +392,8 @@ Probe.validate = function validate(app, raw) {
         format('probe config, %s, is invalid: "%s"', raw.config, err.message));
     }
   }
-  if (ProbeType.runInGlobal) {
-    raw.global = true;
+  if (ProbeType.runInVmHost) {
+    raw.runInVmHost = true;
   }
 
   return raw;

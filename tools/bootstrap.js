@@ -1,13 +1,16 @@
 #!/usr/bin/env node
-/* Copyright 2011-2012 Joyent, Inc.  All rights reserved.
+/* Copyright 2012 Joyent, Inc.  All rights reserved.
  *
  * Load some play/dev data for Amon play.
  *
  * Usage:
- *    $ node bootstrap.js [CONFIG-JSON-FILE]
+ *    ./tools/bootstrap.js HEADNODE-HOST-OR-IP
+ *
+ * Example:
+ *    ./tools/bootstrap.js root@10.99.99.7   # COAL
  *
  * This will:
- * - create test users (bob, otto)
+ * - create test users (amondevuserbob, amondevoperatorotto)
  *   Background: http://www.amazon.com/Bob-Otto-Robert-Bruel/dp/1596432039
  * - otto will be an operator
  * - create a 'amondevzone' for bob
@@ -21,7 +24,7 @@ var path = require('path');
 var restify = require('restify');
 var async = require('async');
 var child_process = require('child_process'),
-    spawn = child_process.spawn;
+    exec = child_process.exec;
 var format = require('amon-common').utils.format;
 var httpSignature = require('http-signature');
 var ldap = require('ldapjs');
@@ -34,9 +37,10 @@ var sdcClients = require('sdc-clients'),
 
 //---- globals and constants
 
-var config;  // set in `loadConfig()`
-var bob = JSON.parse(fs.readFileSync(__dirname + '/user-amonuserbob.json', 'utf8'));
-var otto = JSON.parse(fs.readFileSync(__dirname + '/user-amonoperatorotto.json', 'utf8')); // operator
+var headnodeAlias;
+var headnodeConfig;
+var bob = JSON.parse(fs.readFileSync(__dirname + '/user-amondevuserbob.json', 'utf8'));
+var otto = JSON.parse(fs.readFileSync(__dirname + '/user-amondevoperatorotto.json', 'utf8')); // operator
 var ldapClient;
 var ufdsClient;
 var adminUuid;
@@ -47,37 +51,46 @@ var amonClient;
 
 //---- prep steps
 
-// Load config.json file, using the first argv argument or falling back to
-// "../test/config.json".
-function loadConfig(next) {
-  var configPath = process.argv[2];
-
-  if (!configPath) {
-    log('bootstrap: error: no config path was given as an argument\n'
+function parseArgs(next) {
+  headnodeAlias = process.argv[2]; // intentionally global
+  if (!headnodeAlias) {
+    log('bootstrap: error: no headnode alias was given as an argument\n'
       + '\n'
       + 'Usage:\n'
-      + '   ./tools/bootstrap.js CONFIG-JSON-PATH\n'
+      + '   ./tools/bootstrap.js HEADNODE\n'
       + '\n'
-      + 'Create a config JSON file like this:\n'
-      + '   cp ./tools/bootstrap-config.json.in config.json\n'
-      + '   vi config.json              # fill in values\n'
-      + '   ./tools/bootstrap.js config.json\n');
+      + 'Where HEADNODE is an ssh-able string to the headnode gz.\n');
     process.exit(1);
   }
 
-
-  log('# Load config from "%s".', configPath)
-  // 'config' is intentionally global.
-  config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  log('# Headnode alias/host/IP is "%s".', headnodeAlias);
   next();
+}
+
+function getHeadnodeConfig(next) {
+  log('# Getting headnode config.');
+  exec(format('ssh %s bash /lib/sdc/config.sh -json', headnodeAlias),
+    function (err, stdout, stderr) {
+      //console.log('stdout: ' + stdout);
+      //console.log('stderr: ' + stderr);
+      if (err !== null) {
+        //console.log('exec error: ' + error);
+        return next(err);
+      }
+      headnodeConfig = JSON.parse(stdout); // intentionally global
+      next();
+    }
+  );
 }
 
 function ufdsClientBind(next) {
   log("# Create UFDS client and bind.")
+  var ufdsIp = headnodeConfig.ufds_external_ips.split(',')[0];
+  var ufdsUrl = format("ldaps://%s:636", ufdsIp);
   ufdsClient = new UFDS({
-    url: config.ufds.url,
-    bindDN: config.ufds.rootDn,
-    bindPassword: config.ufds.password
+    url: ufdsUrl,
+    bindDN: headnodeConfig.ufds_ldap_root_dn,
+    bindPassword: headnodeConfig.ufds_ldap_root_pw
   });
   ufdsClient.on('ready', function() {
     next();
@@ -89,12 +102,29 @@ function ufdsClientBind(next) {
 
 function ldapClientBind(next) {
   log("# Create LDAP client and bind.")
+  var ufdsIp = headnodeConfig.ufds_external_ips.split(',')[0];
+  var ufdsUrl = format("ldaps://%s:636", ufdsIp);
+  var ufdsRootDn = headnodeConfig.ufds_ldap_root_dn;
+  var ufdsRootPw = headnodeConfig.ufds_ldap_root_pw;
+
   ldapClient = ldap.createClient({
-    url: config.ufds.url,
-    reconnect: false
+    url: ufdsUrl,
+    connectTimeout: 2 * 1000  // 2 seconds (fail fast)
   });
-  ldapClient.bind(config.ufds.rootDn, config.ufds.password, function(err) {
-    next(err);
+  function onFail(failErr) {
+    next(failErr);
+  }
+  ldapClient.once('error', onFail);
+  ldapClient.once('connectTimeout', onFail);
+  ldapClient.on('connect', function () {
+    ldapClient.removeListener('error', onFail);
+    ldapClient.removeListener('connectTimeout', onFail);
+    ldapClient.bind(ufdsRootDn, ufdsRootPw, function (bErr) {
+      if (bErr) {
+        return next(bErr);
+      }
+      return next(null);
+    })
   });
 }
 
@@ -110,6 +140,8 @@ function getAdminUuid(next) {
 
 
 function createUser(user, next) {
+  // Use raw LDAP directly so we can pick our user UUID. The UFDS client lib
+  // overrides the UUID.
   var dn = format("uuid=%s, ou=users, o=smartdc", user.uuid);
   ldapClient.search('ou=users, o=smartdc',
     {scope: 'one', filter: '(uuid='+user.uuid+')'},
@@ -209,17 +241,11 @@ function ldapClientUnbind(next) {
 
 function getMapi(next) {
   log("# Get MAPI client.")
-  var clientOptions;
-  if (config.mapi.url && config.mapi.username && config.mapi.password) {
-    clientOptions = {
-      url: config.mapi.url,
-      username: config.mapi.username,
-      password: config.mapi.password
-    };
-  } else {
-    return next("invalid `config.mapi`: must have "
-      + "url/username/password keys");
-  }
+  var clientOptions = {
+    url: headnodeConfig.mapi_client_url,
+    username: headnodeConfig.mapi_http_admin_user,
+    password: headnodeConfig.mapi_http_admin_pw
+  };
 
   mapi = new MAPI(clientOptions);
   next();
@@ -325,7 +351,7 @@ function getHeadnodeUuid(next) {
 function getAmonClient(next) {
   log("# Get Amon client.")
 
-  // Amon Master in COAL:
+  // Amon Master in your SDC:
   var options = {
     tags: {
       smartdc_role: 'amon'
@@ -407,14 +433,14 @@ function loadAmonObjects(next) {
   log("# Loading Amon objects.");
   var objs = [
     {
-      user: bob.uuid,
+      user: bob.login,
       monitor: 'whistle',
       body: {
         contacts: ['email']
       }
     },
     {
-      user: bob.uuid,
+      user: bob.login,
       monitor: 'whistle',
       probe: 'whistlelog',
       body: {
@@ -429,14 +455,14 @@ function loadAmonObjects(next) {
       }
     },
     {
-      user: bob.uuid,
+      user: bob.login,
       monitor: 'isup',
       body: {
         contacts: ['email']
       }
     },
     {
-      user: bob.uuid,
+      user: bob.login,
       monitor: 'isup',
       probe: 'amondevzone',
       body: {
@@ -445,18 +471,18 @@ function loadAmonObjects(next) {
       }
     },
     {
-      user: otto.uuid,
+      user: otto.login,
       monitor: 'gz',
       body: {
         contacts: ['email']
       }
     },
     {
-      user: otto.uuid,
+      user: otto.login,
       monitor: 'gz',
       probe: 'smartlogin',
       body: {
-        "server": headnodeUuid,
+        "agent": headnodeUuid,
         "type": "logscan",
         "config": {
           "path": "/var/svc/log/smartdc-agent-smartlogin:default.log",
@@ -473,26 +499,13 @@ function loadAmonObjects(next) {
   })
 }
 
-function writeJson(next) {
-  var outPath = path.resolve(__dirname, "../bootstrap.json");
-  log("# Write '%s'.", outPath)
-  var data = {
-    amondevzone: amondevzone,
-    mapizone: mapizone,
-    headnodeUuid: headnodeUuid,
-    bob: bob,
-    otto: otto
-  }
-  fs.writeFileSync(outPath, JSON.stringify(data, null, 2), 'utf8');
-  next();
-}
-
 
 
 //---- mainline
 
 async.series([
-    loadConfig,
+    parseArgs,
+    getHeadnodeConfig,
     ldapClientBind,
     ufdsClientBind,
     getAdminUuid,
@@ -507,12 +520,10 @@ async.series([
     getHeadnodeUuid,
     getAmonClient,
     loadAmonObjects
-    // bootstrap.json isn't used by anyone.
-    //writeJson
   ],
   function (err) {
     if (err) {
-      log("error bootstrapping:", err, (err.stack || err))
+      log('error bootstrapping:', (err.stack || err));
       process.exit(1);
     }
   }

@@ -68,14 +68,17 @@ function md5FromDataSync(data) {
 /**
  * Constructor for the amon relay "application".
  *
- * The gist is we make one of these per zone (aka 'machine') and one for the
+ * The gist is we make one of these per zone (aka 'machine'), including the
  * global zone, and hand it some "cookie" information. Callers are expected
  * to call listen() and close() on this.
  *
  * Params you send into options are:
  *  - log {Bunyan Logger instance}
- *  - server {String} (for a GZ only) the server (aka compute node) UUID
- *  - machine {String} (for non-GZ only) the machine this should be bound to.
+ *  - agent {String} The agent UUID to which this App should be bound. The
+ *    agent UUID is the same as the VM UUID or the physical node UUID (from
+ *    sysinfo).
+ *  - computeNodeUuid {String} The UUID of the physical node on which this
+ *    relay is running.
  *  - socket  {String} the socket to open/close (zsock).
  *  - dataDir {String} root of agent probes tree.
  *  - masterClient {amon-common.RelayClient} client to Relay API on the master.
@@ -91,21 +94,18 @@ function md5FromDataSync(data) {
 function App(options) {
   if (!options) throw TypeError('options is required');
   if (!options.log) throw TypeError('options.log is required');
+  if (!options.agent) throw TypeError('options.agent is required');
+  if (!options.computeNodeUuid)
+    throw TypeError('options.computeNodeUuid is required');
   if (!options.socket) throw TypeError('options.socket is required');
   if (!options.dataDir) throw TypeError('options.dataDir is required');
   if (!options.masterClient)
     throw TypeError('options.masterClient is required');
-  if (options.machine && options.server) {
-    throw TypeError('cannot specify both options.machine and options.server');
-  } else if (!options.machine && !options.server) {
-    throw TypeError('either options.machine and options.server is required');
-  }
   var self = this;
 
-  this.targetType = (options.server ? 'server' : 'machine');
-  this.targetUuid = (options.server || options.machine);
-  this.target = format('%s:%s', this.targetType, this.targetUuid);
-  var log = this.log = options.log.child({target: this.target}, true);
+  this.agent = options.agent;
+  var log = this.log = options.log.child({agent: this.agent}, true);
+  this.computeNodeUuid = options.computeNodeUuid;
   this.socket = options.socket;
   this.dataDir = options.dataDir;
   this.masterClient = options.masterClient;
@@ -116,10 +116,10 @@ function App(options) {
   // socket into the zone will be created. The App's purpose then is limited
   // to updating agentprobe data for this zone: (a) in case the zone comes
   // back up, or (b) if there are probes for the zone to run from the global.
-  if (this.targetType === 'server') {
+  if (this.agent === this.computeNodeUuid) {
     this.isZoneRunning = true;
   } else {
-    this.isZoneRunning = (zutil.getZoneState(this.targetUuid) === 'running');
+    this.isZoneRunning = (zutil.getZoneState(this.agent) === 'running');
   }
 
   // Cached current Content-MD5 for agentprobes from upstream (master).
@@ -128,12 +128,12 @@ function App(options) {
   this.downstreamAgentProbesMD5 = null;
   this.downstreamAgentProbes = null;
 
-  this._stageLocalJsonPath = path.resolve(this.dataDir,
-    format('%s-%s-local.json', this.targetType, this.targetUuid));
-  this._stageGlobalJsonPath = path.resolve(this.dataDir,
-    format('%s-%s-global.json', this.targetType, this.targetUuid));
+  this._stageVmGuestJsonPath = path.resolve(this.dataDir,
+    format('%s-vmguest.json', this.agent));
+  this._stageVmHostJsonPath = path.resolve(this.dataDir,
+    format('%s-vmhost.json', this.agent));
   this._stageMD5Path = path.resolve(this.dataDir,
-    format('%s-%s.content-md5', this.targetType, this.targetUuid));
+    format('%s.content-md5', this.agent));
 
   // Server setup.
   var server = this.server = restify.createServer({
@@ -146,8 +146,8 @@ function App(options) {
     log: log.child({component: 'audit'})
   }));
   function setup(req, res, next) {
-    req.targetType = self.targetType;
-    req.targetUuid = self.targetUuid;
+    req._agent = self.agent;
+    req._relay = self.computeNodeUuid;
     req._app = self;
     req._masterClient = self.masterClient;
     return next();
@@ -198,7 +198,7 @@ App.prototype.sendOperatorEvent = function (msg, details, callback) {
  */
 App.prototype.start = function (callback) {
   var self = this;
-  var zonename = this.targetUuid;
+  var zonename = this.agent;
   var log = this.log;
 
   // Early out for developer mode.
@@ -224,7 +224,7 @@ App.prototype.start = function (callback) {
   }
 
   function retrieveOwner(next) {
-    if (self.owner || self.targetType === 'server') {
+    if (self.owner || self.agent === self.computeNodeUuid) {
       return next();
     }
     zutil.getZoneAttribute(zonename, 'owner-uuid', function (err, attr) {
@@ -312,7 +312,7 @@ App.prototype.start = function (callback) {
  * @param {Function} callback called when closed. Takes no arguments.
  */
 App.prototype.close = function (callback) {
-  this.log.info('close app for %s "%s"', this.targetType, this.targetUuid);
+  this.log.info('close app for agent "%s"', this.agent);
   if (this.isZoneRunning) {
     this.server.once('close', callback);
     try {
@@ -320,8 +320,7 @@ App.prototype.close = function (callback) {
     } catch (err) {
       // A `net.Server` at least will throw if it hasn't reached a ready
       // state yet. We don't care.
-      this.log.warn(err, 'error closing server for %s "%s"', this.targetType,
-        this.targetUuid);
+      this.log.warn(err, 'error closing server for agent "%s"', this.agent);
       callback();
     }
   } else {
@@ -384,17 +383,17 @@ App.prototype.getDownstreamAgentProbes = function (callback) {
   var log = self.log;
   var files = [];
 
-  if (self.targetType === 'server') {
-    files.push(format('server-%s-local.json', self.targetUuid));
-    files.push(format('server-%s-global.json', self.targetUuid));
+  if (self.agent === self.computeNodeUuid) {
+    files.push(format('%s-vmguest.json', self.agent));
+    files.push(format('%s-vmhost.json', self.agent));
     var zonenames = Object.keys(self.zoneApps);
     for (var i = 0; i < zonenames.length; i++) {
       if (zonenames[i] === 'global')
         continue;
-      files.push(format('machine-%s-global.json', zonenames[i]));
+      files.push(format('%s-vmhost.json', zonenames[i]));
     }
   } else {
-    files.push(format('%s-%s-local.json', self.targetType, self.targetUuid));
+    files.push(format('%s-vmguest.json', self.agent));
   }
   var agentProbes = [];
   async.forEachSeries(files,
@@ -440,10 +439,10 @@ App.prototype.getDownstreamAgentProbes = function (callback) {
  *
  * @param agentProbes {Object} The agent probe data to write out.
  * @param md5 {String} The content-md5 for the agent probe data.
- * @param callback {Function} `function (err, isGlobalChange)`. `err` is
- *    null on success. `isGlobalChange` is a boolean indicating if the
- *    written agent probes involved a change in 'global' probes (those
- *    for which `global: true`). This boolean is used to assist with
+ * @param callback {Function} `function (err, isVmHostChange)`. `err` is
+ *    null on success. `isVmHostChange` is a boolean indicating if the
+ *    written agent probes involved a change in 'vmhost' probes (those
+ *    for which `runInVmHost: true`). This boolean is used to assist with
  *    cache invalidation.
  */
 App.prototype.writeAgentProbes = function (agentProbes, md5, callback) {
@@ -451,44 +450,44 @@ App.prototype.writeAgentProbes = function (agentProbes, md5, callback) {
   var log = self.log;
 
   if (!agentProbes || !md5) {
-    log.debug('No agentProbes (%s) or md5 (%s) given (%s=%s). No-op',
-      agentProbes, md5, self.targetType, self.targetUuid);
+    log.debug('No agentProbes (%s) or md5 (%s) given (agent %s). No-op',
+      agentProbes, md5, self.agent);
     return callback();
   }
 
-  var localAgentProbes = [];
-  var globalAgentProbes = [];
+  var vmGuestAgentProbes = [];
+  var vmHostAgentProbes = [];
   for (var i = 0; i < agentProbes.length; i++) {
     var probe = agentProbes[i];
-    if (probe.global) {
-      globalAgentProbes.push(probe);
+    if (probe.runInVmHost) {
+      vmHostAgentProbes.push(probe);
     } else {
-      localAgentProbes.push(probe);
+      vmGuestAgentProbes.push(probe);
     }
   }
 
-  var localJsonPath = this._stageLocalJsonPath;
-  var globalJsonPath = this._stageGlobalJsonPath;
+  var vmGuestJsonPath = this._stageVmGuestJsonPath;
+  var vmHostJsonPath = this._stageVmHostJsonPath;
   var md5Path = this._stageMD5Path;
 
-  // Before and after md5sums of the 'global' json data: for `isGlobalChange`.
-  var oldGlobalMD5 = null;
-  var newGlobalMD5 = null;
+  // Before and after md5sums of the 'vmhost' json data: for `isVmHostChange`.
+  var oldVmHostMD5 = null;
+  var newVmHostMD5 = null;
 
   function backup(cb) {
     var backedUpPaths = [];
-    utils.asyncForEach([localJsonPath, globalJsonPath, md5Path],
+    utils.asyncForEach([vmGuestJsonPath, vmHostJsonPath, md5Path],
                        function (p, cb2) {
       path.exists(p, function (exists) {
         if (exists) {
           log.trace('Backup \'%s\' to \'%s\'.', p, p + '.bak');
           backedUpPaths.push([p, p + '.bak']);
-          if (p === globalJsonPath) {
-            md5FromPath(p, function (err, globalMD5) {
+          if (p === vmHostJsonPath) {
+            md5FromPath(p, function (err, vmHostMD5) {
               if (err) {
                 return cb2(err);
               }
-              oldGlobalMD5 = globalMD5;
+              oldVmHostMD5 = vmHostMD5;
               fs.rename(p, p + '.bak', cb2);
             });
           } else {
@@ -505,15 +504,15 @@ App.prototype.writeAgentProbes = function (agentProbes, md5, callback) {
   function write(cb) {
     utils.asyncForEach(
       [
-        [localJsonPath, JSON.stringify(localAgentProbes, null, 2)],
-        [globalJsonPath, JSON.stringify(globalAgentProbes, null, 2)],
+        [vmGuestJsonPath, JSON.stringify(vmGuestAgentProbes, null, 2)],
+        [vmHostJsonPath, JSON.stringify(vmHostAgentProbes, null, 2)],
         [md5Path, md5]
       ],
       function (item, cb2) {
         var p = item[0];  // path
         var d = item[1];  // data
-        if (p === globalJsonPath) {
-          newGlobalMD5 = md5FromDataSync(d);
+        if (p === vmHostJsonPath) {
+          newVmHostMD5 = md5FromDataSync(d);
         }
         fs.writeFile(p, d, 'utf8', cb2);
       },
@@ -557,18 +556,18 @@ App.prototype.writeAgentProbes = function (agentProbes, md5, callback) {
       }
       self.upstreamAgentProbesMD5 = md5;  // upstream cache
       self.cacheInvalidateDownstream();   // downstream cache
-      var isGlobalChange = (oldGlobalMD5 !== newGlobalMD5);
-      log.trace({isGlobalChange: isGlobalChange, oldGlobalMD5: oldGlobalMD5,
-        newGlobalMD5: newGlobalMD5}, 'isGlobalChange in writeAgentProbes');
+      var isVmHostChange = (oldVmHostMD5 !== newVmHostMD5);
+      log.trace({isVmHostChange: isVmHostChange, oldVmHostMD5: oldVmHostMD5,
+        newVmHostMD5: newVmHostMD5}, 'isVmHostChange in writeAgentProbes');
       if (backedUpPaths.length) {
         cleanBackup(backedUpPaths, function (err4) {
           if (err4) {
             return callback(err4);
           }
-          return callback(null, isGlobalChange);
+          return callback(null, isVmHostChange);
         });
       } else {
-        return callback(null, isGlobalChange);
+        return callback(null, isVmHostChange);
       }
     });
   });

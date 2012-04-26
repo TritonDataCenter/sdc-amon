@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Joyent, Inc.  All rights reserved.
+ * Copyright 2012 Joyent, Inc.  All rights reserved.
  *
  * Base class for Amon probe types.
  * Interface provided by the base "Probe" class:
@@ -42,9 +42,16 @@
  *    Probe.prototype.type = <probe type string>;
  *      This must match the name used in "./index.js".
  *
- *    Probe.runInGlobal = <boolean>;
- *      Some Probe types must be run in the global. E.g. The "machine-up"
- *      probe type works by watching for system sysevents in the GZ.
+ *    Probe.runInVmHost = <boolean>;
+ *      Some Probe types must be run in the VM host (i.e. the global zone).
+ *      E.g. The "machine-up" probe type works by watching for system
+ *      sysevents in the GZ.
+ *
+ *    Probe.runLocally = <boolean>;
+ *      Some Probe types run locally, i.e. the 'agent' and 'machine' fields
+ *      are the same. Probes of these types can be created without passing
+ *      in the 'agent' option (it is inferred from 'machine'), and vice
+ *      versa.
  *
  *    Probe.validateConfig(config) {...}
  *      @param config {Object} The config data for a probe.
@@ -73,7 +80,7 @@ var AMON_EVENT_VERSION = 1;
  * @param options {Object}
  *    - `id` {String}
  *    - `data` {Object} The probe data, including its `config`.
- *    - `log` {Buyan Logger}
+ *    - `log` {Bunyan Logger}
  */
 function Probe(options) {
   process.EventEmitter.call(this);
@@ -93,19 +100,16 @@ function Probe(options) {
   this._monitor = data.monitor;
   this._probe = data.name;
   if (data.machine) {
-    this.targetType = 'machine';
-    this.targetUuid = data.machine;
-  } else {
-    assert.ok(data.server);
-    this.targetType = 'server';
-    this.targetUuid = data.server;
+    this._machine = data.machine;
   }
+
 
   this.config = data.config;
 }
 util.inherits(Probe, process.EventEmitter);
 
-Probe.runInGlobal = false;
+Probe.runInVmHost = false;
+Probe.runLocally = false;
 
 
 /**
@@ -134,7 +138,6 @@ Probe.prototype.emitEvent = function (message, value, details, clear) {
     monitor: this._monitor,
     probe: this._probe,
     probeType: this.type,
-    time: Date.now(),
     clear: clear,
     data: {
       message: message,
@@ -142,7 +145,9 @@ Probe.prototype.emitEvent = function (message, value, details, clear) {
       details: details
     }
   };
-  event[this.targetType] = this.targetUuid;
+  if (this._machine) {
+    event.machine = this._machine;
+  }
   this.emit('event', event);
 };
 

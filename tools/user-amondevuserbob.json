@@ -1,9 +1,9 @@
 {
-  "login": "amonuserbob",
+  "login": "amondevuserbob",
   "uuid": "deadbeef-5555-5555-5555-555555555555",
   "userpassword": "123123",
-  "email": "trentm+amonuserbob@gmail.com",
+  "email": "trentm+amondevuserbob@gmail.com",
   "cn": "Bob",
-  "sn": "The Amon User",
+  "sn": "Amon Dev User",
   "objectclass": "sdcPerson"
 }

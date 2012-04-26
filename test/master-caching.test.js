@@ -159,7 +159,7 @@ var sulkyzoneContentMD5;
 
 test('ListAgentProbes before any probes', function (t) {
   // var probe = FIXTURES.ulrich.monitors.whistle.probes.whistlelog;
-  masterClient.get('/agentprobes?machine=' + prep.amontestzone.name,
+  masterClient.get('/agentprobes?agent=' + prep.amontestzone.name,
     function (err, req, res, obj) {
       t.ifError(err);
       sulkyzoneContentMD5 = res.headers['content-md5'];
@@ -172,13 +172,13 @@ test('ListAgentProbes before any probes', function (t) {
 
 test('HeadAgentProbes before any probes', function (t) {
   // var probe = FIXTURES.ulrich.monitors.whistle.probes.whistlelog;
-  masterClient.head('/agentprobes?machine=' + prep.amontestzone.name,
+  masterClient.head('/agentprobes?agent=' + prep.amontestzone.name,
     function (err, headers, res) {
       t.ifError(err);
       t.equal(res.headers['content-md5'], sulkyzoneContentMD5);
 
       // Second time should be fast.
-      masterClient.head('/agentprobes?machine=' + prep.amontestzone.name,
+      masterClient.head('/agentprobes?agent=' + prep.amontestzone.name,
         function (err2, req2, res2) {
           t.ifError(err2);
           t.equal(res2.headers['content-md5'], sulkyzoneContentMD5);
@@ -259,6 +259,7 @@ test('probes: create', function (t) {
         t.ifError(err, 'error PUT\'ing '+path);
         t.equal(obj.name, probeName);
         t.equal(obj.machine, probe.machine);
+        t.equal(obj.agent, probe.machine);
         t.equal(obj.type, probe.type);
         Object.keys(obj.config).forEach(function (k) {
           t.equal(obj.config[k], probe.config[k]);
@@ -357,7 +358,7 @@ test('HeadAgentProbes changed after probe added',
      {timeout: 5000},
      function (t) {
   // var probe = FIXTURES.ulrich.monitors.whistle.probes.whistlelog;
-  masterClient.head('/agentprobes?machine=' + prep.amontestzone.name,
+  masterClient.head('/agentprobes?agent=' + prep.amontestzone.name,
     function (err, headers, res) {
       t.ifError(err);
       newSulkyzoneContentMD5 = res.headers['content-md5'];
@@ -365,9 +366,9 @@ test('HeadAgentProbes changed after probe added',
         'expect amontestzone Content-MD5 to have changed');
 
       // Second time should be fast.
-      masterClient.head('/agentprobes?machine=' + prep.amontestzone.name,
+      masterClient.head('/agentprobes?agent=' + prep.amontestzone.name,
         function (err2, req2, res2) {
-          t.ifError(err2, '/agentprobes?machine=' + prep.amontestzone.name);
+          t.ifError(err2, '/agentprobes?agent=' + prep.amontestzone.name);
           t.equal(res2.headers['content-md5'], newSulkyzoneContentMD5);
           t.ok(Number(res2.headers['x-response-time']) < 50,
                'faster cached response');
@@ -380,7 +381,7 @@ test('HeadAgentProbes changed after probe added',
 
 test('ListAgentProbes', function (t) {
   // var probe = FIXTURES.ulrich.monitors.whistle.probes.whistlelog;
-  masterClient.get('/agentprobes?machine=' + prep.amontestzone.name,
+  masterClient.get('/agentprobes?agent=' + prep.amontestzone.name,
     function (err, req, res, obj) {
       t.ifError(err);
       t.equal(res.headers['content-md5'], newSulkyzoneContentMD5);

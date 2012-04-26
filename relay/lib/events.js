@@ -16,17 +16,12 @@ function putEvents(req, res, next) {
   //XXX - See TODO.txt notes on 'idObject'.
   //XXX Validate that the event schema matches the given `version`.
 
-  // We add the UUID in the relay, because we don't trust data from an
-  // agent -- a rogue agent could be trying to spoof/replay UUIDs.
-  event.uuid = uuid();
-
   // Add data known by the relay (this is info the master can trust more
   // because the relay is always in the hands of the operator).
-  if (req.targetType === 'server') {
-    event.server = req.targetUuid;
-  } else {
-    event.machine = req.targetUuid;
-  }
+  event.uuid = uuid();
+  event.time = Date.now();
+  event.agent = req._agent;
+  event.relay = req._relay;
 
   req.log.debug({event: event}, 'relaying event');
   req._masterClient.sendEvent(event, function (err) {

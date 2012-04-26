@@ -137,6 +137,7 @@
       2011-11-10 23:40:43Z INFO: Successfully updated agent probes from master (zone: global, md5: undefined -> UaTV7YW3MTyNMX+uguZZZw==).
 - review <https://hub.joyent.com/wiki/display/dev/Operating+a+server+fleet>
   How are we doing?
+- review and answer MVP points
 - JSON api summary at "GET /"
 - HTML docs at "GET /docs"
 - SNMP traps (per Mark).
@@ -264,6 +265,7 @@ Just have it at the top-level and can limit only by machine/server.
           stop {RFC date, timestamp, <digit>[mhd] (minute, hour, day)}
           machines {Set of machine UUIDs}
           notes {String} Short notes on why the maintenance window. Optional.
+      Returns:
           :id {Number} incrementing per-user id (a la alarms)
   PUT /pub/:login/maintenance/:id      # UpdateMaintenanceWindow
           start: change start time
@@ -278,6 +280,224 @@ TODO: I'd really like to ditch the machine/server thing. Unify with
 
 TODO: Also add "targetMachine" and perhaps rename current "machine" to
 "runOnMachine" (blech, better name needed).
+  XXX
+  machine -> what machine is being monitored
+  agent -> machine UUID for agent to run the probe
+
+  UUID_MON is a monitor zone setup just to watch other zones.
+  UUID1 is our production service box.
+
+  sdc-amon /pub/trent/monitors/mojo/probes/machineup -X PUT -d '{
+    type: "machine-up"
+    machine: UUID1,
+    // This one doesn't accept an agent. The agent this runs on is the
+    // compute node GZ for UUID1.
+  }'
+
+  sdc-amon /pub/trent/monitors/mojo/probes/ping -X PUT -d '{
+    type: "icmp",
+    machine: UUID1,     // optional, but necessary to effectively set a maint window on a machine
+    agent: UUID_MON,    // UUID of a separate pinger zone
+    config: {
+      "host": "mo.joyent.com"
+    }
+  }'
+
+  sdc-amon /agentprobes?agent=UUID
+
+  sdc-amon /pub/trent/maintenance -X POST -d '{
+    start: "now",
+    stop: "1h",
+    machines: ["UUID1"],
+    notes: "upgrading this sucka"
+  }'
+
+  If allowing 'machine' above to be optional, then also probably want:
+
+    sdc-amon /pub/trent/maintenance -X POST -d '{
+      start: "now",
+      stop: "1h",
+      monitors: ["mojo"],       // <--- set a maint window by monitor
+      notes: "upgrading this sucka"
+    }'
+
+  Having both is annoying, because you have to show those options in UIs.
+
+
+Bigger example (TODO: put this as a big use case):
+
+  UUID_MON is our monitor zone
+  UUID_DB1 master db zone
+  UUID_DB2 slave db zone
+  UUID_LB load balancer zone
+  UUID_WEBHEAD1 webhead 1 zone
+  UUID_WEBHEAD2 webhead 2 zone
+
+  TODO: how to monitor percentiles? E.g. prio1 alarm if 90th percentile
+  response time is >200ms or something?
+
+  # Setup a monitor for the service as a whole. Bad news if this one fails,
+  # i.e. that's an arg for severities (TODO: severity).
+  sdc-amon /pub/trent/monitors/myservice -X PUT -d '{
+    contacts: ["email", "sms"],
+    severity: 1
+  }'
+  sdc-amon /pub/trent/monitors/myservice/probes/ping -X PUT -d '{
+    type: "icmp",
+    agent: UUID_MON,
+    config: {
+      "host": "myservice.example.com"
+    }
+  }'
+  sdc-amon /pub/trent/monitors/myservice/probes/http -X PUT -d '{
+    type: "http",
+    agent: UUID_MON,
+    config: {
+      "host": "http://myservice.example.com/status"
+    }
+  }'
+
+  # Setup monitors for each of the other machines: is it up? errors in logs?
+  # relevant services up? Slightly lower prio. For example, WEBHEAD1:
+  sdc-amon /pub/trent/monitors/webhead1 -X PUT -d '{
+    contacts: ["email", "sms"],
+    severity: 2
+  }'
+  sdc-amon /pub/trent/monitors/webhead1/probes/machineup -X PUT -d '{
+    type: "machine-up"
+    machine: UUID_WEBHEAD1,
+    // This probe type doesn't accept an agent: it runs from the compute
+    // node GZ for `machine`.
+  }'
+  sdc-amon /pub/trent/monitors/webhead1/probes/ping -X PUT -d '{
+    type: "icmp",
+    agent: UUID_MON,
+    config: {
+      "host": "1.2.3.4"
+    }
+  }'
+  sdc-amon /pub/trent/monitors/webhead1/probes/http -X PUT -d '{
+    type: "http",
+    agent: UUID_MON,
+    config: {
+      "host": "http://1.2.3.4/status",
+      "headers": {
+        "Host": "myservice.example.com"
+      }
+    }
+  }'
+  sdc-amon /pub/trent/monitors/webhead1/probes/myservice -X PUT -d '{
+    type: "smf",    // Not yet implemented
+    machine: UUID_WEBHEAD1,
+    config: {
+      "fmri": "myservice"
+    }
+  }'
+  sdc-amon /pub/trent/monitors/webhead1/probes/logerrors -X PUT -d '{
+    type: "log-scan",   // or 'smf-log-scan' if/when that is added
+    machine: UUID_WEBHEAD1,
+    config: {
+      "path": "/var/log/myservice.log",
+      "regex": "ERROR"
+    }
+  }'
+
+  # Might want a lower-prio "maintenance" monitor for each machine.
+  # For example, WEBHEAD1:
+  sdc-amon /pub/trent/monitors/webhead1maint -X PUT -d '{
+    contacts: ["email"],
+    severity: 3
+  }'
+  sdc-amon /pub/trent/monitors/webhead1maint/probes/disk -X PUT -d '{
+    type: "disk-free",   // Not yet implemented
+    machine: UUID_WEBHEAD1,
+    config: {
+      "path": "/",        // or call this 'mount'?
+      "capacity": 0.8   // alarm if disk usage is over 80%
+    }
+  }'
+  sdc-amon /pub/trent/monitors/webhead1maint/probes/ram -X PUT -d '{
+    type: "ram-free",   // Not yet implemented
+    machine: UUID_WEBHEAD1,
+    config: {
+      "capacity": 0.9,   // alarm if RAM usage is over 90% 3 times in 5 minutes
+      "threshold": 3,
+      "period": 300
+    }
+  }'
+
+XXX What else? TODO: ask around. Learn about joyent.com setup. Learn about
+voxer setup. Ask ops about what kinds of monitoring checks they have setup
+typically.
+
+
+How would I set a maintenance window to upgrade the DB's?
+- set maint window on UUID_DB2 (upgrade slave first)
+- do upgrades on UUID_DB2
+- check monitoring dashboard, if all is well, close the maint window
+
+OR (if don't think about maint window):
+
+- start upgrades on UUID_DB2
+- get notification for a db2 monitor alarm, click link to alarm page
+- visit alarm page. (This alarm page should include info on other
+  recent alarms... highlighting those related to the same machine.)
+- "set maintenance window" for this alarm:
+  Q: this translates to maint on:
+    - that alarm's fault machine(s)?
+    - all the machines for that alarm's monitor? no
+    - this alarm's monitor
+  A: Default to maint on this monitor. Offer to put maint on "all monitors
+     for this machine."
+
+
+
+
+
+Aside: Two classes of probes: remote (runs from the outside, e.g. "ping";
+need to specify an 'agent' on which to run) and local (run on that target
+machine, e.g. "log-scan", or on its GZ, e.g. "machine-up"). TODO: add this
+to documentation.
+
+
+
+Transition from machine/server to agent/machine:
+
+    sdc-amon /agentprobes?agent=UUID
+      A probe type has a `usesLocalAgent` boolean. If true, then
+      `probe.agent = probe.machine`. E.g. 'log-scan' and 'smf'.
+
+    sdc-amon /pub/:login/probe/:probe -X PUT ...
+      Q: How to know to check if machine/agent is for a GZ?
+      A: Need to have gz=true explicit in probe. Operator check on that.
+         Relay must discard probes that don't have correct `gz` value.
+
+      NOTE: Already have probe.global. Use that? No, that's for ProbeType.runInGlobal.
+      i.e. runInVmHost.
+
+      probe smartlogin: {
+            'machine': prep.headnodeUuid,
+
+            'machineIsPhysical': true,
+            'gz': true,
+            'machineIsGz': true,
+            'machineIsPrivileged': true,
+            'machineIsRestricted': true,
+            'restricted': true,
+            'sudo': true,
+            'admin': true,
+
+            'type': 'logscan',
+            'config': {
+              'path': '/var/svc/log/smartdc-agent-smartlogin:default.log',
+              'regex': 'Stopping',
+              'threshold': 1,
+              'period': 60
+            }
+          }
+        }
+
+
 
 
 Walk through alarm scenarios with maintenance windows:
@@ -289,13 +509,6 @@ Walk through alarm scenarios with maintenance windows:
    Maint window closes. TODO: `alarm.openedDuringMaintenance=true`.
    TODO: `alarm.closedDuringMaintenance`? or `alarm.clearedDuringMaintenance`.
    TODO: merge "close" and "clear" language?
-
-Q: Am I missing something? Should *all* probe types support clearing? E.g.
-should "logscan" clear if during the next period there are less than
-threshold hits? TODO: Ask Mark and Trevor. Does one expect the monitoring
-dashboard to show an *open* alarm for the single probe failure incident from,
-say, 4 hours ago?  Same answer for a ping check? Same answer for a http
-response time check?
 
   GET /pub/:login/updates
     Persistent connection that streams JSON objects of updates to Amon status
@@ -416,57 +629,6 @@ Where:
 
 If not obvious, you can send multiple metrics per check.
 
-
-Current event layouts (working on a spec for this). Event from logscan
-probe type (a "probe event"):
-
-    {
-      "v":1,
-      "time":1331782620613,
-      "type": "probe",
-      "user": "44444444-4444-4444-4444-444444444444",
-      "monitor": "gz",
-      "probe": "smartlogin",
-      "probeType": "logscan"
-      "clear": false,
-      "data":{
-        "message":"Log \"/var/svc/log/smartdc-agent-smartlogin:default.log\" matched /Stopping/.",
-        "value":1,
-        "details":{
-          "match":"[ Mar 7 01:01:19 Stopping because service restarting. ]\n[ Mar 7 01:01:19 Executing stop method (:kill). ]"
-        }
-      },
-      "machine": UUID
-      // Added by relay:
-      "machine": <will override if from a machine>,
-      "server":"564d986b-793c-9595-e30a-36b06215d7a4",
-      "uuid":"1e5933ba-c813-44fc-bb54-8b75ebf53eff"
-    }
-
-Test event from "POST /pub/:user/monitors/:monitor?action=fakefault"
-(a "test event" or a "monitor event", i.e. associated with a monitor):
-
-    {
-      v: 1,
-      time: Date.now(),
-      type: "fake",
-      user: UUID,
-      monitor: NAME
-      clear: CLEAR,
-      data:{
-        message: "Test notification.",
-      },
-      uuid: uuid()
-    }
-
-Other potential event types:
-
-- "operator event": send to (Amon) operator for some internal Amon problem
-- "user event": send to user for some configuration problem in their data?
-  E.g. I was think that with groups, notify the group owner if can't contact
-  one of the group members. Not sure though.
-- "relay" event? A problem report from a relay? Perhaps this is just an
-  operator event? Not sure.
 
 
 # notes: severity

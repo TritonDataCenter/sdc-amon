@@ -66,7 +66,8 @@ var log = new Logger({
 function createGlobalZoneApp() {
   return new App({
     log: log,
-    server: config.computeNodeUuid,
+    agent: config.computeNodeUuid,
+    computeNodeUuid: config.computeNodeUuid,
     socket: config.socket,
     dataDir: config.dataDir,
     localMode: true,  // use a local socket, not a zsock
@@ -78,7 +79,8 @@ function createGlobalZoneApp() {
 function createZoneApp(zonename) {
   return new App({
     log: log,
-    machine: zonename,
+    agent: zonename,
+    computeNodeUuid: config.computeNodeUuid,
     socket: config.socket,
     localMode: false,  // use a zsock, this isn't the current zone
     dataDir: config.dataDir,
@@ -269,7 +271,7 @@ function createMasterClient(next) {
 function startApp(app, callback) {
   return app.start(function (err) {
     if (!err)
-      app.log.info({target: app.target}, 'Amon-relay started');
+      app.log.info({agent: app.agent}, 'Amon-relay started');
     if (callback)
       callback(err);
     return;
@@ -433,9 +435,7 @@ function updateAgentProbes(next) {
     //XXX Update the following to bulk query against master.
     var applog = app.log;
     applog.debug('updateAgentProbes for zone "%s"', zonename);
-    return masterClient.agentProbesMD5(app.targetType,
-                                       app.targetUuid,
-                                       function (err, masterMD5) {
+    return masterClient.agentProbesMD5(app.agent, function (err, masterMD5) {
       if (err) {
         applog.warn('Error getting master agent probes MD5: %s', err);
         return nextOne();
@@ -447,25 +447,24 @@ function updateAgentProbes(next) {
         applog.trace('No agent probes update.');
         return nextOne();
       }
-      return masterClient.agentProbes(app.targetType, app.targetUuid,
+      return masterClient.agentProbes(app.agent,
                                       function (probeErr,
                                                 agentProbes,
                                                 probeMasterMD5) {
         if (probeErr || !agentProbes || !probeMasterMD5) {
           applog.warn(probeErr,
-            'Error getting agent probes from master (%s=%s)',
-            app.targetType, app.targetUuid);
+            'Error getting agent probes from master (agent %s)', app.agent);
           return nextOne();
         }
         applog.trace({agentProbes: agentProbes},
           'Retrieved agent probes from master');
 
         return app.writeAgentProbes(agentProbes, masterMD5,
-                                    function (writeErr, isGlobalChange) {
+                                    function (writeErr, isVmHostChange) {
           if (writeErr) {
             applog.error(writeErr, 'unable to save new agent probes');
           } else {
-            if (isGlobalChange) {
+            if (isVmHostChange) {
               zoneApps['global'].cacheInvalidateDownstream();
             }
             applog.info('Successfully updated agent probes from master '

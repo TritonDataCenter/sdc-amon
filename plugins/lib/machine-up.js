@@ -46,8 +46,8 @@ function MachineUpProbe(options) {
 }
 util.inherits(MachineUpProbe, Probe);
 
-
-MachineUpProbe.runInGlobal = true;
+MachineUpProbe.runInVmHost = true;
+MachineUpProbe.runLocally = true;
 MachineUpProbe.prototype.type = 'machine-up';
 
 MachineUpProbe.validateConfig = function (config) {

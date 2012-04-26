@@ -236,7 +236,9 @@ TODO
 
 ## PutProbe (PUT /pub/:user/monitors/:monitor/probes/:probe)
 
-TODO
+TODO: mention 'agent' as required and suggested. 'machine' is an optional
+value useful for maintenance windows. It is implied for 'runLocally' probe
+types.
 
 ## DeleteProbe (DELETE /pub/:user/monitors/:monitor/probes/:probe)
 
@@ -796,11 +798,9 @@ stable "Content-MD5" header to use for caching.
 
 ### Inputs
 
-||**Field**||**Type**||**Description**||
-||machine||UUID||The machine (VM or SmartMachine, aka zone) for which to return probes.||
-||server||UUID||The server GZ for which to return probes.||
+||**Parameter**||**Required?**||**Default**||**Description**||
+||agent||Required||-||The agent UUID. Note that the agent UUID is that of the machine -- VM, SmartMachine (aka zone), or physical node -- on which is runs.||
 
-Either `machine` or `server` must be specified.
 
 ### Returns
 
@@ -818,7 +818,10 @@ TODO
 This "HEAD" form of `ListAgentProbes` allows for relays and agents to check
 for agent control data changes with less network overhead.
 
-TODO
+### Inputs
+
+||**Parameter**||**Required?**||**Default**||**Description**||
+||agent||Required||-||The agent UUID. Note that the agent UUID is that of the machine -- VM, SmartMachine (aka zone), or physical node -- on which is runs.||
 
 
 
@@ -851,6 +854,10 @@ whole userCache object.
 
 
 # Probe Types
+
+XXX describe local v. remote probe types here and implications with
+agent/machine args for creation. Note remote/local on each probe section
+below.
 
 ## Probe: logscan
 
@@ -958,6 +965,66 @@ interuptions or packet loss.
     }'
 
 
+# Event Types
+
+This is internal reference data. An Amon user shouldn't need to know
+these details.
+
+**WARNING: This is incomplete and underspecified.**
+
+Current event layouts (working on a spec for this). Event from logscan
+probe type (a "probe event"):
+
+    {
+      "v":1,
+      "type": "probe",
+      "user": "44444444-4444-4444-4444-444444444444",
+      "monitor": "gz",
+      "probe": "smartlogin",
+      "probeType": "logscan"
+      "clear": false,
+      "data":{
+        "message":"Log \"/var/svc/log/smartdc-agent-smartlogin:default.log\" matched /Stopping/.",
+        "value":1,
+        "details":{
+          "match":"[ Mar 7 01:01:19 Stopping because service restarting. ]\n[ Mar 7 01:01:19 Executing stop method (:kill). ]"
+        }
+      },
+      "machine": UUID1,    // only from some probe types
+
+      // Added by relay:
+      "uuid":"1e5933ba-c813-44fc-bb54-8b75ebf53eff" // unique event UUID
+      "time": 1331782620613,
+      "agent": UUID2,
+      "relay": UUID3,
+    }
+
+Test event from "POST /pub/:user/monitors/:monitor?action=fakefault"
+(a "test event" or a "monitor event", i.e. associated with a monitor):
+
+    {
+      v: 1,
+      time: Date.now(),
+      type: "fake",
+      user: UUID,
+      monitor: NAME
+      clear: CLEAR,
+      data:{
+        message: "Test notification.",
+      },
+      uuid: uuid()
+    }
+
+Other potential event types:
+
+- "operator event": send to (Amon) operator for some internal Amon problem
+- "user event": send to user for some configuration problem in their data?
+  E.g. I was think that with groups, notify the group owner if can't contact
+  one of the group members. Not sure though.
+- "relay" event? A problem report from a relay? Perhaps this is just an
+  operator event? Not sure.
+
+
 
 # MVP
 
@@ -1021,12 +1088,15 @@ More detail:
   Portals) or via an Amon *clear* event -- the failing state is no longer
   failing, e.g. a halted machine has come back up. An alarm object lives
   until it is closed.
-- A **fault** is a single probe failure (machine and probe type). An open
-  alarm has one or more faults: one for each probe that reported a fault
-  event.
+- A **fault** is a single probe failure. An open alarm has one or more
+  faults: one for each probe that reported a fault event.
 - A **notification** is a message sent for an alarm to one or more contacts
   associated with that monitor. An alarm may result in many notifications
   through its lifetime.
+- A **machine** is used to represent any of a software VM, a hardware VM
+  (i.e. a zone) or a node (i.e. a physical compute node or server). The
+  machine value is a UUID.
+
 
 
 # Use Cases

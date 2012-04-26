@@ -477,9 +477,7 @@ App.prototype.cacheInvalidatePut = function (modelName, item) {
   // Furthermore, if this is a probe, then need to invalidate the
   // `headAgentProbes` for this probe's machine/server.
   if (modelName === 'Probe') {
-    var cacheKey = (item.machine ? 'machine:'+item.machine
-      : 'server:'+item.server);
-    this._cacheFromScope.headAgentProbes.del(cacheKey);
+    this._cacheFromScope.headAgentProbes.del(item.agent);
   }
 };
 
@@ -509,9 +507,7 @@ App.prototype.cacheInvalidateDelete = function (modelName, item) {
   // Furthermore, if this is a probe, then need to invalidate the
   // `headAgentProbes` for this probe's machine.
   if (modelName === 'Probe') {
-    var cacheKey = (item.machine ? 'machine:'+item.machine
-      : 'server:'+item.server);
-    this._cacheFromScope.headAgentProbes.del(cacheKey);
+    this._cacheFromScope.headAgentProbes.del(item.agent);
   }
 };
 
