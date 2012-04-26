@@ -1405,30 +1405,30 @@ probe types that don't exist yet and that aren't a high priority right now.
 
 How would I set a maintenance window to upgrade the DBs?
 
-- Visit the UUID_DB2 machine page in the portal and set a maint window on
-  UUID_DB2 (upgrade slave first).
-- Do upgrades on UUID_DB2 and bring it back up.
-- Check monitoring dashboard, if all is well, close the maint window.
-- Switch over DB master/slave for maint on DB1.
-- Visit the UUID_DB1 machine page in the portal and set a maint window on
-  UUID_DB1.
-- Do upgrades on UUID_DB2 and bring it back up.
-- Check monitoring dashboard, if all is well, close the maint window.
+1. Visit the UUID_DB2 machine page in the portal and set a maint window on
+   UUID_DB2 (upgrade slave first).
+2. Do upgrades on UUID_DB2 and bring it back up.
+3. Check monitoring dashboard, if all is well, close the maint window.
+4. Switch over DB master/slave for maint on DB1.
+5. Visit the UUID_DB1 machine page in the portal and set a maint window on
+   UUID_DB1.
+6. Do upgrades on UUID_DB2 and bring it back up.
+7. Check monitoring dashboard, if all is well, close the maint window.
 
 Or, if the user doesn't think about setting a maint window (doesn't know
 about the feature):
 
-- Start upgrades on UUID_DB2.
-- Get notification for a db2 monitor alarm (presuming he is on the contact
-  list for these monitors), and/or gets a flash message in the portal that
-  a new alarm has been raised. Click link to alarm page.
-- Visit alarm page. (This alarm page should include info on other
-  recent alarms -- perhaps highlighting those related to the same machine.)
-- "Set maintenance window" for this alarm. Really this translates to a
-  maint window on the *monitor* (which is basically but not exactly the
-  same thing). Also an option when creating the maint window on an alarm
-  page is to instead set it on the *machine*.
-- ... continue as above.
+1. Start upgrades on UUID_DB2.
+2. Get notification for a db2 monitor alarm (presuming he is on the contact
+   list for these monitors), and/or gets a flash message in the portal that
+   a new alarm has been raised. Click link to alarm page.
+3. Visit alarm page. (This alarm page should include info on other
+   recent alarms -- perhaps highlighting those related to the same machine.)
+4. "Set maintenance window" for this alarm. Really this translates to a
+   maint window on the *monitor* (which is basically but not exactly the
+   same thing). Also an option when creating the maint window on an alarm
+   page is to instead set it on the *machine*.
+5. Continue as above...
 
 
 Notes:
