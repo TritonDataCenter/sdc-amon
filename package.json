@@ -6,7 +6,7 @@
   "private": true,
   "devDependencies": {
     "bunyan": "0.6",
-    "restify": "git://github.com/mcavage/node-restify.git#145ec022d2",
+    "restify": "1.4.1",
     "jshint": "0.5",
     "ldapjs": "git://github.com/mcavage/node-ldapjs.git#7d9b6debde",
     "async": "0.1",

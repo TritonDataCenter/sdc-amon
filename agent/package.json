@@ -6,12 +6,12 @@
   "author": "Joyent (joyent.com)",
   "dependencies": {
     "bunyan": "0.6",
-    "restify": "git://github.com/mcavage/node-restify.git#145ec022d2",
+    "restify": "1.4.1",
     "nopt": "1.0.10",
     "zutil": "0.2.1"
   },
   "scripts": {
-		"start": "./bin/amon-agent",
+    "start": "./bin/amon-agent",
     "postinstall": "pkg/postinstall.sh",
     "preuninstall": "pkg/preuninstall.sh"
   },

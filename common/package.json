@@ -7,7 +7,7 @@
   "main": "lib/index.js",
   "dependencies": {
     "bunyan": "0.6",
-    "restify": "git://github.com/mcavage/node-restify.git#145ec022d2",
+    "restify": "1.4.1",
     "node-uuid": "1.2.0"
   },
   "engines": {
