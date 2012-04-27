@@ -319,29 +319,11 @@ function App(config, mapi, log) {
       return next(new restify.MissingParameterError('"action" is required'));
     });
 
-  monitors.mount(server);
-
-  server.get(
-    {path: '/pub/:user/monitors/:monitor/probes', name: 'ListProbes'},
-    probes.listProbes);
-  server.put(
-    {path: '/pub/:user/monitors/:monitor/probes/:name', name: 'PutProbe'},
-    probes.putProbe);
-  server.get(
-    {path: '/pub/:user/monitors/:monitor/probes/:name', name: 'GetProbe'},
-    probes.getProbe);
-  server.del(
-    {path: '/pub/:user/monitors/:monitor/probes/:name', name: 'DeleteProbe'},
-    probes.deleteProbe);
-
-  alarms.mount(server);
-
-  server.get({path: '/agentprobes', name: 'ListAgentProbes'},
-    agentprobes.listAgentProbes);
-  server.head({path: '/agentprobes', name: 'HeadAgentProbes'},
-    agentprobes.headAgentProbes);
-
-  server.post({path: '/events', name: 'AddEvents'}, events.addEvents);
+  monitors.mountApi(server);
+  probes.mountApi(server);
+  alarms.mountApi(server);
+  agentprobes.mountApi(server);
+  events.mountApi(server);
 }
 
 

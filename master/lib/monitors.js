@@ -257,7 +257,7 @@ function apiFakeMonitorFault(req, res, next) {
  *
  * @param server {restify.Server}
  */
-function mount(server) {
+function mountApi(server) {
   server.get({path: '/pub/:user/monitors', name: 'ListMonitors'},
     apiListMonitors);
   server.put({path: '/pub/:user/monitors/:name', name: 'PutMonitor'},
@@ -284,5 +284,5 @@ function mount(server) {
 
 module.exports = {
   Monitor: Monitor,
-  mount: mount
+  mountApi: mountApi
 };

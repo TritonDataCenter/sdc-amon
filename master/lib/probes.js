@@ -417,21 +417,50 @@ Probe._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,31}$/;
 
 
 
+//---- API controllers
 
-//---- controllers
+function apiListProbes(req, res, next) {
+  return ufdsmodel.requestList(req, res, next, Probe);
+}
+
+function apiPutProbe(req, res, next) {
+  return ufdsmodel.requestPut(req, res, next, Probe);
+}
+
+function apiGetProbe(req, res, next) {
+  return ufdsmodel.requestGet(req, res, next, Probe);
+}
+
+function apiDeleteProbe(req, res, next) {
+  return ufdsmodel.requestDelete(req, res, next, Probe);
+}
+
+
+/**
+ * Mount API endpoints
+ *
+ * @param server {restify.Server}
+ */
+function mountApi(server) {
+  server.get(
+    {path: '/pub/:user/monitors/:monitor/probes', name: 'ListProbes'},
+    apiListProbes);
+  server.put(
+    {path: '/pub/:user/monitors/:monitor/probes/:name', name: 'PutProbe'},
+    apiPutProbe);
+  server.get(
+    {path: '/pub/:user/monitors/:monitor/probes/:name', name: 'GetProbe'},
+    apiGetProbe);
+  server.del(
+    {path: '/pub/:user/monitors/:monitor/probes/:name', name: 'DeleteProbe'},
+    apiDeleteProbe);
+}
+
+
+
+//---- exports
 
 module.exports = {
   Probe: Probe,
-  listProbes: function listProbes(req, res, next) {
-    return ufdsmodel.requestList(req, res, next, Probe);
-  },
-  putProbe: function putProbe(req, res, next) {
-    return ufdsmodel.requestPut(req, res, next, Probe);
-  },
-  getProbe: function getProbe(req, res, next) {
-    return ufdsmodel.requestGet(req, res, next, Probe);
-  },
-  deleteProbe: function deleteProbe(req, res, next) {
-    return ufdsmodel.requestDelete(req, res, next, Probe);
-  }
+  mountApi: mountApi
 };

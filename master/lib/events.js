@@ -85,6 +85,18 @@ function addEvents(req, res, next) {
 }
 
 
+//---- exports
+
+/**
+ * Mount API endpoints
+ *
+ * @param server {restify.Server}
+ */
+function mountApi(server) {
+  server.post({path: '/events', name: 'AddEvents'}, addEvents);
+}
+
+
 module.exports = {
-  addEvents: addEvents
+  mountApi: mountApi
 };

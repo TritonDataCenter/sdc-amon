@@ -153,7 +153,22 @@ function headAgentProbes(req, res, next) {
 }
 
 
+
+//---- exports
+
+/**
+ * Mount API endpoints
+ *
+ * @param server {restify.Server}
+ */
+function mountApi(server) {
+  server.get({path: '/agentprobes', name: 'ListAgentProbes'},
+    listAgentProbes);
+  server.head({path: '/agentprobes', name: 'HeadAgentProbes'},
+    headAgentProbes);
+}
+
+
 module.exports = {
-  listAgentProbes: listAgentProbes,
-  headAgentProbes: headAgentProbes
+  mountApi: mountApi
 };

@@ -948,7 +948,7 @@ function apiDeleteAlarm(req, res, next) {
  *
  * @param server {restify.Server}
  */
-function mount(server) {
+function mountApi(server) {
   server.get({path: '/alarms', name: 'ListAllAlarms'}, apiListAllAlarms);
   server.get({path: '/pub/:user/alarms', name: 'ListAlarms'},
     apiListAlarms);
@@ -981,5 +981,5 @@ function mount(server) {
 module.exports = {
   Alarm: Alarm,
   createAlarm: createAlarm,
-  mount: mount
+  mountApi: mountApi
 };

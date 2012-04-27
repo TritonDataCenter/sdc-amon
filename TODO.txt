@@ -263,26 +263,20 @@ Just have it at the top-level and can limit only by machine/server.
   POST /pub/:login/maintenance         # CreateMaintenanceWindow
           start {RFC date, timestamp, or "now"}
           stop {RFC date, timestamp, <digit>[mhd] (minute, hour, day)}
-          machines {Set of machine UUIDs}
           notes {String} Short notes on why the maintenance window. Optional.
+          one of:
+            all {true}
+            machines {Set of machine UUIDs}
+            monitors {Set of monitor names}
       Returns:
           :id {Number} incrementing per-user id (a la alarms)
+
   PUT /pub/:login/maintenance/:id      # UpdateMaintenanceWindow
-          start: change start time
-          stop: change stop time
-          addMachines: add machines to the set
-          removeMachines: remove these machines from the set
-          notes: change notes
+          ... same fields as above
   DELETE /pub/:login/maintenance/:id   # DeleteMaintenanceWindow
 
-TODO: I'd really like to ditch the machine/server thing. Unify with
-"machine". How hard would that be?
 
-TODO: Also add "targetMachine" and perhaps rename current "machine" to
-"runOnMachine" (blech, better name needed).
-  XXX
-  machine -> what machine is being monitored
-  agent -> machine UUID for agent to run the probe
+Scenario:
 
   UUID_MON is a monitor zone setup just to watch other zones.
   UUID1 is our production service box.
