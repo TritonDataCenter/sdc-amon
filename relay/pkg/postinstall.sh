@@ -19,9 +19,9 @@ function subfile () {
   OUT=$2
   sed -e "s#@@PREFIX@@#$npm_config_prefix#g" \
       -e "s#@@VERSION@@#$npm_package_version#g" \
-      -e "s#@@MAPI_CLIENT_URL@@#$CONFIG_mapi_client_url#g" \
-      -e "s#@@MAPI_HTTP_ADMIN_USER@@#$CONFIG_mapi_http_admin_user#g" \
-      -e "s#@@MAPI_HTTP_ADMIN_PW@@#$CONFIG_mapi_http_admin_pw#g" \
+      -e "s#@@MAPI_CLIENT_URL@@#http://127.0.0.1/#g" \
+      -e "s#@@MAPI_HTTP_ADMIN_USER@@#nomapi#g" \
+      -e "s#@@MAPI_HTTP_ADMIN_PW@@#nomapi#g" \
       -e "s#@@UFDS_ADMIN_UUID@@#$CONFIG_ufds_admin_uuid#g" \
       $IN > $OUT
 }
