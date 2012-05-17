@@ -93,13 +93,15 @@ if [[ -z "$CONFIG_amon_admin_ips" ]]; then
 fi
 
 export AMON_URL=http://$(echo $CONFIG_amon_admin_ips | cut -d, -f1)
-export UFDS_URL=ldaps://$(echo $CONFIG_ufds_external_ips | cut -d, -f1):636
+export UFDS_URL=ldaps://${CONFIG_ufds_admin_ips%%,*}:636
 export UFDS_ROOTDN=$CONFIG_ufds_ldap_root_dn
 export UFDS_PASSWORD=$CONFIG_ufds_ldap_root_pw
-export MAPI_URL="http://$CONFIG_mapi_admin_ip"
-export MAPI_USERNAME="$CONFIG_mapi_http_admin_user"
-export MAPI_PASSWORD="$CONFIG_mapi_http_admin_pw"
-export MAPI_CREDENTIALS="$MAPI_USERNAME:$MAPI_PASSWORD"
+export ZAPI_URL="http://${CONFIG_zapi_admin_ips%%,*}"
+export ZAPI_USERNAME="$CONFIG_zapi_http_admin_user"
+export ZAPI_PASSWORD="$CONFIG_zapi_http_admin_pw"
+export CNAPI_URL="http://${CONFIG_cnapi_admin_ips%%,*}"
+export CNAPI_USERNAME="$CONFIG_cnapi_http_admin_user"
+export CNAPI_PASSWORD="$CONFIG_cnapi_http_admin_pw"
 export REDIS_HOST=$(echo $CONFIG_redis_admin_ips | cut -d, -f1)
 export REDIS_PORT=6379
 export DATACENTER_NAME=$CONFIG_datacenter_name
@@ -110,9 +112,12 @@ echo "# AMON_URL is $AMON_URL"
 echo "# UFDS_URL is $UFDS_URL"
 echo "# UFDS_ROOTDN is $UFDS_ROOTDN"
 echo '# UFDS_PASSWORD is ***'
-echo "# MAPI_URL is $MAPI_URL"
-echo "# MAPI_USERNAME is $MAPI_USERNAME"
-echo '# MAPI_PASSWORD is ***'
+echo "# ZAPI_URL is $ZAPI_URL"
+echo "# ZAPI_USERNAME is $ZAPI_USERNAME"
+echo '# ZAPI_PASSWORD is ***'
+echo "# CNAPI_URL is $CNAPI_URL"
+echo "# CNAPI_USERNAME is $CNAPI_USERNAME"
+echo '# CNAPI_PASSWORD is ***'
 echo "# REDIS_HOST is $REDIS_HOST"
 echo "# REDIS_PORT is $REDIS_PORT"
 echo "# DATACENTER_NAME is $DATACENTER_NAME"
@@ -152,8 +157,11 @@ PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP \
 
 # Also run the tests in the Amon Master(s).
 echo ""
-amon_masters=$(/smartdc/bin/sdc-mapi /machines?tag.smartdc_role=amon \
-    | ./test/node_modules/.bin/json3 -H -c 'running_status==="running"' -a server.uuid name alias -d: \
+amon_masters=$(/smartdc/bin/dcadm zapi /machines \
+    | ./test/node_modules/.bin/json3 -H \
+        -c 'tags.smartdc_role === "amon"' \
+        -c 'state === "running"' \
+        -a server_uuid uuid alias -d: \
     | xargs)
 for amon_master in $amon_masters; do
     # Parse "$server_uuid:$zonename:$alias".

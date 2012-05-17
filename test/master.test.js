@@ -341,7 +341,7 @@ test('probes: create', function (t) {
 test('probes: create without owning zone', function (t) {
   var probes = {
     'donotown': {
-      'machine': prep.mapiZonename, // Just using any zone ulrich doesn't own.
+      'machine': prep.otherZoneUuid, // Just using any zone ulrich doesn't own.
       'type': 'logscan',
       'config': {
         'path': '/tmp/whistle.log',

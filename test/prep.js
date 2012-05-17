@@ -4,11 +4,12 @@
  * Prepare for testing Amon.
  *
  * Usage:
- *   $ export MAPI_URL=...
- *   $ export MAPI_USERNAME=...
- *   $ export MAPI_PASSWORD=...
+ *   $ export AMON_URL=...
+ *   $ export UFDS_URL=...
  *   $ export XXX    # others
  *   $ node prep.js
+ * IOW, just use the driver:
+ *   $ test/runtests.sh
  *
  * This creates test users (if necessary), key and test zone (if necessary).
  * Exits non-zero if there was a problem.
@@ -26,7 +27,8 @@ var format = require('amon-common').utils.format;
 var httpSignature = require('http-signature');
 var ldap = require('ldapjs');
 var sdcClients = require('sdc-clients'),
-  MAPI = sdcClients.MAPI,
+  ZAPI = sdcClients.ZAPI,
+  CNAPI = sdcClients.CNAPI,
   UFDS = sdcClients.UFDS;
 
 
@@ -39,10 +41,12 @@ var odin = JSON.parse(
   fs.readFileSync(__dirname + '/user-amontestoperatorodin.json', 'utf8'));
 var ldapClient;
 var ufdsClient;
-var mapiClient;
+var zapiClient;
+var cnapiClient;
 var amontestzone; // the test zone to use
 var headnodeUuid;
-var mapiZonename;
+var amonZoneUuid;
+var smartosDatasetUuid;
 var gzIp;
 
 
@@ -230,19 +234,27 @@ function ldapClientUnbind(next) {
   }
 }
 
+function getZapiClient(next) {
+  zapiClient = new ZAPI({   // intentionally global
+    url: process.env.ZAPI_URL,
+    username: process.env.ZAPI_USERNAME,
+    password: process.env.ZAPI_PASSWORD
+  });
+  next();
+}
 
-function getMapiClient(next) {
-  mapiClient = new MAPI({   // intentionally global
-    url: process.env.MAPI_URL,
-    username: process.env.MAPI_USERNAME,
-    password: process.env.MAPI_PASSWORD
+function getCnapiClient(next) {
+  cnapiClient = new CNAPI({   // intentionally global
+    url: process.env.CNAPI_URL,
+    username: process.env.CNAPI_USERNAME,
+    password: process.env.CNAPI_PASSWORD
   });
   next();
 }
 
 function getHeadnodeUuid(next) {
   log('# Get headnode UUID.');
-  mapiClient.listServers(function (err, servers) {
+  cnapiClient.listServers(function (err, servers) {
     if (err) {
       return next(err);
     }
@@ -261,37 +273,53 @@ function getHeadnodeUuid(next) {
 }
 
 
+function getSmartosDatasetUuid(next) {
+  // No DSAPI in the DC yet, so hack it.
+  log('# Get "smartos" dataset UUID.');
+  exec('ls -1 /usbkey/datasets/smartos-*.dsmanifest | head -n1 | xargs cat | json uuid',
+       function (err, stdout, stderr) {
+    if (err) {
+      return next(err);
+    }
+    smartosDatasetUuid = stdout.trim();
+    log('# "smartos" dataset UUID is "%s".', smartosDatasetUuid);
+    next();
+  });
+}
+
+
 function createAmontestzone(next) {
   // First check if there is a zone for ulrich.
-  mapiClient.listMachines(ulrich.uuid, function (err, zones, headers) {
+  zapiClient.listMachines({owner_uuid: ulrich.uuid, alias: 'amontestzone'},
+                          function (err, zones) {
     if (err) {
       return next(err);
     }
     if (zones.length > 0) {
       amontestzone = zones[0];
-      log('# Ulrich already has a zone (%s).', amontestzone.name);
+      log('# Ulrich already has an "amontestzone" zone (%s).',
+        amontestzone.uuid);
       return next();
     }
     log('# Create a test zone for ulrich.');
-    mapiClient.createMachine(ulrich.uuid, {
-        package: 'regular_128',
-        alias: 'amontestzone',
-        dataset_urn: 'smartos',
-        server_uuid: headnodeUuid,
-        force: 'true'
+    zapiClient.createMachine({
+        owner_uuid: ulrich.uuid,
+        dataset_uuid: smartosDatasetUuid,
+        brand: 'joyent',
+        ram: '128',
+        alias: 'amontestzone'
       },
       function (err2, newZone) {
         log('# Waiting up to ~2min for new zone %s to start up.',
-            newZone.name);
+            (newZone ? newZone.uuid : '(error)'));
         if (err2) {
           return next(err2);
         }
         var zone = newZone;
-        var zoneName = zone.name;
         var sentinel = 40;
         async.until(
           function () {
-            return zone.running_status === 'running';
+            return zone.state === 'running';
           },
           function (nextCheck) {
             sentinel--;
@@ -300,15 +328,13 @@ function createAmontestzone(next) {
                 + 'become \'running\'');
             }
             setTimeout(function () {
-              mapiClient.listMachines(ulrich.uuid, {name: zoneName},
-                                      function (err3, zones_) {
+              log("# Check if zone is running yet (sentinel=%d).", sentinel);
+              zapiClient.getMachine(zone.uuid, function (err3, zone_) {
+                //log("XXX getMachine:", err3, zone_)
                 if (err3) {
                   return nextCheck(err3);
                 }
-                if (zones_.length === 0) {
-                  return nextCheck();
-                }
-                zone = zones_[0];
+                zone = zone_;
                 nextCheck();
               });
             }, 3000);
@@ -316,7 +342,7 @@ function createAmontestzone(next) {
           function (err4) {
             if (!err4) {
               amontestzone = zone;
-              log('# Zone %s is running.', amontestzone.name);
+              log('# Zone %s is running.', amontestzone.uuid);
             }
             next(err4);
           }
@@ -326,15 +352,15 @@ function createAmontestzone(next) {
   });
 }
 
-function getMapiZonename(next) {
-  log('# Get MAPI zonename.');
+function getAmonZoneUuid(next) {
+  log('# Get Amon zone UUID.');
 
-  exec('vmadm lookup -1 alias=mapi', function (err, stdout, stderr) {
+  exec('vmadm lookup -1 alias=amon0', function (err, stdout, stderr) {
     if (err) {
       return next(err);
     }
-    mapiZonename = stdout.trim();
-    log('# MAPI zonename is "%s".', mapiZonename);
+    amonZoneUuid = stdout.trim();
+    log('# Amon zone UUID is "%s".', amonZoneUuid);
     next();
   });
 }
@@ -347,7 +373,7 @@ function writePrepJson(next) {
   var prep = {
     amontestzone: amontestzone,
     headnodeUuid: headnodeUuid,
-    mapiZonename: mapiZonename,
+    otherZoneUuid: amonZoneUuid,
     // This GZ ip will be used to setup a server listening for webhook
     // notifications.
     gzIp: gzIp,
@@ -371,10 +397,12 @@ async.series([
     makeOdinAnOperator,
     ldapClientUnbind,
     ufdsClientUnbind,
-    getMapiClient,
+    getZapiClient,
+    getCnapiClient,
     getHeadnodeUuid,
+    getSmartosDatasetUuid,
     createAmontestzone,
-    getMapiZonename,
+    getAmonZoneUuid,
     writePrepJson
   ],
   function (err) {

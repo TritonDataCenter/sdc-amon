@@ -16,6 +16,10 @@ set -o pipefail
 
 TOP=$(unset CDPATH; cd $(dirname $0)/../; pwd)
 JSON3=$TOP/test/node_modules/.bin/json
+ZAPI="dcadm zapi"
+
+#XXX hack for sdc-ldap in /var/tmp
+PATH=/var/tmp:$PATH
 
 
 function cleanup () {
@@ -54,11 +58,19 @@ function clearUser() {
     done
 
     if [[ ! -n "$opt_quick_clean" ]]; then
-        local machines=$(sdc-mapi /machines?owner_uuid=$uuid \
-            | $JSON3 -c 'this.running_status==="running"' -Ha name | xargs)
+        local machines=$($ZAPI /machines?owner_uuid=$uuid \
+            | $JSON3 -c 'this.state==="running"' -Ha server_uuid uuid -d: | xargs)
         for machine in $machines; do
-            echo "# DELETE /machines/$machine"
-            sdc-mapi /machines/$machine -X DELETE -f >/dev/null
+            # We *could* do this:
+            #    echo "# DELETE /machines/$machine"
+            #    $ZAPI /machines/$machine -X DELETE -f >/dev/null
+            # but that is async and slow. The following is sync and we
+            # will subsequently be deleting the machine UFDS entry, so
+            # ZAPI shouldn't get confused.
+            local server_uuid=$(echo $machine | cut -d: -f1)
+            local machine_uuid=$(echo $machine | cut -d: -f2)
+            echo "# Delete machine $machine_uuid (on server $server_uuid)."
+            sdc-oneachnode -n $server_uuid vmadm delete $machine_uuid
         done
 
         local person="uuid=$uuid, ou=users, o=smartdc"
@@ -84,6 +96,17 @@ function clearUser() {
 }
 
 
+function clearCaches() {
+    echo "# Clear ZAPI and Amon caches."
+    sdc-login zapi svcadm restart zapi   # ZAPI keeps a ListMachines cache
+    sleep 2
+    sdc-amon /state?action=dropcaches -X POST > /dev/null
+}
+
+
+
+#---- mainline
+
 # Options.
 opt_quick_clean=
 while getopts "q" opt
@@ -99,6 +122,8 @@ do
 done
 
 
-
+clearCaches         # Ensure caches don't get in the way of clearing users.
 clearUser 'amontestuserulrich'
 clearUser 'amontestoperatorodin'
+
+clearCaches

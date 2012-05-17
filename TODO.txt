@@ -101,6 +101,7 @@
 - saving the alarm events in redis? Are those needed for anything? Not
   bothering until we have UI that would use this.
 - endpoint to test sending to a contact "POST /pub/:uuid/testnotify"
+- restify v2.x
 - "sdc-amon /pub/trent.mick" messes up on '.' in username -> restify upgrade
   Check for this being fixed with restify 1.x
 - amon-relay and amon-agent: move node to build/node (a la portal and others)
