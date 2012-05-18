@@ -25,7 +25,7 @@
       </method_context>
     </exec_method>
 
-    <exec_method type="method" name="restart" exec=":kill" timeout_seconds="10">
+    <exec_method type="method" name="refresh" exec=":kill" timeout_seconds="10">
       <method_context>
         <method_credential user="root" group="staff"/>
       </method_context>
