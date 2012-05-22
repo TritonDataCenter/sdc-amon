@@ -5,10 +5,15 @@
     "password": "secret",
     "caching": true
   },
-  "mapi": {
-    "url": "http://10.99.99.8:80",
+  "cnapi": {
+    "url": "http://10.99.99.TODO:80",
     "username": "admin",
-    "password": "TODO:PASSWORD"
+    "password": "TODO"
+  },
+  "zapi": {
+    "url": "http://10.99.99.TODO:80",
+    "username": "admin",
+    "password": "TODO"
   },
   "redis": {
     "host": "10.99.99.21",

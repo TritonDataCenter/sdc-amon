@@ -154,40 +154,45 @@ PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP \
     test/*.test.js \
     node_modules/amon-plugins/test/*.test.js \
     | tee $OUTPUT_DIR/amon-relay.tap
+#XXX
+#PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP \
+#    test/master.test.js \
+#    | tee $OUTPUT_DIR/amon-relay.tap
 
-# Also run the tests in the Amon Master(s).
-echo ""
-amon_masters=$(/smartdc/bin/dcadm zapi /machines \
-    | ./test/node_modules/.bin/json3 -H \
-        -c 'tags.smartdc_role === "amon"' \
-        -c 'state === "running"' \
-        -a server_uuid uuid alias -d: \
-    | xargs)
-for amon_master in $amon_masters; do
-    # Parse "$server_uuid:$zonename:$alias".
-    amon_master_node=$(echo $amon_master | cut -d: -f1)
-    amon_master_zonename=$(echo $amon_master | cut -d: -f2)
-    amon_master_alias=$(echo $amon_master | cut -d: -f3)
-    echo ""
-    echo "# Run Amon Master ${amon_master_zonename} (alias $amon_master_alias) test suite (on CN ${amon_master_node})."
-    output=$(/smartdc/bin/sdc-oneachnode -j -n ${amon_master_node} \
-        zlogin ${amon_master_zonename} \
-        /opt/smartdc/amon/test/runtests.sh \
-        || true)
-    #echo $output | json 0
-    amon_master_output=$OUTPUT_DIR/amon-master-$amon_master_alias.tap
-    echo $output | json 0.result.stdout > $amon_master_output
-    echo "# Wrote '$amon_master_output'."
-    echo "stdout:"
-    echo $output | json 0.result.stdout
-    echo "stderr:"
-    echo $output | json 0.result.stderr >&2
-    exit_status=$(echo $output | json 0.result.exit_status)
-    echo "exit_status: $exit_status"
-    if [[ "$exit_status" != "0" ]]; then
-        exit $exit_status
-    fi
-done
+#XXX
+## Also run the tests in the Amon Master(s).
+#echo ""
+#amon_masters=$(/smartdc/bin/sdc-zapi /machines \
+#    | ./test/node_modules/.bin/json3 -H \
+#        -c 'tags.smartdc_role === "amon"' \
+#        -c 'state === "running"' \
+#        -a server_uuid uuid alias -d: \
+#    | xargs)
+#for amon_master in $amon_masters; do
+#    # Parse "$server_uuid:$zonename:$alias".
+#    amon_master_node=$(echo $amon_master | cut -d: -f1)
+#    amon_master_zonename=$(echo $amon_master | cut -d: -f2)
+#    amon_master_alias=$(echo $amon_master | cut -d: -f3)
+#    echo ""
+#    echo "# Run Amon Master ${amon_master_zonename} (alias $amon_master_alias) test suite (on CN ${amon_master_node})."
+#    output=$(/smartdc/bin/sdc-oneachnode -j -n ${amon_master_node} \
+#        zlogin ${amon_master_zonename} \
+#        /opt/smartdc/amon/test/runtests.sh \
+#        || true)
+#    #echo $output | json 0
+#    amon_master_output=$OUTPUT_DIR/amon-master-$amon_master_alias.tap
+#    echo $output | json 0.result.stdout > $amon_master_output
+#    echo "# Wrote '$amon_master_output'."
+#    echo "stdout:"
+#    echo $output | json 0.result.stdout
+#    echo "stderr:"
+#    echo $output | json 0.result.stderr >&2
+#    exit_status=$(echo $output | json 0.result.exit_status)
+#    echo "exit_status: $exit_status"
+#    if [[ "$exit_status" != "0" ]]; then
+#        exit $exit_status
+#    fi
+#done
 
 
 echo ""

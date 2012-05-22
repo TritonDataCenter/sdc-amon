@@ -195,7 +195,7 @@ Probe.prototype.authorizePut = function (app, callback) {
   var log = app.log;
   var machineUuid = this.agent;
 
-  function isRunInGlobalOrErr(next) {
+  function isRunInVmHostOrErr(next) {
     if (plugins[self.type].runInVmHost) {
       next();
     } else {
@@ -205,7 +205,7 @@ Probe.prototype.authorizePut = function (app, callback) {
 
   function isExistingMachineOrErr(next) {
     // Empty "user" uuid string is the sdc-clients hack to not scope to a user.
-    app.mapi.getMachine('', self.machine, function (err, machine) {
+    app.zapiClient.getMachine({uuid: self.machine}, function (err, machine) {
       if (err && err.code !== 'ResourceNotFound') {
         log.error(err, 'unexpected error getting machine');
       }
@@ -235,7 +235,7 @@ Probe.prototype.authorizePut = function (app, callback) {
   app.serverExists(machineUuid, function (physErr, serverExists) {
     if (physErr) {
       log.error({err: physErr, probe: self.serialize()},
-        'unexpected error authorizing probe put against MAPI');
+        'unexpected error authorizing probe put');
       callback(new restify.InternalError(
         'Internal error authorizing probe put.'));
       return;
@@ -254,17 +254,20 @@ Probe.prototype.authorizePut = function (app, callback) {
             'Must be operator put a probe on a physical machine (%s): '
             + 'user \'%s\' is not an operator.', machineUuid, self.user)));
         } else {
+          log.info('probe PUT authorized: probe for physical machine '
+            + 'and user is an operator');
           callback(); // 1. PUT authorized
         }
       });
     } else {
       // 2. A virual machine owned by this user.
-      app.mapi.getMachine(self.user, machineUuid, function (machErr, machine) {
+      app.zapiClient.getMachine({uuid: machineUuid, owner_uuid: self.user},
+                                function (machErr, machine) {
         if (machErr) {
           if (machErr.httpCode === 404) {
             // 3. Operator setting 'runInVmHost' monitor on virtual machine.
             var conditions3 = [
-              isRunInGlobalOrErr,
+              isRunInVmHostOrErr,
               isExistingMachineOrErr,
               userIsOperatorOrErr
             ];
@@ -275,16 +278,20 @@ Probe.prototype.authorizePut = function (app, callback) {
                   'Invalid agent: machine \'%s\' does not exist or is not '
                   + 'owned by user \'%s\'.', machineUuid, self.user)));
               } else {
+                log.info('probe PUT authorized: probe for existing vm, '
+                  + 'runInVmHost, and user is an operator');
                 callback(); // 3. PUT authorized
               }
             });
           } else {
             log.error({err: machErr, probe: self.serialize()},
-              'unexpected error authorizing probe put against MAPI');
+              'unexpected error authorizing probe put');
             callback(new restify.InternalError(
               'Internal error authorizing probe put.'));
           }
         } else {
+          log.info('probe PUT authorized: probe for existing vm, '
+            + 'vm is owned by user');
           callback(); // 2. PUT authorized
         }
       });

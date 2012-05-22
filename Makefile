@@ -245,7 +245,8 @@ test-kvm7:
 	./tools/rsync-master-to-kvm7
 	./tools/rsync-relay-to-kvm7
 	./tools/rsync-agent-to-kvm7
-	ssh kvm7 /opt/smartdc/agents/lib/node_modules/amon-relay/test/runtests.sh
+	#./tools/rsync-test-to-kvm7
+	ssh kvm7 /opt/smartdc/agents/lib/node_modules/amon-relay/test/runtests.sh -q
 
 tmp:
 	mkdir -p tmp

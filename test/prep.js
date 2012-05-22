@@ -329,8 +329,8 @@ function createAmontestzone(next) {
             }
             setTimeout(function () {
               log("# Check if zone is running yet (sentinel=%d).", sentinel);
-              zapiClient.getMachine(zone.uuid, function (err3, zone_) {
-                //log("XXX getMachine:", err3, zone_)
+              zapiClient.getMachine({uuid: zone.uuid, owner_uuid: ulrich.uuid},
+                                    function (err3, zone_) {
                 if (err3) {
                   return nextCheck(err3);
                 }

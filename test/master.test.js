@@ -29,7 +29,7 @@ var FIXTURES = {
         contacts: ['email'],
         probes: {
           whistlelog: {
-            'machine': prep.amontestzone.name,
+            'machine': prep.amontestzone.uuid,
             'type': 'logscan',
             'config': {
               'path': '/tmp/whistle.log',
@@ -44,7 +44,7 @@ var FIXTURES = {
         contacts: ['secondaryEmail'],
         probes: {
           whistlelog: {
-            'machine': prep.amontestzone.name,
+            'machine': prep.amontestzone.uuid,
             'type': 'logscan',
             'config': {
               'path': '/tmp/whistle.log',
@@ -75,7 +75,7 @@ var FIXTURES = {
         contacts: ['testWebhook'],
         probes: {
           isup: {
-            'machine': prep.amontestzone.name,
+            'machine': prep.amontestzone.uuid,
             'type': 'machine-up'
           }
         }
@@ -368,6 +368,9 @@ test('probes: create without owning zone', function (t) {
       format('/pub/amontestuserulrich/monitors/whistle/probes/%s', probeName),
       probe,
       function (err, req, res, obj) {
+        console.log('XXX', probeName);
+        console.log('XXX err', JSON.stringify(err));
+        console.log('XXX obj', JSON.stringify(obj));
         t.ok(err);
         t.equal(err.httpCode, 409);
         t.equal(err.code, 'InvalidArgument');
@@ -497,7 +500,7 @@ var amontestzoneContentMD5;
 
 test('relay api: ListAgentProbes', function (t) {
   var probe = FIXTURES.ulrich.monitors.whistle.probes.whistlelog;
-  masterClient.get('/agentprobes?agent=' + prep.amontestzone.name,
+  masterClient.get('/agentprobes?agent=' + prep.amontestzone.uuid,
     function (err, req, res, obj) {
       t.ifError(err);
       amontestzoneContentMD5 = res.headers['content-md5'];
@@ -519,7 +522,7 @@ test('relay api: ListAgentProbes', function (t) {
 });
 
 test('relay api: HeadAgentProbes', function (t) {
-  masterClient.head('/agentprobes?agent=' + prep.amontestzone.name,
+  masterClient.head('/agentprobes?agent=' + prep.amontestzone.uuid,
     function (err, headers, res) {
       t.ifError(err);
       t.equal(res.headers['content-md5'], amontestzoneContentMD5);
@@ -543,10 +546,10 @@ test('relay api: AddEvents', function (t) {
       message: message,
       value: null,
       details: {
-        machine: prep.amontestzone.name
+        machine: prep.amontestzone.uuid
       }
     },
-    machine: prep.amontestzone.name,
+    machine: prep.amontestzone.uuid,
     server: prep.headnodeUuid,
     uuid: uuid()
   };

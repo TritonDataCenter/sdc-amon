@@ -5,32 +5,30 @@
 
 #set -x
 TOP=$(cd $(dirname $0)/../; pwd)
-COAL=root@10.99.99.7
+NODE=root@10.99.99.7
+JSON3=$TOP/test/node_modules/.bin/json3
 
 if [[ -z "$AMON_ZONE" ]]; then
-    # XXX Want the first running one of these. Need `json -c ...` from json 3.
-    #     Until then, presume the last one is the running one.
-    # AMON_ZONE=$(ssh $COAL "/smartdc/bin/sdc-mapi /machines?tag.smartdc_role=amon" 2>/dev/null | jsondev -c 'running_status=="running"' -a name -H)
-    AMON_NUM_ZONES=$(ssh $COAL "/smartdc/bin/sdc-mapi /machines?tag.smartdc_role=amon" 2>/dev/null | json -H length)
-    AMON_ZONE_INDEX=$(($AMON_NUM_ZONES - 1))
-    AMON_ZONE=$(ssh $COAL "/smartdc/bin/sdc-mapi /machines?tag.smartdc_role=amon" 2>/dev/null | json -H $AMON_ZONE_INDEX.name)
+    AMON_ZONE=$(ssh $NODE "/opt/smartdc/bin/sdc-zapi /machines" 2>/dev/null \
+        | $JSON3 -H -c 'this.tags && this.tags.smartdc_role === "amon"' \
+            -c 'this.state === "running"' 0.uuid)
 fi
 echo "AMON_ZONE: $AMON_ZONE"
 
 rsync -av ${TOP}/master/ \
-    $COAL:/zones/$AMON_ZONE/root/opt/smartdc/amon/ \
+    $NODE:/zones/$AMON_ZONE/root/opt/smartdc/amon/ \
     --exclude "*.node" \
     --exclude amon-common \
     --exclude amon-plugins \
     --exclude tmp/
 rsync -av ${TOP}/common/ \
-    $COAL:/zones/$AMON_ZONE/root/opt/smartdc/amon/node_modules/amon-common/ \
+    $NODE:/zones/$AMON_ZONE/root/opt/smartdc/amon/node_modules/amon-common/ \
     --exclude "*.node" \
     --exclude tmp/
 rsync -av ${TOP}/plugins/ \
-    $COAL:/zones/$AMON_ZONE/root/opt/smartdc/amon/node_modules/amon-plugins/ \
+    $NODE:/zones/$AMON_ZONE/root/opt/smartdc/amon/node_modules/amon-plugins/ \
     --exclude "*.node" \
     --exclude tmp/
 
-ssh ${COAL} svcadm -z ${AMON_ZONE} clear amon-master
-ssh ${COAL} svcadm -z ${AMON_ZONE} restart amon-master
+ssh ${NODE} svcadm -z ${AMON_ZONE} clear amon-master
+ssh ${NODE} svcadm -z ${AMON_ZONE} restart amon-master

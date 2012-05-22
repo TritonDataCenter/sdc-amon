@@ -10,7 +10,9 @@ var debug = console.log;
 
 var ldap = require('ldapjs');
 var restify = require('restify');
-var MAPI = require('sdc-clients').MAPI;
+var sdcClients = require('sdc-clients'),
+  CNAPI = sdcClients.CNAPI,
+  ZAPI = sdcClients.ZAPI;
 var Cache = require('expiring-lru-cache');
 var redis = require('redis');
 var Pool = require('generic-pool').Pool;
@@ -99,20 +101,26 @@ function getUser(req, res, next) {
  */
 function createApp(config, log, callback) {
   if (!config) throw new TypeError('config (Object) required');
-  if (!config.mapi) throw new TypeError('config.mapi (Object) required');
+  if (!config.cnapi) throw new TypeError('config.cnapi (Object) required');
+  if (!config.zapi) throw new TypeError('config.zapi (Object) required');
   if (!config.redis) throw new TypeError('config.redis (Object) required');
   if (!config.ufds) throw new TypeError('config.ufds (Object) required');
   if (!log) throw new TypeError('log (Bunyan Logger) required');
   if (!callback) throw new TypeError('callback (Function) required');
 
-  var mapi = new MAPI({
-    url: config.mapi.url,
-    username: config.mapi.username,
-    password: config.mapi.password
+  var cnapiClient = new CNAPI({
+    url: config.cnapi.url,
+    username: config.cnapi.username,
+    password: config.cnapi.password
+  });
+  var zapiClient = new ZAPI({
+    url: config.zapi.url,
+    username: config.zapi.username,
+    password: config.zapi.password
   });
 
   try {
-    var app = new App(config, mapi, log);
+    var app = new App(config, cnapiClient, zapiClient, log);
     return callback(null, app);
   } catch (e) {
     return callback(e);
@@ -124,20 +132,23 @@ function createApp(config, log, callback) {
  * Constructor for the amon 'application'.
  *
  * @param config {Object} Config object.
- * @param mapi {sdc-clients.MAPI} MAPI client.
+ * @param cnapiClient {sdc-clients.CNAPI} CNAPI client.
+ * @param zapiClient {sdc-clients.ZAPI} ZAPI client.
  * @param log {Bunyan Logger instance}
  */
-function App(config, mapi, log) {
+function App(config, cnapiClient, zapiClient, log) {
   var self = this;
   if (!config) throw TypeError('config is required');
   if (!config.port) throw TypeError('config.port is required');
   if (!config.ufds) throw new TypeError('config.ufds (Object) required');
-  if (!mapi) throw TypeError('mapi is required');
+  if (!cnapiClient) throw TypeError('cnapiClient is required');
+  if (!zapiClient) throw TypeError('zapiClient is required');
 
   this.config = config;
   this._ufdsCaching = (config.ufds.caching === undefined
     ? true : config.ufds.caching);
-  this.mapi = mapi;
+  this.cnapiClient = cnapiClient;
+  this.zapiClient = zapiClient;
   this.log = log;
 
   var ufdsPoolLog = log.child({'ufdsPool': true}, true);
@@ -208,8 +219,8 @@ function App(config, mapi, log) {
   });
   this.isOperatorCache = new Cache({size: 100, expiry: 300000,
     log: log, name: 'isOperator'});
-  this.mapiServersCache = new Cache({size: 100, expiry: 300000,
-    log: log, name: 'mapiServers'});
+  this.cnapiServersCache = new Cache({size: 100, expiry: 300000,
+    log: log, name: 'cnapiServers'});
 
   // Caches for server response caching. This is centralized on the app
   // because it allows the interdependant cache-invalidation to be
@@ -305,7 +316,7 @@ function App(config, mapi, log) {
         return next();
       self.userCache.reset();
       self.isOperatorCache.reset();
-      self.mapiServersCache.reset();
+      self.cnapiServersCache.reset();
       Object.keys(self._cacheFromScope).forEach(function (scope) {
         self._cacheFromScope[scope].reset();
       });
@@ -503,7 +514,7 @@ App.prototype.getStateSnapshot = function () {
     cache: {
       user: this.userCache.dump(),
       isOperator: this.isOperatorCache.dump(),
-      mapiServers: this.mapiServersCache.dump()
+      cnapiServers: this.cnapiServersCache.dump()
     },
     log: { level: this.log.level() }
   };
@@ -786,7 +797,7 @@ App.prototype.isOperator = function (userUuid, callback) {
 };
 
 /**
- * Does the given server UUID exist (in MAPI).
+ * Does the given server UUID exist (in CNAPI).
  *
  * @param serverUuid {String}
  * @param callback {Function} `function (err, serverExists)`
@@ -805,23 +816,23 @@ App.prototype.serverExists = function (serverUuid, callback) {
     throw new TypeError('callback (Function) required');
 
   // Check cache. 'cached' is `{server-uuid-1: true, ...}`.
-  var cached = this.mapiServersCache.get('servers');
+  var cached = this.cnapiServersCache.get('servers');
   if (cached) {
     return callback(null, (cached[serverUuid] !== undefined));
   }
 
   // Look up the user, cache the result and return.
   var self = this;
-  return this.mapi.listServers(function (err, servers) {
+  return this.cnapiClient.listServers(function (err, servers) {
     if (err) {
-      log.fatal(format('Failed to call mapi.listServers (%s)', err));
+      log.fatal(format('Failed to call cnapiClient.listServers (%s)', err));
       return callback(err);
     }
     var serverMap = {};
     for (var i = 0; i < servers.length; i++) {
       serverMap[servers[i].uuid] = true;
     }
-    self.mapiServersCache.set('servers', serverMap);
+    self.cnapiServersCache.set('servers', serverMap);
     return callback(null, (serverMap[serverUuid] !== undefined));
   });
 };
