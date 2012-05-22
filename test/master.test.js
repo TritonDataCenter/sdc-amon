@@ -368,9 +368,6 @@ test('probes: create without owning zone', function (t) {
       format('/pub/amontestuserulrich/monitors/whistle/probes/%s', probeName),
       probe,
       function (err, req, res, obj) {
-        console.log('XXX', probeName);
-        console.log('XXX err', JSON.stringify(err));
-        console.log('XXX obj', JSON.stringify(obj));
         t.ok(err);
         t.equal(err.httpCode, 409);
         t.equal(err.code, 'InvalidArgument');

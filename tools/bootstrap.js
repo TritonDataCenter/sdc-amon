@@ -29,7 +29,8 @@ var format = require('amon-common').utils.format;
 var httpSignature = require('http-signature');
 var ldap = require('ldapjs');
 var sdcClients = require('sdc-clients'),
-  MAPI = sdcClients.MAPI,
+  ZAPI = sdcClients.ZAPI,
+  CNAPI = sdcClients.CNAPI,
   UFDS = sdcClients.UFDS,
   Amon = sdcClients.Amon;
 
@@ -44,8 +45,12 @@ var otto = JSON.parse(fs.readFileSync(__dirname + '/user-amondevoperatorotto.jso
 var ldapClient;
 var ufdsClient;
 var adminUuid;
-var mapi;
+var zapiClient;
+var cnapiClient;
 var amonClient;
+
+var JSON3 = path.resolve(__dirname, '../test/node_modules/.bin/json3');
+
 
 
 
@@ -85,7 +90,7 @@ function getHeadnodeConfig(next) {
 
 function ufdsClientBind(next) {
   log("# Create UFDS client and bind.")
-  var ufdsIp = headnodeConfig.ufds_external_ips.split(',')[0];
+  var ufdsIp = headnodeConfig.ufds_admin_ips.split(',')[0];
   var ufdsUrl = format("ldaps://%s:636", ufdsIp);
   ufdsClient = new UFDS({
     url: ufdsUrl,
@@ -102,7 +107,7 @@ function ufdsClientBind(next) {
 
 function ldapClientBind(next) {
   log("# Create LDAP client and bind.")
-  var ufdsIp = headnodeConfig.ufds_external_ips.split(',')[0];
+  var ufdsIp = headnodeConfig.ufds_admin_ips.split(',')[0];
   var ufdsUrl = format("ldaps://%s:636", ufdsIp);
   var ufdsRootDn = headnodeConfig.ufds_ldap_root_dn;
   var ufdsRootPw = headnodeConfig.ufds_ldap_root_pw;
@@ -239,140 +244,156 @@ function ldapClientUnbind(next) {
 }
 
 
-function getMapi(next) {
-  log("# Get MAPI client.")
-  var clientOptions = {
-    url: headnodeConfig.mapi_client_url,
-    username: headnodeConfig.mapi_http_admin_user,
-    password: headnodeConfig.mapi_http_admin_pw
-  };
 
-  mapi = new MAPI(clientOptions);
+function getZapiClient(next) {
+  var zapiIp = headnodeConfig.zapi_admin_ips.split(',')[0];
+  zapiClient = new ZAPI({   // intentionally global
+    url: format("http://%s", zapiIp),
+    username: headnodeConfig.zapi_http_admin_user,
+    password: headnodeConfig.zapi_http_admin_pw
+  });
   next();
 }
 
-function createDevzone(next) {
-  log("# Create dev zone.")
-  // First check if there is a zone for bob.
-  mapi.listMachines(bob.uuid, function (err, zones, headers) {
-    if (err) return next(err);
-    if (zones.length > 0) {
-      amondevzone = zones[0];
-      log("# Bob already has a zone (%s).", amondevzone.name)
-      return next();
-    }
-    log("# Create a test zone for bob.")
-    mapi.listServers(function(err, servers) {
-      if (err) return next(err);
-      var headnodeUuid = servers[0].uuid;
-      mapi.createMachine(bob.uuid, {
-          package: "regular_128",
-          //XXX I can't update my pkgsrc database in a zone with 64MB for
-          //    some reason. Don't want to debug that now.
-          //ram: 64,
-          alias: "amondevzone",
-          dataset_urn: "smartos",
-          server_uuid: headnodeUuid,
-          force: "true"  // XXX does MAPI client support `true -> "true"`
-        },
-        function (err, newZone) {
-          if (err) return next(err);
-          log("# Waiting up to ~90s for new zone %s to start up.", newZone.name);
-          var zone = newZone;
-          var zoneName = zone.name;
-          var sentinel = 30;
-          async.until(
-            function () {
-              return zone.running_status === "running"
-            },
-            function (nextCheck) {
-              sentinel--;
-              if (sentinel <= 0) {
-                return nextCheck("took too long for test zone status to "
-                  + "become 'running'");
-              }
-              setTimeout(function () {
-                mapi.getMachine(bob.uuid, zoneName, function (err, zone_) {
-                  if (err) return nextCheck(err);
-                  zone = zone_;
-                  nextCheck();
-                });
-              }, 3000);
-            },
-            function (err) {
-              if (!err) {
-                amondevzone = zone;
-                log("# Zone %s (amondevzone) is running.", amondevzone.name);
-              }
-              next(err);
-            }
-          );
-        }
-      );
-    });
-  });
-}
 
-function getMapizone(next) {
-  log("# Get MAPI zone.")
-  mapi.listMachines(adminUuid, {alias: 'mapi'}, function (err, zones) {
+function getSmartosDatasetUuid(next) {
+  // No DSAPI in the DC yet, so hack it.
+  log('# Get "smartos" dataset UUID.');
+  // Presume just one smartos-*.dsmanifest file for now.
+  exec(format('ssh %s cat /usbkey/datasets/smartos-*.dsmanifest '
+              + '| json uuid', headnodeAlias),
+       function (err, stdout, stderr) {
     if (err) {
       return next(err);
     }
-    if (zones.length === 0) {
-      return next(new Error('no "mapi" zone'));
-    }
-    log("# MAPI zone is '%s'.", zones[0].name);
-    mapizone = zones[0];
+    smartosDatasetUuid = stdout.trim();
+    log('# "smartos" dataset UUID is "%s".', smartosDatasetUuid);
     next();
   });
 }
 
-function getHeadnodeUuid(next) {
-  mapi.listServers(function (err, servers) {
+
+function getExternalNetworkUuid(next) {
+  log('# Get "external" network UUID.');
+  exec(format('ssh %s /opt/smartdc/bin/sdc-napi /networks | %s -H -c \'name === "external"\' 0.uuid',
+              headnodeAlias, JSON3),
+       function (err, stdout, stderr) {
     if (err) {
       return next(err);
     }
-    for (var i=0; i < servers.length; i++) {
-      if (servers[i].hostname === "headnode") {
+    externalNetworkUuid = stdout.trim();
+    log('# "external" network UUID is "%s".', externalNetworkUuid);
+    next();
+  });
+}
+
+
+function createAmondevzone(next) {
+  // First check if there is a zone for bob.
+  zapiClient.listMachines({owner_uuid: bob.uuid, alias: 'amondevzone'},
+                          function (err, zones) {
+    if (err) {
+      return next(err);
+    }
+    if (zones.length > 0) {
+      amondevzone = zones[0];
+      log('# Bob already has an "amondevzone" zone (%s).',
+        amondevzone.uuid);
+      return next();
+    }
+    log('# Create a test zone for bob.');
+    zapiClient.createMachine({
+        owner_uuid: bob.uuid,
+        dataset_uuid: smartosDatasetUuid,
+        brand: 'joyent',
+        ram: '128',
+        alias: 'amondevzone',
+        networks: externalNetworkUuid
+      },
+      function (err2, newZone) {
+        log('# Waiting up to ~2min for new zone %s to start up.',
+            (newZone ? newZone.uuid : '(error)'));
+        if (err2) {
+          return next(err2);
+        }
+        var zone = newZone;
+        var sentinel = 40;
+        async.until(
+          function () {
+            return zone.state === 'running';
+          },
+          function (nextCheck) {
+            sentinel--;
+            if (sentinel <= 0) {
+              return nextCheck('took too long for test zone status to '
+                + 'become \'running\'');
+            }
+            setTimeout(function () {
+              log("# Check if zone is running yet (sentinel=%d).", sentinel);
+              zapiClient.getMachine({uuid: zone.uuid, owner_uuid: bob.uuid},
+                                    function (err3, zone_) {
+                if (err3) {
+                  return nextCheck(err3);
+                }
+                zone = zone_;
+                nextCheck();
+              });
+            }, 3000);
+          },
+          function (err4) {
+            if (!err4) {
+              amondevzone = zone;
+              log('# Zone %s is running.', amondevzone.uuid);
+            }
+            next(err4);
+          }
+        );
+      }
+    );
+  });
+}
+
+
+function getCnapiClient(next) {
+  var cnapiIp = headnodeConfig.cnapi_admin_ips.split(',')[0];
+  cnapiClient = new CNAPI({   // intentionally global
+    url: format("http://%s", cnapiIp),
+    username: headnodeConfig.cnapi_http_admin_user,
+    password: headnodeConfig.cnapi_http_admin_pw
+  });
+  next();
+}
+
+function getHeadnodeUuid(next) {
+  log('# Get headnode UUID.');
+  cnapiClient.listServers(function (err, servers) {
+    if (err) {
+      return next(err);
+    }
+    for (var i = 0; i < servers.length; i++) {
+      if (servers[i].hostname === 'headnode') {
         headnodeUuid = servers[i].uuid;
         break;
       }
     }
     if (!headnodeUuid) {
-      return next(new Error("could not find headnode in MAPI servers list"));
+      throw new Error('could not find headnode in MAPI servers list');
     }
-    log("# Header server UUID '%s'.", headnodeUuid);
-    next()
+    log('# Header server UUID "%s".', headnodeUuid);
+    next();
   });
 }
 
 
+
 function getAmonClient(next) {
-  log("# Get Amon client.")
-
-  // Amon Master in your SDC:
-  var options = {
-    tags: {
-      smartdc_role: 'amon'
-    }
-  }
-  mapi.listMachines(adminUuid, options, function(err, machines) {
-    if (err) return next(err);
-    var amonMasterUrl = 'http://' + machines[0].ips[0].address;
-    amonClient = new Amon({
-      name: 'amon-client',
-      url: amonMasterUrl
-    });
-    log("# Get Amon client (%s).", amonMasterUrl)
-    next();
+  var amonMasterIp = headnodeConfig.amon_admin_ips.split(',')[0];
+  amonClient = new Amon({
+    name: 'amon-client',
+    url: format('http://%s', amonMasterIp)
   });
-
-  //// Local running Amon:
-  //var amonMasterUrl = 'http://127.0.0.1:8080';
-  //amonClient = new Amon({url: amonMasterUrl});
-  //log("# Get Amon client (%s).", amonMasterUrl)
-  //next();
+  log("# Amon client (%s).", amonMasterIp)
+  next();
 }
 
 
@@ -444,7 +465,7 @@ function loadAmonObjects(next) {
       monitor: 'whistle',
       probe: 'whistlelog',
       body: {
-        "machine": amondevzone.name,
+        "machine": amondevzone.uuid,
         "type": "logscan",
         "config": {
           "path": "/tmp/whistle.log",
@@ -466,7 +487,7 @@ function loadAmonObjects(next) {
       monitor: 'isup',
       probe: 'amondevzone',
       body: {
-        "machine": amondevzone.name,
+        "machine": amondevzone.uuid,
         "type": "machine-up"
       }
     },
@@ -514,9 +535,11 @@ async.series([
     makeOttoAnOperator,
     ldapClientUnbind,
     ufdsClientUnbind,
-    getMapi,
-    createDevzone,
-    getMapizone,
+    getZapiClient,
+    getSmartosDatasetUuid,
+    getExternalNetworkUuid,
+    createAmondevzone,
+    getCnapiClient,
     getHeadnodeUuid,
     getAmonClient,
     loadAmonObjects

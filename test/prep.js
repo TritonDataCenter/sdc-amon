@@ -47,7 +47,10 @@ var amontestzone; // the test zone to use
 var headnodeUuid;
 var amonZoneUuid;
 var smartosDatasetUuid;
+var externalNetworkUuid;
 var gzIp;
+
+var JSON3 = path.resolve(__dirname, 'node_modules/.bin/json3');
 
 
 //---- internal support functions
@@ -288,6 +291,21 @@ function getSmartosDatasetUuid(next) {
 }
 
 
+function getExternalNetworkUuid(next) {
+  log('# Get "external" network UUID.');
+  exec('sdc-napi /networks | '
+        + JSON3 + ' -H -c \'name === "external"\' 0.uuid',
+       function (err, stdout, stderr) {
+    if (err) {
+      return next(err);
+    }
+    externalNetworkUuid = stdout.trim();
+    log('# "external" network UUID is "%s".', externalNetworkUuid);
+    next();
+  });
+}
+
+
 function createAmontestzone(next) {
   // First check if there is a zone for ulrich.
   zapiClient.listMachines({owner_uuid: ulrich.uuid, alias: 'amontestzone'},
@@ -307,7 +325,8 @@ function createAmontestzone(next) {
         dataset_uuid: smartosDatasetUuid,
         brand: 'joyent',
         ram: '128',
-        alias: 'amontestzone'
+        alias: 'amontestzone',
+        networks: externalNetworkUuid
       },
       function (err2, newZone) {
         log('# Waiting up to ~2min for new zone %s to start up.',
@@ -401,6 +420,7 @@ async.series([
     getCnapiClient,
     getHeadnodeUuid,
     getSmartosDatasetUuid,
+    getExternalNetworkUuid,
     createAmontestzone,
     getAmonZoneUuid,
     writePrepJson
