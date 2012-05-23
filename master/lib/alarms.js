@@ -622,16 +622,16 @@ Alarm.prototype.notify = function notify(app, user, event, monitor, callback) {
       //  }
       //  return cb();
       //});
-      return cb();
+      cb();
     } else {
-      return app.notifyContact(self, user, monitor, contact, event,
+      app.notifyContact(self, user, monitor, contact, event,
                                function (err) {
         if (err) {
           log.warn({err: err, contact: contactUrn}, 'could not notify contact');
         } else {
           log.debug({contact: contactUrn}, 'contact notified');
         }
-        return cb();
+        cb();
       });
     }
   }

@@ -1041,7 +1041,7 @@ App.prototype.notificationTypeFromMedium = function (medium) {
 App.prototype.alarmConfig = function (userId, msg, callback) {
   var log = this.log;
   log.error('TODO: implement App.alarmConfig');
-  return callback();
+  callback();
 };
 
 
@@ -1068,7 +1068,6 @@ App.prototype.notifyContact = function (alarm, user, monitor, contact, event,
     return callback(new Error(msg));
   }
   plugin.notify(alarm, user, contact.address, event, callback);
-  return true;
 };
 
 
