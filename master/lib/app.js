@@ -109,14 +109,10 @@ function createApp(config, log, callback) {
   if (!callback) throw new TypeError('callback (Function) required');
 
   var cnapiClient = new CNAPI({
-    url: config.cnapi.url,
-    username: config.cnapi.username,
-    password: config.cnapi.password
+    url: config.cnapi.url
   });
   var zapiClient = new ZAPI({
-    url: config.zapi.url,
-    username: config.zapi.username,
-    password: config.zapi.password
+    url: config.zapi.url
   });
 
   try {

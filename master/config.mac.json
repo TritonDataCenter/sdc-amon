@@ -6,14 +6,10 @@
     "caching": true
   },
   "cnapi": {
-    "url": "http://10.99.99.TODO:80",
-    "username": "admin",
-    "password": "TODO"
+    "url": "http://10.99.99.TODO:80"
   },
   "zapi": {
-    "url": "http://10.99.99.TODO:80",
-    "username": "admin",
-    "password": "TODO"
+    "url": "http://10.99.99.TODO:80"
   },
   "notificationPlugins": {
     "sms": {
