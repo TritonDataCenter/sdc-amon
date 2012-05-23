@@ -98,7 +98,7 @@ function listAgentProbes(req, res, next) {
   }
   findProbes(req._app, parsed.agent, req.log, function (err, probes) {
     if (err) {
-      req.log.error(err, 'error getting probes for agent "%s"', agent);
+      req.log.error(err, 'error getting probes for agent "%s"', parsed.agent);
       next(new restify.InternalError());
     } else {
       req.log.trace({probes: probes}, 'found probes');

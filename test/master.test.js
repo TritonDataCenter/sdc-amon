@@ -379,7 +379,7 @@ test('probes: create without owning zone', function (t) {
   });
 });
 
-test('probes: create for physical machine without being operator', function (t) {
+test('probes: create for physical machine without being op', function (t) {
   var probes = FIXTURES.ulrich.monitors.gz.probes;
   async.forEach(Object.keys(probes), function (probeName, nextProbe) {
     var probe = probes[probeName];

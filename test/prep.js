@@ -201,8 +201,8 @@ function addUlrichTestWebhookContact(next) {
   var interfaces = os.networkInterfaces();
   var interfaceNames = Object.keys(interfaces);
   for (var i = 0; i < interfaceNames.length; i++) {
-    if (interfaceNames[i].slice(0, 3) === 'bnx'
-        || interfaceNames[i] === 'e1000g1'  /* for COAL */) {
+    if (interfaceNames[i].slice(0, 3) === 'bnx' ||
+        interfaceNames[i] === 'e1000g1'  /* for COAL */) {
       gzIp = interfaces[interfaceNames[i]][0].address; // intentionally global
       break;
     }
@@ -275,7 +275,8 @@ function getHeadnodeUuid(next) {
 function getSmartosDatasetUuid(next) {
   // No DSAPI in the DC yet, so hack it.
   log('# Get "smartos" dataset UUID.');
-  exec('ls -1 /usbkey/datasets/smartos-*.dsmanifest | head -n1 | xargs cat | json uuid',
+  exec('ls -1 /usbkey/datasets/smartos-*.dsmanifest | head -n1 '
+          + '| xargs cat | json uuid',
        function (err, stdout, stderr) {
     if (err) {
       return next(err);
@@ -343,7 +344,7 @@ function createAmontestzone(next) {
                 + 'become \'running\'');
             }
             setTimeout(function () {
-              log("# Check if zone is running yet (sentinel=%d).", sentinel);
+              log('# Check if zone is running yet (sentinel=%d).', sentinel);
               zapiClient.getMachine({uuid: zone.uuid, owner_uuid: ulrich.uuid},
                                     function (err3, zone_) {
                 if (err3) {
