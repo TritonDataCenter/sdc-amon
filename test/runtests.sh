@@ -156,7 +156,7 @@ PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP \
 
 # Also run the tests in the Amon Master(s).
 echo ""
-amon_masters=$(/smartdc/bin/sdc-zapi /machines \
+amon_masters=$(sdc-zapi /machines \
     | ./test/node_modules/.bin/json3 -H \
         -c 'tags.smartdc_role === "amon"' \
         -c 'state === "running"' \
@@ -169,7 +169,7 @@ for amon_master in $amon_masters; do
     amon_master_alias=$(echo $amon_master | cut -d: -f3)
     echo ""
     echo "# Run Amon Master ${amon_master_zonename} (alias $amon_master_alias) test suite (on CN ${amon_master_node})."
-    output=$(/smartdc/bin/sdc-oneachnode -j -n ${amon_master_node} \
+    output=$(sdc-oneachnode -j -n ${amon_master_node} \
         zlogin ${amon_master_zonename} \
         /opt/smartdc/amon/test/runtests.sh \
         || true)
