@@ -21,8 +21,6 @@ function subfile () {
   sed -e "s#@@PREFIX@@#$npm_config_prefix#g" \
       -e "s#@@VERSION@@#$npm_package_version#g" \
       -e "s#@@ZAPI_CLIENT_URL@@#http://$ZAPI_CLIENT_IP#g" \
-      -e "s#@@ZAPI_HTTP_ADMIN_USER@@#$CONFIG_zapi_http_admin_user#g" \
-      -e "s#@@ZAPI_HTTP_ADMIN_PW@@#$CONFIG_zapi_http_admin_pw#g" \
       -e "s#@@UFDS_ADMIN_UUID@@#$CONFIG_ufds_admin_uuid#g" \
       $IN > $OUT
 }

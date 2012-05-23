@@ -239,18 +239,14 @@ function ldapClientUnbind(next) {
 
 function getZapiClient(next) {
   zapiClient = new ZAPI({   // intentionally global
-    url: process.env.ZAPI_URL,
-    username: process.env.ZAPI_USERNAME,
-    password: process.env.ZAPI_PASSWORD
+    url: process.env.ZAPI_URL
   });
   next();
 }
 
 function getCnapiClient(next) {
   cnapiClient = new CNAPI({   // intentionally global
-    url: process.env.CNAPI_URL,
-    username: process.env.CNAPI_USERNAME,
-    password: process.env.CNAPI_PASSWORD
+    url: process.env.CNAPI_URL
   });
   next();
 }

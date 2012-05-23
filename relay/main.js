@@ -104,8 +104,7 @@ function getMasterUrl(poll, callback) {
   var pollInterval = poll * 1000;  // seconds -> ms
 
   var missing = [];
-  ['ZAPI_CLIENT_URL', 'ZAPI_HTTP_ADMIN_USER',
-   'ZAPI_HTTP_ADMIN_PW', 'UFDS_ADMIN_UUID'].forEach(function (name) {
+  ['ZAPI_CLIENT_URL', 'UFDS_ADMIN_UUID'].forEach(function (name) {
     if (!process.env[name]) {
       missing.push(name);
     }
@@ -118,9 +117,7 @@ function getMasterUrl(poll, callback) {
   var ZAPI = require('sdc-clients').ZAPI;
   //clients.setLogLevel('trace');
   var zapiClient = new ZAPI({
-    url: process.env.ZAPI_CLIENT_URL,
-    username: process.env.ZAPI_HTTP_ADMIN_USER,
-    password: process.env.ZAPI_HTTP_ADMIN_PW
+    url: process.env.ZAPI_CLIENT_URL
   });
 
   function pollZapi() {

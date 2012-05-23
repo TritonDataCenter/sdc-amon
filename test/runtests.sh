@@ -96,11 +96,7 @@ export UFDS_URL=ldaps://${CONFIG_ufds_admin_ips%%,*}:636
 export UFDS_ROOTDN=$CONFIG_ufds_ldap_root_dn
 export UFDS_PASSWORD=$CONFIG_ufds_ldap_root_pw
 export ZAPI_URL="http://${CONFIG_zapi_admin_ips%%,*}"
-export ZAPI_USERNAME="$CONFIG_zapi_http_admin_user"
-export ZAPI_PASSWORD="$CONFIG_zapi_http_admin_pw"
 export CNAPI_URL="http://${CONFIG_cnapi_admin_ips%%,*}"
-export CNAPI_USERNAME="$CONFIG_cnapi_http_admin_user"
-export CNAPI_PASSWORD="$CONFIG_cnapi_http_admin_pw"
 export REDIS_HOST=$(echo $CONFIG_redis_admin_ips | cut -d, -f1)
 export REDIS_PORT=6379
 export DATACENTER_NAME=$CONFIG_datacenter_name
@@ -112,11 +108,7 @@ echo "# UFDS_URL is $UFDS_URL"
 echo "# UFDS_ROOTDN is $UFDS_ROOTDN"
 echo '# UFDS_PASSWORD is ***'
 echo "# ZAPI_URL is $ZAPI_URL"
-echo "# ZAPI_USERNAME is $ZAPI_USERNAME"
-echo '# ZAPI_PASSWORD is ***'
 echo "# CNAPI_URL is $CNAPI_URL"
-echo "# CNAPI_USERNAME is $CNAPI_USERNAME"
-echo '# CNAPI_PASSWORD is ***'
 echo "# REDIS_HOST is $REDIS_HOST"
 echo "# REDIS_PORT is $REDIS_PORT"
 echo "# DATACENTER_NAME is $DATACENTER_NAME"

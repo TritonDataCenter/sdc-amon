@@ -248,9 +248,7 @@ function ldapClientUnbind(next) {
 function getZapiClient(next) {
   var zapiIp = headnodeConfig.zapi_admin_ips.split(',')[0];
   zapiClient = new ZAPI({   // intentionally global
-    url: format("http://%s", zapiIp),
-    username: headnodeConfig.zapi_http_admin_user,
-    password: headnodeConfig.zapi_http_admin_pw
+    url: format("http://%s", zapiIp)
   });
   next();
 }
@@ -357,9 +355,7 @@ function createAmondevzone(next) {
 function getCnapiClient(next) {
   var cnapiIp = headnodeConfig.cnapi_admin_ips.split(',')[0];
   cnapiClient = new CNAPI({   // intentionally global
-    url: format("http://%s", cnapiIp),
-    username: headnodeConfig.cnapi_http_admin_user,
-    password: headnodeConfig.cnapi_http_admin_pw
+    url: format("http://%s", cnapiIp)
   });
   next();
 }
