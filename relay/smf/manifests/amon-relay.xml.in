@@ -21,9 +21,9 @@
         <method_credential user="root" group="staff"/>
         <method_environment>
           <envvar name="LD_PRELOAD_32" value="/usr/lib/extendedFILE.so.1" />
-          <envvar name="MAPI_CLIENT_URL" value="@@MAPI_CLIENT_URL@@" />
-          <envvar name="MAPI_HTTP_ADMIN_USER" value="@@MAPI_HTTP_ADMIN_USER@@" />
-          <envvar name="MAPI_HTTP_ADMIN_PW" value="@@MAPI_HTTP_ADMIN_PW@@" />
+          <envvar name="ZAPI_CLIENT_URL" value="@@ZAPI_CLIENT_URL@@" />
+          <envvar name="ZAPI_HTTP_ADMIN_USER" value="@@ZAPI_HTTP_ADMIN_USER@@" />
+          <envvar name="ZAPI_HTTP_ADMIN_PW" value="@@ZAPI_HTTP_ADMIN_PW@@" />
           <envvar name="UFDS_ADMIN_UUID" value="@@UFDS_ADMIN_UUID@@" />
         </method_environment>
       </method_context>

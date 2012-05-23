@@ -90,11 +90,11 @@ function createZoneApp(zonename) {
 
 
 /**
- * Get the URL for the amon master from MAPI.
- * The necessary connection details for MAPI are expected to be in the
+ * Get the URL for the amon master from ZAPI.
+ * The necessary connection details for ZAPI are expected to be in the
  * environment.
  *
- * If the amon zone isn't yet in MAPI, this will sit in a polling loop
+ * If the amon zone isn't yet in ZAPI, this will sit in a polling loop
  * waiting for an amon master.
  *
  * @param poll {Integer} Number of seconds polling interval.
@@ -104,8 +104,8 @@ function getMasterUrl(poll, callback) {
   var pollInterval = poll * 1000;  // seconds -> ms
 
   var missing = [];
-  ['MAPI_CLIENT_URL', 'MAPI_HTTP_ADMIN_USER',
-   'MAPI_HTTP_ADMIN_PW', 'UFDS_ADMIN_UUID'].forEach(function (name) {
+  ['ZAPI_CLIENT_URL', 'ZAPI_HTTP_ADMIN_USER',
+   'ZAPI_HTTP_ADMIN_PW', 'UFDS_ADMIN_UUID'].forEach(function (name) {
     if (!process.env[name]) {
       missing.push(name);
     }
@@ -115,52 +115,51 @@ function getMasterUrl(poll, callback) {
       + missing.join('", "') + '"');
   }
 
-  var clients = require('sdc-clients');
+  var ZAPI = require('sdc-clients').ZAPI;
   //clients.setLogLevel('trace');
-  var mapi = new clients.MAPI({
-    url: process.env.MAPI_CLIENT_URL,
-    username: process.env.MAPI_HTTP_ADMIN_USER,
-    password: process.env.MAPI_HTTP_ADMIN_PW
+  var zapiClient = new ZAPI({
+    url: process.env.ZAPI_CLIENT_URL,
+    username: process.env.ZAPI_HTTP_ADMIN_USER,
+    password: process.env.ZAPI_HTTP_ADMIN_PW
   });
 
-  function pollMapi() {
-    log.info('Poll MAPI for Amon zone (admin uuid "%s").',
+  function pollZapi() {
+    log.info('Poll ZAPI for Amon zone (admin uuid "%s").',
       process.env.UFDS_ADMIN_UUID);
-    var options = {
-      tags: {
-        smartdc_role: 'amon'
-      }
-    };
-    mapi.listMachines(process.env.UFDS_ADMIN_UUID, options,
-      function (err, machines, headers) {
+    zapiClient.listMachines({owner_uuid: process.env.UFDS_ADMIN_UUID},
+      function (err, machines) {
         if (err) {
           // Retry on error.
-          log.error('MAPI listMachines error: "%s"',
+          log.error('ZAPI listMachines error: "%s"',
             String(err).slice(0, 100) + '...');
-          setTimeout(pollMapi, pollInterval);
-        } else if (machines.length === 0) {
-          log.error('No Amon Master zone (tag smartdc_role=amon).');
-          setTimeout(pollMapi, pollInterval);
-        } else {
-          // TODO: A start at HA is to accept multiple Amon zones here.
-          var amonZone = machines[0];
-          var amonIp = amonZone.ips && amonZone.ips[0] &&
-            amonZone.ips[0].address;
-          if (!amonIp) {
-            log.error('No Amon zone IP: amonZone.ips=%s',
-              JSON.stringify(amonZone.ips));
-            setTimeout(pollMapi, pollInterval);
-          } else {
-            var amonMasterUrl = 'http://' + amonIp;
-            log.info('Found amon zone: %s <%s>', amonZone.name, amonMasterUrl);
-            callback(null, amonMasterUrl);
+          setTimeout(pollZapi, pollInterval);
+          return;
+        }
+
+        for (var i = 0; i < machines.length; i++) {
+          var machine = machines[i];
+          // Limitation: just using first one. Will need to change for H/A.
+          if (machine.tags && machine.tags.smartdc_role === 'amon') {
+            var amonIp = machine.nics && machine.nics[0] && machine.nics[0].ip;
+            if (!amonIp) {
+              log.error({amonZone: machine}, 'No Amon zone IP');
+              setTimeout(pollZapi, pollInterval);
+            } else {
+              var amonMasterUrl = 'http://' + amonIp;
+              log.info('Found amon zone: %s <%s>', machine.uuid, amonMasterUrl);
+              callback(null, amonMasterUrl);
+            }
+            return;
           }
         }
+
+        log.error('No Amon Master zone (tag smartdc_role=amon).');
+        setTimeout(pollZapi, pollInterval);
       }
     );
   }
 
-  return pollMapi();
+  return pollZapi();
 }
 
 
@@ -235,15 +234,15 @@ function logConfig(next) {
 /**
  * Determine the master URL.
  * Either 'config.masterUrl' is set (from '-m' option), or we get it
- * from MAPI (with MAPI passed in on env: MAPI_CLIENT_URL, ...).
+ * from ZAPI (with ZAPI passed in on env: ZAPI_CLIENT_URL, ...).
  */
 function ensureMasterUrl(next) {
   if (!config.masterUrl) {
-    log.info('Getting master URL from MAPI.');
+    log.info('Getting master URL from ZAPI.');
     return getMasterUrl(config.poll, function (err, masterUrl) {
       if (err)
-        return next('Error getting Amon master URL from MAPI: '+err);
-      log.info('Got master URL (from MAPI): %s', masterUrl);
+        return next('Error getting Amon master URL from ZAPI: '+err);
+      log.info('Got master URL (from ZAPI): %s', masterUrl);
       config.masterUrl = masterUrl;
       return next();
     });
