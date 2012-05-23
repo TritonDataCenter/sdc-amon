@@ -15,7 +15,41 @@ the top.*
 
 # maintenance windows (20-Apr-2012)
 
-For now see "Notes: maintenance windows" section in TODO.txt.
+From the MVP:
+
+1.  Ability for customer to set a maintenance window on a monitor (alert
+    suppression for a pre-defined period of time).
+2.  Ability for operator to set a maintenance window on a CN and on the whole
+    cloud. This would disable alerts to operator.
+
+Scope: Setting a maintenance window is only for processing in the Amon master
+in deciding whether notifications are sent. A maintenance window does not
+stop probe processing, does not stop creation of alarms.
+
+See [use case #7](https://mo.joyent.com/docs/amon/master/#7-monitoring-a-multi-machine-webapp)
+for a example with which to think about maintenance window support.
+
+Effect of maintenance windows: When the decision (in
+`Alarm.prototype.handleEvent`) is being made on whether to notify we check to
+see if there is an open maint window affecting this event. (Dev Note: Get all
+maint windows for this user from redis and iterate through them: all=true,
+monitors match, machine match.) If there is an open maint window, then
+do not notify.
+
+When a maint window closes, then check all open alarms:
+`alarm.handleDeleteMaintenance`. (Dev Note: we need a timer for closing the
+next expiring maint window.) This will potential send a notification for that
+alarm if it results in a change of fault count.
+
+An alarm is said to be "in maintenance" if it is (a) open, (b) has
+maintenance faults and (c) has *no* faults not in maintenance.
+This "in maintenance" designation should be shown in the portals to show the
+user that, yes, there is an alarm here but don't worry about it. Dev Note:
+Alarms need to grow an attribute for this ("inMaintenance" api field).
+(Q: Do we need to track an alarm being in *partial* maintenance? A: No, not
+yet. Partial maintenance is for a monitor with multiple probes: some of which
+have faulted and are affected by a maint window, some of which have faulted
+and are not.)
 
 
 
@@ -27,20 +61,67 @@ on a machine will send a "clear" event.
 
 Clearing alarms is a little more complicated than just closing the alarm when
 an event is attached, because a "clear" is for a particular probe type and
-machine and a monitor can have multiple probes. Therefore an alarm needs to
-track the current set of outstanding "faults". I'm intentionally using a
-name other than "probes" because probe instances may change on a monitor
-over the lifetime of an alarm.
-
-A **fault** is `(<machine|server>,  MACHINE-OR-SERVER-UUID, PROBE-TYPE)`
-3-tuple. (Actually probably represented with a JS object. In the general case
-we might need to add a "PROBE-INSTANCE-CONFIG" item there, but I'm not
-crossing that road until we have a clearable probe-type with config
-information.)
+machine, but a monitor can have multiple probes. Therefore an alarm needs to
+track the current set of outstanding "faults". A **fault** is a probe
+instance that has tripped (is in a fail state).
 
 An alarm will maintain a set of current outstanding faults. On receiving a
 "clear" event, if the last outstanding fault is removed, then the alarm
 will be closed.
+
+
+# alarm re-notification (Apr-2012)
+
+When a probe event reaches the master, logic decides whether to create a
+new alarm for this event or use an existing one. If the latter, then we
+need to decide whether to notify the contacts for this monitor again.
+Here are some notes on potential work to do for this. See
+`Alarm.prototype.handleEvent` in "master/lib/alarms.js" for the current
+state.
+
+    There is the first notify, on alarm creation.
+    - Modulo "delay" on first notification for transient errors. See
+      zabbix and nagios options below.
+      "[x] Don't notify on transient error.  Period: [  60] seconds."
+
+    Subsequent events on the same alarm:
+    - Dumbest is to notify every time.
+    - Notify no more than once per N minutes.
+    - Notify every five minutes regardless of additional events.
+    - Notify again if higher severity event.
+    - ...
+    - Zabbix escalation? Don't go there.
+    - http://www.zabbix.com/wiki/howto/config/alerts/delaying_notifications
+      Nagios "soft states".
+      Delay first notification for transient problems. Would NOT want
+      for a reboot, but perhaps for a disk size threshold.
+
+    TODO: Email to ops (linda, ben) on what kind of notification and
+      re-notification setup they use in prod. If there is anything they'd
+      prefer to see. E.g. for repeated failures of a particular
+      check/monitor.
+
+    These are attributes of the monitor. What about default? On the user?
+
+    Implementation. How to handle scheduling and reliable
+    sending of notifications?
+    - put them in redis, have a interval that checks every N seconds for
+      a notification to send (perhaps with a .kick() to send right away)
+    - actually want to setup a ping for the alarm to see about notifying.
+      So an alarm could handle this itself with setTimeout. If it is to
+      be delayed, then it is up to that Alarm instance to put it in redis
+      in case of restarts.
+
+    So not `alarm.notify(...)` but `alarm.start()`. Is it too much to have
+    an alarm in memory the whole time? Yes. So not managed by each alarm
+    instance.
+
+    Could it be "active alarms"? I.e. reminder notifications time out
+    if not new events on an alarm. Or just not support reminder
+    notifications (for now). Punt on "delay for transient" failure for now
+    too. That means no timer needed.
+
+
 
 
 # webhook contact (30-Mar-2012)

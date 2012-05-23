@@ -622,6 +622,62 @@ For all possible errors, see [Error Response](#error-responses) above.
     X-Response-Time: 3
 
 
+
+# Master API: Maintenance Windows
+
+On can set maintenance windows on monitors (or on machines) to temporarily
+suppress notifications for probe failures.
+
+
+## CreateMaintenanceWindow (POST /pub/:user/maintenance)
+
+Create a maintenance window.
+
+
+### Inputs
+
+||**Parameter**||**Required?**||**Default**||**Description**||
+||user (in URL)||Required||-||The user UUID (from UFDS) or username ('login' in UFDS)||
+||start||Required||-||The time at which the maintenance window starts. RFC date, timestamp, or "now".||
+||end||Required||-||The time at which the maintenance window ends. RFC date, timestamp, or "<digit>[mhd]" (minute, hour, day). E.g.: "1d" means one day.||
+||notes||Optional||-||Short notes on why this maintenance window.||
+||all||Optional||-||A boolean. Set to "true" to indicate that the maintenance window should apply to all monitors.||
+||monitors||Optional||-||A comma-separated list of monitor names to which the maintenance window applies.||
+||machines||Optional||-||A comma-separated list of machine UUIDs to which the maintenance window applies.||
+
+One of `all`, `monitors` or `machines` must be supplied.
+
+
+### Returns
+
+A maintenance window object, with the following fields:
+
+||**Field**||**Type**||**Description**||
+||user||UUID||The UUID of the user to which the maintenance window belongs.||
+||id||Integer||A unique (to this user) integer id for this maintenance window.||
+||start||timestamp||A timestamp at which this maintenance window starts.||
+||end||timestamp||A timestamp at which this maintenance window ends.||
+||notes||String||The given "notes". This key is excluded if there are no notes.||
+||all||Boolean||"true", if this maintenance window applies to all monitors.||
+||monitors||Array||Array of monitor names to which this maintenance window applies, if any.||
+||machines||Array||Array of machine UUIDs to which this maintenance window applies, if any.||
+
+Only one of `all`, `monitors`, `machines` will exist.
+
+
+### Errors
+
+For all possible errors, see [Error Response](#error-responses) above.
+
+
+### Example
+
+    $ sdc-amon /pub/bob/maintenance -X POST -d start=now -d end=1d \
+        -d monitors=mymonitor
+    XXX
+
+
+
 # Master API: Miscellaneous
 
 ## Ping (GET /ping)
@@ -855,9 +911,10 @@ whole userCache object.
 
 # Probe Types
 
-XXX describe local v. remote probe types here and implications with
+TODO:XXX describe local v. remote probe types here and implications with
 agent/machine args for creation. Note remote/local on each probe section
 below.
+
 
 ## Probe: logscan
 
@@ -1403,6 +1460,8 @@ probe types that don't exist yet and that aren't a high priority right now.
       }
     }'
 
+    # ... likewise for the other machines.
+
 How would I set a maintenance window to upgrade the DBs?
 
 1. Visit the UUID_DB2 machine page in the portal and set a maint window on
@@ -1425,9 +1484,10 @@ about the feature):
 3. Visit alarm page. (This alarm page should include info on other
    recent alarms -- perhaps highlighting those related to the same machine.)
 4. "Set maintenance window" for this alarm. Really this translates to a
-   maint window on the *monitor* (which is basically but not exactly the
-   same thing). Also an option when creating the maint window on an alarm
-   page is to instead set it on the *machine*.
+   maint window on the *monitor* -- which is pretty much, but not exactly,
+   the same thing. Also an option when creating the maint window on a monitor
+   page is to instead set it on the *machine* ("all monitors for this
+   machine").
 5. Continue as above...
 
 

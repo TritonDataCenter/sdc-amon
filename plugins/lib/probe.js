@@ -48,10 +48,11 @@
  *      sysevents in the GZ.
  *
  *    Probe.runLocally = <boolean>;
- *      Some Probe types run locally, i.e. the 'agent' and 'machine' fields
- *      are the same. Probes of these types can be created without passing
- *      in the 'agent' option (it is inferred from 'machine'), and vice
- *      versa.
+ *      Some Probe types run locally, i.e. the 'agent' and 'machine' fields are
+ *      the same. E.g. a log scanning probe must run on the machine in question
+ *      and a ping (ICMP) probe need not (and should not). Local probes can be
+ *      created without passing in the 'agent' option (it is inferred from
+ *      'machine'), and vice versa.
  *
  *    Probe.validateConfig(config) {...}
  *      @param config {Object} The config data for a probe.

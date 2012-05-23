@@ -1,14 +1,41 @@
 # higher-level prios
 
-- design use cases, assign a use case driver for each prio
-- sysevent-based events: use case #2, machine-running-state probe type
+- maintenance windows (MON-113):
+    - add CreateMaintenanceWindow
+            POST /pub/:login/maintenance         # CreateMaintenanceWindow
+                    start {RFC date, timestamp, or "now"}
+                    end {RFC date, timestamp, <digit>[mhd] (minute, hour, day)}
+                    notes {String} Short notes on why the maintenance window. Optional.
+                    one of:
+                      all {true}
+                      machines {Set of machine UUIDs}
+                      monitors {Set of monitor names}
+                Returns:
+                    :id {Number} incrementing per-user id (a la alarms)
+    - add UpdateMaintenanceWindow
+            PUT /pub/:login/maintenance/:id      # UpdateMaintenanceWindow
+                    ... same fields as above
+    - add DeleteMaintenanceWindow
+            DELETE /pub/:login/maintenance/:id   # DeleteMaintenanceWindow
+    - add timer handling for expiring maintenance windows
+      (app.scheduleNextMaintenanceExpiry)
+    - update handleEvent to look for maint windows
+        - alarm.maintenanceFaults (split from alarm.faults attribute)
+    - add alarm.handleDeleteMaintenance
+        - add 'reason' code field to `alarm.notify(...)` for the notification
+          types to handle different reasons
+    - add alarm.inMaintenance attribute for API output
+    - add maintenance.test.js
+    - replace SuppressAlarmNotifications and UnsuppressAlarmNotifications
+      with a maint window on that alarm's monitor
+- ticket triage
+- sysevent-based events: use case #2, machine-running-state probe type (?)
 - agent in all zones
 - MON-120: authorizeDelete finish (should merge with authorizePut logic)
 - finish CRUD on UFDS objects
 - sdc-healthcheck
 - notification formatting: templating? Show open/closed state in notifications.
   Design section on what info should be included in notification.
-- MON-113: suppression support (alarms, monitors, everything) -> maintenance windows
 - upgrade plan: What if UFDS schema needs to change? How do we rev the Master
   with older agents in the wild. Upgrading Agent versions? What about
   an old amon-agent? old amon-relay?
@@ -35,6 +62,8 @@
 - update to restify 1.4.1 when that is released (there is a ticket for this)
 - update to and use npm shrinkwrap
 - removing old alarms after a week
+- how to monitor percentiles? E.g. prio1 alarm if 90th percentile
+  response time is >200ms or something?
 - err cleanup (MON-108)
 - Relay needs to have guards for run away agents. One case is an infinite
   loop: a probe watching for "ERROR" in amon logs, where sending the
@@ -48,6 +77,15 @@
   pathological regex (or mdb command) could hang and would need process
   mgmt to deal with. How to break out of this??? A separate process everytime
   is a pain.
+- design use cases, assign a use case driver for each prio
+    - use case #3: needs "smf" probe type to watch smf state transitions
+      if possible
+    - use case #6: needs a "mdb-kernel-cmd" or just a "cmd" probe type
+      to periodically run a command.
+    - use case #1: perhaps add 'smf-log-scan' probe type instead of
+      giving the full service path. Important to periodically reget
+      the smf log path via 'svcs -L' because it changes related to
+      rotation or "file is open" snafus.
 - clear event scenario: A monitor with 'machine-up' probes on two zones.
   Both go down. One comes back up. That alarm should not clear, **but it
   does currently**.
@@ -196,340 +234,10 @@ such that any usage of it is an error to trap faulty users.
 
 
 
-# Notes: maintenance windows
-
-Related to "suppression" section next.
-From MVP:
-
-1.  Ability for customer to set a maintenance window on a monitor (alert
-    suppression for a pre-defined period of time).
-2.  Ability for operator to set a maintenance window on a CN and on the whole
-    cloud. This would disable alerts to operator.
-
-Scope:
-
-- what is scope? Low-level: per zone name and per monitor name. Optionally
-  just per monitor name for all applicable zones?
-    "Suppress this monitor [until enabled again later]."
-    "Suppress this monitor for machines X, Y and Z."
-    "Suppress all monitors for machines X, Y and Z."
-  Or is this only about suppressing *alarms*? I.e. only at the master-level.
-  Yes.
-    "Suppress alarms for monitors M and N [until enabled again later]."
-    "Suppress alarms for monitor M for N for machines X, Y, and Z."
-    "... for the next hour."
-  general:
-    "Suppress alarms
-      for monitors M and N (or all)
-      for machines X, Y and Z (or all)
-      for a certain amount of time (or until re-enabled)."
-
-Customer endpoints for MVP #1:
-
-    PUT /pub/:login/monitors/:foo/maintenance
-          start {RFC date, timestamp, or "now"}
-          stop {RFC date, timestamp, <digit>[mhd] (minute, hour, day)}
-          notes {String} Short notes on why the maintenance window. Optional.
-    DELETE /pub/:login/monitors/:foo/maintenance    # DeleteMonitorMaintenance
-
-Sufficient? This goes to whether to group probes in one or few monitors or
-to have many monitors (up to one for each probe). A "monitor" is good for:
-
-- not repeating relevant contacts for one grouping of probes
-- grouping alarms: one alarm instance per monitor (mostly)
-- logically grouping probes
-- setting a maint window once for a group of related probes
-
-A possible addition would be to limit the maint window for a monitor to
-a subset of probes. or a subset of machines. The latter more convenient for
-the user. Could add a 'targets' or 'machines' field to the maintenance
-later to support this.
-
-IOW, let's try the simpler design (maintenance windows on the monitor obj,
-no "machines" filter) for now and feel it out.
-
-Special end points for operators for MVP #2: Could this not use the same?
-I.e. the operator would just set a maint on their own monitors.
-
-
-Discussion with Trevor: Maint should be in terms of *machine*, because that
-is the user's p.o.v. for doing maintenance. It is possible that a user
-would want to drill down and do it by service, which logically might best
-map to an Amon *monitor*... or even could be by probe, but don't want to
-go to fine grain of probes.
-
-Circonus maint is at the check, Amon probe, level. We won't go there yet.
-Just have it at the top-level and can limit only by machine/server.
-
-  POST /pub/:login/maintenance         # CreateMaintenanceWindow
-          start {RFC date, timestamp, or "now"}
-          stop {RFC date, timestamp, <digit>[mhd] (minute, hour, day)}
-          notes {String} Short notes on why the maintenance window. Optional.
-          one of:
-            all {true}
-            machines {Set of machine UUIDs}
-            monitors {Set of monitor names}
-      Returns:
-          :id {Number} incrementing per-user id (a la alarms)
-
-  PUT /pub/:login/maintenance/:id      # UpdateMaintenanceWindow
-          ... same fields as above
-  DELETE /pub/:login/maintenance/:id   # DeleteMaintenanceWindow
-
-
-Scenario:
-
-  UUID_MON is a monitor zone setup just to watch other zones.
-  UUID1 is our production service box.
-
-  sdc-amon /pub/trent/monitors/mojo/probes/machineup -X PUT -d '{
-    type: "machine-up"
-    machine: UUID1,
-    // This one doesn't accept an agent. The agent this runs on is the
-    // compute node GZ for UUID1.
-  }'
-
-  sdc-amon /pub/trent/monitors/mojo/probes/ping -X PUT -d '{
-    type: "icmp",
-    machine: UUID1,     // optional, but necessary to effectively set a maint window on a machine
-    agent: UUID_MON,    // UUID of a separate pinger zone
-    config: {
-      "host": "mo.joyent.com"
-    }
-  }'
-
-  sdc-amon /agentprobes?agent=UUID
-
-  sdc-amon /pub/trent/maintenance -X POST -d '{
-    start: "now",
-    stop: "1h",
-    machines: ["UUID1"],
-    notes: "upgrading this sucka"
-  }'
-
-  If allowing 'machine' above to be optional, then also probably want:
-
-    sdc-amon /pub/trent/maintenance -X POST -d '{
-      start: "now",
-      stop: "1h",
-      monitors: ["mojo"],       // <--- set a maint window by monitor
-      notes: "upgrading this sucka"
-    }'
-
-  Having both is annoying, because you have to show those options in UIs.
-
-
-Bigger example (TODO: put this as a big use case):
-
-  UUID_MON is our monitor zone
-  UUID_DB1 master db zone
-  UUID_DB2 slave db zone
-  UUID_LB load balancer zone
-  UUID_WEBHEAD1 webhead 1 zone
-  UUID_WEBHEAD2 webhead 2 zone
-
-  TODO: how to monitor percentiles? E.g. prio1 alarm if 90th percentile
-  response time is >200ms or something?
-
-  # Setup a monitor for the service as a whole. Bad news if this one fails,
-  # i.e. that's an arg for severities (TODO: severity).
-  sdc-amon /pub/trent/monitors/myservice -X PUT -d '{
-    contacts: ["email", "sms"],
-    severity: 1
-  }'
-  sdc-amon /pub/trent/monitors/myservice/probes/ping -X PUT -d '{
-    type: "icmp",
-    agent: UUID_MON,
-    config: {
-      "host": "myservice.example.com"
-    }
-  }'
-  sdc-amon /pub/trent/monitors/myservice/probes/http -X PUT -d '{
-    type: "http",
-    agent: UUID_MON,
-    config: {
-      "host": "http://myservice.example.com/status"
-    }
-  }'
-
-  # Setup monitors for each of the other machines: is it up? errors in logs?
-  # relevant services up? Slightly lower prio. For example, WEBHEAD1:
-  sdc-amon /pub/trent/monitors/webhead1 -X PUT -d '{
-    contacts: ["email", "sms"],
-    severity: 2
-  }'
-  sdc-amon /pub/trent/monitors/webhead1/probes/machineup -X PUT -d '{
-    type: "machine-up"
-    machine: UUID_WEBHEAD1,
-    // This probe type doesn't accept an agent: it runs from the compute
-    // node GZ for `machine`.
-  }'
-  sdc-amon /pub/trent/monitors/webhead1/probes/ping -X PUT -d '{
-    type: "icmp",
-    agent: UUID_MON,
-    config: {
-      "host": "1.2.3.4"
-    }
-  }'
-  sdc-amon /pub/trent/monitors/webhead1/probes/http -X PUT -d '{
-    type: "http",
-    agent: UUID_MON,
-    config: {
-      "host": "http://1.2.3.4/status",
-      "headers": {
-        "Host": "myservice.example.com"
-      }
-    }
-  }'
-  sdc-amon /pub/trent/monitors/webhead1/probes/myservice -X PUT -d '{
-    type: "smf",    // Not yet implemented
-    machine: UUID_WEBHEAD1,
-    config: {
-      "fmri": "myservice"
-    }
-  }'
-  sdc-amon /pub/trent/monitors/webhead1/probes/logerrors -X PUT -d '{
-    type: "log-scan",   // or 'smf-log-scan' if/when that is added
-    machine: UUID_WEBHEAD1,
-    config: {
-      "path": "/var/log/myservice.log",
-      "regex": "ERROR"
-    }
-  }'
-
-  # Might want a lower-prio "maintenance" monitor for each machine.
-  # For example, WEBHEAD1:
-  sdc-amon /pub/trent/monitors/webhead1maint -X PUT -d '{
-    contacts: ["email"],
-    severity: 3
-  }'
-  sdc-amon /pub/trent/monitors/webhead1maint/probes/disk -X PUT -d '{
-    type: "disk-free",   // Not yet implemented
-    machine: UUID_WEBHEAD1,
-    config: {
-      "path": "/",        // or call this 'mount'?
-      "capacity": 0.8   // alarm if disk usage is over 80%
-    }
-  }'
-  sdc-amon /pub/trent/monitors/webhead1maint/probes/ram -X PUT -d '{
-    type: "ram-free",   // Not yet implemented
-    machine: UUID_WEBHEAD1,
-    config: {
-      "capacity": 0.9,   // alarm if RAM usage is over 90% 3 times in 5 minutes
-      "threshold": 3,
-      "period": 300
-    }
-  }'
-
-XXX What else? TODO: ask around. Learn about joyent.com setup. Learn about
-voxer setup. Ask ops about what kinds of monitoring checks they have setup
-typically.
-
-
-How would I set a maintenance window to upgrade the DB's?
-- set maint window on UUID_DB2 (upgrade slave first)
-- do upgrades on UUID_DB2
-- check monitoring dashboard, if all is well, close the maint window
-
-OR (if don't think about maint window):
-
-- start upgrades on UUID_DB2
-- get notification for a db2 monitor alarm, click link to alarm page
-- visit alarm page. (This alarm page should include info on other
-  recent alarms... highlighting those related to the same machine.)
-- "set maintenance window" for this alarm:
-  Q: this translates to maint on:
-    - that alarm's fault machine(s)?
-    - all the machines for that alarm's monitor? no
-    - this alarm's monitor
-  A: Default to maint on this monitor. Offer to put maint on "all monitors
-     for this machine."
-
-
-
-
-
-Aside: Two classes of probes: remote (runs from the outside, e.g. "ping";
-need to specify an 'agent' on which to run) and local (run on that target
-machine, e.g. "log-scan", or on its GZ, e.g. "machine-up"). TODO: add this
-to documentation.
-
-
-
-Transition from machine/server to agent/machine:
-
-    sdc-amon /agentprobes?agent=UUID
-      A probe type has a `usesLocalAgent` boolean. If true, then
-      `probe.agent = probe.machine`. E.g. 'log-scan' and 'smf'.
-
-    sdc-amon /pub/:login/probe/:probe -X PUT ...
-      Q: How to know to check if machine/agent is for a GZ?
-      A: Need to have gz=true explicit in probe. Operator check on that.
-         Relay must discard probes that don't have correct `gz` value.
-
-      NOTE: Already have probe.global. Use that? No, that's for ProbeType.runInGlobal.
-      i.e. runInVmHost.
-
-      probe smartlogin: {
-            'machine': prep.headnodeUuid,
-
-            'machineIsPhysical': true,
-            'gz': true,
-            'machineIsGz': true,
-            'machineIsPrivileged': true,
-            'machineIsRestricted': true,
-            'restricted': true,
-            'sudo': true,
-            'admin': true,
-
-            'type': 'logscan',
-            'config': {
-              'path': '/var/svc/log/smartdc-agent-smartlogin:default.log',
-              'regex': 'Stopping',
-              'threshold': 1,
-              'period': 60
-            }
-          }
-        }
-
-
-
-
-Walk through alarm scenarios with maintenance windows:
-
-1. Set a maint window on amontestzone. Then machine-up trips because
-   amontestzone is rebooted: Alarm 1. amontestzone comes back up during maint
-   window (clears): Alarm 1 is closed. [According to Circ screencast, its
-   alarm would not clear until the end of the maint window. Not sure tho.]
-   Maint window closes. TODO: `alarm.openedDuringMaintenance=true`.
-   TODO: `alarm.closedDuringMaintenance`? or `alarm.clearedDuringMaintenance`.
-   TODO: merge "close" and "clear" language?
-
-  GET /pub/:login/updates
-    Persistent connection that streams JSON objects of updates to Amon status
-    for that user: alarm opened, alarm cleared, alarm closed, maint window
-    expired, new event for alarm. Options to filter on these, and throttling.
-
-2. Set a maint window on amontestzone. Machine-up probe trips (only probe
-   in that monitor) as zone goes down: Alarm 1. Maint window closes:
-   amontestzone is still down. Notification sent for that alarm.
-   TODO: add 'reason' code field to `.notify(...)` for the notification
-   types to handle the different reasons.
-
-3. Set a maint window on amontestzone. There is a 'mystuff' monitor with
-   two probes: 'machine-up' on amontestzone, 'machine-up' on amontestzone2.
-   - amontestzone goes down -> Alarm 1 (no notification).
-     TODO: might want separate set of "maintFaults" rather than just "faults"
-   - amontestzone2 goes down -> attach to Alarm 1, send notification because
-     now has a fault not in maint
-   - amontestzone comes up (clears)
-   - maint window expires: *no* new notification because coming out of
-     maint did not add to the set of faults
-
-
-
-
 # Notes: suppression
+
+(Note: Mostly this is, or should be, superceded by maintenance window
+support. See design.restdown section for that.)
 
 - suppression facility: global, per monitor, per customer? "per customer"
   could be implemented client side: portal/adminui just sets it for all
@@ -637,144 +345,3 @@ model Probe:
 Circonus has severity on the probe equiv.
 
 
-# notes: alarms
-
-model Alarm:
-    user: UUID
-    monitor: name, might be null
-    name: this is the id for the alarm, see "Alarm id" section below
-    timeOpened: when first alarmed
-    openedDuringMaint: null or ref to maintenance window? Or just true|false.
-    timeClosed: when cleared (auto or explcitly)
-    timeLastActivity: (If useful.) This is time of last event or API action
-      on this alarm. Perhaps last notification?
-    timeLastEvent: Used for de-duping. This is a bit of denorm from `events`
-      field.
-    timeExpiry: set to N (N == 1 week) after timeClosed whenever it is closed
-      This should be useful for portals to show when this will expire.
-    suppressNotifications: true|false
-    severity: Or could just inherit this from monitor/probe
-    isOpen: true|false  (s/isOpen/closed/)
-    probes: the *set* of probe *names* from this monitor that have tripped.
-    machines: A probe can change, so really want the list of machines
-      affected (or really the ones that ran the tripped probes).
-    events: ... can't store all events for this so perhaps:
-      - firstEvents, recentEvents (N events on either end), numEvents (total)
-        Perhaps "N" is 50 here, i.e. something high enough to not be
-        common.
-      - might want some sort of histogram of events. Can we store a
-        timestamp for every event? *Can* we store all events? Not really.
-        Can redis help us here?
-    numNotifications
-      - perhaps also time of last notification? time of first notification.
-
-
-probe event
-  -> handleEvent(event, monitor /* might be null */, probe /* might be null */)
-  -> getOrCreateAlarm(event, monitor, probe)  // monitor and probe might be null
-      i.e. want alarmFromMonitor ...
-      Is there only ever one alarm for a monitor? What if there is an old
-      stale (no events for a long time) unclosed alarm for monitor M, then
-      a new event comes in? Either is revives that alarm or it creates
-      a new one. -> new one (unique names include closed monitors).
-      So need threshold on when to break to a new alarm.
-      Sep this out to a function that decides of this event "is related"
-      to this alarm. For starters this is just whether
-      `event.time - alarm.timeLastEvent > 1 hour`. Perhaps expose that
-      threshold to the monitor config (`monitor.dedupePeriod`). Later the
-      algo could be adaptive or could look at other params (e.g. same probe?
-      same zone? similar period of events, i.e. every day at midnight?)
-  -> alarm.notify(event, monitor, probe) ?
-      There is the first notify, on alarm creation.
-      - Modulo "delay" on first notification for transient errors. See
-        zabbix and nagios options below.
-        "[x] Don't notify on transient error.  Period: [  60] seconds."
-
-      Subsequent events on the same alarm:
-      - Dumbest is to notify every time.
-      - Notify no more than once per N minutes.
-      - Notify every five minutes regardless of additional events.
-      - Notify again if higher severity event.
-      - ...
-      - Zabbix escalation? Don't go there.
-      - http://www.zabbix.com/wiki/howto/config/alerts/delaying_notifications
-        Nagios "soft states".
-        Delay first notification for transient problems. Would NOT want
-        for a reboot, but perhaps for a disk size threshold.
-
-      TODO: Email to ops (linda, ben) on what kind of notification and
-        re-notification setup they use in prod. If there is anything they'd
-        prefer to see. E.g. for repeated failures of a particular
-        check/monitor.
-
-      These are attributes of the monitor. What about default? On the user?
-
-      Implementation. How to handle scheduling and reliable
-      sending of notifications?
-      - put them in redis, have a interval that checks every N seconds for
-        a notification to send (perhaps with a .kick() to send right away)
-      - actually want to setup a ping for the alarm to see about notifying.
-        So an alarm could handle this itself with setTimeout. If it is to
-        be delayed, then it is up to that Alarm instance to put it in redis
-        in case of restarts.
-
-      So not `alarm.notify(...)` but `alarm.start()`. Is it too much to have
-      an alarm in memory the whole time? Yes. So not managed by each alarm
-      instance.
-
-      Could it be "active alarms"? I.e. reminder notifications time out
-      if not new events on an alarm. Or just not support reminder
-      notifications (for now). Punt on "delay for transient" failure for now
-      too. That means no timer needed.
-
-Implementation (take 2):
-probe event
-  -> app.processEvent(event)
-    Get `monitor` and `probe`.
-    Get or create new Alarm: alarm.
-    app.attachEventToAlarm(alarm, event, ...)
-  -> app.getOrCreateAlarm(event, user, monitor, probe, function (err, alarm))
-    - Get all open alarms for this user/monitor.
-    - If not any -> create new alarm.
-    - Pass all potential alarms to app.chooseRelatedAlarm().
-    - If alarm -> return alarm
-    - Else -> create new alarm.
-  -> app.chooseRelatedAlarm(alarms, event, user, monitor, probe, function(err, alarm))
-    First pass at this: Choose the alarm with the most recent `timeLastEvent`.
-    If `event.time - alarm.timeLastEvent > 1 hour` then return none, i.e.
-    not related. Else, return that alarm.
-    Eventually make this "1 hour" an optional var on monitor.
-    Eventually this algo can consider more vars.
-  -> app.createAlarm(alarm, event, monitor)
-    uuid: uuid()
-    monitor:
-  -> app.alarmAddEvent(alarm, event, ...)
-    - update alarm fields:
-        timeOpened: when first alarmed
-        timeLastActivity: (If useful.) This is time of last event or API action
-          on this alarm. Perhaps last notification?
-        timeLastEvent: Used for de-duping. This is a bit of denorm from `events`
-          field.
-        severity: Or could just inherit this from `monitor`
-        isOpen: true|false
-        probes: the *set* of probe *names* from this monitor that have tripped.
-        machines: A probe can change, so really want the list of machines
-          affected (or really the ones that ran the tripped probes).
-        events: ... can't store all events for this so perhaps:
-          - firstEvents, recentEvents (N events on either end), numEvents (total)
-            Perhaps "N" is 50 here, i.e. something high enough to not be
-            common.
-          - might want some sort of histogram of events. Can we store a
-            timestamp for every event? *Can* we store all events? Not really.
-            Can redis help us here?
-    - Decide whether to notify:
-      - if this is a clear event (XXX probe event needs a 'clear: true'
-        field, set by machine-up 'up' event) and never opened, then no
-      - if in maint, then no (update 'openedDuringMaint')
-      - ... more?
-      - else, notify:
-          numNotifications
-
-
-
-.
