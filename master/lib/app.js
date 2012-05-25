@@ -24,10 +24,9 @@ var Contact = require('./contact');
 var alarms = require('./alarms'),
   createAlarm = alarms.createAlarm,
   Alarm = alarms.Alarm;
-
-// Endpoint controller modules.
-var monitors = require('./monitors');
-var Monitor = monitors.Monitor;
+var maintenances = require('./maintenances');
+var monitors = require('./monitors'),
+  Monitor = monitors.Monitor;
 var probes = require('./probes');
 var agentprobes = require('./agentprobes');
 var events = require('./events');
@@ -329,6 +328,7 @@ function App(config, cnapiClient, zapiClient, log) {
   monitors.mountApi(server);
   probes.mountApi(server);
   alarms.mountApi(server);
+  maintenances.mountApi(server);
   agentprobes.mountApi(server);
   events.mountApi(server);
 }

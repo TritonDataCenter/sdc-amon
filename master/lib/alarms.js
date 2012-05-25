@@ -202,6 +202,7 @@ function createAlarm(app, userUuid, monitor, callback) {
  */
 function Alarm(data, log) {
   if (!data) throw new TypeError('"data" (object) is required');
+  if (!data.id) throw new TypeError('"data.id" (integer) is required');
   if (!data.user || !UUID_RE.test(data.user))
     throw new TypeError('"data.user" (UUID) is required');
   if (!log) throw new TypeError('"log" (Bunyan Logger) is required');

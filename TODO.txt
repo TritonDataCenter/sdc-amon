@@ -1,22 +1,6 @@
 # higher-level prios
 
 - maintenance windows (MON-113):
-    - add CreateMaintenanceWindow
-            POST /pub/:login/maintenance         # CreateMaintenanceWindow
-                    start {RFC date, timestamp, or "now"}
-                    end {RFC date, timestamp, <digit>[mhd] (minute, hour, day)}
-                    notes {String} Short notes on why the maintenance window. Optional.
-                    one of:
-                      all {true}
-                      machines {Set of machine UUIDs}
-                      monitors {Set of monitor names}
-                Returns:
-                    :id {Number} incrementing per-user id (a la alarms)
-    - add UpdateMaintenanceWindow
-            PUT /pub/:login/maintenance/:id      # UpdateMaintenanceWindow
-                    ... same fields as above
-    - add DeleteMaintenanceWindow
-            DELETE /pub/:login/maintenance/:id   # DeleteMaintenanceWindow
     - add timer handling for expiring maintenance windows
       (app.scheduleNextMaintenanceExpiry)
     - update handleEvent to look for maint windows
@@ -77,6 +61,8 @@
   pathological regex (or mdb command) could hang and would need process
   mgmt to deal with. How to break out of this??? A separate process everytime
   is a pain.
+- limits on number of objects per user: 1000 maint windows, 1000 monitors,
+  1000 probes
 - design use cases, assign a use case driver for each prio
     - use case #3: needs "smf" probe type to watch smf state transitions
       if possible
@@ -343,5 +329,3 @@ model Probe:
   severity: 1,2,3? circo. has 1-5.
 
 Circonus has severity on the probe equiv.
-
-

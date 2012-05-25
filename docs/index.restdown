@@ -628,11 +628,66 @@ For all possible errors, see [Error Response](#error-responses) above.
 On can set maintenance windows on monitors (or on machines) to temporarily
 suppress notifications for probe failures.
 
+### Maintenance Window Fields
 
-## CreateMaintenanceWindow (POST /pub/:user/maintenance)
+||**Field**||**Type**||**Description**||
+||user||UUID||The UUID of the user to which the maintenance window belongs.||
+||id||Integer||A unique (to this user) integer id for this maintenance window.||
+||start||timestamp||A timestamp at which this maintenance window starts.||
+||end||timestamp||A timestamp at which this maintenance window ends.||
+||notes||String||The given "notes". This key is excluded if there are no notes.||
+||all||Boolean||"true", if this maintenance window applies to all monitors.||
+||monitors||Array||Array of monitor names to which this maintenance window applies, if any.||
+||machines||Array||Array of machine UUIDs to which this maintenance window applies, if any.||
+
+Only one of `all`, `monitors`, `machines` will exist.
+
+An example maintenance window:
+
+    XXX
+
+
+## ListAllMaintenanceWindows (GET /maintenances)
+
+An **internal** API for listing and searching all maintenance windows. This
+is intended for operators and development/debugging only. In a heavily loaded
+system care should be taken with this endpoint to not swamp the Amon Master.
+
+### Inputs
+
+None.
+
+### Errors
+
+For all possible errors, see [Error Response](#error-responses) above.
+
+### Returns
+
+Returns an array of maintenance windows (see
+[Maintenance Window Fields](#maintenance-window-fields) above).
+
+### Example
+
+    $ sdc-amon /maintenances
+    HTTP/1.1 200 OK
+    ...
+
+    XXX
+
+
+## ListMaintenanceWindows (GET /pub/:user/maintenances)
+
+XXX
+
+
+## GetMaintenanceWindow (POST /pub/:user/maintenances/:maintenance)
+
+XXX
+
+
+## CreateMaintenanceWindow (POST /pub/:user/maintenances)
 
 Create a maintenance window.
-
 
 ### Inputs
 
@@ -647,34 +702,25 @@ Create a maintenance window.
 
 One of `all`, `monitors` or `machines` must be supplied.
 
-
 ### Returns
 
-A maintenance window object, with the following fields:
-
-||**Field**||**Type**||**Description**||
-||user||UUID||The UUID of the user to which the maintenance window belongs.||
-||id||Integer||A unique (to this user) integer id for this maintenance window.||
-||start||timestamp||A timestamp at which this maintenance window starts.||
-||end||timestamp||A timestamp at which this maintenance window ends.||
-||notes||String||The given "notes". This key is excluded if there are no notes.||
-||all||Boolean||"true", if this maintenance window applies to all monitors.||
-||monitors||Array||Array of monitor names to which this maintenance window applies, if any.||
-||machines||Array||Array of machine UUIDs to which this maintenance window applies, if any.||
-
-Only one of `all`, `monitors`, `machines` will exist.
-
+Returns a maintenance window object (see
+[Maintenance Window Fields](#maintenance-window-fields) above).
 
 ### Errors
 
 For all possible errors, see [Error Response](#error-responses) above.
-
 
 ### Example
 
     $ sdc-amon /pub/bob/maintenance -X POST -d start=now -d end=1d \
         -d monitors=mymonitor
     XXX
+
+
+## DeleteMaintenanceWindow (DELETE /pub/:user/maintenances/:maintenance)
+
+XXX
 
 
 
