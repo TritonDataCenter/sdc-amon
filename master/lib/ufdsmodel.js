@@ -294,7 +294,7 @@ function requestPut(req, res, next, Model) {
 
   // Note this means that the *route variable names* need to match the
   // expected `data` key names in the models (e.g. `monitors.Monitor`).
-  var data = objCopy(req.params);
+  var data = {};
   Object.keys(req.params).forEach(function (k) {
     data[k] = req.params[k];
   });
