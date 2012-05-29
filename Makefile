@@ -40,6 +40,11 @@ JSHINT := node_modules/.bin/jshint
 JSSTYLE_FLAGS := -f tools/jsstyle.conf
 NPM_FLAGS = --tar=$(TAR) --cache=$(shell pwd)/tmp/npm-cache
 
+#
+# Dirs
+#
+ROOT = $(PWD)
+
 
 #
 # Repo-specific targets
@@ -118,17 +123,10 @@ pkg_relay:
 		test \
 		$(BUILD)/pkg/relay/
 
-	# Trim out some unnecessary, duplicated, or dev-only pieces.
-	rm -rf $(BUILD)/pkg/relay/node/lib/node_modules/amon-common \
-		$(BUILD)/pkg/relay/node/lib/node_modules/amon-plugins
-	find $(BUILD)/pkg/relay -name "*.pyc" | xargs rm -f
-	find $(BUILD)/pkg/relay -name "*.o" | xargs rm -f
-	find $(BUILD)/pkg/relay -name c4che | xargs rm -rf   # waf build file
-	find $(BUILD)/pkg/relay -name .wafpickle* | xargs rm -rf   # waf build file
-	find $(BUILD)/pkg/relay -name .lock-wscript | xargs rm -rf   # waf build file
-	find $(BUILD)/pkg/relay -name config.log | xargs rm -rf   # waf build file
-
-	(cd $(BUILD)/pkg && $(TAR) zcf ../amon-relay-$(STAMP).tgz relay)
+	# tools/amon-relay.exclude contains a list of files and patterns of some
+	#  unnecessary, duplicated, or dev-only pieces we don't want in the build.
+	(cd $(BUILD)/pkg && $(TAR) --exclude-from=$(ROOT)/tools/amon-relay.exclude \
+		-zcf ../amon-relay-$(STAMP).tgz relay)
 	@echo "Created '$(BUILD)/amon-relay-$(STAMP).tgz'."
 
 .PHONY: pkg_agent
@@ -148,13 +146,10 @@ pkg_agent:
 		agent/.npmignore \
 		$(BUILD)/pkg/agent
 
-	# Trim out some unnecessary, duplicated, or dev-only pieces.
-	rm -rf $(BUILD)/pkg/agent/node/lib/node_modules/amon-common \
-		$(BUILD)/pkg/agent/node/lib/node_modules/amon-plugins
-	find $(BUILD)/pkg/agent -name "*.pyc" | xargs rm -f
-	find $(BUILD)/pkg/agent -name .lock-wscript | xargs rm -rf   # waf build file
-
-	(cd $(BUILD)/pkg && $(TAR) zcf ../amon-agent-$(STAMP).tgz agent)
+	# tools/amon-agent.exclude contains a list of files and patterns of some
+	#  unnecessary, duplicated, or dev-only pieces we don't want in the build.
+	(cd $(BUILD)/pkg && $(TAR) --exclude-from=$(ROOT)/tools/amon-agent.exclude \
+	  -zcf ../amon-agent-$(STAMP).tgz agent)
 	@echo "Created '$(BUILD)/amon-agent-$(STAMP).tgz'."
 
 .PHONY: pkg_master
@@ -175,16 +170,11 @@ pkg_master:
 		master/package.json \
 		$(BUILD)/pkg/master/root/opt/smartdc/amon/
 
-	# Trim out some unnecessary, duplicated, or dev-only pieces.
-	find $(BUILD)/pkg/master -name "*.pyc" | xargs rm -f
-	find $(BUILD)/pkg/master -name "*.o" | xargs rm -f
-	find $(BUILD)/pkg/master -name c4che | xargs rm -rf   # waf build file
-	find $(BUILD)/pkg/master -name .wafpickle* | xargs rm -rf   # waf build file
-	find $(BUILD)/pkg/master -name .lock-wscript | xargs rm -rf   # waf build file
-	find $(BUILD)/pkg/master -name config.log | xargs rm -rf   # waf build file
-
+	# tools/amon-pkg.exclude contains a list of files and patterns of some
+	#  unnecessary, duplicated, or dev-only pieces we don't want in the build.
 	(cd $(BUILD)/pkg/master \
-		&& $(TAR) cjf $(shell unset CDPATH; cd $(BUILD); pwd)/amon-pkg-$(STAMP).tar.bz2 *)
+		&& $(TAR) --exclude-from=$(ROOT)/tools/amon-pkg.exclude -cjf \
+		$(shell unset CDPATH; cd $(BUILD); pwd)/amon-pkg-$(STAMP).tar.bz2 *)
 	@echo "Created '$(BUILD)/amon-pkg-$(STAMP).tar.bz2'."
 
 

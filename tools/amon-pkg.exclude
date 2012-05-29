@@ -1,0 +1,6 @@
+*.pyc
+*.o
+c4che
+.wafpickle*
+.lock-wscript
+config.log
