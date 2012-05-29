@@ -40,10 +40,9 @@ JSHINT := node_modules/.bin/jshint
 JSSTYLE_FLAGS := -f tools/jsstyle.conf
 NPM_FLAGS = --tar=$(TAR) --cache=$(shell pwd)/tmp/npm-cache
 
-#
-# Dirs
-#
-ROOT = $(PWD)
+# Need to get our tools/bin on PATH to get our 'python'
+# first on the PATH. See RELENG-302.
+NPM := PATH=$(TOP)/tools/bin:/$(TOP)/$(NODE_INSTALL)/bin:$(PATH) $(TOP)/$(NPM_EXEC) $(NPM_FLAGS)
 
 
 #
@@ -125,7 +124,7 @@ pkg_relay:
 
 	# tools/amon-relay.exclude contains a list of files and patterns of some
 	#  unnecessary, duplicated, or dev-only pieces we don't want in the build.
-	(cd $(BUILD)/pkg && $(TAR) --exclude-from=$(ROOT)/tools/amon-relay.exclude \
+	(cd $(BUILD)/pkg && $(TAR) --exclude-from=$(TOP)/tools/amon-relay.exclude \
 		-zcf ../amon-relay-$(STAMP).tgz relay)
 	@echo "Created '$(BUILD)/amon-relay-$(STAMP).tgz'."
 
@@ -148,7 +147,7 @@ pkg_agent:
 
 	# tools/amon-agent.exclude contains a list of files and patterns of some
 	#  unnecessary, duplicated, or dev-only pieces we don't want in the build.
-	(cd $(BUILD)/pkg && $(TAR) --exclude-from=$(ROOT)/tools/amon-agent.exclude \
+	(cd $(BUILD)/pkg && $(TAR) --exclude-from=$(TOP)/tools/amon-agent.exclude \
 	  -zcf ../amon-agent-$(STAMP).tgz agent)
 	@echo "Created '$(BUILD)/amon-agent-$(STAMP).tgz'."
 
@@ -173,7 +172,7 @@ pkg_master:
 	# tools/amon-pkg.exclude contains a list of files and patterns of some
 	#  unnecessary, duplicated, or dev-only pieces we don't want in the build.
 	(cd $(BUILD)/pkg/master \
-		&& $(TAR) --exclude-from=$(ROOT)/tools/amon-pkg.exclude -cjf \
+		&& $(TAR) --exclude-from=$(TOP)/tools/amon-pkg.exclude -cjf \
 		$(shell unset CDPATH; cd $(BUILD); pwd)/amon-pkg-$(STAMP).tar.bz2 *)
 	@echo "Created '$(BUILD)/amon-pkg-$(STAMP).tar.bz2'."
 
