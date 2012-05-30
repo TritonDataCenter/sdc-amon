@@ -13,7 +13,6 @@ c4che
 .wafpickle*
 .lock-wscript
 config.log
-relay/test
 relay/node/lib/node_modules/amon-common
 relay/node/lib/node_modules/amon-plugins
 relay/node_modules/zutil/demo
