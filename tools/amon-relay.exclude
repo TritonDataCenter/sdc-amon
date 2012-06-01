@@ -81,7 +81,6 @@ relay/node_modules/amon-plugins/node_modules/tap/node_modules/runforcover/node_m
 relay/node_modules/amon-plugins/node_modules/tap/node_modules/runforcover/test
 relay/node_modules/amon-plugins/node_modules/tap/coverage-example/test
 relay/node_modules/amon-plugins/node_modules/bunyan/test
-relay/node_modules/amon-plugins/test
 relay/node_modules/restify/node_modules/bunyan/test
 relay/node_modules/restify/node_modules/bunyan/examples
 relay/node_modules/restify/node_modules/http-signature/node_modules/ctype/tst
