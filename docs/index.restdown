@@ -1278,7 +1278,7 @@ screencast demonstrating this use case.
         "machine": "ea3898cd-4ca9-410a-bfa6-0152ba07b1d7"
     }' | sdc-amon /pub/SOME-OPERATOR/monitors/sdczones/probes/ufds0 -X PUT -d @-
 
-    # ... one for each sdc zone (sdc-mapi /machines?tag.smartdc_role=*)
+    # ... one for each sdc zone (sdc-zapi /vms?tag.smartdc_role=*)
     # See "sdczones.sh" in <https://stuff.joyent.us/stuff/trent/screencasts/amon1-notes.txt>
 
 

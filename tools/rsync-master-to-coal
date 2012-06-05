@@ -9,7 +9,7 @@ NODE=root@10.99.99.7
 JSON3=$TOP/test/node_modules/.bin/json3
 
 if [[ -z "$AMON_ZONE" ]]; then
-    AMON_ZONE=$(ssh $NODE "/opt/smartdc/bin/sdc-zapi /machines" 2>/dev/null \
+    AMON_ZONE=$(ssh $NODE "/opt/smartdc/bin/sdc-zapi /vms" 2>/dev/null \
         | $JSON3 -H -c 'this.tags && this.tags.smartdc_role === "amon"' \
             -c 'this.state === "running"' 0.uuid)
 fi

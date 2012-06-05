@@ -56,12 +56,12 @@ function clearUser() {
     done
 
     if [[ ! -n "$opt_quick_clean" ]]; then
-        local machines=$(sdc-zapi /machines?owner_uuid=$uuid \
+        local machines=$(sdc-zapi /vms?owner_uuid=$uuid \
             | $JSON3 -c 'this.state==="running"' -Ha server_uuid uuid -d: | xargs)
         for machine in $machines; do
             # We *could* do this:
-            #    echo "# DELETE /machines/$machine"
-            #    sdc-zapi /machines/$machine -X DELETE -f >/dev/null
+            #    echo "# DELETE /vms/$machine"
+            #    sdc-zapi /vms/$machine -X DELETE -f >/dev/null
             # but that is async and slow. The following is sync and we
             # will subsequently be deleting the machine UFDS entry, so
             # ZAPI shouldn't get confused.

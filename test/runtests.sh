@@ -148,7 +148,7 @@ PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP \
 
 # Also run the tests in the Amon Master(s).
 echo ""
-amon_masters=$(sdc-zapi /machines \
+amon_masters=$(sdc-zapi /vms \
     | ./test/node_modules/.bin/json3 -H \
         -c 'tags.smartdc_role === "amon"' \
         -c 'state === "running"' \

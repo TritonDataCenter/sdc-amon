@@ -305,8 +305,8 @@ function getExternalNetworkUuid(next) {
 
 function createAmontestzone(next) {
   // First check if there is a zone for ulrich.
-  zapiClient.listMachines({owner_uuid: ulrich.uuid, alias: 'amontestzone'},
-                          function (err, zones) {
+  zapiClient.listVms({owner_uuid: ulrich.uuid, alias: 'amontestzone'},
+                     function (err, zones) {
     if (err) {
       return next(err);
     }
@@ -317,7 +317,7 @@ function createAmontestzone(next) {
       return next();
     }
     log('# Create a test zone for ulrich.');
-    zapiClient.createMachine({
+    zapiClient.createVm({
         owner_uuid: ulrich.uuid,
         dataset_uuid: smartosDatasetUuid,
         brand: 'joyent',
@@ -345,8 +345,8 @@ function createAmontestzone(next) {
             }
             setTimeout(function () {
               log('# Check if zone is running yet (sentinel=%d).', sentinel);
-              zapiClient.getMachine({uuid: zone.uuid, owner_uuid: ulrich.uuid},
-                                    function (err3, zone_) {
+              zapiClient.getVm({uuid: zone.uuid, owner_uuid: ulrich.uuid},
+                               function (err3, zone_) {
                 if (err3) {
                   return nextCheck(err3);
                 }

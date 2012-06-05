@@ -203,13 +203,13 @@ Probe.prototype.authorizePut = function (app, callback) {
     }
   }
 
-  function isExistingMachineOrErr(next) {
+  function isExistingVmOrErr(next) {
     // Empty "user" uuid string is the sdc-clients hack to not scope to a user.
-    app.zapiClient.getMachine({uuid: self.machine}, function (err, machine) {
+    app.zapiClient.getVm({uuid: self.machine}, function (err, vm) {
       if (err && err.code !== 'ResourceNotFound') {
-        log.error(err, 'unexpected error getting machine');
+        log.error(err, 'unexpected error getting vm');
       }
-      if (machine) {
+      if (vm) {
         next();
       } else {
         next('no such machine: ' + self.machine);
@@ -261,14 +261,14 @@ Probe.prototype.authorizePut = function (app, callback) {
       });
     } else {
       // 2. A virual machine owned by this user.
-      app.zapiClient.getMachine({uuid: machineUuid, owner_uuid: self.user},
-                                function (machErr, machine) {
-        if (machErr) {
-          if (machErr.httpCode === 404) {
+      app.zapiClient.getVm({uuid: machineUuid, owner_uuid: self.user},
+                           function (vmErr, vm) {
+        if (vmErr) {
+          if (vmErr.httpCode === 404) {
             // 3. Operator setting 'runInVmHost' monitor on virtual machine.
             var conditions3 = [
               isRunInVmHostOrErr,
-              isExistingMachineOrErr,
+              isExistingVmOrErr,
               userIsOperatorOrErr
             ];
             async.series(conditions3, function (not3) {
@@ -284,7 +284,7 @@ Probe.prototype.authorizePut = function (app, callback) {
               }
             });
           } else {
-            log.error({err: machErr, probe: self.serialize()},
+            log.error({err: vmErr, probe: self.serialize()},
               'unexpected error authorizing probe put');
             callback(new restify.InternalError(
               'Internal error authorizing probe put.'));

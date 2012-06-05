@@ -123,8 +123,8 @@ function getMasterUrl(poll, callback) {
   function pollZapi() {
     log.info('Poll ZAPI for Amon zone (admin uuid "%s").',
       process.env.UFDS_ADMIN_UUID);
-    zapiClient.listMachines({owner_uuid: process.env.UFDS_ADMIN_UUID},
-      function (err, machines) {
+    zapiClient.listVms({owner_uuid: process.env.UFDS_ADMIN_UUID},
+      function (err, vms) {
         if (err) {
           // Retry on error.
           log.error('ZAPI listMachines error: "%s"',
@@ -133,17 +133,17 @@ function getMasterUrl(poll, callback) {
           return;
         }
 
-        for (var i = 0; i < machines.length; i++) {
-          var machine = machines[i];
+        for (var i = 0; i < vms.length; i++) {
+          var vm = vms[i];
           // Limitation: just using first one. Will need to change for H/A.
-          if (machine.tags && machine.tags.smartdc_role === 'amon') {
-            var amonIp = machine.nics && machine.nics[0] && machine.nics[0].ip;
+          if (vm.tags && vm.tags.smartdc_role === 'amon') {
+            var amonIp = vm.nics && vm.nics[0] && vm.nics[0].ip;
             if (!amonIp) {
-              log.error({amonZone: machine}, 'No Amon zone IP');
+              log.error({amonZone: vm}, 'No Amon zone IP');
               setTimeout(pollZapi, pollInterval);
             } else {
               var amonMasterUrl = 'http://' + amonIp;
-              log.info('Found amon zone: %s <%s>', machine.uuid, amonMasterUrl);
+              log.info('Found amon zone: %s <%s>', vm.uuid, amonMasterUrl);
               callback(null, amonMasterUrl);
             }
             return;
