@@ -325,17 +325,20 @@ function createAmontestzone(next) {
         alias: 'amontestzone',
         networks: externalNetworkUuid
       },
-      function (err2, newZone) {
+      function (err2, createInfo) {
+        // TODO: Better would be to get `job_uuid` and wait on completion
+        // of the job (when zapiClient.getJob exists).
         log('# Waiting up to ~2min for new zone %s to start up.',
-            (newZone ? newZone.uuid : '(error)'));
+            (createInfo ? createInfo.vm_uuid : '(error)'));
         if (err2) {
           return next(err2);
         }
-        var zone = newZone;
+        var vm_uuid = createInfo.vm_uuid;
+        var zone = null;
         var sentinel = 40;
         async.until(
           function () {
-            return zone.state === 'running';
+            return zone && zone.state === 'running';
           },
           function (nextCheck) {
             sentinel--;
@@ -345,7 +348,7 @@ function createAmontestzone(next) {
             }
             setTimeout(function () {
               log('# Check if zone is running yet (sentinel=%d).', sentinel);
-              zapiClient.getVm({uuid: zone.uuid, owner_uuid: ulrich.uuid},
+              zapiClient.getVm({uuid: vm_uuid, owner_uuid: ulrich.uuid},
                                function (err3, zone_) {
                 if (err3) {
                   return nextCheck(err3);
