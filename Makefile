@@ -42,7 +42,7 @@ NPM_FLAGS = --tar=$(TAR) --cache=$(shell pwd)/tmp/npm-cache
 
 # Need to get our tools/bin on PATH to get our 'python'
 # first on the PATH. See RELENG-302.
-NPM := PATH=$(TOP)/tools/bin:/$(TOP)/$(NODE_INSTALL)/bin:$(PATH) $(TOP)/$(NPM_EXEC) $(NPM_FLAGS)
+NPM := PATH=$(TOP)/tools/bin:$(TOP)/$(NODE_INSTALL)/bin:$(PATH) $(TOP)/$(NPM_EXEC) $(NPM_FLAGS)
 
 
 #
