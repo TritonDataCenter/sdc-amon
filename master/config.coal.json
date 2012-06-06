@@ -8,7 +8,7 @@
   "cnapi": {
     "url": "http://10.99.99.TODO:80"
   },
-  "zapi": {
+  "vmapi": {
     "url": "http://10.99.99.TODO:80"
   },
   "redis": {

@@ -29,7 +29,7 @@ var format = require('amon-common').utils.format;
 var httpSignature = require('http-signature');
 var ldap = require('ldapjs');
 var sdcClients = require('sdc-clients'),
-  ZAPI = sdcClients.ZAPI,
+  VMAPI = sdcClients.VMAPI,
   CNAPI = sdcClients.CNAPI,
   UFDS = sdcClients.UFDS,
   Amon = sdcClients.Amon;
@@ -45,7 +45,7 @@ var otto = JSON.parse(fs.readFileSync(__dirname + '/user-amondevoperatorotto.jso
 var ldapClient;
 var ufdsClient;
 var adminUuid;
-var zapiClient;
+var vmapiClient;
 var cnapiClient;
 var amonClient;
 
@@ -245,10 +245,10 @@ function ldapClientUnbind(next) {
 
 
 
-function getZapiClient(next) {
-  var zapiIp = headnodeConfig.zapi_admin_ips.split(',')[0];
-  zapiClient = new ZAPI({   // intentionally global
-    url: format("http://%s", zapiIp)
+function getVMapiClient(next) {
+  var vmapiIp = headnodeConfig.vmapi_admin_ips.split(',')[0];
+  vmapiClient = new VMAPI({   // intentionally global
+    url: format("http://%s", vmapiIp)
   });
   next();
 }
@@ -288,7 +288,7 @@ function getExternalNetworkUuid(next) {
 
 function createAmondevzone(next) {
   // First check if there is a zone for bob.
-  zapiClient.listVms({owner_uuid: bob.uuid, alias: 'amondevzone'},
+  vmapiClient.listVms({owner_uuid: bob.uuid, alias: 'amondevzone'},
                      function (err, zones) {
     if (err) {
       return next(err);
@@ -300,7 +300,7 @@ function createAmondevzone(next) {
       return next();
     }
     log('# Create a test zone for bob.');
-    zapiClient.createVm({
+    vmapiClient.createVm({
         owner_uuid: bob.uuid,
         dataset_uuid: smartosDatasetUuid,
         brand: 'joyent',
@@ -328,7 +328,7 @@ function createAmondevzone(next) {
             }
             setTimeout(function () {
               log("# Check if zone is running yet (sentinel=%d).", sentinel);
-              zapiClient.getVm({uuid: zone.uuid, owner_uuid: bob.uuid},
+              vmapiClient.getVm({uuid: zone.uuid, owner_uuid: bob.uuid},
                                function (err3, zone_) {
                 if (err3) {
                   return nextCheck(err3);
@@ -531,7 +531,7 @@ async.series([
     makeOttoAnOperator,
     ldapClientUnbind,
     ufdsClientUnbind,
-    getZapiClient,
+    getVMapiClient,
     getSmartosDatasetUuid,
     getExternalNetworkUuid,
     createAmondevzone,

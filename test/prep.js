@@ -27,7 +27,7 @@ var format = require('amon-common').utils.format;
 var httpSignature = require('http-signature');
 var ldap = require('ldapjs');
 var sdcClients = require('sdc-clients'),
-  ZAPI = sdcClients.ZAPI,
+  VMAPI = sdcClients.VMAPI,
   CNAPI = sdcClients.CNAPI,
   UFDS = sdcClients.UFDS;
 
@@ -41,7 +41,7 @@ var odin = JSON.parse(
   fs.readFileSync(__dirname + '/user-amontestoperatorodin.json', 'utf8'));
 var ldapClient;
 var ufdsClient;
-var zapiClient;
+var vmapiClient;
 var cnapiClient;
 var amontestzone; // the test zone to use
 var headnodeUuid;
@@ -237,9 +237,9 @@ function ldapClientUnbind(next) {
   }
 }
 
-function getZapiClient(next) {
-  zapiClient = new ZAPI({   // intentionally global
-    url: process.env.ZAPI_URL
+function getVMapiClient(next) {
+  vmapiClient = new VMAPI({   // intentionally global
+    url: process.env.VMAPI_URL
   });
   next();
 }
@@ -305,7 +305,7 @@ function getExternalNetworkUuid(next) {
 
 function createAmontestzone(next) {
   // First check if there is a zone for ulrich.
-  zapiClient.listVms({owner_uuid: ulrich.uuid, alias: 'amontestzone'},
+  vmapiClient.listVms({owner_uuid: ulrich.uuid, alias: 'amontestzone'},
                      function (err, zones) {
     if (err) {
       return next(err);
@@ -317,7 +317,7 @@ function createAmontestzone(next) {
       return next();
     }
     log('# Create a test zone for ulrich.');
-    zapiClient.createVm({
+    vmapiClient.createVm({
         owner_uuid: ulrich.uuid,
         dataset_uuid: smartosDatasetUuid,
         brand: 'joyent',
@@ -327,7 +327,7 @@ function createAmontestzone(next) {
       },
       function (err2, createInfo) {
         // TODO: Better would be to get `job_uuid` and wait on completion
-        // of the job (when zapiClient.getJob exists).
+        // of the job (when vmapiClient.getJob exists).
         log('# Waiting up to ~2min for new zone %s to start up.',
             (createInfo ? createInfo.vm_uuid : '(error)'));
         if (err2) {
@@ -348,7 +348,7 @@ function createAmontestzone(next) {
             }
             setTimeout(function () {
               log('# Check if zone is running yet (sentinel=%d).', sentinel);
-              zapiClient.getVm({uuid: vm_uuid, owner_uuid: ulrich.uuid},
+              vmapiClient.getVm({uuid: vm_uuid, owner_uuid: ulrich.uuid},
                                function (err3, zone_) {
                 if (err3) {
                   return nextCheck(err3);
@@ -416,7 +416,7 @@ async.series([
     makeOdinAnOperator,
     ldapClientUnbind,
     ufdsClientUnbind,
-    getZapiClient,
+    getVMapiClient,
     getCnapiClient,
     getHeadnodeUuid,
     getSmartosDatasetUuid,

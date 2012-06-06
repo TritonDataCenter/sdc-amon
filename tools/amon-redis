@@ -13,7 +13,7 @@ function getConfig(callback) {
       port: 6379
     }
   };
-  exec('sdc-zapi /vms?tag.smartdc_role=redis | json -H 0.ips.0.address',
+  exec('sdc-vmapi /vms?tag.smartdc_role=redis | json -H 0.ips.0.address',
     function (err, stdout, stderr) {
       if (err) return callback(err);
       config.redis.host = stdout.trim();

@@ -95,7 +95,7 @@ export AMON_URL=http://$(echo $CONFIG_amon_admin_ips | cut -d, -f1)
 export UFDS_URL=ldaps://${CONFIG_ufds_admin_ips%%,*}:636
 export UFDS_ROOTDN=$CONFIG_ufds_ldap_root_dn
 export UFDS_PASSWORD=$CONFIG_ufds_ldap_root_pw
-export ZAPI_URL="http://${CONFIG_zapi_admin_ips%%,*}"
+export VMAPI_URL="http://${CONFIG_vmapi_admin_ips%%,*}"
 export CNAPI_URL="http://${CONFIG_cnapi_admin_ips%%,*}"
 export REDIS_HOST=$(echo $CONFIG_redis_admin_ips | cut -d, -f1)
 export REDIS_PORT=6379
@@ -107,7 +107,7 @@ echo "# AMON_URL is $AMON_URL"
 echo "# UFDS_URL is $UFDS_URL"
 echo "# UFDS_ROOTDN is $UFDS_ROOTDN"
 echo '# UFDS_PASSWORD is ***'
-echo "# ZAPI_URL is $ZAPI_URL"
+echo "# VMAPI_URL is $VMAPI_URL"
 echo "# CNAPI_URL is $CNAPI_URL"
 echo "# REDIS_HOST is $REDIS_HOST"
 echo "# REDIS_PORT is $REDIS_PORT"
@@ -148,7 +148,7 @@ PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP \
 
 # Also run the tests in the Amon Master(s).
 echo ""
-amon_masters=$(sdc-zapi /vms \
+amon_masters=$(sdc-vmapi /vms \
     | ./test/node_modules/.bin/json3 -H \
         -c 'tags.smartdc_role === "amon"' \
         -c 'state === "running"' \

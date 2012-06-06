@@ -12,7 +12,7 @@ var ldap = require('ldapjs');
 var restify = require('restify');
 var sdcClients = require('sdc-clients'),
   CNAPI = sdcClients.CNAPI,
-  ZAPI = sdcClients.ZAPI;
+  VMAPI = sdcClients.VMAPI;
 var Cache = require('expiring-lru-cache');
 var redis = require('redis');
 var Pool = require('generic-pool').Pool;
@@ -101,7 +101,7 @@ function getUser(req, res, next) {
 function createApp(config, log, callback) {
   if (!config) throw new TypeError('config (Object) required');
   if (!config.cnapi) throw new TypeError('config.cnapi (Object) required');
-  if (!config.zapi) throw new TypeError('config.zapi (Object) required');
+  if (!config.vmapi) throw new TypeError('config.vmapi (Object) required');
   if (!config.redis) throw new TypeError('config.redis (Object) required');
   if (!config.ufds) throw new TypeError('config.ufds (Object) required');
   if (!log) throw new TypeError('log (Bunyan Logger) required');
@@ -110,12 +110,12 @@ function createApp(config, log, callback) {
   var cnapiClient = new CNAPI({
     url: config.cnapi.url
   });
-  var zapiClient = new ZAPI({
-    url: config.zapi.url
+  var vmapiClient = new VMAPI({
+    url: config.vmapi.url
   });
 
   try {
-    var app = new App(config, cnapiClient, zapiClient, log);
+    var app = new App(config, cnapiClient, vmapiClient, log);
     return callback(null, app);
   } catch (e) {
     return callback(e);
@@ -128,22 +128,22 @@ function createApp(config, log, callback) {
  *
  * @param config {Object} Config object.
  * @param cnapiClient {sdc-clients.CNAPI} CNAPI client.
- * @param zapiClient {sdc-clients.ZAPI} ZAPI client.
+ * @param vmapiClient {sdc-clients.VMAPI} VMAPI client.
  * @param log {Bunyan Logger instance}
  */
-function App(config, cnapiClient, zapiClient, log) {
+function App(config, cnapiClient, vmapiClient, log) {
   var self = this;
   if (!config) throw TypeError('config is required');
   if (!config.port) throw TypeError('config.port is required');
   if (!config.ufds) throw new TypeError('config.ufds (Object) required');
   if (!cnapiClient) throw TypeError('cnapiClient is required');
-  if (!zapiClient) throw TypeError('zapiClient is required');
+  if (!vmapiClient) throw TypeError('vmapiClient is required');
 
   this.config = config;
   this._ufdsCaching = (config.ufds.caching === undefined
     ? true : config.ufds.caching);
   this.cnapiClient = cnapiClient;
-  this.zapiClient = zapiClient;
+  this.vmapiClient = vmapiClient;
   this.log = log;
 
   var ufdsPoolLog = log.child({'ufdsPool': true}, true);

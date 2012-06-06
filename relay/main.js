@@ -90,11 +90,11 @@ function createZoneApp(zonename) {
 
 
 /**
- * Get the URL for the amon master from ZAPI.
- * The necessary connection details for ZAPI are expected to be in the
+ * Get the URL for the amon master from VMAPI.
+ * The necessary connection details for VMAPI are expected to be in the
  * environment.
  *
- * If the amon zone isn't yet in ZAPI, this will sit in a polling loop
+ * If the amon zone isn't yet in VMAPI, this will sit in a polling loop
  * waiting for an amon master.
  *
  * @param poll {Integer} Number of seconds polling interval.
@@ -104,7 +104,7 @@ function getMasterUrl(poll, callback) {
   var pollInterval = poll * 1000;  // seconds -> ms
 
   var missing = [];
-  ['ZAPI_CLIENT_URL', 'UFDS_ADMIN_UUID'].forEach(function (name) {
+  ['VMAPI_CLIENT_URL', 'UFDS_ADMIN_UUID'].forEach(function (name) {
     if (!process.env[name]) {
       missing.push(name);
     }
@@ -114,22 +114,22 @@ function getMasterUrl(poll, callback) {
       + missing.join('", "') + '"');
   }
 
-  var ZAPI = require('sdc-clients').ZAPI;
+  var VMAPI = require('sdc-clients').VMAPI;
   //clients.setLogLevel('trace');
-  var zapiClient = new ZAPI({
-    url: process.env.ZAPI_CLIENT_URL
+  var vmapiClient = new VMAPI({
+    url: process.env.VMAPI_CLIENT_URL
   });
 
-  function pollZapi() {
-    log.info('Poll ZAPI for Amon zone (admin uuid "%s").',
+  function pollVMapi() {
+    log.info('Poll VMAPI for Amon zone (admin uuid "%s").',
       process.env.UFDS_ADMIN_UUID);
-    zapiClient.listVms({owner_uuid: process.env.UFDS_ADMIN_UUID},
+    vmapiClient.listVms({owner_uuid: process.env.UFDS_ADMIN_UUID},
       function (err, vms) {
         if (err) {
           // Retry on error.
-          log.error('ZAPI listMachines error: "%s"',
+          log.error('VMAPI listMachines error: "%s"',
             String(err).slice(0, 100) + '...');
-          setTimeout(pollZapi, pollInterval);
+          setTimeout(pollVMapi, pollInterval);
           return;
         }
 
@@ -140,7 +140,7 @@ function getMasterUrl(poll, callback) {
             var amonIp = vm.nics && vm.nics[0] && vm.nics[0].ip;
             if (!amonIp) {
               log.error({amonZone: vm}, 'No Amon zone IP');
-              setTimeout(pollZapi, pollInterval);
+              setTimeout(pollVMapi, pollInterval);
             } else {
               var amonMasterUrl = 'http://' + amonIp;
               log.info('Found amon zone: %s <%s>', vm.uuid, amonMasterUrl);
@@ -151,12 +151,12 @@ function getMasterUrl(poll, callback) {
         }
 
         log.error('No Amon Master zone (tag smartdc_role=amon).');
-        setTimeout(pollZapi, pollInterval);
+        setTimeout(pollVMapi, pollInterval);
       }
     );
   }
 
-  return pollZapi();
+  return pollVMapi();
 }
 
 
@@ -231,15 +231,15 @@ function logConfig(next) {
 /**
  * Determine the master URL.
  * Either 'config.masterUrl' is set (from '-m' option), or we get it
- * from ZAPI (with ZAPI passed in on env: ZAPI_CLIENT_URL, ...).
+ * from VMAPI (with VMAPI passed in on env: VMAPI_CLIENT_URL, ...).
  */
 function ensureMasterUrl(next) {
   if (!config.masterUrl) {
-    log.info('Getting master URL from ZAPI.');
+    log.info('Getting master URL from VMAPI.');
     return getMasterUrl(config.poll, function (err, masterUrl) {
       if (err)
-        return next('Error getting Amon master URL from ZAPI: '+err);
-      log.info('Got master URL (from ZAPI): %s', masterUrl);
+        return next('Error getting Amon master URL from VMAPI: '+err);
+      log.info('Got master URL (from VMAPI): %s', masterUrl);
       config.masterUrl = masterUrl;
       return next();
     });

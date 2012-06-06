@@ -21,7 +21,7 @@
         <method_credential user="root" group="staff"/>
         <method_environment>
           <envvar name="LD_PRELOAD_32" value="/usr/lib/extendedFILE.so.1" />
-          <envvar name="ZAPI_CLIENT_URL" value="@@ZAPI_CLIENT_URL@@" />
+          <envvar name="VMAPI_CLIENT_URL" value="@@VMAPI_CLIENT_URL@@" />
           <envvar name="UFDS_ADMIN_UUID" value="@@UFDS_ADMIN_UUID@@" />
         </method_environment>
       </method_context>

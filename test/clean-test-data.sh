@@ -56,15 +56,15 @@ function clearUser() {
     done
 
     if [[ ! -n "$opt_quick_clean" ]]; then
-        local machines=$(sdc-zapi /vms?owner_uuid=$uuid \
+        local machines=$(sdc-vmapi /vms?owner_uuid=$uuid \
             | $JSON3 -c 'this.state==="running"' -Ha server_uuid uuid -d: | xargs)
         for machine in $machines; do
             # We *could* do this:
             #    echo "# DELETE /vms/$machine"
-            #    sdc-zapi /vms/$machine -X DELETE -f >/dev/null
+            #    sdc-vmapi /vms/$machine -X DELETE -f >/dev/null
             # but that is async and slow. The following is sync and we
             # will subsequently be deleting the machine UFDS entry, so
-            # ZAPI shouldn't get confused.
+            # VMAPI shouldn't get confused.
             local server_uuid=$(echo $machine | cut -d: -f1)
             local machine_uuid=$(echo $machine | cut -d: -f2)
             echo "# Delete machine $machine_uuid (on server $server_uuid)."
@@ -95,8 +95,8 @@ function clearUser() {
 
 
 function clearCaches() {
-    echo "# Clear ZAPI and Amon caches."
-    sdc-login zapi svcadm restart zapi   # ZAPI keeps a ListMachines cache
+    echo "# Clear VMAPI and Amon caches."
+    sdc-login vmapi svcadm restart vmapi   # VMAPI keeps a ListMachines cache
     sleep 2
     sdc-amon /state?action=dropcaches -X POST > /dev/null
 }

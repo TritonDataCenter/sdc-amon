@@ -205,7 +205,7 @@ Probe.prototype.authorizePut = function (app, callback) {
 
   function isExistingVmOrErr(next) {
     // Empty "user" uuid string is the sdc-clients hack to not scope to a user.
-    app.zapiClient.getVm({uuid: self.machine}, function (err, vm) {
+    app.vmapiClient.getVm({uuid: self.machine}, function (err, vm) {
       if (err && err.code !== 'ResourceNotFound') {
         log.error(err, 'unexpected error getting vm');
       }
@@ -261,7 +261,7 @@ Probe.prototype.authorizePut = function (app, callback) {
       });
     } else {
       // 2. A virual machine owned by this user.
-      app.zapiClient.getVm({uuid: machineUuid, owner_uuid: self.user},
+      app.vmapiClient.getVm({uuid: machineUuid, owner_uuid: self.user},
                            function (vmErr, vm) {
         if (vmErr) {
           if (vmErr.httpCode === 404) {
