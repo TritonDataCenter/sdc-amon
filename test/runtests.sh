@@ -44,6 +44,8 @@ function usage
 
 #---- mainline
 
+start_time=$(date +%s)
+
 TOP=$(cd $(dirname $0)/../; pwd)
 NODE_INSTALL=$TOP/build/node
 TAP=./test/node_modules/.bin/tap
@@ -165,14 +167,14 @@ for amon_master in $amon_masters; do
         zlogin ${amon_master_zonename} \
         /opt/smartdc/amon/test/runtests.sh \
         || true)
-    #echo $output | json 0
+    #echo "$output" | json 0
     amon_master_output=$OUTPUT_DIR/amon-master-$amon_master_alias.tap
-    echo $output | json 0.result.stdout > $amon_master_output
+    echo "$output" | json 0.result.stdout > $amon_master_output
     echo "# Wrote '$amon_master_output'."
     echo "stdout:"
-    echo $output | json 0.result.stdout
+    echo "$output" | json 0.result.stdout
     echo "stderr:"
-    echo $output | json 0.result.stderr >&2
+    echo "$output" | json 0.result.stderr >&2
     exit_status=$(echo $output | json 0.result.exit_status)
     echo "exit_status: $exit_status"
     if [[ "$exit_status" != "0" ]]; then
@@ -184,3 +186,24 @@ done
 echo ""
 echo "# test output:"
 ls $OUTPUT_DIR/*.tap
+
+
+# Colored summary of results (borrowed from illumos-live.git/src/vm/run-tests).
+echo ""
+echo "# test results:"
+
+end_time=$(date +%s)
+elapsed=$((${end_time} - ${start_time}))
+
+tests=$(grep "^# tests [0-9]" $OUTPUT_DIR/*.tap | cut -d ' ' -f3 | xargs | tr ' ' '+' | bc)
+passed=$(grep "^# pass  [0-9]" $OUTPUT_DIR/*.tap | tr -s ' ' | cut -d ' ' -f3 | xargs | tr ' ' '+' | bc)
+[[ -z ${tests} ]] && tests=0
+[[ -z ${passed} ]] && passed=0
+fail=$((${tests} - ${passed}))
+
+echo "# Completed in ${elapsed} seconds."
+echo -e "# \033[32mPASS: ${passed} / ${tests}\033[39m"
+if [[ ${fail} -gt 0 ]]; then
+    echo -e "# \033[31mFAIL: ${fail} / ${tests}\033[39m"
+fi
+echo ""
