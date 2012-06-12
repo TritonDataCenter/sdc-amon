@@ -1,0 +1,88 @@
+# -*- mode: makefile -*-
+#
+# Copyright (c) 2012, Joyent, Inc. All rights reserved.
+#
+# Makefile.node_prebuilt.targ: An alternative to Makefile.node.targ
+# for using a prebuilt node. The "distro" of prebuilt node here is
+# "sdcnode" for which only SmartOS builds are provided.
+#
+# NOTE: This makefile comes from the "eng" repo. It's designed to be dropped
+# into other repos as-is without requiring any modifications. If you find
+# yourself changing this file, you should instead update the original copy in
+# eng.git and then update your repo to use the new version.
+
+#
+# When including this Makefile, you MUST also specify:
+#
+#	NODE_PREBUILT_VERSION 	The node version in the prebuilt 'sdcnode' 
+#							package to use. Typically this is one of the
+#							node version tags, e.g. "v0.6.18" but it
+#							can be any commitish.
+#
+# When including this Makefile, you MAY also specify:
+#
+#	NODE_PREBUILT_DIR 		The dir in which to find sdcnode builds.
+#							This can be a URL dir (with trailing '/') which
+#							serves Apache/Nginx dir listings.
+#							(default: sdcnode master build dir on stuff)
+#
+# 	NODE_PREBUILT_TAG		The 'sdcnode' project supports special
+# 							configuration builds of node, e.g. say a
+# 							build configured `--without-ssl`. These
+# 							special configurations are given a tag
+# 							name that is used in the filename. Optionally
+# 							specify a tag name here.
+# 							(default: empty)
+#
+# 'sdcnode' build naming:
+#   sdcnode-$NODE_VERSION-$CC$CC_VERSION[-$TAG]-$STAMP.tgz
+# E.g.:
+# 	sdcnode-v0.6.17-gcc4.6.2-noopenssl-master-20120611T173241Z-gdc90367.tgz
+# 	sdcnode-v0.6.18-gcc4.6.2-master-20120611T173241Z-gdc90367.tgz
+# See <https://mo.joyent.com/docs/sdcnode/master/> for details.
+#
+
+NODE_INSTALL ?= $(error NODE_INSTALL must be defined: was Makefile.node.defs included?)
+NODE_PREBUILT_VERSION ?= $(error NODE_PREBUILT_VERSION is not set.)
+
+NODE_PREBUILT_CC := $(CC)
+ifeq ($(shell $(CC) --version | head -1 | awk '{print $$2}'),(GCC))
+	NODE_PREBUILT_CC := gcc
+endif
+NODE_PREBUILT_CC_VERSION := $(shell $(CC) --version | head -1 | awk '{print $$3}')
+NODE_PREBUILT_DTAG :=
+ifneq ($(NODE_PREBUILT_TAG),)
+	NODE_PREBUILT_DTAG := -$(NODE_PREBUILT_TAG)
+endif
+NODE_PREBUILT_PATTERN := sdcnode-$(NODE_PREBUILT_VERSION)-$(NODE_PREBUILT_CC)$(NODE_PREBUILT_CC_VERSION)$(NODE_PREBUILT_DTAG)-.*\.tgz
+NODE_PREBUILT_DIR ?= https://guest:GrojhykMid@stuff.joyent.us/stuff/builds/sdcnode/master-latest/sdcnode/
+ifeq ($(shell echo $(NODE_PREBUILT_DIR) | cut -c 1-4),http)
+	NODE_PREBUILT_BASE := $(shell curl -ksS --fail --connect-timeout 5 $(NODE_PREBUILT_DIR) | grep 'href=' | cut -d'"' -f2 | grep "^$(NODE_PREBUILT_PATTERN)$$" | sort | tail -1)
+	ifneq ($(NODE_PREBUILT_BASE),)
+		NODE_PREBUILT_TARBALL := $(NODE_PREBUILT_DIR)$(NODE_PREBUILT_BASE)
+	endif
+else
+	NODE_PREBUILT_BASE := $(shell ls -1 $(NODE_PREBUILT_DIR)/ | grep "^$(NODE_PREBUILT_PATTERN)$$" 2>/dev/null | sort | tail -1)
+	ifneq ($(NODE_PREBUILT_BASE),)
+		NODE_PREBUILT_TARBALL := $(NODE_PREBUILT_DIR)/$(NODE_PREBUILT_BASE)
+	endif
+endif
+ifeq ($(NODE_PREBUILT_TARBALL),)
+	NODE_PREBUILT_TARBALL := $(error NODE_PREBUILT_TARBALL is empty: no '$(NODE_PREBUILT_DIR)/$(NODE_PREBUILT_PATTERN)' found)
+endif
+
+# TODO: remove this limitation
+# Limitation: currently presuming that the NODE_INSTALL basename is
+# 'node' and that sdcnode tarballs have a 'node' top-level dir.
+$(NODE_EXEC) $(NPM_EXEC) $(NODE_WAF_EXEC):
+	mkdir -p $(shell dirname $(NODE_INSTALL))
+	if [[ $(shell echo $(NODE_PREBUILT_TARBALL) | cut -c 1-4) == "http" ]]; then \
+		echo "Downloading $(NODE_PREBUILT_BASE)."; \
+		curl -ksS --fail --connect-timeout 5 -o $(shell dirname $(NODE_INSTALL))/$(NODE_PREBUILT_BASE) $(NODE_PREBUILT_TARBALL); \
+		(cd $(shell dirname $(NODE_INSTALL)) && $(TAR) xf $(NODE_PREBUILT_BASE)); \
+	else \
+		(cd $(shell dirname $(NODE_INSTALL)) && $(TAR) xf $(NODE_PREBUILT_TARBALL)); \
+	fi
+
+DISTCLEAN_FILES += $(NODE_INSTALL)
+

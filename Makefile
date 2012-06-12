@@ -23,15 +23,9 @@ CLEAN_FILES += agent/node_modules relay/node_modules \
 	tmp/npm-cache build/amon-*.tar.bz2 \
 	lib build/pkg
 
-# Usage:
-# 		BITS_DIR=/dir/with/sdcnode/subdir make ...
-#
-# Look for a possible pre-built node to use instead of building one.
-# Managed continuous-builds (i.e. Jenkins) may provide for us.
-# The NODE_TARBALL_PATTERN expresses the node build config
-# we require.
-NODE_TARBALL_PATTERN := sdcnode-v0.6.18-gcc$(shell gcc --version | head -1 | awk '{print $$3}')-*.tgz
-NODE_TARBALL := $(shell ls -1 $(BITS_DIR)/sdcnode/$(NODE_TARBALL_PATTERN) 2>/dev/null | sort | tail -1)
+# The prebuilt sdcnode version we want. See
+# "tools/mk/Makefile.node_prebuilt.targ" for details.
+NODE_PREBUILT_VERSION=v0.6.18
 
 
 #
@@ -273,6 +267,6 @@ install_relay_pkg:
 #
 
 include ./tools/mk/Makefile.deps
-include ./tools/mk/Makefile.node.targ
+include ./tools/mk/Makefile.node_prebuilt.targ
 include ./tools/mk/Makefile.smf.targ
 include ./tools/mk/Makefile.targ

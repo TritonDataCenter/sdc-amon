@@ -13,14 +13,8 @@
 NODE_INSTALL ?= $(error NODE_INSTALL must be defined for Makefile.node.targ)
 
 
-ifeq ($(NODE_TARBALL),)
 $(NODE_EXEC) $(NPM_EXEC) $(NODE_WAF_EXEC): | deps/node/.git
 	(cd deps/node; ./configure $(NODE_CONFIG_FLAGS) && $(MAKE) && $(MAKE) install)
-else
-$(NODE_EXEC) $(NPM_EXEC) $(NODE_WAF_EXEC):
-	mkdir -p $(shell dirname $(NODE_INSTALL))
-	(cd $(shell dirname $(NODE_INSTALL)) && $(TAR) xf $(NODE_TARBALL))
-endif
 
 deps/node/.git: deps/node
 	git submodule update --init deps/node
