@@ -2,48 +2,14 @@
 #
 # Copyright (c) 2012, Joyent, Inc. All rights reserved.
 #
-# Makefile.node_prebuilt.targ: An alternative to Makefile.node.targ
-# for using a prebuilt node. The "distro" of prebuilt node here is
-# "sdcnode" for which only SmartOS builds are provided.
+# Makefile.node_prebuilt.targ: Makefile for including a prebuilt Node.js
+# build.
 #
 # NOTE: This makefile comes from the "eng" repo. It's designed to be dropped
 # into other repos as-is without requiring any modifications. If you find
 # yourself changing this file, you should instead update the original copy in
 # eng.git and then update your repo to use the new version.
 
-#
-# When including this Makefile, you MUST also specify:
-#
-#	NODE_PREBUILT_VERSION 	The node version in the prebuilt 'sdcnode' 
-#							package to use. Typically this is one of the
-#							node version tags, e.g. "v0.6.18" but it
-#							can be any commitish.
-#
-# When including this Makefile, you MAY also specify:
-#
-#	NODE_PREBUILT_DIR 		The dir in which to find sdcnode builds.
-#							This can be a URL dir (with trailing '/') which
-#							serves Apache/Nginx dir listings.
-#							(default: sdcnode master build dir on stuff)
-#
-# 	NODE_PREBUILT_TAG		The 'sdcnode' project supports special
-# 							configuration builds of node, e.g. say a
-# 							build configured `--without-ssl`. These
-# 							special configurations are given a tag
-# 							name that is used in the filename. Optionally
-# 							specify a tag name here.
-# 							(default: empty)
-#
-# 'sdcnode' build naming:
-#
-#   sdcnode-$NODE_VERSION-$CC$CC_VERSION[-$TAG]-$STAMP.tgz
-#
-# E.g.:
-# 	sdcnode-v0.6.17-gcc4.6.2-noopenssl-master-20120611T173241Z-gdc90367.tgz
-# 	sdcnode-v0.6.18-gcc4.6.2-master-20120611T173241Z-gdc90367.tgz
-#
-# See <https://mo.joyent.com/docs/sdcnode/master/> for details.
-#
 
 NODE_PREBUILT_TARBALL ?= $(error NODE_PREBUILT_TARBALL is not set: was Makefile.node_prebuilt.defs included?)
 
@@ -66,4 +32,3 @@ $(NODE_EXEC) $(NPM_EXEC) $(NODE_WAF_EXEC):
 	fi
 	ln -s $(TOP)/$(NODE_INSTALL)/bin/node $(NODE_EXEC)
 	ln -s $(TOP)/$(NODE_INSTALL)/bin/npm $(NPM_EXEC)
-
