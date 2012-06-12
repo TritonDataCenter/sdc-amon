@@ -32,7 +32,7 @@ NODE_PREBUILT_VERSION=v0.6.18
 # Included definitions
 #
 include ./tools/mk/Makefile.defs
-include ./tools/mk/Makefile.node.defs
+include ./tools/mk/Makefile.node_prebuilt.defs
 include ./tools/mk/Makefile.smf.defs
 
 
@@ -48,12 +48,11 @@ NODE_DEV := ./node_modules/.bin/node-dev
 TAP := ./node_modules/.bin/tap
 JSHINT := node_modules/.bin/jshint
 JSSTYLE_FLAGS := -f tools/jsstyle.conf
-#NPM_FLAGS := --tar=$(TAR) --cache=$(shell pwd)/tmp/npm-cache
 NPM_FLAGS := --tar=$(TAR)
 
 # Need to get our tools/bin on PATH to get our 'python'
 # first on the PATH. See RELENG-302.
-NPM := PATH=$(TOP)/tools/bin:$(TOP)/$(NODE_INSTALL)/bin:$(PATH) $(TOP)/$(NPM_EXEC) $(NPM_FLAGS)
+NPM := PATH=$(TOP)/tools/bin:$(TOP)/$(NODE_INSTALL)/bin:$(PATH) $(NPM) $(NPM_FLAGS)
 
 
 #

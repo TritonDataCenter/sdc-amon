@@ -35,54 +35,35 @@
 # 							(default: empty)
 #
 # 'sdcnode' build naming:
+#
 #   sdcnode-$NODE_VERSION-$CC$CC_VERSION[-$TAG]-$STAMP.tgz
+#
 # E.g.:
 # 	sdcnode-v0.6.17-gcc4.6.2-noopenssl-master-20120611T173241Z-gdc90367.tgz
 # 	sdcnode-v0.6.18-gcc4.6.2-master-20120611T173241Z-gdc90367.tgz
+#
 # See <https://mo.joyent.com/docs/sdcnode/master/> for details.
 #
 
-NODE_INSTALL ?= $(error NODE_INSTALL must be defined: was Makefile.node.defs included?)
-NODE_PREBUILT_VERSION ?= $(error NODE_PREBUILT_VERSION is not set.)
+NODE_PREBUILT_TARBALL ?= $(error NODE_PREBUILT_TARBALL is not set: was Makefile.node_prebuilt.defs included?)
 
-NODE_PREBUILT_CC := $(CC)
-ifeq ($(shell $(CC) --version | head -1 | awk '{print $$2}'),(GCC))
-	NODE_PREBUILT_CC := gcc
-endif
-NODE_PREBUILT_CC_VERSION := $(shell $(CC) --version | head -1 | awk '{print $$3}')
-NODE_PREBUILT_DTAG :=
-ifneq ($(NODE_PREBUILT_TAG),)
-	NODE_PREBUILT_DTAG := -$(NODE_PREBUILT_TAG)
-endif
-NODE_PREBUILT_PATTERN := sdcnode-$(NODE_PREBUILT_VERSION)-$(NODE_PREBUILT_CC)$(NODE_PREBUILT_CC_VERSION)$(NODE_PREBUILT_DTAG)-.*\.tgz
-NODE_PREBUILT_DIR ?= https://guest:GrojhykMid@stuff.joyent.us/stuff/builds/sdcnode/master-latest/sdcnode/
-ifeq ($(shell echo $(NODE_PREBUILT_DIR) | cut -c 1-4),http)
-	NODE_PREBUILT_BASE := $(shell curl -ksS --fail --connect-timeout 5 $(NODE_PREBUILT_DIR) | grep 'href=' | cut -d'"' -f2 | grep "^$(NODE_PREBUILT_PATTERN)$$" | sort | tail -1)
-	ifneq ($(NODE_PREBUILT_BASE),)
-		NODE_PREBUILT_TARBALL := $(NODE_PREBUILT_DIR)$(NODE_PREBUILT_BASE)
-	endif
-else
-	NODE_PREBUILT_BASE := $(shell ls -1 $(NODE_PREBUILT_DIR)/ | grep "^$(NODE_PREBUILT_PATTERN)$$" 2>/dev/null | sort | tail -1)
-	ifneq ($(NODE_PREBUILT_BASE),)
-		NODE_PREBUILT_TARBALL := $(NODE_PREBUILT_DIR)/$(NODE_PREBUILT_BASE)
-	endif
-endif
-ifeq ($(NODE_PREBUILT_TARBALL),)
-	NODE_PREBUILT_TARBALL := $(error NODE_PREBUILT_TARBALL is empty: no '$(NODE_PREBUILT_DIR)/$(NODE_PREBUILT_PATTERN)' found)
-endif
 
 # TODO: remove this limitation
 # Limitation: currently presuming that the NODE_INSTALL basename is
 # 'node' and that sdcnode tarballs have a 'node' top-level dir.
 $(NODE_EXEC) $(NPM_EXEC) $(NODE_WAF_EXEC):
+	[[ $(shell basename $(NODE_INSTALL)) == "node" ]] \
+		|| (echo "Limitation: 'basename NODE_INSTALL' is not 'node'" && exit 1)
+	rm -rf $(NODE_INSTALL) \
+		$(BUILD)/prebuilt-node-* $(BUILD)/prebuilt-npm-*
 	mkdir -p $(shell dirname $(NODE_INSTALL))
 	if [[ $(shell echo $(NODE_PREBUILT_TARBALL) | cut -c 1-4) == "http" ]]; then \
-		echo "Downloading $(NODE_PREBUILT_BASE)."; \
+		echo "Downloading '$(NODE_PREBUILT_BASE)'."; \
 		curl -ksS --fail --connect-timeout 5 -o $(shell dirname $(NODE_INSTALL))/$(NODE_PREBUILT_BASE) $(NODE_PREBUILT_TARBALL); \
 		(cd $(shell dirname $(NODE_INSTALL)) && $(TAR) xf $(NODE_PREBUILT_BASE)); \
 	else \
 		(cd $(shell dirname $(NODE_INSTALL)) && $(TAR) xf $(NODE_PREBUILT_TARBALL)); \
 	fi
-
-DISTCLEAN_FILES += $(NODE_INSTALL)
+	ln -s $(TOP)/$(NODE_INSTALL)/bin/node $(NODE_EXEC)
+	ln -s $(TOP)/$(NODE_INSTALL)/bin/npm $(NPM_EXEC)
 
