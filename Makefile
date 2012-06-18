@@ -25,7 +25,8 @@ CLEAN_FILES += agent/node_modules relay/node_modules \
 
 # The prebuilt sdcnode version we want. See
 # "tools/mk/Makefile.node_prebuilt.targ" for details.
-NODE_PREBUILT_VERSION=v0.6.18
+NODE_PREBUILT_VERSION=v0.6.19
+NODE_PREBUILT_TAG=gz
 
 
 #
