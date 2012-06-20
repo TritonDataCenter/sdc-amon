@@ -49,7 +49,7 @@ NODE_DEV := ./node_modules/.bin/node-dev
 TAP := ./node_modules/.bin/tap
 JSHINT := node_modules/.bin/jshint
 JSSTYLE_FLAGS := -f tools/jsstyle.conf
-NPM_FLAGS := --tar=$(TAR)
+NPM_FLAGS += --tar=$(TAR)
 
 # Need to get our tools/bin on PATH to get our 'python'
 # first on the PATH. See RELENG-302.
