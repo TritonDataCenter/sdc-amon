@@ -1,17 +1,26 @@
 # higher-level prios
 
 - maintenance windows (MON-113):
-    - add timer handling for expiring maintenance windows
-      (app.scheduleNextMaintenanceExpiry)
-    - update handleEvent to look for maint windows
-        - alarm.maintenanceFaults (split from alarm.faults attribute)
-    - add alarm.handleDeleteMaintenance
+    - regrok: alarm.handleEvent, app.handleMaintenanceEnd,
+      maintenances.apiListAllMaintenanceWindows
+    - add app.handleMaintenanceEnd
         - add 'reason' code field to `alarm.notify(...)` for the notification
           types to handle different reasons
-    - add alarm.inMaintenance attribute for API output
-    - add maintenance.test.js
-    - replace SuppressAlarmNotifications and UnsuppressAlarmNotifications
+    - tests for maintenance windows
+    - separate commit: replace SuppressAlarmNotifications and UnsuppressAlarmNotifications
       with a maint window on that alarm's monitor
+    - fix this app crash (when that alarm id is a 404):
+        [root@headnode (bh1-kvm7:0) ~]# sdc-amon /pub/deadbeef-4444-4444-4444-444444444444/alarms/2 -X DELETE
+        curl: (52) Empty reply from server
+      traceback:
+        node.js:201
+                throw e; // process.nextTick error, or 'error' event on first tick
+                      ^
+        TypeError: Cannot set property 'faults' of null
+            at /opt/smartdc/amon/lib/alarms.js:277:23
+            at /opt/smartdc/amon/node_modules/redis/index.js:996:13
+
+
 - ticket triage
 - sysevent-based events: use case #2, machine-running-state probe type (?)
 - agent in all zones
@@ -31,8 +40,16 @@
 - HA
 
 
+
 # todo (in no particular order)
 
+- bitrot:
+    - restify
+    - bunyan
+    - node 0.8
+- might want ssh in amon zone for dev work?
+  josh: You can also enable ssh if you want, it's just a matter of importing a manifest for it and starting.
+  kevin: https://stuff.joyent.us/stuff/joshw/ssh.xml
 - dogfood:
     - devs using in kvm test machines
     - devs using in COAL
@@ -45,6 +62,7 @@
 - update to latest ldapjs for #49 and #50 fixes (already done I think)
 - update to restify 1.4.1 when that is released (there is a ticket for this)
 - update to and use npm shrinkwrap
+- ldapjs with pooling when that is ready.
 - removing old alarms after a week
 - how to monitor percentiles? E.g. prio1 alarm if 90th percentile
   response time is >200ms or something?
@@ -72,6 +90,8 @@
       giving the full service path. Important to periodically reget
       the smf log path via 'svcs -L' because it changes related to
       rotation or "file is open" snafus.
+- hit up Ben for some "best practices for perf monitoring" info
+  per https://mail.google.com/mail/u/1/?ui=2&shva=1#inbox/132dfa4e26d17478
 - clear event scenario: A monitor with 'machine-up' probes on two zones.
   Both go down. One comes back up. That alarm should not clear, **but it
   does currently**.
@@ -117,6 +137,10 @@
 
 # someday/maybe
 
+- nicer notification email formatting. Apple Store example: (trent's)
+  https://mail.google.com/mail/u/1/?ui=2&shva=1#inbox/137c7a2c41219cee
+    - see https://github.com/niftylettuce/node-email-templates and
+      https://github.com/LearnBoost/juice
 - more notification types: (see http://circonus.com/why-us/features/notifications)
     AOL and XMPP (Jabber, Google Talk, etc.) Instant Messages
     Twitter (direct messages from @circonusops)

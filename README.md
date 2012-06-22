@@ -2,7 +2,7 @@
 
 - Repository: <git@git.joyent.com:amon.git>, <https://mo.joyent.com/amon>
 - Who: Trent Mick, Mark Cavage
-- API Docs: <https://head.no.de/docs/amon>
+- API Docs: <https://mo.joyent.com/docs/amon>
 - Pitch: <https://hub.joyent.com/wiki/display/dev/Amon>
 - XMPP/Jabber: <monitoring@groupchat.joyent.com>
 - Tickets/bugs: <https://devhub.joyent.com/jira/browse/MON>
@@ -68,12 +68,30 @@ to install and manage in their VMs on their own.
     sandbox/        Play area. Go crazy.
 
 
-# Development status
+# SmartOS Development
 
-- Turned on in COAL. Still have missing pieces like persistent alarms,
-  some corners of the API, need more notification types, more probe types,
-  refine the email notifcation formatting.
-- Haven't run lint in a long while.
+Create a smartos-based dev zone (only testing on a smartos-1.6.3-based zone
+now). If this is in BH-1, then see
+<https://hub.joyent.com/wiki/display/dev/Building+the+SmartOS+live+image+in+a+SmartOS+zone#BuildingtheSmartOSliveimageinaSmartOSzone-HiddenWIPinstructionsfromJoshforsettingthisuponbh1build2>.
+I did this:
+
+    ssh root@bh1-build2
+    /opt/custom/create-zone-163.sh trent
+    zlogin $UUID_FOR_TRENT_ZONE
+
+Setup and install the necessary dev tools in the global zone. (Note that
+the pkgsrc in smartos-1.6.3 has python *2.7* as well, but python 2.6 is
+explicitly needed -- because it was the lowest common denominator along with
+smartos-1.3.18-based zones and Mac building. It might be possible to remove
+that particular version requirement at some point.)
+
+    pkgin -y install scmgit gmake gcc-compiler binutils python26
+
+Then get the Amon code to work with:
+
+    git clone git@git.joyent.com:amon.git
+    cd amon
+    make all
 
 
 # Mac Development
@@ -90,47 +108,6 @@ done automatically. For subsequent builds in the same working tree you may need
 to explicitly update.
 
 And start running (see section below).
-
-
-# SmartOS Development
-
-This is based on having setup a basic dev zone in BH-1 as per
-<https://hub.joyent.com/wiki/display/dev/Building+the+SmartOS+live+image+in+a+SmartOS+zone#BuildingtheSmartOSliveimageinaSmartOSzone-HiddenWIPinstructionsfromJoshforsettingthisuponbh1build2>.
-
-Setup and install the necessary dev tools in the global zone:
-
-    pkgin -y install gmake gcc-compiler-4.5.2 binutils
-
-Then get the Amon code to work with:
-
-    git clone git@git.joyent.com:amon.git
-    cd amon
-    make all
-
-
-
-# COAL Development
-
-Setup and install the necessary dev tools in the global zone:
-
-    /usbkey/scripts/mount-usb.sh; \
-    /usbkey/devtools/devmode.sh; \
-    pkgin -y install gmake scmgit gcc-compiler-4.5.2 gcc-runtime-4.5.2 \
-          binutils python26 grep pkg_alternatives patch; \
-    ln -sf /opt/local/bin/python2.6 /opt/local/bin/python; \
-    export PATH=/opt/local/bin:$PATH && \
-    export CC=gcc
-
-Then get the Amon code to work with:
-
-    cd /opt && \
-    export GIT_SSL_NO_VERIFY=true && \
-    git clone git@git.joyent.com:amon.git && \
-    cd amon && \
-    make all
-
-And start running (see next section).
-
 
 
 # COAL Notes: Getting email notifications
