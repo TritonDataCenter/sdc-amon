@@ -22,9 +22,10 @@ From the MVP:
 2.  Ability for operator to set a maintenance window on a CN and on the whole
     cloud. This would disable alerts to operator.
 
-Scope: Setting a maintenance window is only for processing in the Amon master
-in deciding whether notifications are sent. A maintenance window does not
-stop probe processing, does not stop creation of alarms.
+Scope: Setting a maintenance window only affects processing in the Amon
+master. A maintenance window does not stop probe processing, does not stop
+creation of alarms. A maintenance window only results in notifications not
+being sent during the lifetime of the maintenance window.
 
 See [use case #7](https://mo.joyent.com/docs/amon/master/#7-monitoring-a-multi-machine-webapp)
 for a example with which to think about maintenance window support.
@@ -37,19 +38,16 @@ monitors match, machine match.) If there is an open maint window, then
 do not notify.
 
 When a maint window closes, then check all open alarms:
-`alarm.handleDeleteMaintenance`. (Dev Note: we need a timer for closing the
-next expiring maint window.) This will potential send a notification for that
-alarm if it results in a change of fault count.
+`alarm.handleMaintenanceEnd`. (Dev Note: we need a timer for closing the
+next expiring maint window.) This will potentially send a notification for
+that alarm if it results in a change of fault count.
 
 An alarm is said to be "in maintenance" if it is (a) open, (b) has
-maintenance faults and (c) has *no* faults not in maintenance.
-This "in maintenance" designation should be shown in the portals to show the
-user that, yes, there is an alarm here but don't worry about it. Dev Note:
-Alarms need to grow an attribute for this ("inMaintenance" api field).
-(Q: Do we need to track an alarm being in *partial* maintenance? A: No, not
-yet. Partial maintenance is for a monitor with multiple probes: some of which
-have faulted and are affected by a maint window, some of which have faulted
-and are not.)
+maintenance faults and (c) has *no* faults not in maintenance. That last
+point might be confusing. It can result for a monitor with multiple probes,
+where a maintenance window only affects a *subset* of its probes. Alarm "in
+maintenance" state should be shown in the portals to show the user that, yes,
+there is an alarm here but don't worry about it.
 
 
 
