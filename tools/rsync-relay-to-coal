@@ -14,6 +14,7 @@ rsync -av ${RELAY_DIR}/ \
     --exclude "*.node" \
     --exclude amon-common \
     --exclude amon-plugins \
+    --exclude buffertools \
     --exclude zsock/ \
     --exclude zutil/ \
     --exclude tmp/

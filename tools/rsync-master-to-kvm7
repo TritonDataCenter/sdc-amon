@@ -21,6 +21,7 @@ rsync -av ${TOP}/master/ \
     --exclude "*.node" \
     --exclude amon-common \
     --exclude amon-plugins \
+    --exclude buffertools \
     --exclude tmp/
 rsync -av ${TOP}/common/ \
     $NODE:/zones/$AMON_ZONE/root/opt/smartdc/amon/node_modules/amon-common/ \
