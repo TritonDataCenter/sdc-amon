@@ -57,7 +57,8 @@ PATH=/opt/smartdc/bin:$PATH
 # Options.
 opt_just_clean=
 opt_quick_clean=
-while getopts "hcq" opt
+opt_test_pattern=
+while getopts "hcqf:" opt
 do
     case "$opt" in
         h)
@@ -69,6 +70,9 @@ do
             ;;
         q)
             opt_quick_clean=yes
+            ;;
+        f)
+            opt_test_pattern=$OPTARG
             ;;
         *)
             usage
@@ -143,9 +147,12 @@ sdc-amon /state?action=dropcaches -X POST >/dev/null
 
 # Run the tests includes with the relay.
 echo ""
-PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP \
-    test/*.test.js \
-    node_modules/amon-plugins/test/*.test.js \
+test_files=$(ls -1 test/*.test.js node_modules/amon-plugins/test/*.test.js)
+if [[ -n "$opt_test_pattern" ]]; then
+    test_files=$(echo "$test_files" | grep "$opt_test_pattern")
+    echo "# Running filtered set of test files: $test_files"
+fi
+PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP $test_files \
     | tee $OUTPUT_DIR/amon-relay.tap
 
 # Also run the tests in the Amon Master(s).
@@ -165,7 +172,7 @@ for amon_master in $amon_masters; do
     echo "# Run Amon Master ${amon_master_zonename} (alias $amon_master_alias) test suite (on CN ${amon_master_node})."
     output=$(sdc-oneachnode -j -n ${amon_master_node} \
         zlogin ${amon_master_zonename} \
-        /opt/smartdc/amon/test/runtests.sh \
+        /opt/smartdc/amon/test/runtests.sh $opt_test_pattern \
         || true)
     #echo "$output" | json 0
     amon_master_output=$OUTPUT_DIR/amon-master-$amon_master_alias.tap
