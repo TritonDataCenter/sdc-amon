@@ -30,7 +30,11 @@ cd $TOP
 echo ""
 test_files=$(ls -1 test/*.test.js)
 if [[ -n "$test_pattern" ]]; then
-    test_files=$(echo "$test_files" | grep "$test_pattern")
+    test_files=$(echo "$test_files" | (grep "$test_pattern" || true))
     echo "# Running filtered set of test files: $test_files"
 fi
-PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP $test_files
+if [[ -z "$test_files" ]]; then
+    echo "# ok"
+else
+    PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP $test_files
+fi

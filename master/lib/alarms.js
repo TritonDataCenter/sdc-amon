@@ -63,6 +63,7 @@ var restify = require('restify');
 var async = require('async');
 
 var Contact = require('./contact');
+var maintenances = require('./maintenances');
 
 
 
@@ -120,7 +121,7 @@ function faultObjFromRepr(repr) {
     return {type: 'fake'};
   } else if (fields[0] === 'probe') {
     return {
-      type: 'machine',
+      type: 'probe',
       probe: fields[1]
     };
   } else {
@@ -228,6 +229,16 @@ function Alarm(data, log) {
     }
   }
   this._updateFaults();
+
+  this._maintenanceFaultsKey = [
+    'maintenanceFaults', this.user, this.id].join(':');
+  this._maintenanceFaultSet = {};
+  if (data.maintenanceFaults) {
+    for (var i = 0; i < data.maintenanceFaults.length; i++) {
+      this._maintenanceFaultSet[data.maintenanceFaults[i]] = true;
+    }
+  }
+  this._updateMaintenanceFaults();
 }
 
 
@@ -251,10 +262,12 @@ Alarm.get = function get(app, userUuid, id, callback) {
   var log = app.log;
   var alarmKey = ['alarm', userUuid, id].join(':');
   var faultsKey = ['faults', userUuid, id].join(':');
+  var maintenanceFaultsKey = ['maintenanceFaults', userUuid, id].join(':');
 
   app.getRedisClient().multi()
     .hgetall(alarmKey)
     .smembers(faultsKey)
+    .smembers(maintenanceFaultsKey)
     .exec(function (err, replies) {
       if (err) {
         log.error(err, 'error retrieving "%s" data from redis', alarmKey);
@@ -262,6 +275,7 @@ Alarm.get = function get(app, userUuid, id, callback) {
       }
       var alarmObj = replies[0];
       alarmObj.faults = replies[1];
+      alarmObj.maintenanceFaults = replies[2];
       var alarm = null;
       try {
         alarm = new Alarm(alarmObj, log);
@@ -352,7 +366,8 @@ Alarm.prototype.serializePublic = function serializePublic() {
     timeOpened: this.timeOpened,
     timeClosed: this.timeClosed,
     timeLastEvent: this.timeLastEvent,
-    faults: this.faults
+    faults: this.faults,
+    maintenanceFaults: this.maintenanceFaults,
   };
 };
 
@@ -371,7 +386,7 @@ Alarm.prototype.serializeDb = function serializeDb() {
  * Add a fault to this alarm (i.e. for a new incoming event).
  */
 Alarm.prototype.addFault = function addFault(fault) {
-  if (!Object.hasOwnProperty(fault)) {
+  if (!this._faultSet.hasOwnProperty(fault)) {
     this._faultSet[fault] = true;
     this._updateFaults();
   }
@@ -381,7 +396,7 @@ Alarm.prototype.addFault = function addFault(fault) {
  * Remove a fault from this alarm (i.e. for a new incoming *clear* event).
  */
 Alarm.prototype.removeFault = function removeFault(fault) {
-  if (Object.hasOwnProperty(fault)) {
+  if (this._faultSet.hasOwnProperty(fault)) {
     delete this._faultSet[fault];
     this._updateFaults();
   }
@@ -392,9 +407,37 @@ Alarm.prototype._updateFaults = function _updateFaults() {
   // string by `faultReprFromEvent`.
   // Let's give a nicer representation for the API.
   this.faults = [];
-  var faultReprs = Object.keys(this._faultSet);
-  for (var i = 0; i < faultReprs.length; i++) {
-    this.faults.push(faultObjFromRepr(faultReprs[i]));
+  var reprs = Object.keys(this._faultSet);
+  for (var i = 0; i < reprs.length; i++) {
+    this.faults.push(faultObjFromRepr(reprs[i]));
+  }
+};
+
+/**
+ * Add a maintenance fault to this alarm (i.e. for a new incoming event).
+ */
+Alarm.prototype.addMaintenanceFault = function (fault) {
+  if (!this._maintenanceFaultSet.hasOwnProperty(fault)) {
+    this._maintenanceFaultSet[fault] = true;
+    this._updateMaintenanceFaults();
+  }
+};
+
+/**
+ * Remove a maint fault from this alarm (i.e. for a new incoming *clear* event).
+ */
+Alarm.prototype.removeMaintenanceFault = function (fault) {
+  if (this._maintenanceFaultSet.hasOwnProperty(fault)) {
+    delete this._maintenanceFaultSet[fault];
+    this._updateMaintenanceFaults();
+  }
+};
+
+Alarm.prototype._updateMaintenanceFaults = function () {
+  this.maintenanceFaults = [];
+  var reprs = Object.keys(this._maintenanceFaultSet);
+  for (var i = 0; i < reprs.length; i++) {
+    this.maintenanceFaults.push(faultObjFromRepr(reprs[i]));
   }
 };
 
@@ -421,97 +464,126 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
   if (!callback) throw new TypeError('"callback" (Function) is required');
 
   var self = this;
-  var log = this.log;
   var user = options.user;
   var event = options.event;
   var monitor = options.monitor;
-  log.info({event_uuid: event.uuid, alarm_id: this.id, user: this.user},
-    'handleEvent');
-  var redisClient = app.getRedisClient();
-  var multi = redisClient.multi();
-  var faultsScardIndex = 0;
+  var log = this.log.child({event_uuid: event.uuid, alarm_id: this.id,
+    user: this.user}, true);
+  log.info('handleEvent');
 
-  // Decide whether to notify:
-  // - if in maint, then no (update 'openedDuringMaint') (TODO)
-  // - TODO: guard against too frequent notifications. Set a timeout for
-  //   5 minutes from now. Hold ref to alarm. Send notification with all
-  //   details for that 5 minutes. New events need, say, a rise in severity
-  //   to break the delay.
-  // - else, notify.
-  var shouldNotify = true;
-
-  function doNotify(cb) {
-    self.notify(app, user, event, monitor, function (err) {
-      if (err) {
-        //XXX Watch for infinite loop here.
-        log.error(err, 'TODO:XXX send a user event about error notifying');
-      }
-      if (cb)
-        cb(err);
-    });
-  }
-
-  // Update data (on `this` and in redis).
-  this.timeLastEvent = event.time;
-  multi.hset(self._key, 'timeLastEvent', this.timeLastEvent);
-  faultsScardIndex++;
-
-  // Update faults (and close if this is a clear for the last fault).
-  var fault = faultReprFromEvent(event);
-  if (event.clear) {
-    this.removeFault(fault);
-    multi.srem(self._faultsKey, fault);
-  } else {
-    this.addFault(fault);
-    multi.sadd(self._faultsKey, fault);
-  }
-  faultsScardIndex++;
-  multi.scard(self._faultsKey);
-
-  // Add event
-  // TODO: For now we store all events for an alarm. Need some capacity
-  //    planning here. Or switch to disk db or something (e.g. postgres ha,
-  //    sqlite). Notes:
-  //    - firstEvents, recentEvents (N events on either end), numEvents
-  //      (total) Perhaps "N" is 50 here, i.e. something high enough to
-  //      not be common.
-  //    - might want some sort of histogram of events. Can we store a
-  //      timestamp for every event? *Can* we store all events? Not
-  //      really. Can redis help us here?
-  //XXX:
-  // - $key:events set -> set of event uuids
-  // - event:$eventUuid hash
-
-  multi.exec(function (err, replies) {
-    // Notify even if error saving to redis. We don't wait for the
-    // notify to complete or report its possible error.
-    if (shouldNotify) {
-      doNotify();
+  maintenances.isEventInMaintenance({app: app, event: event, log: log},
+                                    function (maintErr, isInMaint) {
+    if (maintErr) {
+      log.error(maintErr, 'error determining if event is under maintenace');
+      return callback(maintErr);
     }
-    if (err) {
-      log.error(err, 'error updating redis with alarm event data');
-      return callback(err); //XXX xlate error
-    }
+    log.info({isInMaint: isInMaint}, 'determined if event is in maint');
 
-    var numFaults = replies[faultsScardIndex];
-    if (event.clear && numFaults === 0) {
-      log.info('cleared last fault: close this alarm');
-      self.closed = true;
-      self.timeClosed = Date.now();
-      redisClient.hmset(self._key,
-                        'closed', self.closed,
-                        'timeClosed', self.timeClosed,
-                        function (closedErr) {
-        if (closedErr) {
-          callback(closedErr); //XXX xlate error
+    var redisClient = app.getRedisClient();
+    var multi = redisClient.multi();
+    var indeces = {  // index into `replies` below
+      numFaultsBefore: 0,
+      numFaultsAfter: 0,
+      numMaintenanceFaultsAfter: 0
+    };
+    multi.scard(self._faultsKey);
+    indeces.numFaultsAfter++; indeces.numMaintenanceFaultsAfter++;
+
+    // Update data (on `this` and in redis).
+    self.timeLastEvent = event.time;
+    multi.hset(self._key, 'timeLastEvent', self.timeLastEvent);
+    indeces.numFaultsAfter++; indeces.numMaintenanceFaultsAfter++;
+
+    // Update faults.
+    var fault = faultReprFromEvent(event);
+    if (event.clear) {
+      self.removeFault(fault);
+      multi.srem(self._faultsKey, fault);
+      indeces.numFaultsAfter++; indeces.numMaintenanceFaultsAfter++;
+      self.removeMaintenanceFault(fault);
+      multi.srem(self._maintenanceFaultsKey, fault);
+      indeces.numFaultsAfter++; indeces.numMaintenanceFaultsAfter++;
+    } else if (isInMaint) {
+      self.addMaintenanceFault(fault);
+      multi.sadd(self._maintenanceFaultsKey, fault);
+      indeces.numFaultsAfter++; indeces.numMaintenanceFaultsAfter++;
+    } else {
+      self.addFault(fault);
+      multi.sadd(self._faultsKey, fault);
+      indeces.numFaultsAfter++; indeces.numMaintenanceFaultsAfter++;
+    }
+    multi.scard(self._faultsKey);
+    indeces.numMaintenanceFaultsAfter++;
+    multi.scard(self._maintenanceFaultsKey);
+
+    multi.exec(function (saveErr, replies) {
+      var stats = null;
+      if (saveErr) {
+        log.error(saveErr, 'error updating redis with alarm event data');
+        callback(saveErr);
+      } else {
+        stats = {};
+        Object.keys(indeces).forEach(function (k) {
+          stats[k] = replies[indeces[k]];
+        });
+        var numFaults = stats.numFaultsAfter + stats.numMaintenanceFaultsAfter;
+        if (event.clear && numFaults === 0) {
+          log.info('cleared last fault: close this alarm');
+          self.closed = true;
+          self.timeClosed = Date.now();
+          redisClient.hmset(self._key,
+                            'closed', self.closed,
+                            'timeClosed', self.timeClosed,
+                            function (closedErr) {
+            if (closedErr) {
+              callback(closedErr);
+            } else {
+              callback();
+            }
+          });
         } else {
           callback();
         }
-      });
-    } else {
-      callback();
-    }
+      }
+
+      // Here we notify even if error saving to redis. We don't wait for the
+      // notify to complete or report its possible error.
+      //
+      // TODOs:
+      // - TODO: guard against too frequent notifications. Set a timeout for
+      //   5 minutes from now. Hold ref to alarm. Send notification with all
+      //   details for that 5 minutes. New events need, say, a rise in severity
+      //   to break the delay.
+      // - TODO: re-notify
+
+      // Notify if the number of non-maintenance faults changed, and also if
+      // there was trouble saving such that we don't know if the maintenance
+      // count changed.
+      var shouldNotify = false;
+      var reason = null;
+      if (!stats) {
+        shouldNotify = true;
+        reason = "unknown";
+      } else if (stats.numFaultsAfter > stats.numFaultsBefore) {
+        shouldNotify = true;
+        reason = "fault";
+      } else if (stats.numFaultsAfter < stats.numFaultsBefore) {
+        shouldNotify = true;
+        reason = "clear";
+      }
+      log.info({shouldNotify: shouldNotify, reason: reason}, 'should notify?');
+      if (shouldNotify) {
+        //XXX:TODO pass reason info to notify
+        self.notify(app, user, event, monitor, function (err) {
+          if (err) {
+            //XXX Watch for infinite loop here.
+            log.error(err, 'TODO:XXX send a user event about error notifying');
+          }
+        });
+      }
+    });
   });
+
 };
 
 

@@ -27,12 +27,16 @@
  *    applies, if any.
  *
  * Layout in redis:
+ *
  * - Amon uses redis db 1: `SELECT 1`.
- * - 'maintenances:$userUuid' is a set of maintenance ids for that user.
- * - 'maintenance:$userUuid:$maintenanceId' is a hash with the maint data.
  * - 'maintenanceIds' is a hash with a (lazy) maint id counter for each user.
  *   `HINCRBY maintenanceIds $userUuid 1` to get the next maint id for that
  *   user.
+ * - 'maintenancesByEnd' is a sorted set of maintenance ids for all users
+ *   sorted by the end time. It is used by the maintenance reaper
+ *   to expire maintenance windows.
+ * - 'maintenances:$userUuid' is a set of maintenance ids for that user.
+ * - 'maintenance:$userUuid:$maintenanceId' is a hash with the maint data.
  *
  * Maintenance Window Id:
  *
@@ -147,7 +151,6 @@ function dateFromEnd(end) {
  * few I looked at were all async APIs.
  *
  * Limitations/Opinions:
- * - untested
  * - don't support elements with line-breaks
  * - leading a trailing spaces are trimmed, unless the entry is quoted
  *
@@ -314,7 +317,9 @@ function isPositiveInteger(s) {
  *    - notes {String} Optional.
  *    - all {Boolean} Optional.
  *    - monitors {String} Optional. Comma-separated list of monitor names.
+ *      XXX Allow this to be an array of monitor names. Consider only this.
  *    - machines {String} Optional. Comma-separated list of machines UUIDs.
+ *      XXX Allow this to be an array of machine UUIDs. Consider only this.
  *
  *    One of 'all' (true), 'monitors' or 'machines' must be specified.
  * @param callback {Function} `function (err, maintenance)`
@@ -372,14 +377,111 @@ function createMaintenance(options, callback) {
     }
     redisClient.multi()
       .sadd('maintenances:' + userUuid, maintenance.id)
+      .zadd('maintenancesByEnd', maintenance.end, maintenance._key)
       .hmset(maintenance._key, maintenance.serializeDb())
       .exec(function (err, replies) {
         if (err) {
           log.error(err, 'error saving maintenance to redis');
           return callback(err);
         }
+        scheduleNextMaintenanceExpiry(options.app); // may need to reschedule
         callback(null, maintenance);
       });
+  });
+}
+
+
+/**
+ * Delete the given maintenance.
+ *
+ * @param app
+ * @param maintenance
+ * @param callback {Function} `function (err)`
+ */
+function deleteMaintenance(app, maintenance, callback) {
+  if (!app) throw new TypeError('"app" is required');
+  if (!maintenance) throw new TypeError('"maintenance" is required');
+  if (!callback) throw new TypeError('"callback" is required');
+
+  var multi = app.getRedisClient().multi()
+    .srem('maintenances:' + maintenance.user, maintenance.id)
+    .zrem('maintenancesByEnd', maintenance._key)
+    .del(maintenance._key)
+    .exec(function (redisErr, replies) {
+      if (redisErr) {
+        //XXX Really should have a retry here, else maintenance expiry
+        //    is now stopped.
+        return callback(redisErr);
+      }
+      app.handleMaintenanceEnd(maintenance, function (endErr) {
+        scheduleNextMaintenanceExpiry(app); // may need to reschedule
+        if (endErr) {
+          log.error({err: endErr, maintenance: maintenance.serializePublic},
+            'error handling maintenance end (now deleted)');
+          return callback(endErr);
+        }
+        callback();
+      });
+    }
+  );
+}
+
+
+/**
+ * List maintenances (get all maintenance windows for the given user).
+ *
+ * @param all
+ * @param userUuid
+ * @param log
+ * @param callback {Function} `function (err, maintenances)`
+ *
+ * TODO:XXX cache this. Called frequent for `isEventInMaintenance` usage.
+ */
+function listMaintenances(app, userUuid, log, callback) {
+  if (!app) throw new TypeError('"app" is required');
+  if (!userUuid) throw new TypeError('"userUuid" is required');
+  if (!log) throw new TypeError('"log" is required');
+  if (!callback) throw new TypeError('"callback" is required');
+
+  function maintenanceObjFromId(id, cb) {
+    var key = format('maintenance:%s:%s', userUuid, id);
+    redisClient.hgetall(key, cb);
+  }
+  function maintenanceFromId(id, cb) {
+    Maintenance.get(app, userUuid, id, cb);
+  }
+
+  var setKey = 'maintenances:' + userUuid;
+  log.debug('get "%s" smembers', setKey);
+  var redisClient = app.getRedisClient();
+  redisClient.smembers(setKey, function (setErr, maintenanceIds) {
+    if (setErr) {
+      return next(setErr);
+    }
+    log.debug({maintenanceIds: maintenanceIds},
+      'get maintenance window data for each key (%d ids)',
+      maintenanceIds.length);
+
+    async.map(maintenanceIds, maintenanceFromId,
+              function (getErr, maintenances) {
+      if (getErr) {
+        log.error({err: getErr, maintenanceIds: maintenanceIds},
+          'redis error getting maintenance window data');
+        return callback(getErr);
+      }
+
+      var filtered = [];
+      for (var i = 0; i < maintenances.length; i++) {
+        a = maintenances[i];
+        if (maintenances[i] != null) {
+          // Maintenance.get returns a null maintenance for invalid data.
+          filtered.push(a);
+        }
+      }
+      maintenances = filtered;
+
+      callback(null, maintenances);
+    });
   });
 }
 
@@ -424,8 +526,8 @@ function Maintenance(data, log) {
   this.end = Number(data.end);
   this.notes = data.notes;
   this.all = boolFromRedisString(data.all, false, 'data.all');
-  this.monitors = data.monitors;
-  this.machines = data.machines;
+  this.monitors = data.monitors && parseCSVRow(data.monitors);
+  this.machines = data.machines && parseCSVRow(data.machines);
 }
 
 
@@ -493,6 +595,8 @@ Maintenance.prototype.serializePublic = function serializePublic() {
  */
 Maintenance.prototype.serializeDb = function serializeDb() {
   var obj = this.serializePublic();
+  if (obj.monitors) obj.monitors = serializeCSVRow(obj.monitors);
+  if (obj.machines) obj.machines = serializeCSVRow(obj.machines);
   obj.v = this.v;
   return obj;
 };
@@ -511,21 +615,20 @@ function apiListAllMaintenanceWindows(req, res, next) {
   var i;
   var redisClient = req._app.getRedisClient();
 
-  log.debug('get "maintenance:*" keys');
-  redisClient.keys('maintenance:*', function (keysErr, maintenanceKeys) {
+  log.debug('get all maintenance keys');
+  redisClient.zrange('maintenancesByEnd', 0, -1, function (keysErr, keys) {
     if (keysErr) {
       return next(keysErr);
     }
     log.debug('get maintenance window data for each key (%d keys)',
-      maintenanceKeys.length);
+      keys.length);
     function maintenanceFromKey(key, cb) {
       var bits = key.split(':');
       Maintenance.get(req._app, bits[1], bits[2], cb);
     }
-    async.map(maintenanceKeys, maintenanceFromKey,
-              function (getErr, maintenances) {
+    async.map(keys, maintenanceFromKey, function (getErr, maintenances) {
       if (getErr) {
-        log.error({err: getErr, maintenanceKeys: maintenanceKeys},
+        log.error({err: getErr, maintenanceKeys: keys},
           'redis error getting maintenance window data');
         return next(getErr);
       }
@@ -551,53 +654,20 @@ function apiListAllMaintenanceWindows(req, res, next) {
  */
 function apiListMaintenanceWindows(req, res, next) {
   var log = req.log;
-  var i, a;
   var userUuid = req._user.uuid;
 
-  function maintenanceObjFromId(id, cb) {
-    var key = format('maintenance:%s:%s', userUuid, id);
-    redisClient.hgetall(key, cb);
-  }
-  function maintenanceFromId(id, cb) {
-    Maintenance.get(req._app, userUuid, id, cb);
-  }
-
-  var setKey = 'maintenances:' + userUuid;
-  log.debug('get "%s" smembers', setKey);
-  var redisClient = req._app.getRedisClient();
-  redisClient.smembers(setKey, function (setErr, maintenanceIds) {
-    if (setErr) {
-      return next(setErr);
+  listMaintenances(req._app, userUuid, log, function (listErr, maintenances) {
+    if (listErr) {
+      log.error(listErr);
+      return next(new restify.InternalError(
+        'unexpected error getting maintenances for user ' + userUuid));
     }
-    log.debug({maintenanceIds: maintenanceIds},
-      'get maintenance window data for each key (%d ids)',
-      maintenanceIds.length);
-
-    async.map(maintenanceIds, maintenanceFromId,
-              function (getErr, maintenances) {
-      if (getErr) {
-        log.error({err: getErr, maintenanceIds: maintenanceIds},
-          'redis error getting maintenance window data');
-        return next(getErr);
-      }
-
-      var filtered = [];
-      for (i = 0; i < maintenances.length; i++) {
-        a = maintenances[i];
-        if (maintenances[i] != null) {
-          // Maintenance.get returns a null maintenance for invalid data.
-          filtered.push(a);
-        }
-      }
-      maintenances = filtered;
-
-      var serialized = [];
-      for (i = 0; i < maintenances.length; i++) {
-        serialized.push(maintenances[i].serializePublic());
-      }
-      res.send(serialized);
-      next();
-    });
+    var serialized = [];
+    for (var i = 0; i < maintenances.length; i++) {
+      serialized.push(maintenances[i].serializePublic());
+    }
+    res.send(serialized);
+    next();
   });
 }
 
@@ -696,15 +766,9 @@ function apiGetMaintenanceWindow(req, res, next) {
  * See: <https://mo.joyent.com/docs/amon/master/#DeleteMaintenanceWindow>
  */
 function apiDeleteMaintenanceWindow(req, res, next) {
-  var userUuid = req._user.uuid;
-  var maintenance = req._maintenance;
-
-  var multi = req._app.getRedisClient().multi();
-  multi.srem('maintenances:' + userUuid, maintenance.id);
-  multi.del(maintenance._key);
-  multi.exec(function (redisErr, replies) {
-    if (redisErr) {
-      log.error(redisErr);
+  deleteMaintenance(req._app, req._maintenance, function (err) {
+    if (err) {
+      req.log.error(err);
       return next(new restify.InternalError(
         'error deleting maintenance window'));
     }
@@ -720,9 +784,11 @@ function apiDeleteMaintenanceWindow(req, res, next) {
  * @param server {restify.Server}
  */
 function mountApi(server) {
-  server.get({path: '/maintenances', name: 'ListAllMaintenanceWindows'},
+  server.get({path: '/maintenances',
+              name: 'ListAllMaintenanceWindows'},
     apiListAllMaintenanceWindows);
-  server.get({path: '/pub/:user/maintenances', name: 'ListMaintenanceWindows'},
+  server.get({path: '/pub/:user/maintenances',
+              name: 'ListMaintenanceWindows'},
     apiListMaintenanceWindows);
   server.get({path: '/pub/:user/maintenances/:maintenance',
               name: 'GetMaintenanceWindow'},
@@ -739,12 +805,150 @@ function mountApi(server) {
 
 
 
+//---- reaper/expirer
+
+var expiryTimeout;
+
+/**
+ * Schedule a timeout to expire the next (and subsequent) maintenance
+ * window timeouts. There is no return or callback for this function.
+ *
+ * While there are maintenances remaining, this function worries about
+ * re-scheduling itself for subsequent expiries. However, this function
+ * must be called:
+ * - on app startup to get the ball rolling
+ * - on add/update/delete of maintenance windows to re-schedule if necessary
+ *
+ * @param app {App}
+ */
+function scheduleNextMaintenanceExpiry(app) {
+  var log = app.log.child({component: 'maintexpiry'}, true);
+
+  if (expiryTimeout) {
+    log.info('clear existing maintenance expiryTimeout');
+    clearTimeout(expiryTimeout);
+  }
+
+  function rescheduleLater() {
+    log.info('Re-schedule maintenance reaper to start again in 5 minutes.');
+    setTimeout(function () {
+      scheduleNextMaintenanceExpiry(app);
+    }, 5 * 60 * 1000);
+  }
+
+  var redisClient = app.getRedisClient();
+  redisClient.zrange('maintenancesByEnd', 0, 0, 'WITHSCORES',
+                     function (err, nextMaint) {
+    if (err) {
+      // It is bad if maintenance expiry tanks, so we'll log an error
+      // (i.e. we expect an operator to take a look at some point) and
+      // reschedule for a few minutes from now.
+      log.error(err, 'Error finding next maintenance window to expire.');
+      rescheduleLater();
+    } else if (nextMaint.length === 0) {
+      log.info('no current maintenance windows');
+    } else {
+      var maintenanceRepr = nextMaint[0];
+      var maintenanceEnd = nextMaint[1];
+      var expiresIn = maintenanceEnd - Date.now();
+      log.info({maintenanceEnd: new Date(maintenanceEnd),
+                expiresIn: expiresIn,
+                maintenanceRepr: maintenanceRepr},
+        'set maintenance expiryTimeout');
+      expiryTimeout = setTimeout(function () {
+        var userUuid = maintenanceRepr.split(':')[1];
+        var id = maintenanceRepr.split(':')[2];
+        Maintenance.get(app, userUuid, id, function (getErr, maintenance) {
+          if (getErr) {
+            log.error({err: getErr, userUuid: userUuid, id: id},
+              'error getting maintenance to expire in expiryTimeout');
+            rescheduleLater();
+          } else if (!maintenance) {
+            log.info({userUuid: userUuid, id: id},
+              'maintenance to expire no longer exists');
+            scheduleNextMaintenanceExpiry(app);
+          } else {
+            log.info({maintenance: maintenance.serializePublic()},
+              'expire maintenance');
+            deleteMaintenance(app, maintenance, function (delErr) {
+              if (delErr) {
+                log.error({err: delErr, maintenaceRepr: maintenaceRepr},
+                  'error deleting maintenance in expiryTimeout');
+              }
+              scheduleNextMaintenanceExpiry(app);
+            });
+          }
+        });
+      }, expiresIn);
+    }
+  });
+}
+
+
+
+//---- other exported methods
+
+/**
+ * Determine if the given event is affected by a current maintenance window.
+ *
+ * Dev Note: This is O(N) on the number of maintenance windows for that
+ * user and is on the hot path: called for each event. IOW, this could
+ * theoretically be improved, but the expectation is that a particular
+ * user won't have lots of maintenance windows.
+ *
+ * @param options {Object} with:
+ *    - @param app {App} Required.
+ *    - @param event {event Object} Required.
+ *    - @param log {Bunyan Logger} Optional.
+ * @param callback {Function} `function (err, boolean)`
+ */
+function isEventInMaintenance(options, callback) {
+  if (!options) throw new TypeError('"options" is required')
+  if (!options.app) throw new TypeError('"options.app" is required');
+  if (!options.event) throw new TypeError('"options.event" is required');
+  if (!callback) throw new TypeError('"callback" is required');
+  var event = options.event;
+  var log = options.log || options.app.log;
+
+  var etime = event.time;
+  var emonitor = event.monitor;
+  var emachine = event.machine; // Note: not all events have a `machine`
+  listMaintenances(options.app, event.user, log,
+                   function (listErr, maintenances) {
+    if (listErr) {
+      return callback(listErr);
+    }
+    for (var i = 0; i < maintenances.length; i++) {
+      var m = maintenances[i];
+      if (etime <= m.start || m.end <= etime) {
+        continue;  // inactive maintenance window
+      } else if (m.all) {
+        return callback(null, true);
+      } else if (m.monitors) {
+        if (m.monitors.indexOf(emonitor) !== -1) {
+          return callback(null, true);
+        }
+      } else if (m.machines && emachine) {
+        if (m.machines.indexOf(emachine) !== -1) {
+          return callback(null, true);
+        }
+      }
+    }
+    callback(null, false);
+  });
+}
+
+
+
 //---- exports
 
 module.exports = {
   Maintenance: Maintenance,
   MAINTENANCE_MODEL_VERSION: MAINTENANCE_MODEL_VERSION,
   createMaintenance: createMaintenance,
+  scheduleNextMaintenanceExpiry: scheduleNextMaintenanceExpiry,
+  isEventInMaintenance: isEventInMaintenance,
+
   mountApi: mountApi,
 
   // Only exported to test it.

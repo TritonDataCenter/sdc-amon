@@ -53,7 +53,7 @@ test('monitors: list empty', function (t) {
                    function (err, req, res, obj) {
     t.ifError(err);
     t.ok(Array.isArray(obj));
-    t.equal(obj.length, 0);
+    t.equal(obj.length, 0, format('expected not monitors, got: %j', obj));
 
     // Second time should be fast.
     masterClient.get('/pub/amontestuserulrich/monitors',

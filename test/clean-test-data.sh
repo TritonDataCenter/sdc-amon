@@ -55,6 +55,12 @@ function clearUser() {
         sdc-amon /pub/$login/alarms/$alarm -X DELETE -f >/dev/null
     done
 
+    local maintenances=$(sdc-amon /pub/amontestuserulrich/maintenances | json -Ha id | xargs)
+    for maintenance in $maintenances; do
+        echo "# DELETE /pub/$login/maintenances/$maintenance"
+        sdc-amon /pub/$login/maintenances/$maintenance -X DELETE -f >/dev/null
+    done
+
     if [[ ! -n "$opt_quick_clean" ]]; then
         local machines=$(sdc-vmapi /vms?owner_uuid=$uuid \
             | $JSON3 -c 'this.state==="running"' -Ha server_uuid uuid -d: | xargs)

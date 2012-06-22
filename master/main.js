@@ -13,16 +13,21 @@ var debug = console.warn;
 var nopt = require('nopt');
 var Logger = require('bunyan');
 var restify = require('restify');
+var async = require('async');
 
 var amon_common = require('amon-common');
 var Constants = amon_common.Constants;
 var createApp = require('./lib/app').createApp;
+var maintenances = require('./lib/maintenances');
 
 
 
 //---- globals
 
 var DEFAULT_CONFIG_PATH = './cfg/amon-master.json';
+
+var theConfig;
+var theApp;
 
 var log = new Logger({
   name: 'amon-master',
@@ -135,30 +140,43 @@ function main() {
     usage(1);
   }
 
-  var config = loadConfig(rawOpts.file);
+  theConfig = loadConfig(rawOpts.file);
   // Log config (but don't put passwords in the log file).
   var censorKeys = {'password': '***', 'authToken': '***', 'pass': '***'};
   function censor(key, value) {
     var censored = censorKeys[key];
     return (censored === undefined ? value : censored);
   }
-  log.debug('config: %s', JSON.stringify(config, censor, 2));
+  log.debug('config: %s', JSON.stringify(theConfig, censor, 2));
 
-  // Create our app and start listening.
-  var theApp;
-  createApp(config, log, function (err, app) {
+  async.series([
+    createAndStartTheApp,   // sets `theApp` global
+    setupSignalHandlers,
+    startMaintenanceExpiry
+  ], function (err) {
     if (err) {
-      log.error(err, 'Error creating app');
-      process.exit(1);
+      log.error(err);
+      process.exit(2);
     }
-    theApp = app;
+    log.info('startup complete');
+  });
+}
+
+function createAndStartTheApp(next) {
+  createApp(theConfig, log, function (err, app) {
+    if (err)
+      return next(err);
+    theApp = app;  // `theApp` is intentionally global
     app.listen(function () {
       var addr = app.server.address();
       log.info('Amon Master listening on <http://%s:%s>.',
         addr.address, addr.port);
+      next();
     });
   });
+}
 
+function setupSignalHandlers(next) {
   // Try to ensure we clean up properly on exit.
   function closeApp(callback) {
     if (theApp) {
@@ -175,6 +193,12 @@ function main() {
       process.exit(1);
     });
   });
+  next();
+}
+
+function startMaintenanceExpiry(next) {
+  maintenances.scheduleNextMaintenanceExpiry(theApp);
+  next();
 }
 
 main();

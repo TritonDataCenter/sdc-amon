@@ -9,6 +9,7 @@
     - tests for maintenance windows
     - separate commit: replace SuppressAlarmNotifications and UnsuppressAlarmNotifications
       with a maint window on that alarm's monitor
+    - XXX's in maintenances.js
     - fix this app crash (when that alarm id is a 404):
         [root@headnode (bh1-kvm7:0) ~]# sdc-amon /pub/deadbeef-4444-4444-4444-444444444444/alarms/2 -X DELETE
         curl: (52) Empty reply from server
@@ -44,6 +45,7 @@
 # todo (in no particular order)
 
 - bitrot:
+    - amon-master's manual ldap pooling: use ufds.js
     - restify
     - bunyan
     - node 0.8

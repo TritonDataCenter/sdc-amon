@@ -57,7 +57,7 @@ function objMerge() {
 }
 
 
-//---- test: raw working with Alarm objects
+//---- test: raw working with Maintenance Window objects
 
 test('raw maintenance window creation', function (t) {
   var userUuid = uuid();

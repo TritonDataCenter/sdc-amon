@@ -835,6 +835,28 @@ App.prototype.serverExists = function (serverUuid, callback) {
 
 
 /**
+ * Handle the expiry and/or deletion of a maintenance window. The maintenance
+ * window has been deleted from the db when this is called.
+ *
+ * @param maintenance {maintenances.Maintenance}
+ * @param callback {Function} `function (err)`
+ */
+App.prototype.handleMaintenanceEnd = function (maintenance, callback) {
+  if (!maintenance) throw new TypeError('"maintenance" is required');
+  if (!callback) throw new TypeError('"callback" is required');
+  var log = this.log;
+
+  log.info({maintenance: maintenance.user + ':' + maintenance.id},
+    'TODO: handle maintenance end');
+  //XXX for each alarm for this user: if there are maint faults and aren't
+  // covered by any current maintenance windows, then moved them to
+  // "faults"... and notify as appropriate.
+
+  callback();
+}
+
+
+/**
  * Handle an incoming event.
  *
  * @param ufds {ldapjs client} UFDS client.
