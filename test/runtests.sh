@@ -158,7 +158,7 @@ PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP $test_files \
 # Also run the tests in the Amon Master(s).
 echo ""
 amon_masters=$(sdc-vmapi /vms \
-    | ./test/node_modules/.bin/json3 -H \
+    | json -H \
         -c 'tags.smartdc_role === "amon"' \
         -c 'state === "running"' \
         -a server_uuid uuid alias -d: \

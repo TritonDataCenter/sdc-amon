@@ -50,7 +50,6 @@ var smartosDatasetUuid;
 var externalNetworkUuid;
 var gzIp;
 
-var JSON3 = path.resolve(__dirname, 'node_modules/.bin/json3');
 
 
 //---- internal support functions
@@ -290,8 +289,7 @@ function getSmartosDatasetUuid(next) {
 
 function getExternalNetworkUuid(next) {
   log('# Get "external" network UUID.');
-  exec('sdc-napi /networks | '
-        + JSON3 + ' -H -c \'name === "external"\' 0.uuid',
+  exec('sdc-napi /networks | json -H -c \'name === "external"\' 0.uuid',
        function (err, stdout, stderr) {
     if (err) {
       return next(err);

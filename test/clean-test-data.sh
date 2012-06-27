@@ -15,7 +15,6 @@ set -o pipefail
 
 
 TOP=$(unset CDPATH; cd $(dirname $0)/../; pwd)
-JSON3=$TOP/test/node_modules/.bin/json
 
 PATH=$PATH:/opt/smartdc/bin
 
@@ -63,7 +62,7 @@ function clearUser() {
 
     if [[ ! -n "$opt_quick_clean" ]]; then
         local machines=$(sdc-vmapi /vms?owner_uuid=$uuid \
-            | $JSON3 -c 'this.state==="running"' -Ha server_uuid uuid -d: | xargs)
+            | json -c 'this.state==="running"' -Ha server_uuid uuid -d: | xargs)
         for machine in $machines; do
             # We *could* do this:
             #    echo "# DELETE /vms/$machine"
