@@ -136,7 +136,7 @@ fi
 
 # Bootstrap base test data.
 echo ""
-node $TOP/test/prep.js
+PATH=$NODE_INSTALL/bin:$PATH node $TOP/test/prep.js
 
 # Drop Amon Master caches (start fresh).
 # Note: Still not sure if active amon-relays in the system hitting the
