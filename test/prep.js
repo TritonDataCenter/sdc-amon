@@ -301,6 +301,15 @@ function getExternalNetworkUuid(next) {
 }
 
 
+function unreserveHeadnodeForProvisioning(next) {
+  var cmd = format('sdc-cnapi /servers/%s -X POST -F reserved=false',
+    headnodeUuid);
+  exec(cmd, function (err, stdout, stderr) {
+    next(err);
+  });
+}
+
+
 function createAmontestzone(next) {
   // First check if there is a zone for ulrich.
   vmapiClient.listVms({owner_uuid: ulrich.uuid, alias: 'amontestzone'},
@@ -318,6 +327,7 @@ function createAmontestzone(next) {
     vmapiClient.createVm({
         owner_uuid: ulrich.uuid,
         dataset_uuid: smartosDatasetUuid,
+        server_uuid: headnodeUuid,
         brand: 'joyent',
         ram: '128',
         alias: 'amontestzone',
@@ -369,6 +379,17 @@ function createAmontestzone(next) {
   });
 }
 
+
+function rereserveHeadnodeForProvisioning(next) {
+  var cmd = format('sdc-cnapi /servers/%s -X POST -F reserved=true',
+    headnodeUuid);
+  exec(cmd, function (err, stdout, stderr) {
+    next(err);
+  });
+}
+
+
+
 function getAmonZoneUuid(next) {
   log('# Get Amon zone UUID.');
 
@@ -419,13 +440,16 @@ async.series([
     getHeadnodeUuid,
     getSmartosDatasetUuid,
     getExternalNetworkUuid,
+    unreserveHeadnodeForProvisioning,
     createAmontestzone,
+    // TODO: get rereserveHeadnodeForProvisioning() to run on createAmontestzone() failure
+    rereserveHeadnodeForProvisioning,
     getAmonZoneUuid,
     writePrepJson
   ],
   function (err) {
     if (err) {
-      log('error preparing: %s\n', err.stack, err);
+      log('error preparing: %s%s', err, (err.stack ? ': ' + err.stack : ''));
       process.exit(1);
     }
   }
