@@ -286,6 +286,15 @@ function getExternalNetworkUuid(next) {
 }
 
 
+function unreserveHeadnodeForProvisioning(next) {
+  var cmd = format('ssh %s /opt/smartdc/bin/sdc-cnapi /servers/%s -X POST -F reserved=false',
+    headnodeAlias, headnodeUuid);
+  exec(cmd, function (err, stdout, stderr) {
+    next(err);
+  });
+}
+
+
 function createAmondevzone(next) {
   // First check if there is a zone for bob.
   vmapiClient.listVms({owner_uuid: bob.uuid, alias: 'amondevzone'},
@@ -308,17 +317,20 @@ function createAmondevzone(next) {
         alias: 'amondevzone',
         networks: externalNetworkUuid
       },
-      function (err2, newZone) {
+      function (err2, createInfo) {
+        // TODO: Better would be to get `job_uuid` and wait on completion
+        // of the job (when vmapiClient.getJob exists).
         log('# Waiting up to ~2min for new zone %s to start up.',
-            (newZone ? newZone.uuid : '(error)'));
+            (createInfo ? createInfo.vm_uuid : '(error)'));
         if (err2) {
           return next(err2);
         }
-        var zone = newZone;
+        var vm_uuid = createInfo.vm_uuid;
+        var zone = null;
         var sentinel = 40;
         async.until(
           function () {
-            return zone.state === 'running';
+            return zone && zone.state === 'running';
           },
           function (nextCheck) {
             sentinel--;
@@ -328,7 +340,7 @@ function createAmondevzone(next) {
             }
             setTimeout(function () {
               log("# Check if zone is running yet (sentinel=%d).", sentinel);
-              vmapiClient.getVm({uuid: zone.uuid, owner_uuid: bob.uuid},
+              vmapiClient.getVm({uuid: vm_uuid, owner_uuid: bob.uuid},
                                function (err3, zone_) {
                 if (err3) {
                   return nextCheck(err3);
@@ -348,6 +360,15 @@ function createAmondevzone(next) {
         );
       }
     );
+  });
+}
+
+
+function rereserveHeadnodeForProvisioning(next) {
+  var cmd = format('ssh %s /opt/smartdc/bin/sdc-cnapi /servers/%s -X POST -F reserved=true',
+    headnodeAlias, headnodeUuid);
+  exec(cmd, function (err, stdout, stderr) {
+    next(err);
   });
 }
 
@@ -532,11 +553,14 @@ async.series([
     ldapClientUnbind,
     ufdsClientUnbind,
     getVMapiClient,
-    getSmartosDatasetUuid,
-    getExternalNetworkUuid,
-    createAmondevzone,
     getCnapiClient,
     getHeadnodeUuid,
+    getSmartosDatasetUuid,
+    getExternalNetworkUuid,
+    unreserveHeadnodeForProvisioning,
+    createAmondevzone,
+    // TODO: get rereserveHeadnodeForProvisioning() to run on createAmontestzone() failure
+    rereserveHeadnodeForProvisioning,
     getAmonClient,
     loadAmonObjects
   ],
