@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ `uname -s` != "SunOS" ]; then
+    echo "error: bunyan wrapper will only work on SmartOS (readlink -f usage)" >&2
+    exit 1
+fi
+
+TOP=$(cd $(dirname $(readlink -f $0))/../ >/dev/null; pwd)
+NODE=$TOP/build/node/bin/node
+
+$NODE $TOP/node_modules/bunyan/bin/bunyan "$@"

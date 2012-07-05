@@ -19,7 +19,7 @@
     "preuninstall": "./pkg/preuninstall.sh"
   },
   "bin": {
-    "bunyan": "./node_modules/bunyan/bin/bunyan"
+    "bunyan": "./bin/bunyan"
   },
   "engines": {
     "node": ">=0.6"
