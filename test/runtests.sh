@@ -38,6 +38,7 @@ function usage
     echo "Options:"
     echo "  -c          Just clean up test data, don't run the tests."
     echo "  -q          Quick clean (don't blow away test users and machines)."
+    echo "  -f FILTER   Filter pattern (substring match) for test files to run."
 }
 
 
