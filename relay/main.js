@@ -1,11 +1,15 @@
 /*
- * Copyright 2011 Joyent, Inc.  All rights reserved.
+ * Copyright 2012 Joyent, Inc.  All rights reserved.
  *
  * Main entry-point for the Amon Relay. There is a tree of amon relay
  * go-betweens the central Amon Master and each Amon agent. Typically
  * there is one amon relay per SDC compute node. An amon relay supports
  * getting probe config data from the master to the appropriate agents
  * and relaying events from agents to the master for handling.
+ *
+ * Each relay also runs an admin http server on port 4307:
+ *
+ *    curl -i localhost:4307/ping
  */
 
 var fs = require('fs');
@@ -29,7 +33,7 @@ var App = require('./lib/app');
 var amonCommon = require('amon-common'),
   RelayClient = amonCommon.RelayClient,
   format = amonCommon.utils.format;
-
+var AdminApp = require('./lib/adminapp');
 var ZoneEventWatcher = require('./lib/zoneeventwatcher');
 
 
@@ -136,7 +140,8 @@ function getMasterUrl(poll, callback) {
         for (var i = 0; i < vms.length; i++) {
           var vm = vms[i];
           // Limitation: just using first one. Will need to change for H/A.
-          if (vm.tags && vm.tags.smartdc_role === 'amon') {
+          if (vm.tags && vm.tags.smartdc_role === 'amon'
+              && vm.state === 'running') {
             var amonIp = vm.nics && vm.nics[0] && vm.nics[0].ip;
             if (!amonIp) {
               log.error({amonZone: vm}, 'No Amon zone IP');
@@ -490,6 +495,27 @@ function startUpdateAgentProbesInterval(next) {
 }
 
 
+/**
+ * Start the admin app.
+ *
+ * @param callback {Function} Optional. `function (err)`
+ */
+function startAdminApp(callback) {
+  var adminApp = new AdminApp({
+    log: log,
+    updateAgentProbes: updateAgentProbes
+  });
+  adminApp.listen(function (err) {
+    if (err)
+      return callback(err);
+    var addr = adminApp.server.address();
+    log.info('Amon Relay Admin app listening on <http://%s:%s>.',
+      addr.address, addr.port);
+    callback();
+  });
+}
+
+
 function usage(code, msg) {
   if (msg) {
     console.error('ERROR: ' + msg + '\n');
@@ -604,7 +630,8 @@ function main() {
     updateZoneApps,
     startUpdateZoneAppsInterval,
     updateAgentProbes,
-    startUpdateAgentProbesInterval
+    startUpdateAgentProbesInterval,
+    startAdminApp
   ], function (err) {
     if (err) {
       log.error(err);

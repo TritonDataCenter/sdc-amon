@@ -142,9 +142,7 @@ function App(options) {
   });
   server.use(restify.queryParser());
   server.use(restify.bodyParser());
-  server.on('after', restify.auditLogger({
-    log: log.child({component: 'audit'})
-  }));
+  server.on('after', restify.auditLogger({log: log}));
   function setup(req, res, next) {
     req._agent = self.agent;
     req._relay = self.computeNodeUuid;

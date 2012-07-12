@@ -1,7 +1,7 @@
 ---
 title: Amon (SDC Monitoring and Alarming)
 markdown2extras: wiki-tables, code-friendly, cuddled-lists
-apisections: Master API: Monitors, Master API: Probes, Master API: Alarms, Master API: Maintenance Windows, Master API: Miscellaneous, Relay API
+apisections: Master API: Monitors, Master API: Probes, Master API: Alarms, Master API: Maintenance Windows, Master API: Miscellaneous, Relay API, Relay Admin API
 ---
 
 # Amon (SDC Monitoring and Alarming)
@@ -278,7 +278,7 @@ alarm ("Yah, I know it is a problem, but I can't deal with it right now.").
 ||closed||Boolean||Whether this alarm has been closed.||
 ||suppressed||Boolean||Whether notifications for this alarm are currently suppressed.||
 ||timeOpened||Integer||Timestamp (milliseconds since the epoch) at which the alarm was opened.||
-||timeClosed||Integer||Timestamp (milliseconds since the epoch) at which the alarm was closed.||
+||timeClosed||Integer||Timestamp (milliseconds since the epoch) at which the alarm was closed or null if the alarm is not closed.||
 ||timeLastEvent||Integer||Timestamp (milliseconds since the epoch) at which the last event for this alarm occurred.||
 ||v||Integer||The version of this Alarm object schema. Currently this is only exposed via the internal APIs.||
 
@@ -876,7 +876,7 @@ the master. This is done via the Relay API. The Amon Master also implements
 this API.
 
 Dev Note: The module "common/lib/relay-client.js" is used by both amon-relay
-and amon-master to speak the Relay API. In production usage the relays
+and amon-agent to speak the Relay API. In production usage the relays
 speak to the master over a network socket and agents speak to their relay
 over a Unix domain socket (zsocket).
 
@@ -903,7 +903,6 @@ stable "Content-MD5" header to use for caching.
 ||**Parameter**||**Required?**||**Default**||**Description**||
 ||agent||Required||-||The agent UUID. Note that the agent UUID is that of the machine -- VM, SmartMachine (aka zone), or physical node -- on which is runs.||
 
-
 ### Returns
 
 An array of probe objects, which contain:
@@ -924,6 +923,81 @@ for agent control data changes with less network overhead.
 
 ||**Parameter**||**Required?**||**Default**||**Description**||
 ||agent||Required||-||The agent UUID. Note that the agent UUID is that of the machine -- VM, SmartMachine (aka zone), or physical node -- on which is runs.||
+
+
+# Relay Admin API
+
+An amon-relay runs a local-IP-only HTTP admin server (port 4307) for local
+debugging, status and test support.
+
+## RelayAdminPing (GET /ping)
+
+A simple ping to see if the relay is up.
+
+### Inputs
+
+None.
+
+### Returns
+
+    {"ping": "pong"}
+
+### Errors
+
+None.
+
+### Example
+
+    $ curl -i localhost:4307/ping
+    HTTP/1.1 200 OK
+    Content-Type: application/json
+    Content-Length: 15
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
+    Access-Control-Allow-Methods: GET
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    Connection: Keep-Alive
+    Content-MD5: tBwJDpsyo/hcYx2xrziwrw==
+    Date: Fri, 22 Jun 2012 22:44:52 GMT
+    Server: Amon Relay Admin
+    X-Request-Id: 93f5241b-a18f-48d9-8433-34858eaaf626
+    X-Response-Time: 1
+
+    {"ping":"pong"}
+
+
+## RelayAdminSyncProbes (POST /state?action=syncprobes)
+
+Immediately update agentprobes data from the Amon master.
+
+
+### Inputs
+
+||**Field**||**Type**||**Description**||
+||action||String||"syncprobes"||
+
+### Returns
+
+Nothing. Just a 202 status and headers.
+
+### Errors
+
+None.
+
+### Example
+
+    $ curl -i localhost:4307/state?syncprobes -X POST
+    HTTP/1.1 202 Accepted
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
+    Access-Control-Allow-Methods: POST
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    Connection: Keep-Alive
+    Date: Fri, 22 Jun 2012 22:41:37 GMT
+    Server: Amon Relay Admin
+    X-Request-Id: b86337fa-9723-4f80-b6b8-976c5969bffd
+    X-Response-Time: 19
+    Transfer-Encoding: chunked
 
 
 
