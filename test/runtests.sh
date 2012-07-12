@@ -153,7 +153,8 @@ if [[ -n "$opt_test_pattern" ]]; then
     test_files=$(echo "$test_files" | grep "$opt_test_pattern")
     echo "# Running filtered set of test files: $test_files"
 fi
-PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP $test_files \
+# maintenances.test.js needs longer timeout
+PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP --timeout 180 $test_files \
     | tee $OUTPUT_DIR/amon-relay.tap
 
 # Also run the tests in the Amon Master(s).

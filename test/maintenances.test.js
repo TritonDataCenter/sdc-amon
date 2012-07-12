@@ -1,7 +1,7 @@
 /**
  * Copyright 2012 Joyent, Inc.  All rights reserved.
  *
- * Test a maintenance window scenario:
+ * Test maintenance windows. Scenarios/steps:
  *
  * - Ulrich creates a 'maintmon' monitor with the 'testWebhook' contact
  *   (setup in prep.js at http://localhost:8000/). Add a 'maintprobe' probe
@@ -35,15 +35,17 @@
  * machines with maint windows on both or just one.
  */
 
-var debug = console.log;
+var log = console.log;
 var fs = require('fs');
 var http = require('http');
 var format = require('util').format;
 var test = require('tap').test;
 var async = require('async');
 var uuid = require('node-uuid');
+var exec = require('child_process').exec;
 
 var common = require('./common');
+
 
 
 
@@ -54,6 +56,7 @@ var prep = JSON.parse(fs.readFileSync('/var/tmp/amontest/prep.json', 'utf8'));
 var ulrich = prep.ulrich;
 
 var MAINTSURL = '/pub/amontestuserulrich/maintenances';
+var ALARMSURL = '/pub/amontestuserulrich/alarms';
 
 
 
@@ -127,6 +130,29 @@ test('setup: maintprobe', function (t) {
       t.equal(obj.agent, probe.machine, 'expected "agent"');
       t.equal(obj.type, probe.type);
     }
+    t.end();
+  });
+});
+
+
+test('setup: sync all agents', function (t) {
+  // Currently, the only relevant relay and agent are the headnode GZ ones
+  // for the 'amontestzone'.
+  common.syncRelaysAndAgents([prep.amontestzone.server_uuid],
+                             [[prep.amontestzone.server_uuid, null]],
+                             function (err) {
+    t.ifError(err, 'error syncing amontestzone relay and agents: ' + err);
+    t.end();
+  });
+});
+
+
+test('setup: ensure no current alarms', function (t) {
+  var url = '/pub/amontestuserulrich/alarms';
+  masterClient.get(url, function (err, req, res, obj) {
+    t.ifError(err, 'GET ' + url);
+    t.ok(obj, 'got a response body');
+    t.equal(obj.length, 0);
     t.end();
   });
 });
@@ -227,7 +253,67 @@ test('maint basics: no maintenance windows', function (t) {
  * - Shutdown amontestzone: assert get alarm and notification.
  *   Restart amontestzone: assert get notification and alarm clears.
  */
-//XXX TODO
+
+var maint1AlarmId;
+
+test('maint 1: stop amontestzone', {timeout: 60000}, function (t) {
+  notifications = []; // reset
+  common.vmStop(prep.amontestzone.uuid, function (err) {
+    t.ifError(err, "stopping amontestzone");
+    t.end();
+  });
+});
+
+// TODO: race here? btwn previous test step and notification arriving?
+test('maint 1: got notification and alarm', function (t) {
+  t.equal(notifications.length, 1, 'got a notification');
+  var notification = notifications[0];
+  t.equal(notification.body.event.machine, prep.amontestzone.uuid,
+    'notification was for an event on amontestzone vm');
+  t.equal(notification.body.alarm.monitor, 'maintmon',
+    'notification was for an alarm for "maintmon" monitor');
+
+  masterClient.get(ALARMSURL, function (err, req, res, obj) {
+    t.ifError(err, 'GET ' + ALARMSURL);
+    t.ok(obj, 'got a response body');
+    t.ok(Array.isArray(obj));
+    t.equal(obj.length, 1, 'one alarm');
+    var alarm = obj[0];
+    maint1AlarmId = alarm.id; // save for subsequent test
+    t.equal(alarm.monitor, 'maintmon', 'alarm.monitor');
+    t.equal(alarm.closed, false);
+    t.equal(alarm.user, ulrich.uuid);
+    t.equal(alarm.faults.length, 1);
+    t.equal(alarm.faults[0].probe, 'maintprobe');
+    t.end();
+  });
+});
+
+test('maint 1: start amontestzone', {timeout: 60000}, function (t) {
+  notifications = [];
+  common.vmStart(prep.amontestzone.uuid, function (err) {
+    t.ifError(err, "starting amontestzone");
+    t.end();
+  });
+});
+
+// TODO: race here? btwn previous test step and notification arriving?
+test('maint 1: notification and alarm closed', function (t) {
+  t.equal(notifications.length, 1, 'got a notification');
+  var notification = notifications[0];
+  t.equal(notification.body.event.machine, prep.amontestzone.uuid,
+    'notification was for an event on amontestzone vm');
+  t.equal(notification.body.alarm.monitor, 'maintmon',
+    'notification was for an alarm for "maintmon" monitor');
+
+  var url = ALARMSURL + '/' + maint1AlarmId;
+  masterClient.get(url, function (err, req, res, alarm) {
+    t.ifError(err, 'GET ' + url);
+    t.equal(alarm.closed, true);
+    t.end();
+  });
+});
+
 
 /*
  * - Set maint window. Shutdown amontestzone: assert get alarm, no
@@ -237,12 +323,14 @@ test('maint basics: no maintenance windows', function (t) {
  */
 //XXX TODO
 
+
 /*
  * - Shutdown amontestzone (get alarm, notification). Set maint window
  *   on it. Restart amontestzone: assert alarm clears and get notification.
  *   Delete maint window.
  */
 //XXX TODO
+
 
 /*
  * - Set maint window on amontestzone. Shut it down. Assert get alarm, no
@@ -251,11 +339,13 @@ test('maint basics: no maintenance windows', function (t) {
  */
 //XXX TODO
 
+
 /*
  * - (Similar to previous, but manually delete maint window instead of
  *   expiry.)
  */
 //XXX TODO
+
 
 /*
  * - Set maint window on amontestzone. Shut it down. Assert get alarm, no
