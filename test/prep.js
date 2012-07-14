@@ -210,14 +210,10 @@ function addUlrichTestWebhookContact(next) {
     return next(new Error('cannot determine IP'));
   }
 
-  ufdsClient.getUser(ulrich.login, function (err, user) {
-    if (err)
-      return next(err);
-    var changes = {
-      'testWebhook': format('http://%s:8000/', gzIp)
-    };
-    ufdsClient.updateUser(user, changes, next);
-  });
+  var changes = {
+    'testWebhook': format('http://%s:8000/', gzIp)
+  };
+  ufdsClient.updateUser(ulrich.login, changes, next);
 }
 
 function ufdsClientUnbind(next) {

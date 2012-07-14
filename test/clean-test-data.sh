@@ -48,7 +48,7 @@ function clearUser() {
         sdc-amon /pub/$login/monitors/$monitor -X DELETE -f >/dev/null
     done
 
-    local alarms=$(sdc-amon /pub/amontestuserulrich/alarms | json -Ha id | xargs)
+    local alarms=$(sdc-amon /pub/amontestuserulrich/alarms?state=all | json -Ha id | xargs)
     for alarm in $alarms; do
         echo "# DELETE /pub/$login/alarms/$alarm"
         sdc-amon /pub/$login/alarms/$alarm -X DELETE -f >/dev/null

@@ -773,7 +773,7 @@ function apiListAlarms(req, res, next) {
   }
   var userUuid = req._user.uuid;
   var state = req.query.state || 'recent';
-  var validStates = ['recent', 'open', 'closed'];
+  var validStates = ['recent', 'open', 'closed', 'all'];
   if (validStates.indexOf(state) === -1) {
     return next(new restify.InvalidArgumentError(
       'invalid "state": "%s" (must be one of "%s")', state,
@@ -831,7 +831,9 @@ function apiListAlarms(req, res, next) {
 
       log.debug('filter alarms for state="%s"', state);
       filtered = [];
-      if (state === 'recent') {
+      if (state === 'all') {
+        filtered = alarms;
+      } else if (state === 'recent') {
         var ONE_HOUR_AGO = Date.now() - 60 * 60 * 1000;
         for (i = 0; i < alarms.length; i++) {
           a = alarms[i];

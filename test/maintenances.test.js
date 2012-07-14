@@ -264,15 +264,39 @@ test('maint 1: stop amontestzone', {timeout: 60000}, function (t) {
   });
 });
 
-// TODO: race here? btwn previous test step and notification arriving?
-test('maint 1: got notification and alarm', function (t) {
-  t.equal(notifications.length, 1, 'got a notification');
-  var notification = notifications[0];
-  t.equal(notification.body.event.machine, prep.amontestzone.uuid,
-    'notification was for an event on amontestzone vm');
-  t.equal(notification.body.alarm.monitor, 'maintmon',
-    'notification was for an alarm for "maintmon" monitor');
+test('maint 1: got notification', function (t) {
+  // Wait a bit for a notification.
+  var sentinel = 10;
+  async.until(
+    function () {
+      return (notifications.length >= 1);
+    },
+    function (next) {
+      sentinel--;
+      if (sentinel <= 0) {
+        return next('took too long to receive a notification');
+      }
+      setTimeout(function () {
+        log('# Check if have a notification (sentinel=%d).', sentinel);
+        next();
+      }, 1500);
+    },
+    function (err) {
+      t.ifError(err, err);
+      if (!err) {
+        t.equal(notifications.length, 1, 'got a notification');
+        var notification = notifications[0];
+        t.equal(notification.body.event.machine, prep.amontestzone.uuid,
+          'notification was for an event on amontestzone vm');
+        t.equal(notification.body.alarm.monitor, 'maintmon',
+          'notification was for an alarm for "maintmon" monitor');
+      }
+      t.end();
+    }
+  );
+});
 
+test('maint 1: got alarm', function (t) {
   masterClient.get(ALARMSURL, function (err, req, res, obj) {
     t.ifError(err, 'GET ' + ALARMSURL);
     t.ok(obj, 'got a response body');

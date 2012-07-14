@@ -59,7 +59,8 @@ PATH=/opt/smartdc/bin:$PATH
 opt_just_clean=
 opt_quick_clean=
 opt_test_pattern=
-while getopts "hcqf:" opt
+opt_just_prep=
+while getopts "hcqpf:" opt
 do
     case "$opt" in
         h)
@@ -71,6 +72,9 @@ do
             ;;
         q)
             opt_quick_clean=yes
+            ;;
+        p)
+            opt_just_prep=yes
             ;;
         f)
             opt_test_pattern=$OPTARG
@@ -138,6 +142,9 @@ fi
 # Bootstrap base test data.
 echo ""
 PATH=$NODE_INSTALL/bin:$PATH node $TOP/test/prep.js
+if [[ -n "$opt_just_prep" ]]; then
+    exit 0;
+fi
 
 # Drop Amon Master caches (start fresh).
 # Note: Still not sure if active amon-relays in the system hitting the

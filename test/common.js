@@ -194,7 +194,8 @@ function syncRelaysAndAgents(relays, agents, callback) {
  */
 function vmStop(uuid, callback) {
   var vmapiClient = new VMAPI({
-    url: process.env.VMAPI_URL
+    url: process.env.VMAPI_URL,
+    //log: new Logger({name: 'vmStop', level: 'trace', uuid: uuid})
   });
 
   vmapiClient.stopVm({uuid: uuid}, function (err, jobInfo) {
@@ -211,7 +212,8 @@ function vmStop(uuid, callback) {
  */
 function vmStart(uuid, callback) {
   var vmapiClient = new VMAPI({
-    url: process.env.VMAPI_URL
+    url: process.env.VMAPI_URL,
+    //log: new Logger({name: 'vmStart', level: 'trace', uuid: uuid})
   });
 
   vmapiClient.startVm({uuid: uuid}, function (err, jobInfo) {
@@ -228,7 +230,8 @@ function vmStart(uuid, callback) {
  */
 function vmReboot(uuid, callback) {
   var vmapiClient = new VMAPI({
-    url: process.env.VMAPI_URL
+    url: process.env.VMAPI_URL,
+    //log: new Logger({name: 'vmReboot', level: 'trace', uuid: uuid})
   });
   vmapiClient.rebootVm({uuid: uuid}, function (err, jobInfo) {
     if (err) {
