@@ -62,7 +62,7 @@ function clearUser() {
 
     if [[ ! -n "$opt_quick_clean" ]]; then
         local machines=$(sdc-vmapi /vms?owner_uuid=$uuid \
-            | json -c 'this.state==="running"' -Ha server_uuid uuid -d: | xargs)
+            | json -Ha server_uuid uuid -d: | xargs)
         for machine in $machines; do
             # We *could* do this:
             #    echo "# DELETE /vms/$machine"
