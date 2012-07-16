@@ -31,6 +31,8 @@ var sdcClients = require('sdc-clients'),
   CNAPI = sdcClients.CNAPI,
   UFDS = sdcClients.UFDS;
 
+var common = require('./common');
+
 
 
 //---- globals and constants
@@ -41,8 +43,6 @@ var odin = JSON.parse(
   fs.readFileSync(__dirname + '/user-amontestoperatorodin.json', 'utf8'));
 var ldapClient;
 var ufdsClient;
-var vmapiClient;
-var cnapiClient;
 var amontestzone; // the test zone to use
 var headnodeUuid;
 var amonZoneUuid;
@@ -232,22 +232,11 @@ function ldapClientUnbind(next) {
   }
 }
 
-function getVMapiClient(next) {
-  vmapiClient = new VMAPI({   // intentionally global
-    url: process.env.VMAPI_URL
-  });
-  next();
-}
-
-function getCnapiClient(next) {
-  cnapiClient = new CNAPI({   // intentionally global
-    url: process.env.CNAPI_URL
-  });
-  next();
-}
-
 function getHeadnodeUuid(next) {
   log('# Get headnode UUID.');
+  var cnapiClient = new CNAPI({   // intentionally global
+    url: process.env.CNAPI_URL
+  });
   cnapiClient.listServers(function (err, servers) {
     if (err) {
       return next(err);
@@ -307,6 +296,10 @@ function unreserveHeadnodeForProvisioning(next) {
 
 
 function createAmontestzone(next) {
+  var vmapiClient = new VMAPI({
+    url: process.env.VMAPI_URL
+  });
+
   // First check if there is a zone for ulrich.
   vmapiClient.listVms({owner_uuid: ulrich.uuid, alias: 'amontestzone'},
                      function (err, zones) {
@@ -329,45 +322,20 @@ function createAmontestzone(next) {
         alias: 'amontestzone',
         networks: externalNetworkUuid
       },
-      function (err2, createInfo) {
-        // TODO: Better would be to get `job_uuid` and wait on completion
-        // of the job (when vmapiClient.getJob exists).
-        log('# Waiting up to ~2min for new zone %s to start up.',
-            (createInfo ? createInfo.vm_uuid : '(error)'));
-        if (err2) {
-          return next(err2);
-        }
-        var vm_uuid = createInfo.vm_uuid;
-        var zone = null;
-        var sentinel = 40;
-        async.until(
-          function () {
-            return zone && zone.state === 'running';
-          },
-          function (nextCheck) {
-            sentinel--;
-            if (sentinel <= 0) {
-              return nextCheck('took too long for test zone status to '
-                + 'become \'running\'');
-            }
-            setTimeout(function () {
-              log('# Check if zone is running yet (sentinel=%d).', sentinel);
-              vmapiClient.getVm({uuid: vm_uuid, owner_uuid: ulrich.uuid},
-                               function (err3, zone_) {
-                if (err3) {
-                  return nextCheck(err3);
-                }
-                zone = zone_;
-                nextCheck();
-              });
-            }, 3000);
-          },
-          function (err4) {
-            if (!err4) {
+      function (err2, jobInfo) {
+        amontestzone = jobInfo.vm_uuid; // intentionally global
+        log('# amontestzone uuid: %s', amontestzone);
+        common.waitForVmapiJob({
+            vmapiClient: vmapiClient,
+            jobInfo: jobInfo,
+            timeout: 2 * 60 * 1000, /* 2 minutes */
+          }, function (err2) {
+            if (err2) return next(err2);
+            vmapiClient.getVm({uuid: jobInfo.vm_uuid}, function (err3, zone) {
+              if (err3) return next(err3);
               amontestzone = zone;
-              log('# Zone %s is running.', amontestzone.uuid);
-            }
-            next(err4);
+              next();
+            });
           }
         );
       }
@@ -431,8 +399,6 @@ async.series([
     makeOdinAnOperator,
     ldapClientUnbind,
     ufdsClientUnbind,
-    getVMapiClient,
-    getCnapiClient,
     getHeadnodeUuid,
     getSmartosDatasetUuid,
     getExternalNetworkUuid,

@@ -67,7 +67,6 @@ var notifications = [];
 
 test('setup: webhook collector', function (t) {
   webhookCollector = http.createServer(function (req, res) {
-    console.log('# webhookCollector request (%s %s)', req.method, req.url);
     var hit = {
       time: Date.now(),
       url: req.url,
@@ -78,6 +77,8 @@ test('setup: webhook collector', function (t) {
       body += chunk;
     });
     req.on('end', function () {
+      console.log('# webhookCollector request (%s %s): %j',
+        req.method, req.url, body);
       try {
         hit.body = JSON.parse(body);
       } catch (err) {
@@ -264,7 +265,7 @@ test('maint 1: stop amontestzone', {timeout: 60000}, function (t) {
   });
 });
 
-test('maint 1: got notification', function (t) {
+test('maint 1: got notification on zone stop', function (t) {
   // Wait a bit for a notification.
   var sentinel = 10;
   async.until(
@@ -296,7 +297,7 @@ test('maint 1: got notification', function (t) {
   );
 });
 
-test('maint 1: got alarm', function (t) {
+test('maint 1: got alarm on zone stop', function (t) {
   masterClient.get(ALARMSURL, function (err, req, res, obj) {
     t.ifError(err, 'GET ' + ALARMSURL);
     t.ok(obj, 'got a response body');

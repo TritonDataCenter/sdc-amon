@@ -32,20 +32,41 @@ function ensureLogDir() {
   }
 }
 
-function waitForVmapiJob(vmapiClient, jobInfo, callback) {
+/**
+ * Wait for a VMAPI Job to complete.
+ *
+ * @param options {Object}
+ *    - `vmapiClient` Required.
+ *    - `jobInfo` Required. The response body from the VMAPI request that
+ *      initiated the job.
+ *    - `timeout` Optional. A timeout in ms. The default is 30000 (i.e. 30s).
+ *      Note that this method polls every 1.5s, so that is the minimum
+ *      resolution.
+ * @param callback {Function} `function (err)`.
+ */
+function waitForVmapiJob(options, callback) {
+  if (!options) throw TypeError('"options" is required');
+  if (!options.vmapiClient)
+    throw TypeError('"options.vmapiClient" is required');
+  if (!options.jobInfo) throw TypeError('"options.jobInfo" is required');
+  var vmapiClient = options.vmapiClient;
+  var jobInfo = options.jobInfo;
+  var timeout = options.timeout || 30000;  /* default 30s timeout */
+
   log('# Waiting for job %s to complete.', jobInfo.job_uuid);
   var jobUuid = jobInfo.job_uuid;
   var job = null;
-  var sentinel = 20;
+  var POLL = 1500;
+  var sentinel = Math.max(Math.round(timeout / POLL), 1);
   async.until(
     function () {
       return job && job.execution !== 'running' && job.execution !== 'queued';
     },
     function (next) {
-      sentinel--;
       if (sentinel <= 0) {
         return next(format('took too long for job %s to complete', jobUuid));
       }
+      sentinel--;
       setTimeout(function () {
         log('# Check if job is complete (sentinel=%d).', sentinel);
         vmapiClient.getJob(jobUuid, function (err2, job_) {
@@ -55,7 +76,7 @@ function waitForVmapiJob(vmapiClient, jobInfo, callback) {
           job = job_;
           next();
         });
-      }, 1500);
+      }, POLL);
     },
     function (err) {
       if (err) {
@@ -202,7 +223,7 @@ function vmStop(uuid, callback) {
     if (err) {
       return callback(err);
     }
-    waitForVmapiJob(vmapiClient, jobInfo, callback);
+    waitForVmapiJob({vmapiClient: vmapiClient, jobInfo: jobInfo}, callback);
   });
 }
 
@@ -220,7 +241,7 @@ function vmStart(uuid, callback) {
     if (err) {
       return callback(err);
     }
-    waitForVmapiJob(vmapiClient, jobInfo, callback);
+    waitForVmapiJob({vmapiClient: vmapiClient, jobInfo: jobInfo}, callback);
   });
 }
 
@@ -237,7 +258,7 @@ function vmReboot(uuid, callback) {
     if (err) {
       return callback(err);
     }
-    waitForVmapiJob(vmapiClient, jobInfo, callback);
+    waitForVmapiJob({vmapiClient: vmapiClient, jobInfo: jobInfo}, callback);
   });
 }
 
@@ -262,6 +283,7 @@ function objCopy(obj) {
 module.exports = {
   createAmonMasterClient: createAmonMasterClient,
   syncRelaysAndAgents: syncRelaysAndAgents,
+  waitForVmapiJob: waitForVmapiJob,
   vmStop: vmStop,
   vmStart: vmStart,
   vmReboot: vmReboot,
