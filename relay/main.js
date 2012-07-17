@@ -272,7 +272,7 @@ function createMasterClient(next) {
 function startApp(app, callback) {
   return app.start(function (err) {
     if (!err)
-      app.log.info({agent: app.agent}, 'Amon-relay started');
+      app.log.info({agent: app.agent}, 'amon-relay app started for zone');
     if (callback)
       callback(err);
     return;

@@ -259,7 +259,7 @@ var maint1AlarmId;
 
 test('maint 1: stop amontestzone', {timeout: 60000}, function (t) {
   notifications = []; // reset
-  common.vmStop(prep.amontestzone.uuid, function (err) {
+  common.vmStop({uuid: prep.amontestzone.uuid, timeout: 40000}, function (err) {
     t.ifError(err, "stopping amontestzone");
     t.end();
   });
@@ -316,27 +316,72 @@ test('maint 1: got alarm on zone stop', function (t) {
 
 test('maint 1: start amontestzone', {timeout: 60000}, function (t) {
   notifications = [];
-  common.vmStart(prep.amontestzone.uuid, function (err) {
+  common.vmStart({uuid: prep.amontestzone.uuid, timeout: 40000}, function (err) {
     t.ifError(err, "starting amontestzone");
     t.end();
   });
 });
 
-// TODO: race here? btwn previous test step and notification arriving?
 test('maint 1: notification and alarm closed', function (t) {
-  t.equal(notifications.length, 1, 'got a notification');
-  var notification = notifications[0];
-  t.equal(notification.body.event.machine, prep.amontestzone.uuid,
-    'notification was for an event on amontestzone vm');
-  t.equal(notification.body.alarm.monitor, 'maintmon',
-    'notification was for an alarm for "maintmon" monitor');
+  // Wait a bit for a notification.
+  var sentinel = 10;
+  async.until(
+    function () {
+      return (notifications.length >= 1);
+    },
+    function (next) {
+      sentinel--;
+      if (sentinel <= 0) {
+        return next('took too long to receive a notification');
+      }
+      setTimeout(function () {
+        log('# Check if have a notification (sentinel=%d).', sentinel);
+        next();
+      }, 1500);
+    },
+    function (err) {
+      t.ifError(err, err);
+      if (!err) {
+        t.equal(notifications.length, 1, 'got a notification');
+        var notification = notifications[0];
+        t.equal(notification.body.event.machine, prep.amontestzone.uuid,
+          'notification was for an event on amontestzone vm');
+        t.equal(notification.body.alarm.monitor, 'maintmon',
+          'notification was for an alarm for "maintmon" monitor');
+      }
 
+      var url = ALARMSURL + '/' + maint1AlarmId;
+      masterClient.get(url, function (err, req, res, alarm) {
+        t.ifError(err, 'GET ' + url);
+        t.equal(alarm.closed, true);
+        t.end();
+      });
+    }
+  );
+});
+
+test('maint 1: clean up', function (t) {
   var url = ALARMSURL + '/' + maint1AlarmId;
-  masterClient.get(url, function (err, req, res, alarm) {
-    t.ifError(err, 'GET ' + url);
-    t.equal(alarm.closed, true);
+  masterClient.del(url, function (err, req, res, obj) {
+    t.ifError(err, 'DELETE ' + url);
+    t.equal(res.statusCode, 204);
     t.end();
   });
+});
+
+test('maint 1: wait until restarted zone has settled', function (t) {
+  // HACK: The right answer here (I think) is to wait for "milestone/multi-user"
+  // to be online in the amontestzone... and for the amon-relay to have
+  // re-created the zsock into that zone, i.e. this output in the amon-relay
+  // log:
+  //      [2012-07-17T18:37:49.479Z] DEBUG: amon-relay/6076 on headnode: check if zone "1a4d0111-3279-4d99-b4c9-aaa5e6d2c2e3" SMF "milestone/multi-user" is online (agent=1a4d0111-3279-4d99-b4c9-aaa5e6d2c2e3)
+  //      [2012-07-17T18:37:49.525Z] DEBUG: amon-relay/6076 on headnode: Opened zsock to zone "1a4d0111-3279-4d99-b4c9-aaa5e6d2c2e3" on FD 26 (agent=1a4d0111-3279-4d99-b4c9-aaa5e6d2c2e3)
+  //      [2012-07-17T18:37:49.631Z]  INFO: amon-relay/6076 on headnode: Amon-relay started (agent=1a4d0111-3279-4d99-b4c9-aaa5e6d2c2e3)
+  // However, I'm taking the quick way out right now and sleeping for 10s.
+  setTimeout(function () {
+    t.ok(true, "slept for 10s to let amontestzone settle (hack)")
+    t.end();
+  }, 10000);
 });
 
 
@@ -346,7 +391,151 @@ test('maint 1: notification and alarm closed', function (t) {
  *   Restart amontestzone: assert alarm clears, no notification.
  *   Delete maint window.
  */
-//XXX TODO
+
+var maint2 = {
+  start: 'now',
+  end: '10m',
+  notes: 'maint 2',
+  monitors: 'maintmon'
+};
+var maint2Id = null;
+var maint2AlarmId = null;
+
+test('maint 2: create maint window', function (t) {
+  var epsilon = 1000;  // 1 second slop
+  var expectedStart = Date.now();
+  var expectedEnd = expectedStart + 60 * 1000;
+  masterClient.post(MAINTSURL, maint2, function (err, req, res, obj) {
+    t.ifError(err, 'POST ' + MAINTSURL);
+    t.ok(obj, 'got a response body');
+    if (obj) {
+      t.ok(!isNaN(Number(obj.id)), 'id');
+      maint2Id = obj.id;
+      t.equal(obj.notes, maint2.notes, 'notes');
+      t.equal(obj.monitors[0], 'maintmon', '<maint>.monitors');
+    }
+    t.end();
+  });
+});
+
+test('maint 2: stop amontestzone', {timeout: 60000}, function (t) {
+  notifications = []; // reset
+  common.vmStop({uuid: prep.amontestzone.uuid, timeout: 60000}, function (err) {
+    t.ifError(err, "stopping amontestzone");
+    t.end();
+  });
+});
+
+test('maint 2: got alarm on zone stop', function (t) {
+  // Wait a bit for the alarm.
+  var alarms = null;
+  var sentinel = 10;
+  async.until(
+    function () {
+      return (alarms !== null && alarms.length > 0);
+    },
+    function (next) {
+      sentinel--;
+      if (sentinel <= 0) {
+        return next('took too long to get an alarm');
+      }
+      setTimeout(function () {
+        log('# Check if have an alarm (sentinel=%d).', sentinel);
+        masterClient.get(ALARMSURL, function (err, req, res, obj) {
+          if (err) return next(err);
+          alarms = obj;
+          next();
+        });
+      }, 1500);
+    },
+    function (err) {
+      t.ifError(err, err);
+      if (!err) {
+        t.equal(alarms.length, 1, 'one alarm');
+        var alarm = alarms[0];
+        maint2AlarmId = alarm.id; // save for subsequent test
+        t.equal(alarm.monitor, 'maintmon', 'alarm.monitor');
+        t.equal(alarm.closed, false);
+        t.equal(alarm.user, ulrich.uuid);
+        t.equal(alarm.faults.length, 0);
+        t.equal(alarm.maintenanceFaults.length, 1);
+        t.equal(alarm.maintenanceFaults[0].probe, 'maintprobe');
+      }
+      t.end();
+    }
+  );
+});
+
+test('maint 2: got NO notification on zone stop', function (t) {
+  t.equal(notifications.length, 0, "notification count is 0");
+  t.end();
+});
+
+test('maint 2: start amontestzone', {timeout: 60000}, function (t) {
+  common.vmStart({uuid: prep.amontestzone.uuid, timeout: 60000}, function (err) {
+    t.ifError(err, "starting amontestzone");
+    t.end();
+  });
+});
+
+test('maint 2: alarm clears on zone stop', function (t) {
+  // Wait a bit for the alarm to clear.
+  var alarm = null;
+  var sentinel = 10;
+  async.until(
+    function () {
+      return (alarm !== null && alarm.closed === true);
+    },
+    function (next) {
+      sentinel--;
+      if (sentinel <= 0) {
+        return next('took too long for alarm to clear');
+      }
+      setTimeout(function () {
+        log('# Check if alarm %d has cleared (sentinel=%d).',
+          maint2AlarmId, sentinel);
+        var url = ALARMSURL + '/' + maint2AlarmId;
+        masterClient.get(url, function (err, req, res, obj) {
+          if (err) return next(err);
+          alarm = obj;
+          next();
+        });
+      }, 1500);
+    },
+    function (err) {
+      t.ifError(err, err);
+      t.end();
+    }
+  );
+});
+
+test('maint 2: got NO notification on zone start', function (t) {
+  t.equal(notifications.length, 0, "notification count is 0");
+  t.end();
+});
+
+test('maint 2: clean up', function (t) {
+  var url = ALARMSURL + '/' + maint2AlarmId;
+  masterClient.del(url, function (err, req, res, obj) {
+    t.ifError(err, 'DELETE ' + url);
+    t.equal(res.statusCode, 204);
+
+    var url = MAINTSURL + '/' + maint2Id;
+    masterClient.del(url, function (err2, req2, res2, obj2) {
+      t.ifError(err2, 'DELETE ' + url);
+      t.equal(res2.statusCode, 204);
+      t.end();
+    });
+  });
+});
+
+test('maint 2: wait until restarted zone has settled', function (t) {
+  // HACK: See HACK discussion above.
+  setTimeout(function () {
+    t.ok(true, "slept for 10s to let amontestzone settle (hack)")
+    t.end();
+  }, 10000);
+});
 
 
 /*

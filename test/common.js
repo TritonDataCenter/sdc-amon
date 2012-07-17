@@ -212,53 +212,121 @@ function syncRelaysAndAgents(relays, agents, callback) {
 
 /**
  * Stop the given vm.
+ *
+ * @param options {Object}
+ *    - `uuid` Required. UUID of VM to stop.
+ *    - `timeout` Optional. A timeout in ms. The default is 30000 (i.e. 30s).
+ *      Note that this method polls every 1.5s, so that is the minimum
+ *      resolution.
+ * @param callback {Function} `function (err)`.
  */
-function vmStop(uuid, callback) {
+function vmStop(options, callback) {
+  if (!options) throw new TypeError('"options" is required');
+  if (!options.uuid) throw new TypeError('"options.uuid" is required');
+  var uuid = options.uuid;
+
   var vmapiClient = new VMAPI({
+    //log: new Logger({name: 'vmStop', level: 'trace', uuid: uuid}),
     url: process.env.VMAPI_URL,
-    //log: new Logger({name: 'vmStop', level: 'trace', uuid: uuid})
+    // Tuned to spread 3 attempts over about a minute.
+    // See formula at <https://github.com/tim-kos/node-retry>.
+    retry: {
+      retries: 2,
+      factor: 10,
+      minTimeout: 10000,
+      maxTimeout: 60 * 1000
+    }
   });
 
   vmapiClient.stopVm({uuid: uuid}, function (err, jobInfo) {
     if (err) {
       return callback(err);
     }
-    waitForVmapiJob({vmapiClient: vmapiClient, jobInfo: jobInfo}, callback);
+    waitForVmapiJob({
+        vmapiClient: vmapiClient,
+        jobInfo: jobInfo,
+        timeout: options.timeout
+      }, callback);
   });
 }
 
 
 /**
  * Start the given vm.
+ *
+ * @param options {Object}
+ *    - `uuid` Required. UUID of VM to start.
+ *    - `timeout` Optional. A timeout in ms. The default is 30000 (i.e. 30s).
+ *      Note that this method polls every 1.5s, so that is the minimum
+ *      resolution.
+ * @param callback {Function} `function (err)`.
  */
-function vmStart(uuid, callback) {
-  var vmapiClient = new VMAPI({
-    url: process.env.VMAPI_URL,
-    //log: new Logger({name: 'vmStart', level: 'trace', uuid: uuid})
-  });
+function vmStart(options, callback) {
+  if (!options) throw new TypeError('"options" is required');
+  if (!options.uuid) throw new TypeError('"options.uuid" is required');
+  var uuid = options.uuid;
 
+  var vmapiClient = new VMAPI({
+    //log: new Logger({name: 'vmStart', level: 'trace', uuid: uuid}),
+    url: process.env.VMAPI_URL,
+    // Tuned to spread 3 attempts over about a minute.
+    // See formula at <https://github.com/tim-kos/node-retry>.
+    retry: {
+      retries: 2,
+      factor: 10,
+      minTimeout: 10000,
+      maxTimeout: 60 * 1000
+    }
+  });
   vmapiClient.startVm({uuid: uuid}, function (err, jobInfo) {
     if (err) {
       return callback(err);
     }
-    waitForVmapiJob({vmapiClient: vmapiClient, jobInfo: jobInfo}, callback);
+    waitForVmapiJob({
+        vmapiClient: vmapiClient,
+        jobInfo: jobInfo,
+        timeout: options.timeout
+      }, callback);
   });
 }
 
 
 /**
  * Reboot the given vm.
+ *
+ * @param options {Object}
+ *    - `uuid` Required. UUID of VM to reboot.
+ *    - `timeout` Optional. A timeout in ms. The default is 30000 (i.e. 30s).
+ *      Note that this method polls every 1.5s, so that is the minimum
+ *      resolution.
+ * @param callback {Function} `function (err)`.
  */
-function vmReboot(uuid, callback) {
+function vmReboot(options, callback) {
+  if (!options) throw new TypeError('"options" is required');
+  if (!options.uuid) throw new TypeError('"options.uuid" is required');
+  var uuid = options.uuid;
+
   var vmapiClient = new VMAPI({
+    //log: new Logger({name: 'vmReboot', level: 'trace', uuid: uuid}),
     url: process.env.VMAPI_URL,
-    //log: new Logger({name: 'vmReboot', level: 'trace', uuid: uuid})
+    // Tuned to spread 3 attempts over about a minute.
+    // See formula at <https://github.com/tim-kos/node-retry>.
+    retry: {
+      retries: 2,
+      factor: 10,
+      minTimeout: 10000,
+      maxTimeout: 60 * 1000
+    }
   });
   vmapiClient.rebootVm({uuid: uuid}, function (err, jobInfo) {
     if (err) {
       return callback(err);
     }
-    waitForVmapiJob({vmapiClient: vmapiClient, jobInfo: jobInfo}, callback);
+    waitForVmapiJob({
+        vmapiClient: vmapiClient,
+        jobInfo: jobInfo,
+        timeout: options.timeout
+      }, callback);
   });
 }
 
