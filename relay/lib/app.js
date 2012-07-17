@@ -103,6 +103,7 @@ function App(options) {
     throw TypeError('options.masterClient is required');
   var self = this;
 
+  this.closed = false;
   this.agent = options.agent;
   var log = this.log = options.log.child({agent: this.agent}, true);
   this.computeNodeUuid = options.computeNodeUuid;
@@ -222,6 +223,9 @@ App.prototype.start = function (callback) {
   }
 
   function retrieveOwner(next) {
+    if (self.closed) {
+      return next();
+    }
     if (self.owner || self.agent === self.computeNodeUuid) {
       return next();
     }
@@ -238,10 +242,15 @@ App.prototype.start = function (callback) {
   }
 
   function waitForMultiUser(next) {
+    if (self.closed) {
+      return next();
+    }
     if (self.localMode) {
       return next();
     }
     if (!self.isZoneRunning) {
+      log.debug({zonename: zonename},
+        'zone is not running so don\'t wait for "milestone/multi-user');
       return next();
     }
     var timeout = 5 * 60 * 1000; // 5 minutes
@@ -255,6 +264,9 @@ App.prototype.start = function (callback) {
   }
 
   function createSocket(next) {
+    if (self.closed) {
+      return next();
+    }
     if (self.localMode) {
       log.debug('Starting app on local socket "%s".', self.socket);
       return self.server.listen(self.socket, next);
@@ -282,7 +294,7 @@ App.prototype.start = function (callback) {
       // attribute rather than it *being* a `net.Server` subclass.
       self.server.server._handle = p;
       self.server.listen(function () {
-        callback();
+        next();
       });
     });
   }
@@ -297,6 +309,9 @@ App.prototype.start = function (callback) {
       var msg = 'error starting relay';
       log.error({err: err, zonename: zonename}, msg);
       return self.sendOperatorEvent(msg, {zonename: zonename}, callback);
+    } else if (self.closed) {
+      log.info('re-close App to ensure possible zsock FD is closed');
+      self.close(callback);
     } else {
       callback();
     }
@@ -311,7 +326,8 @@ App.prototype.start = function (callback) {
  */
 App.prototype.close = function (callback) {
   this.log.info('close app for agent "%s"', this.agent);
-  if (this.isZoneRunning) {
+  this.closed = true;
+  if (this.server.server._handle) {
     this.server.once('close', callback);
     try {
       this.server.close();

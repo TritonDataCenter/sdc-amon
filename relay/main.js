@@ -295,6 +295,7 @@ function startZoneEventWatcher(next) {
     // Remove possibly existing old app.
     var app = zoneApps[zonename];
     if (app) {
+      log.debug({zonename: zonename}, 'deleting old zone app');
       delete zoneApps[zonename];
       app.close(function () {});
     }
