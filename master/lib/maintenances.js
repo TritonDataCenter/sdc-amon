@@ -157,7 +157,7 @@ function dateFromEnd(end) {
  * @throws {TypeError} if the given CSV row is invalid
  */
 function parseCSVRow(s) {
-  var DEBUG = true;
+  var DEBUG = false;
   var row = [];
   var i = 0;
   var ch;
@@ -281,6 +281,8 @@ function serializeCSVRow(a) {
     if (elem.indexOf(' ') !== -1 || elem.indexOf('\t') !== -1 ||
         elem.indexOf(',') !== -1 || elem.indexOf('"') !== -1) {
       row.push('"' + elem.replace(/"/g, '""') + '"')
+    } else {
+      row.push(elem);
     }
   }
   return row.join(',');
