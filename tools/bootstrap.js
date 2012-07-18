@@ -49,7 +49,7 @@ var vmapiClient;
 var cnapiClient;
 var amonClient;
 
-var JSON3 = path.resolve(__dirname, '../test/node_modules/.bin/json3');
+var JSONTOOL = path.resolve(__dirname, '../node_modules/.bin/json');
 
 
 
@@ -274,7 +274,7 @@ function getSmartosDatasetUuid(next) {
 function getExternalNetworkUuid(next) {
   log('# Get "external" network UUID.');
   exec(format('ssh %s /opt/smartdc/bin/sdc-napi /networks | %s -H -c \'name === "external"\' 0.uuid',
-              headnodeAlias, JSON3),
+              headnodeAlias, JSONTOOL),
        function (err, stdout, stderr) {
     if (err) {
       return next(err);

@@ -2,14 +2,17 @@
   "name": "amon",
   "version": "1.0.0",
   "dependencies": {
-    "bunyan": {
-      "version": "0.10.0"
-    },
     "node-dev": {
       "version": "0.2.4"
     },
+    "bunyan": {
+      "version": "0.10.0"
+    },
     "async": {
       "version": "0.1.22"
+    },
+    "jsontool": {
+      "version": "3.3.0"
     },
     "hiredis": {
       "version": "0.1.14"
