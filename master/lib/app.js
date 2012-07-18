@@ -262,9 +262,7 @@ function App(config, cnapiClient, vmapiClient, log) {
   });
   server.use(restify.queryParser({mapParams: false}));
   server.use(restify.bodyParser({mapParams: false}));
-  server.on('after', restify.auditLogger({
-    log: log.child({component: 'audit'})
-  }));
+  server.on('after', restify.auditLogger({log: log, body: true}));
   server.on('uncaughtException', function (req, res, route, err) {
     req.log.error(err);
     res.send(err);

@@ -44,7 +44,7 @@ function AdminApp(options) {
     log: log
   });
   server.use(restify.queryParser());
-  server.on('after', restify.auditLogger({log: log}));
+  server.on('after', restify.auditLogger({log: log, body: true}));
 
   // Routes.
   this.server.get({path: '/ping', name: 'RelayAdminPing'},
