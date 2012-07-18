@@ -85,33 +85,27 @@ plugins: | $(NPM_EXEC)
 
 .PHONY: agent
 agent: common plugins | $(NPM_EXEC)
-	(cd agent && $(NPM) install && $(NPM) update && $(NPM) link amon-common amon-plugins)
+	(cd agent && $(NPM) link amon-common amon-plugins && $(NPM) install && $(NPM) update)
 
 .PHONY: relay
-relay: common testbuild | $(NPM_EXEC) deps/node-sdc-clients/.git
-	(cd relay && $(NPM) install && $(NPM) update && $(NPM) install ../deps/node-sdc-clients && $(NPM) link amon-common amon-plugins)
-	# Workaround https://github.com/isaacs/npm/issues/2144#issuecomment-4062165
-	(cd relay && rm -rf node_modules/zutil/build && $(NPM) rebuild zutil)
+relay: common testbuild | $(NPM_EXEC)
+	(cd relay && $(NPM) link amon-common amon-plugins && $(NPM) install && $(NPM) update)
 
 .PHONY: master
-master: common plugins | $(NPM_EXEC) deps/node-sdc-clients/.git
-	(cd master && $(NPM) install && $(NPM) update && $(NPM) install ../deps/node-sdc-clients && $(NPM) link amon-common amon-plugins)
+master: common plugins | $(NPM_EXEC)
+	(cd master && $(NPM) link amon-common amon-plugins && $(NPM) install && $(NPM) update)
 
 # 'testbuild' is the name for building in the 'test' dir. Want 'make test'
 # to actually *run* the tests.
 .PHONY: testbuild
-testbuild: | $(NPM_EXEC) deps/node-sdc-clients/.git
-	(cd test && $(NPM) install && $(NPM) update && $(NPM) install ../deps/node-sdc-clients)
+testbuild: | $(NPM_EXEC)
+	(cd test && $(NPM) install && $(NPM) update)
 
 # "dev" is the name for the top-level dev package
 .PHONY: dev
-dev: common | $(NPM_EXEC) deps/node-sdc-clients/.git
-	$(NPM) install deps/node-sdc-clients
+dev: common | $(NPM_EXEC)
 	$(NPM) link amon-common
 	$(NPM) install
-
-deps/node-sdc-clients/.git:
-	GIT_SSL_NO_VERIFY=1 git submodule update --init deps/node-sdc-clients
 
 
 #

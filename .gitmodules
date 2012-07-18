@@ -4,9 +4,6 @@
 [submodule "deps/restdown"]
 	path = deps/restdown
 	url = git://github.com/trentm/restdown.git
-[submodule "deps/node-sdc-clients"]
-	path = deps/node-sdc-clients
-	url = git@git.joyent.com:node-sdc-clients.git
 [submodule "deps/javascriptlint"]
 	path = deps/javascriptlint
 	url = git://github.com/davepacheco/javascriptlint.git
