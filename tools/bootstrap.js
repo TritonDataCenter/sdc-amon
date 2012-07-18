@@ -49,8 +49,9 @@ var vmapiClient;
 var cnapiClient;
 var amonClient;
 
+// We can presume the user has a `node` on the PATH, right? Don't want to
+// use 'build/node/bin/node' to allow this script to run on Mac.
 var JSONTOOL = path.resolve(__dirname, '../node_modules/.bin/json');
-
 
 
 
@@ -259,7 +260,7 @@ function getSmartosDatasetUuid(next) {
   log('# Get "smartos" dataset UUID.');
   // Presume just one smartos-*.dsmanifest file for now.
   exec(format('ssh %s cat /usbkey/datasets/smartos-*.dsmanifest '
-              + '| json uuid', headnodeAlias),
+              + '| %s uuid', headnodeAlias, JSONTOOL),
        function (err, stdout, stderr) {
     if (err) {
       return next(err);
@@ -415,6 +416,7 @@ function getAmonClient(next) {
 
 
 function loadAmonObject(obj, next) {
+  if (obj === undefined) return;
   if (obj.probe) {
     amonClient.listProbes(obj.user, obj.monitor, function(err, probes) {
       if (err)
