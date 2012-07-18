@@ -6,7 +6,7 @@
   "private": true,
   "main": "lib/index.js",
   "dependencies": {
-    "bunyan": "0.7.0",
+    "bunyan": "0.10.0",
     "tap": "0.2"
   },
   "engines": {
