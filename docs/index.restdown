@@ -1616,3 +1616,82 @@ Notes:
   Ask ops about what kinds of monitoring checks they have setup typically.
 - TODO: how to monitor percentiles? E.g. prio1 alarm if 90th percentile
   response time is >200ms or something?
+
+
+
+# Operator Guide
+
+This section is intended to give necessary information for diagnosing and
+dealing with issues with Amon in a SmartDataCenter installation.
+
+Amon consists of three pieces:
+
+1. One or more "amon-masters". This is an "amon-master" service running in an
+   "amon" zone. If/when HA is added for amon, there may be more than one
+   of these zones. To list them:
+
+        sdc-vmapi /vms?owner_uuid=$(bash /lib/sdc/config.sh -json | json ufds_admin_uuid) \
+            | json -H -c "tags.smartdc_role=='amon'"
+
+   The master provides the "Master API" endpoints (as documented above).
+   The Operator Portal (adminui) exposes the Amon Master API. Parts of the
+   Master API are exposed through cloudapi (and then for use by the User
+   Portal).
+
+   A user defines Amon "monitors" and "probes" on the Master API.
+
+2. One "amon-relay" agent in the GZ of each compute node (including the
+   headnode). This is an "amon-relay" service.
+
+3. Many "amon-agent" agents. There will always be an amon-agent agent in
+   each GZ. There may also optionally be a running amon-agent in any zone
+   (typically SDC zones will be running an amon-agent). Runnable amon-agent
+   installations will be exposed to zones (including customer zones) from
+   the GZ. It is up to each zone to run (or not) an amon-agent.
+
+   Running an amon-agent in a kvm *VM* (say, a Linux or Windows VM) is not
+   yet supported.
+
+
+Amon is mostly local to a data center. I.e. when a user creates an Amon
+object (a "monitor" or "probe") or when an Amon "alarm" is created for a
+fault, it is local to that data center. The only exception is that contact
+details used for notifications (e.g. email address, phone number for SMS,
+URL for webhooks) are attributes on the user record in UFDS (the "sdcPerson"
+objectclass in LDAP). This part of UFDS is replicated across all data
+centers in a cloud.
+
+
+## Health
+
+An amon service *should* be healthy if all its services are up:
+
+    $ sdc-oneachnode 'svcs -Zx | grep amon'
+
+An "amon-master" has a "/ping" endpoint to indicate if it is up
+
+    $ sdc-amon /ping
+
+or if there are multiple Amon Masters:
+
+    $ for ip in $(bash /lib/sdc/config.sh -json | json amon_admin_ips | tr ',' ' '); do \
+        echo "# $ip" ; \
+        curl -sS http://$ip/ping | json ; \
+    done
+
+Each "amon-relay" also has a "/ping" endpoint:
+
+    $ sdc-oneachnode 'curl -sS localhost:4307/ping'
+    HOST                 OUTPUT
+    headnode             {"ping":"pong"}
+    computenodeA         {"ping":"pong"}
+
+TODO: sdc-healthcheck, sdc-webinfo
+
+
+## Logs
+
+||**service/path**||**where**||**format**||**tail -f**||
+||amon-master||in each "amon" zone||[Bunyan](https://github.com/trentm/node-bunyan)||`` sdc-login amon; tail -f `svcs -L amon-master` | bunyan ``||
+||amon-relay||in each GZ||[Bunyan](https://github.com/trentm/node-bunyan)||`` tail -f `svcs -L amon-relay` | bunyan ``||
+||amon-agent||in each GZ and in some zones||[Bunyan](https://github.com/trentm/node-bunyan)||`` tail -f `svcs -L amon-agent` | bunyan ``||
