@@ -420,7 +420,7 @@ Probe.validateName = function validateName(name) {
 };
 
 // Note: Should be in sync with "ufds/schema/amonprobe.js".
-Probe._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,31}$/;
+Probe._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,511}$/;
 
 
 
