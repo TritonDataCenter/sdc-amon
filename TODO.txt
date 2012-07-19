@@ -135,6 +135,7 @@
 - http://circonus.com/resources/videos#play-video-rule-notifications for
   probe facilities.
 - probe types to consider: https://support.cloudkick.com/Category:Checks
+  https://nodefly.com/
 
 
 # someday/maybe
