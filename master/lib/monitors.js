@@ -189,7 +189,7 @@ Monitor.validateName = function validateName(name) {
 };
 
 // Note: Should be in sync with 'ufds/schema/amonmonitor.js'.
-Monitor._nameRegex = /^[a-zA-Z][a-zA-Z0-9_\.-]{0,511}$/;
+Monitor._nameRegex = /^[a-zA-Z0-9][a-zA-Z0-9_\.-]{0,511}$/;
 
 
 
