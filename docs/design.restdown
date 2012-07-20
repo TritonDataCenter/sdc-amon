@@ -13,6 +13,72 @@ in the future when Amon design might have moved on. *Add new sections to
 the top.*
 
 
+# contact objectclass in UFDS (20-July-2012)
+
+How do you add a contact entry? In the current design, contacts are fields
+on the UFDS sdcPerson entry. That currently means you need to `ldapmodify`
+to add those entries.
+
+An Amon monitor has a "contacts" field which is a list of contact names (used
+to send notifications), e.g.:
+
+    contacts: ["email", "myWebhook"],
+
+Those string values are just a field name on the "sdcPerson" entry in UFDS.
+Currently Amon doesn't provide any API to add/update/remove those field
+entries on UFDS. I'm thinking that it should. Cloud API doesn't otherwise
+provide an API to tweak the sdcPerson record.
+
+The API would be something like:
+
+    sdc-amon /pub/:account/contacts/       # ListContacts
+    sdc-amon /pub/:account/contacts/:name   # GetContact
+    sdc-amon /pub/:account/contacts/:name -X PUT ...  # PutContact
+    sdc-amon /pub/:account/contacts/:name -X DELETE  # DeleteContact
+
+
+The contact is just a key/value pair, but Amon needs to know the notification
+*type* as well as *address* info. For example "joe@example.com" is the
+address, but "email" is the type. The current mechanism for this is to
+require that the field name end with the type of a supported notification
+type. E.g. "secondaryEmail" ends with "email" so we use the "email"
+notification type, "myWebhook" ends with "webhook", ... Admittedly that isn't
+very rigorous.
+
+A motivator for just using key/value fields on the sdcPerson as opposed to
+having a separate "contact" objectclass was: (a) to use the existing "email"
+field on sdcPerson entries (and possibly the "phone" field) and (b)
+simplicity.
+
+Now I'm reconsidering. I think the "simplicity" here isn't:
+
+- ListContacts is problematic because there is no solid rule that says which
+  sdcPerson fields are contacts and which not
+- The rule to have the notification type in the contact name is lame.
+- No obvious way to have a "this is a verified email" flag on a particular
+  email.
+- Using the existing "email" field on sdcPerson could easily be special cased.
+- For complex notification types that require a few pieces of information
+  (e.g. a twilio one that needs an API token or whatever): we'd have to
+  encode that data into one UFDS value. Not a big deal, but a bit silly.
+
+...
+
+Discussed with this Yunong. We think a separate "objectclass=sdccontact"
+that hangs off the sdcPerson entry and *is* replicated to all DCs. An
+"sdccontact" will have a "name" field that is unique for that user (allowing
+the array of contact names on an "amonmonitor" to be sufficient). `name=email`
+will be special cased to use the "email" value on the sdcPerson... because
+that is a naturally updated contact field right now.
+
+Why "sdccontact" and not "amoncontact"? It feels general enough that other
+parts of SDC *might* want to use this. Currently tho the Amon Master API
+will rule these entries. If it *does* become more widely used, then
+really should have a separate "Contacts API" or "Notification API" or
+whatever that handles (a) updating "sdccontact" entries and (b) perhaps
+the sending of notifications.
+
+
 # maintenance windows (20-Apr-2012)
 
 From the MVP:
