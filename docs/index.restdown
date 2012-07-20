@@ -27,6 +27,27 @@ Where ":account" is typically a user UUID. However, for convenience in
 development, ":account" may also be a user's login string. Note that Amon
 does no auth. That is up to Cloud API.
 
+
+## Conventions and Notes
+
+Any content formatted like this:
+
+    $ sdc-amon /ping
+
+is a command-line example that you can run from a shell. All other examples
+and information are formatted like this:
+
+    GET /my/stor/foo HTTP/1.1
+
+`sdc-amon` is a light wrapper around `curl` for calling the Amon Master API.
+It is available in the GZ ([source
+code](https://mo.joyent.com/usb-headnode/blob/master/tools/sdc-amon)). For
+example `sdc-amon /ping` translates to:
+
+    curl -sS -i -H accept:application/json -H content-type:application/json \
+        --url http://10.2.207.185/ping
+
+
 ## Current Status
 
 - Functional for internal SDC usage, but not yet for customers.
@@ -35,6 +56,7 @@ does no auth. That is up to Cloud API.
   limits which [types of probes](#probe-types) can be effective run.
   See [MON-29](https://devhub.joyent.com/jira/browse/MON-29).
 - Amon is not integrated into cloudapi, portal or adminui.
+
 
 
 # Amon Overview
@@ -75,6 +97,31 @@ things to check, and "contacts", who to notify when a fault is detected by
 this monitor. A monitors has a "name" that is unique to that user. See
 [Master API: Monitors](#master-api-monitors) for how to create/list/delete
 monitors.
+
+
+## Contacts
+
+A **contact** provides the data needed to send a notification. Each monitor
+has a list of contact names that are all notified for alarms. Currently,
+a contact is a name/value pair stored on the "sdcPerson" object in UFDS.
+For example, this user (ulrich):
+
+    $ ldapsearch ... login=ulrich
+    dn: uuid=deadbeef-1111-1111-1111-111111111111, ou=users, o=smartdc
+    cn: Ulrich
+    sn: Greunfeld
+    email: ulrich@example.com
+    login: ulrich
+    objectclass: sdcperson
+    uuid: 0754aa4c-bdc2-374c-bdc0-32702564210f
+    testwebhook: http://10.2.207.2:8000/
+
+Contacts for Ulrich are `email: ulrich@example.com` (notification type
+"email") and `testwebhook: http://10.2.207.2:8000/` (notification type
+"webhook). The *type* of notification mechanism must be the suffix of the
+contact name. (That is lame and will be changed.)
+
+TODO: Describe the new contacts API and handling when implemented (MON-150)
 
 
 ## Probes
@@ -167,13 +214,22 @@ they can leverage the codes above.
 
 
 
-
 # Master API: Monitors
 
 A monitor is the primary object for defining what and how to monitor and
 who should be notified on alarms. A monitor holds a reference to
-contacts to notify. A set of probes to run (e.g. check for N occurrences of
-"ERROR" in "/var/foo/bar.log" in a minute) are added to a monitor.
+contacts to notify when this monitor alarms. A set of probes to run (e.g.
+check for N occurrences of "ERROR" in "/var/foo/bar.log" in a minute) are
+[added](#PutProbe) to a monitor. See the [Monitors](#monitors) section above
+for more details.
+
+In the API, a monitor contains the following fields:
+
+||**Field**||**Type**||**Description**||
+||user||String||The UUID of the owning user of this monitor.||
+||name||String||Name of this monitor. This is unique for monitors owned by this user. It must be 1-512 chars, begin with alpha character and include only alphanumeric, '_', '.' and '-' ||
+||contacts||Array||Set of contact names that are to be notified when this monitor alarms.||
+
 
 ## ListMonitors (GET /pub/:account/monitors)
 
@@ -185,10 +241,7 @@ None.
 
 ### Returns
 
-An array of monitor objects. Keys are:
-
-||name||String||Name of this monitor. This is the unique identifier for this monitor. It must be 1-32 chars, begin with alpha character and include only alphanumeric '_', '.' and '-' ||
-||contacts||Array||Set of contact names that are to be notified when this monitor alarms.||
+An array of monitor objects.
 
 ### Errors
 
@@ -196,27 +249,34 @@ TODO
 
 ### Example
 
-    $ sdc-amon /pub/hamish/monitors
+    $ sdc-amon /pub/bob/monitors
     HTTP/1.1 200 OK
-    Connection: close
-    Date: Tue, 08 Nov 2011 00:38:54 GMT
-    Server: Amon Master/1.0.0
-    X-Api-Version: 1.0.0
-    X-Request-Id: addcc1ab-cdd2-4961-b4f8-b44a7ab2a31a
-    X-Response-Time: 491
-    Content-Length: 42
-    Content-MD5: 3/3Q0/Mz/37AHee5JHHJ1Q==
     Content-Type: application/json
+    Content-Length: 170
     Access-Control-Allow-Origin: *
-    Access-Control-Allow-Methods: OPTIONS, GET
-    Access-Control-Allow-Headers: Accept, Content-Type, Content-Length, Date, X-Api-Version
+    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
+    Access-Control-Allow-Methods: GET
     Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    Connection: Keep-Alive
+    Content-MD5: aPdvA3zqGEk8THhmD9i/HQ==
+    Date: Fri, 20 Jul 2012 19:49:25 GMT
+    Server: Amon Master/1.0.0
+    X-Request-Id: 86fba3a6-0c08-47f0-851d-a1a27e87d664
+    X-Response-Time: 78
 
     [
       {
-        "name": "mysql",
+        "user": "a3046060-e49c-244e-a146-7a769550cbbb",
+        "name": "whistle",
         "contacts": [
-          "cellPhone"
+          "email"
+        ]
+      },
+      {
+        "user": "a3046060-e49c-244e-a146-7a769550cbbb",
+        "name": "isup",
+        "contacts": [
+          "email"
         ]
       }
     ]
@@ -224,11 +284,95 @@ TODO
 
 ## GetMonitor (GET /pub/:account/monitors/:monitor)
 
+Get a monitor by name.
+
+### Inputs
+
+None.
+
+### Returns
+
+A monitor object.
+
+### Errors
+
 TODO
+
+### Example
+
+    $ sdc-amon /pub/bob/monitors/whistle
+    HTTP/1.1 200 OK
+    Content-Type: application/json
+    Content-Length: 85
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
+    Access-Control-Allow-Methods: GET
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    Connection: Keep-Alive
+    Content-MD5: gKnnSwwxUHQCzfs7mCiPzA==
+    Date: Fri, 20 Jul 2012 19:50:10 GMT
+    Server: Amon Master/1.0.0
+    X-Request-Id: 6b432586-be91-4bdf-a134-e8fb9b0b27ae
+    X-Response-Time: 84
+
+    {
+      "user": "a3046060-e49c-244e-a146-7a769550cbbb",
+      "name": "whistle",
+      "contacts": [
+        "email"
+      ]
+    }
+
 
 ## PutMonitor (PUT /pub/:account/monitors/:monitor)
 
+Create a monitor.
+
+### Inputs
+
+||**Field**||**Type**||**Description**||
+||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||monitor (in URL)||String||The monitor name.||
+||contacts||Array||An array of contact names.||
+
+Note that the contact names are not validated. IOW, at the time of creation
+of a monitor, the referenced contacts do not yet need to exist.
+
+### Returns
+
+A monitor object.
+
+### Errors
+
 TODO
+
+### Example
+
+    $ sdc-amon /pub/bob/monitors/whistle -X PUT -d '{
+      "contacts": ["email"]
+    }'
+    HTTP/1.1 200 OK
+    Content-Type: application/json
+    Content-Length: 86
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
+    Access-Control-Allow-Methods: PUT
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    Connection: Keep-Alive
+    Content-MD5: bgvfPWxK1auIyxeaZNNVbA==
+    Date: Fri, 20 Jul 2012 20:04:57 GMT
+    Server: Amon Master/1.0.0
+    X-Request-Id: 9bb46d35-e451-4ba9-bea8-bff78de57e5f
+    X-Response-Time: 97
+
+    {
+      "user": "a3046060-e49c-244e-a146-7a769550cbbb",
+      "name": "whistle",
+      "contacts": [
+        "email"
+      ]
+    }
+
 
 ## FakeMonitorFault (POST /pub/:account/monitors/:monitor?action=fakefault)
 
@@ -246,7 +390,7 @@ to all contacts for this monitor (depending on current suppression rules).
 
 ### Example
 
-    $ sdc-amon /pub/admin/monitors/sdczones?action=fakefault -X POST
+    $ sdc-amon /pub/bob/monitors/whistle?action=fakefault -X POST
     HTTP/1.1 200 OK
     Access-Control-Allow-Origin: *
     Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
@@ -265,11 +409,36 @@ to all contacts for this monitor (depending on current suppression rules).
       "success": true
     }
 
+
 ## DeleteMonitor (DELETE /pub/:account/monitors/:monitor)
+
+Delete a monitor.
+
+### Inputs
+
+None.
+
+### Returns
+
+No response payload, only a "204 No Content" response status.
+
+### Errors
 
 TODO
 
+### Example
 
+    $ sdc-amon /pub/bob/monitors/whistle -X DELETE
+    HTTP/1.1 204 No Content
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
+    Access-Control-Allow-Methods: DELETE
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    Connection: Keep-Alive
+    Date: Fri, 20 Jul 2012 20:07:37 GMT
+    Server: Amon Master/1.0.0
+    X-Request-Id: dcdbf00e-40de-438f-8882-689b5bda3354
+    X-Response-Time: 111
 
 
 

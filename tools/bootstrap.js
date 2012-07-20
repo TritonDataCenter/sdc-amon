@@ -10,7 +10,7 @@
  *    ./tools/bootstrap.js root@10.99.99.7   # COAL
  *
  * This will:
- * - create test users (amondevuserbob, amondevoperatorotto)
+ * - create test users (bob, otto)
  *   Background: http://www.amazon.com/Bob-Otto-Robert-Bruel/dp/1596432039
  * - otto will be an operator
  * - create a 'amondevzone' for bob
@@ -40,8 +40,8 @@ var sdcClients = require('sdc-clients'),
 
 var headnodeAlias;
 var headnodeConfig;
-var bob = JSON.parse(fs.readFileSync(__dirname + '/user-amondevuserbob.json', 'utf8'));
-var otto = JSON.parse(fs.readFileSync(__dirname + '/user-amondevoperatorotto.json', 'utf8')); // operator
+var bob = JSON.parse(fs.readFileSync(__dirname + '/user-bob.json', 'utf8'));
+var otto = JSON.parse(fs.readFileSync(__dirname + '/user-otto.json', 'utf8')); // operator
 var ldapClient;
 var ufdsClient;
 var adminUuid;

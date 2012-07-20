@@ -1,0 +1,9 @@
+{
+  "login": "bob",
+  "uuid": "a3048080-e49c-244e-a146-7a769550cbbb",
+  "userpassword": "123123",
+  "email": "trentm+bob@gmail.com",
+  "cn": "Bob",
+  "sn": "the User",
+  "objectclass": "sdcPerson"
+}

@@ -140,6 +140,7 @@
 
 # someday/maybe
 
+- long stack traces: https://github.com/mattinsler/longjohn
 - nicer notification email formatting. Apple Store example: (trent's)
   https://mail.google.com/mail/u/1/?ui=2&shva=1#inbox/137c7a2c41219cee
     - see https://github.com/niftylettuce/node-email-templates and
