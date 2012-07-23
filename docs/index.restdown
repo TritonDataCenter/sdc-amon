@@ -132,7 +132,8 @@ for 3 occurrences of 'ERROR' in 'foo.log' in vm X within 1 minute." "Check
 if the average ping (ICMP) time to host X is under 50ms." A probe belongs
 to a monitor (which may have zero or more probes). A probe has a "name" that
 is unique to that user and monitor. See [Master API:
-Probes](#master-api-probes) for how to create/list/delete probes.
+Probes](#master-api-probes) for how to create/list/delete probes. See
+[Probe Types](#probe-types) for a description of supported probe types.
 
 
 ## Maintenance Windows
@@ -227,7 +228,7 @@ In the API, a monitor contains the following fields:
 
 ||**Field**||**Type**||**Description**||
 ||user||String||The UUID of the owning user of this monitor.||
-||name||String||Name of this monitor. This is unique for monitors owned by this user. It must be 1-512 chars, begin with alpha character and include only alphanumeric, '_', '.' and '-' ||
+||name||String||Name of this monitor. This is unique for monitors owned by this user. It must be 1-512 chars, begin with alphanumeric character and include only alphanumeric, '_', '.' and '-' ||
 ||contacts||Array||Set of contact names that are to be notified when this monitor alarms.||
 
 
@@ -245,7 +246,7 @@ An array of monitor objects.
 
 ### Errors
 
-TODO
+TODO: errors
 
 ### Example
 
@@ -296,7 +297,7 @@ A monitor object.
 
 ### Errors
 
-TODO
+TODO: errors
 
 ### Example
 
@@ -332,7 +333,7 @@ Create a monitor.
 
 ||**Field**||**Type**||**Description**||
 ||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||monitor (in URL)||String||The monitor name.||
+||monitor||String||The monitor name. This is unique for monitors owned by this user. It must be 1-512 chars, begin with alphanumeric character and include only alphanumeric, '_', '.' and '-' ||
 ||contacts||Array||An array of contact names.||
 
 Note that the contact names are not validated. IOW, at the time of creation
@@ -344,7 +345,7 @@ A monitor object.
 
 ### Errors
 
-TODO
+TODO: errors
 
 ### Example
 
@@ -424,7 +425,7 @@ No response payload, only a "204 No Content" response status.
 
 ### Errors
 
-TODO
+TODO: errors
 
 ### Example
 
@@ -442,76 +443,221 @@ TODO
 
 
 
+
 # Master API: Probes
 
-A monitor has one or more probes. A "probe" is a single thing to check
-or watch for.
+A monitor has one or more probes. A "probe" object is the config information
+that tells an amon-agent a single thing to check or watch for. See the
+[Probes](#probes) section above for more details.
+
+In the API, a probe contains the following fields:
+
+||**Field**||**Type**||**Description**||
+||user||String||The UUID of the owning user of this monitor.||
+||monitor||String||Name of the monitor to which this probe belongs.||
+||name||String||Name of this probe. This is unique for probes on this monitor. It must be 1-512 chars, begin with alphanumeric character and include only alphanumeric, '_', '.' and '-' ||
+||type||String||One of the supported [probe types](#probe-types).||
+||config||Object||Extra configuration information for the probe, if required. This is specific to the [probe type](#probe-types). Most probe types require some config information.||
+||agent||String||The UUID of the agent that will run this probe. An agent UUID is the UUID of the VM or node on which it is running. For some probe types the agent will be the same as "machine", e.g. a log-scan probe, for others it will be a separate, e.g. a ping (ICMP) probe is no use running on the same machine it is checking.||
+||machine||String||Optional. The UUID of the VM or node being monitored, if applicable. An example where "machine" is not applicable might be an HTTP check against a hostname that handled by multiple webheads behind a load balancer.||
+
 
 ## ListProbes (GET /pub/:account/monitors/:monitor/probes)
 
-TODO
+List all probes for this monitor.
+
+### Inputs
+
+None.
+
+### Returns
+
+An array of probe objects.
+
+### Errors
+
+TODO: errors
 
 ### Example
 
-    $ sdc-amon /pub/hamish/monitors/whistle/probes
+
+    $ sdc-amon /pub/bob/monitors/whistle/probes
     HTTP/1.1 200 OK
-    Connection: close
-    Date: Tue, 22 Nov 2011 17:59:22 GMT
-    Server: Amon Master/1.0.0
-    X-Api-Version: 1.0.0
-    X-Request-Id: c92e87c6-8da1-4f67-b85e-f4458340642b
-    X-Response-Time: 760
-    Content-Length: 407
-    Content-MD5: 5EdOGXW+sKRtRajFf+ajkw==
     Content-Type: application/json
+    Content-Length: 281
     Access-Control-Allow-Origin: *
-    Access-Control-Allow-Methods: OPTIONS, GET
-    Access-Control-Allow-Headers: Accept, Content-Type, Content-Length, Date, X-Api-Version
+    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
+    Access-Control-Allow-Methods: GET
     Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    Connection: Keep-Alive
+    Content-MD5: eN8QxNofpn4MIGFuOGiydA==
+    Date: Fri, 20 Jul 2012 22:06:09 GMT
+    Server: Amon Master/1.0.0
+    X-Request-Id: 95b8b5bc-f2e7-4db3-a70e-ef44cb27c811
+    X-Response-Time: 149
 
     [
       {
-        "name": "whistlelog",
-        "user": "7b23ae63-37c9-420e-bb88-8d4bf5e30455",
+        "user": "a3046060-e49c-244e-a146-7a769550cbbb",
         "monitor": "whistle",
-        "machine": "global",
+        "name": "whistlelog",
         "type": "logscan",
+        "agent": "729dae52-e157-4d8e-9a74-196e228caf58",
         "config": {
           "path": "/tmp/whistle.log",
           "regex": "tweet",
-          "threshold": 2,
-          "period": 60
-        }
-      },
-      {
-        "name": "whistlelog2",
-        "user": "7b23ae63-37c9-420e-bb88-8d4bf5e30455",
-        "monitor": "whistle",
-        "machine": "global",
-        "type": "logscan",
-        "config": {
-          "path": "/tmp/whistle2.log",
-          "regex": "tweet",
           "threshold": 1,
           "period": 60
-        }
+        },
+        "machine": "729dae52-e157-4d8e-9a74-196e228caf58"
       }
     ]
 
 
 ## GetProbe (GET /pub/:account/monitors/:monitor/probes/:probe)
 
-TODO
+Get a probe by name.
+
+### Inputs
+
+None.
+
+### Returns
+
+A probe object.
+
+### Errors
+
+TODO: errors
+
+### Example
+
+    $ sdc-amon /pub/bob/monitors/whistle/probes/whistlelog
+    HTTP/1.1 200 OK
+    Content-Type: application/json
+    Content-Length: 279
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
+    Access-Control-Allow-Methods: GET
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    Connection: Keep-Alive
+    Content-MD5: 0pIYGXJzPUibNVVpOUz99A==
+    Date: Fri, 20 Jul 2012 22:43:28 GMT
+    Server: Amon Master/1.0.0
+    X-Request-Id: 84f665df-ab21-405b-b36d-40fbfc5cea9b
+    X-Response-Time: 78
+
+    {
+      "user": "a3046060-e49c-244e-a146-7a769550cbbb",
+      "monitor": "whistle",
+      "name": "whistlelog",
+      "type": "logscan",
+      "agent": "729dae52-e157-4d8e-9a74-196e228caf58",
+      "config": {
+        "path": "/tmp/whistle.log",
+        "regex": "tweet",
+        "threshold": 1,
+        "period": 60
+      },
+      "machine": "729dae52-e157-4d8e-9a74-196e228caf58"
+    }
+
 
 ## PutProbe (PUT /pub/:account/monitors/:monitor/probes/:probe)
 
-TODO: mention 'agent' as required and suggested. 'machine' is an optional
-value useful for maintenance windows. It is implied for 'runLocally' probe
-types.
+Create a probe.
+
+### Inputs
+
+||**Field**||**Type**||**Description**||
+||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||monitor (in URL)||String||The name of the existing monitor to which this probe will belong.||
+||probe (in URL)||String||Name of this probe. This is unique for probes in this monitor. It must be 1-512 chars, begin with alpha character and include only alphanumeric, '_', '.' and '-' ||
+||type||String||One of the supported [probe types](#probe-types).||
+||config||Object||Extra configuration information for the probe, if required. This is specific to the [probe type](#probe-types). Most probe types require some config information.||
+||agent||String||The UUID of the agent that will run this probe. An agent UUID is the UUID of the VM or node on which it is running. For some probe types the agent will be the same as "machine", e.g. a log-scan probe, for others it will be a separate, e.g. a ping (ICMP) probe is no use running on the same machine it is checking.||
+||machine||String||Optional. The UUID of the VM or node being monitored, if applicable. For some probe types (those that must run locally), "machine" is implied to be the same value as "agent" if not given. An example where "machine" is not applicable might be an HTTP check against a hostname that handled by multiple webheads behind a load balancer.||
+
+### Returns
+
+A probe object.
+
+### Errors
+
+TODO: errors
+
+### Example
+
+    [root@headnode (bh1-kvm7:0) ~]# sdc-amon /pub/bob/monitors/whistle/probes/whistlelog -X PUT -d '{
+    >   "type": "logscan",
+    >   "agent": "729dae52-e157-4d8e-9a74-196e228caf58",
+    >   "config": {
+    >     "path": "/tmp/whistle.log",
+    >     "regex": "tweet",
+    >     "threshold": 1,
+    >     "period": 60
+    >   }
+    > }'
+    HTTP/1.1 200 OK
+    Content-Type: application/json
+    Content-Length: 280
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
+    Access-Control-Allow-Methods: PUT
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    Connection: Keep-Alive
+    Content-MD5: lAzTun1rhqSkEtUJcRasLg==
+    Date: Fri, 20 Jul 2012 22:51:05 GMT
+    Server: Amon Master/1.0.0
+    X-Request-Id: 25bd6dcc-a902-46c1-80b5-96bce493021a
+    X-Response-Time: 59
+
+    {
+      "user": "a3046060-e49c-244e-a146-7a769550cbbb",
+      "monitor": "whistle",
+      "name": "whistlelog",
+      "type": "logscan",
+      "agent": "729dae52-e157-4d8e-9a74-196e228caf58",
+      "config": {
+        "path": "/tmp/whistle.log",
+        "regex": "tweet",
+        "threshold": 1,
+        "period": 60
+      },
+      "machine": "729dae52-e157-4d8e-9a74-196e228caf58"
+    }
+
 
 ## DeleteProbe (DELETE /pub/:account/monitors/:monitor/probes/:probe)
 
-TODO
+Delete a probe.
+
+### Inputs
+
+None.
+
+### Returns
+
+No response payload, only a "204 No Content" response status.
+
+### Errors
+
+TODO: errors
+
+### Example
+
+    $ sdc-amon /pub/bob/monitors/whistle/probes/whistlelog -X DELETE
+    HTTP/1.1 204 No Content
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
+    Access-Control-Allow-Methods: DELETE
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    Connection: Keep-Alive
+    Date: Fri, 20 Jul 2012 22:52:09 GMT
+    Server: Amon Master/1.0.0
+    X-Request-Id: a775e9ae-8e73-40a8-88f2-35b39f042f24
+    X-Response-Time: 120
+
 
 
 
@@ -1270,34 +1416,6 @@ None.
 
 
 
-# Master Configuration
-
-Reference docs on configuration vars to amon-master. Default values are in
-"master/factory-settings.json". Custom values are provided in a JSON file
-passed in with the "-f CONFIG-FILE-PATH" command-line option.
-
-Note that given custom values override full top-level keys in the factory
-settings. For example: if providing 'userCache', one must provide the
-whole userCache object.
-
-||port||Port number on which to listen.||
-||ufds.url||LDAP URL to connect to UFDS.||
-||ufds.rootDn||UFDS root dn.||
-||ufds.password||UFDS root dn password.||
-||ufds.caching||Boolean indicating if UFDS caching should be enabled. Default true.||
-||mapi.url||MAPI client url.||
-||mapi.username||MAPI HTTP admin username.||
-||mapi.password||MAPI HTTP admin password.||
-||redis.host||Redis server host or IP. Defaults to 127.0.0.1 if not given.||
-||redis.port||Redis server port. Defaults to 6379 if not given.||
-||userCache.size||The number of entries to cache.||
-||userCache.expiry||The number of seconds for which cache entries are valid.||
-||notificationPlugins||An object defining all notification mechanisms. This is a mapping of plugin name, e.g. "email" or "sms", to plugin data.||
-||notificationPlugins.NAME.path||A node `require()` path from which the Amon master can load the plugin module, e.g. "./lib/twillio".||
-||notificationPlugins.NAME.config||An object with instance data for the plugin.||
-
-
-
 # Probe Types
 
 TODO:XXX describe local v. remote probe types here and implications with
@@ -1409,6 +1527,35 @@ interuptions or packet loss.
         "host":"api.us-west.joyent.com"
       }
     }'
+
+
+
+# Master Configuration
+
+Reference docs on configuration vars to amon-master. Default values are in
+"master/factory-settings.json". Custom values are provided in a JSON file
+passed in with the "-f CONFIG-FILE-PATH" command-line option.
+
+Note that given custom values override full top-level keys in the factory
+settings. For example: if providing 'userCache', one must provide the
+whole userCache object.
+
+||port||Port number on which to listen.||
+||ufds.url||LDAP URL to connect to UFDS.||
+||ufds.rootDn||UFDS root dn.||
+||ufds.password||UFDS root dn password.||
+||ufds.caching||Boolean indicating if UFDS caching should be enabled. Default true.||
+||mapi.url||MAPI client url.||
+||mapi.username||MAPI HTTP admin username.||
+||mapi.password||MAPI HTTP admin password.||
+||redis.host||Redis server host or IP. Defaults to 127.0.0.1 if not given.||
+||redis.port||Redis server port. Defaults to 6379 if not given.||
+||userCache.size||The number of entries to cache.||
+||userCache.expiry||The number of seconds for which cache entries are valid.||
+||notificationPlugins||An object defining all notification mechanisms. This is a mapping of plugin name, e.g. "email" or "sms", to plugin data.||
+||notificationPlugins.NAME.path||A node `require()` path from which the Amon master can load the plugin module, e.g. "./lib/twillio".||
+||notificationPlugins.NAME.config||An object with instance data for the plugin.||
+
 
 
 # Event Types
@@ -1878,13 +2025,6 @@ about the feature):
    page is to instead set it on the *machine* ("all monitors for this
    machine").
 5. Continue as above...
-
-
-Notes:
-- TODO: ask around. Learn about joyent.com setup. Learn about voxer setup.
-  Ask ops about what kinds of monitoring checks they have setup typically.
-- TODO: how to monitor percentiles? E.g. prio1 alarm if 90th percentile
-  response time is >200ms or something?
 
 
 

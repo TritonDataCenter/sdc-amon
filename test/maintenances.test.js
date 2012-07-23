@@ -543,7 +543,7 @@ test('maint 2: wait until restarted zone has settled', function (t) {
  *   on it. Restart amontestzone: assert alarm clears and get notification.
  *   Delete maint window.
  */
-//XXX TODO
+//TODO
 
 
 /*
@@ -568,7 +568,7 @@ test('maint 2: wait until restarted zone has settled', function (t) {
  *   Restart amontestzone: assert alarm clears and get notification.
  *   Delete the second maint window.
  */
-//XXX TODO
+//TODO
 
 
 
