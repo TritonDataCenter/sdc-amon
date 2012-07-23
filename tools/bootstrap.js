@@ -528,7 +528,7 @@ function loadAmonObjects(next) {
           "path": "/var/svc/log/smartdc-agent-smartlogin:default.log",
           "regex": "Stopping",
           "threshold": 1,
-          "period": 60
+          "period": 120
         }
       }
     }
@@ -571,5 +571,6 @@ async.series([
       log('error bootstrapping:', (err.stack || err));
       process.exit(1);
     }
+    log("# Done.")
   }
 );

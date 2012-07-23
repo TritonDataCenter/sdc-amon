@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Joyent, Inc.  All rights reserved.
+ * Copyright 2012 Joyent, Inc.  All rights reserved.
  *
  * Test (some parts) of Amon notifications.
  */
@@ -102,6 +102,66 @@ test('twilio: area code hyphens', function (t) {
 
 test('email: sanitize empty', function (t) {
   t.ok(!email.sanitizeAddress(null));
+  t.end();
+});
+
+
+//TODO: real test smtp server if reasonable
+test('email: notify', function (t) {
+  var alarm = {
+    "user": "a3040770-c93b-6b41-90e9-48d3142263cf",
+    "id": 1,
+    "monitor": "gz",
+    "closed": false,
+    "suppressed": false,
+    "timeOpened": 1343070741494,
+    "timeClosed": null,
+    "timeLastEvent": 1343070741324,
+    "faults": [
+      {
+        "type": "probe",
+        "probe": "smartlogin"
+      }
+    ],
+    "maintenanceFaults": []
+  };
+  var user = {
+    "login": "otto",
+    "email": "trentm+amontestemail@gmail.com",
+    "id": "a3040770-c93b-6b41-90e9-48d3142263cf",
+    "firstName": "Trent",
+    "lastName": "the Test Case"
+  };
+  var contactAddress = "trentm+amonemailtest@gmail.com";
+  var event = {
+    "v": 1,
+    "type": "probe",
+    "user": "a3040770-c93b-6b41-90e9-48d3142263cf",
+    "monitor": "gz",
+    "probe": "smartlogin",
+    "probeType": "logscan",
+    "clear": false,
+    "data": {
+      "message": "Log \"blah.log\" matched /Stopping/.",
+      "value": 1,
+      "details": {
+        "match": "Stopping"
+      }
+    },
+    "machine": "44454c4c-3200-1042-804d-c2c04f575231"
+  };
+
+  email.notify(alarm, user, contactAddress, event, function (err) {
+    t.ifError(err, err);
+    t.end();
+  });
+});
+
+test('email: teardown', function (t) {
+  // Total HACK job: reach into nodemailer and explicitly close the
+  // SMTP transport so that we don't hang.
+  var nodemailer = require('nodemailer');
+  nodemailer._smtp_transport.close();
   t.end();
 });
 

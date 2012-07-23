@@ -36,8 +36,8 @@
 - cloudapi
 - portal (c.f. http://circonus.com/resources/videos#play-video-check-creation)
 - adminui
-- load testing (hook into mock cloud for this?). Estimate of design-limit on
-  number of probes/notifications/events
+- load testing. Estimate of design-limit on number of
+  probes/notifications/events
 - HA
 
 
