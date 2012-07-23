@@ -332,7 +332,7 @@ Create a monitor.
 ### Inputs
 
 ||**Field**||**Type**||**Description**||
-||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
 ||monitor||String||The monitor name. This is unique for monitors owned by this user. It must be 1-512 chars, begin with alphanumeric character and include only alphanumeric, '_', '.' and '-' ||
 ||contacts||Array||An array of contact names.||
 
@@ -384,8 +384,8 @@ to all contacts for this monitor (depending on current suppression rules).
 ### Inputs
 
 ||**Field**||**Type**||**Description**||
-||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||monitor (in URL)||String||The monitor name.||
+||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||monitor (URL)||String||The monitor name.||
 ||action||String||"fakefault"||
 ||clear||String||Optional. Use "true" to send a "clear" event. This should typically clear an alarm created by a previous fake fault call.||
 
@@ -570,9 +570,9 @@ Create a probe.
 ### Inputs
 
 ||**Field**||**Type**||**Description**||
-||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||monitor (in URL)||String||The name of the existing monitor to which this probe will belong.||
-||probe (in URL)||String||Name of this probe. This is unique for probes in this monitor. It must be 1-512 chars, begin with alpha character and include only alphanumeric, '_', '.' and '-' ||
+||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||monitor (URL)||String||The name of the existing monitor to which this probe will belong.||
+||probe (URL)||String||Name of this probe. This is unique for probes in this monitor. It must be 1-512 chars, begin with alpha character and include only alphanumeric, '_', '.' and '-' ||
 ||type||String||One of the supported [probe types](#probe-types).||
 ||config||Object||Extra configuration information for the probe, if required. This is specific to the [probe type](#probe-types). Most probe types require some config information.||
 ||agent||String||The UUID of the agent that will run this probe. An agent UUID is the UUID of the VM or node on which it is running. For some probe types the agent will be the same as "machine", e.g. a log-scan probe, for others it will be a separate, e.g. a ping (ICMP) probe is no use running on the same machine it is checking.||
@@ -760,7 +760,7 @@ automatically expunged (currently a week after being closed).
 ### Inputs
 
 ||**Field**||**Type**||**Description**||
-||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
 ||state||String||One of "recent" (open and recently closed alarms, this is the default), "open", "closed" and "all".||
 ||monitor||String||Only return alarms associated with this monitor.||
 
@@ -803,8 +803,8 @@ Get a particular alarm.
 ### Inputs
 
 ||**Field**||**Type**||**Description**||
-||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||alarm (in URL)||Integer||The alarm id for this user.||
+||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||alarm (URL)||Integer||The alarm id for this user.||
 
 ### Returns
 
@@ -844,8 +844,8 @@ Close the given alarm.
 ### Inputs
 
 ||**Field**||**Type**||**Description**||
-||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||alarm (in URL)||Integer||The alarm id for this user.||
+||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||alarm (URL)||Integer||The alarm id for this user.||
 ||action||String||"close". See other "*Alarm*" actions in this section.||
 
 ### Returns
@@ -885,8 +885,8 @@ accidental "close" action.
 ### Inputs
 
 ||**Field**||**Type**||**Description**||
-||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||alarm (in URL)||Integer||The alarm id for this user.||
+||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||alarm (URL)||Integer||The alarm id for this user.||
 ||action||String||"reopen". See other "*Alarm*" actions in this section.||
 
 ### Returns
@@ -925,8 +925,8 @@ Suppress notifications for events on the given alarm.
 ### Inputs
 
 ||**Field**||**Type**||**Description**||
-||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||alarm (in URL)||Integer||The alarm id for this user.||
+||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||alarm (URL)||Integer||The alarm id for this user.||
 ||action||String||"suppress". See other "*Alarm*" actions in this section.||
 
 ### Returns
@@ -965,8 +965,8 @@ Stop suppression of notifications on the given alarm.
 ### Inputs
 
 ||**Field**||**Type**||**Description**||
-||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||alarm (in URL)||Integer||The alarm id for this user.||
+||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||alarm (URL)||Integer||The alarm id for this user.||
 ||action||String||"close". See other "*Alarm*" actions in this section.||
 
 ### Returns
@@ -1007,8 +1007,8 @@ At least for first blush I'd suggest *not* exposing this to the user.
 ### Inputs
 
 ||**Field**||**Type**||**Description**||
-||user (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||alarm (in URL)||Integer||The alarm id for this user.||
+||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||alarm (URL)||Integer||The alarm id for this user.||
 
 ### Returns
 
@@ -1107,7 +1107,7 @@ Create a maintenance window.
 ### Inputs
 
 ||**Parameter**||**Required?**||**Default**||**Description**||
-||user (in URL)||Required||-||The user UUID (from UFDS) or username ('login' in UFDS)||
+||user (URL)||Required||-||The user UUID (from UFDS) or username ('login' in UFDS)||
 ||start||Required||-||The time at which the maintenance window starts. RFC date, timestamp, or "now".||
 ||end||Required||-||The time at which the maintenance window ends. RFC date, timestamp, or "<digit>[mhd]" (minute, hour, day). E.g.: "1d" means one day.||
 ||notes||Optional||-||Short notes on why this maintenance window.||
@@ -1224,7 +1224,7 @@ if not useful.
 ### Inputs
 
 ||**Field**||**Type**||**Description**||
-||user (in URL)||String||The user UUID or login||
+||user (URL)||String||The user UUID or login||
 
 ### Example
 
