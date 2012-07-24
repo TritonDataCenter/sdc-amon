@@ -147,26 +147,27 @@ RelayClient.prototype.agentProbes = function (agent, callback) {
 
 
 /**
- * Send the given event to the relay (which might be the master) for
+ * Send the given events to the relay (which might be the master) for
  * processing.
  *
  * Dev Note: Currently the schema for this is being felt out. IOW, no
  * validation here yet.
  *
+ * @param events {Array} Array of event objects to send.
  * @param callback {Function} `function (err) {}` called on completion.
  *    "err" is undefined on success, a restify error instance on failure.
  */
-RelayClient.prototype.sendEvent = function (event, callback) {
+RelayClient.prototype.sendEvents = function (events, callback) {
   var self = this;
 
   function onComplete(err, res) {
     if (err) {
-      self.log.warn(err, 'RelayClient.sendEvent: HTTP error');
+      self.log.warn(err, 'RelayClient.sendEvents: HTTP error');
       return callback(new restify.InternalError());
     }
     if (res.statusCode !== 202 /* Accepted */) {
       self.log.warn({res: res, body: res.body},
-        'invalid response for RelayClient.sendEvent');
+        'invalid response for RelayClient.sendEvents');
       return callback(new restify.InternalError());
     } else {
       return callback();
@@ -174,7 +175,7 @@ RelayClient.prototype.sendEvent = function (event, callback) {
   }
 
   var req = this._request('POST', '/events', onComplete);
-  req.write(JSON.stringify(event));
+  req.write(JSON.stringify(events));
   req.end();
 };
 

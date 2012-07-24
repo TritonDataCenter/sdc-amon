@@ -18,6 +18,7 @@ rsync -av ${RELAY_DIR}/ \
     --exclude zsock/ \
     --exclude zutil/ \
     --exclude tmp/
+#TODO: restore or don't mess up .../amon-relay/node_modules/sdc-clients/node_modules/ldapjs/node_modules/buffertools/build/Release/buffertools.node
 rsync -av ${TOP}/common/ \
     $NODE:/opt/smartdc/agents/lib/node_modules/amon-relay/node_modules/amon-common/ \
     --exclude "*.node" \

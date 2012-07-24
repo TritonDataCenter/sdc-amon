@@ -1285,7 +1285,7 @@ cases.
 
 # Relay API
 
-Amon employs a tree of relay servers for (a) ferrying agent probe data
+Amon employs a layer of relay servers for (a) ferrying agent probe data
 from the master to the agents and (b) ferrying events from agents back to
 the master. This is done via the Relay API. The Amon Master also implements
 this API.
@@ -1318,26 +1318,75 @@ stable "Content-MD5" header to use for caching.
 ||**Parameter**||**Required?**||**Default**||**Description**||
 ||agent||Required||-||The agent UUID. Note that the agent UUID is that of the machine -- VM, SmartMachine (aka zone), or physical node -- on which is runs.||
 
+Note: The `agent` parameter is required when calling this endpoint on an
+Amon Master. However, when an amon-agent calls this endpoint on an amon-relay,
+the parameter is ignored because there is a 1-to-1 mapping of Relay API
+server instance to amon-agent.
+
 ### Returns
 
-An array of probe objects, which contain:
+An array of probe objects. See [Probes API](#master-api-probes) section above
+for the fields in a probe object. This internal API includes an additional
+field on each probe object:
 
-TODO
+||**Field**||**Type**||**Description**||
+||runInVmHost||Boolean||This is 'true' if the probe is a type that must run in the VM *host* for a VM. An example is the 'machine-up' probe type, which tracks vm/zone state by watching kernel sysevent events from the global zone.||
 
 ### Errors
 
-TODO
+TODO: errors
+
+### Example
+
+    $ sdc-amon /agentprobes?agent=44454c4c-3200-1042-804d-c2c04f575231
+    HTTP/1.1 200 OK
+    Content-Type: application/json
+    Content-Length: 314
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
+    Access-Control-Allow-Methods: GET
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    Connection: Keep-Alive
+    Content-MD5: A2cFv/vNjAJEauSHQOzCtg==
+    Date: Tue, 24 Jul 2012 17:50:58 GMT
+    Server: Amon Master/1.0.0
+    X-Request-Id: 87a5dcbb-eb5d-454f-8510-59917dc04ac1
+    X-Response-Time: 73
+
+    [
+      {
+        "user": "a3040770-c93b-6b41-90e9-48d3142263cf",
+        "monitor": "gz",
+        "name": "smartlogin",
+        "type": "log-scan",
+        "agent": "44454c4c-3200-1042-804d-c2c04f575231",
+        "config": {
+          "path": "/var/svc/log/smartdc-agent-smartlogin:default.log",
+          "regex": "Stopping",
+          "threshold": 1,
+          "period": 120
+        },
+        "machine": "44454c4c-3200-1042-804d-c2c04f575231"
+      }
+    ]
 
 
 ## HeadAgentProbes (HEAD /agentprobes)
 
 This "HEAD" form of `ListAgentProbes` allows for relays and agents to check
-for agent control data changes with less network overhead.
+for agent control data changes with less network overhead. The Relays and
+Masters expect that call pattern to be a check to HeadAgentProbes and
+only to ListAgentProbes if there is a change in `Content-MD5`. This way
+caching on the server can be on the (smaller) `Content-MD5`.
 
 ### Inputs
 
 ||**Parameter**||**Required?**||**Default**||**Description**||
 ||agent||Required||-||The agent UUID. Note that the agent UUID is that of the machine -- VM, SmartMachine (aka zone), or physical node -- on which is runs.||
+
+### Errors
+
+TODO
 
 
 # Relay Admin API
@@ -1385,7 +1434,6 @@ None.
 
 Immediately update agentprobes data from the Amon master.
 
-
 ### Inputs
 
 ||**Field**||**Type**||**Description**||
@@ -1401,7 +1449,7 @@ None.
 
 ### Example
 
-    $ curl -i localhost:4307/state?syncprobes -X POST
+    $ curl -i localhost:4307/state?action=syncprobes -X POST
     HTTP/1.1 202 Accepted
     Access-Control-Allow-Origin: *
     Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
@@ -1411,6 +1459,40 @@ None.
     Date: Fri, 22 Jun 2012 22:41:37 GMT
     Server: Amon Relay Admin
     X-Request-Id: b86337fa-9723-4f80-b6b8-976c5969bffd
+    X-Response-Time: 19
+    Transfer-Encoding: chunked
+
+
+## RelayAdminLogLevel (POST /state?action=syncprobes)
+
+Set the logging level for the amon-relay.
+
+### Inputs
+
+||**Field**||**Type**||**Description**||
+||action||String||"loglevel"||
+||loglevel||String||One of the [Bunyan supported log level strings](https://github.com/trentm/node-bunyan#levels), e.g. "debug", "trace".||
+
+### Returns
+
+Nothing. Just a 202 status and headers.
+
+### Errors
+
+None.
+
+### Example
+
+    $ curl -i localhost:4307/state?action=loglevel\&loglevel=trace -X POST
+    HTTP/1.1 202 Accepted
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
+    Access-Control-Allow-Methods: POST
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    Connection: Keep-Alive
+    Date: Fri, 22 Jun 2012 22:41:37 GMT
+    Server: Amon Relay Admin
+    X-Request-Id: 5eb300a2-b5b7-4c49-b978-0b05795a3b1e
     X-Response-Time: 19
     Transfer-Encoding: chunked
 

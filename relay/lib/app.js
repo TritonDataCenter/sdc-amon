@@ -141,8 +141,8 @@ function App(options) {
     name: 'Amon Relay/' + Constants.ApiVersion,
     log: log
   });
-  server.use(restify.queryParser());
-  server.use(restify.bodyParser());
+  server.use(restify.queryParser({mapParams: false}));
+  server.use(restify.bodyParser({mapParams: false}));
   server.on('after', restify.auditLogger({log: log, body: true}));
   function setup(req, res, next) {
     req._agent = self.agent;
@@ -158,8 +158,8 @@ function App(options) {
     agentprobes.headAgentProbes);
   this.server.get({path: '/agentprobes', name: 'ListAgentProbes'},
     agentprobes.listAgentProbes);
-  this.server.post({path: '/events', name: 'PutEvents'},
-    events.putEvents);
+  this.server.post({path: '/events', name: 'AddEvents'},
+    events.addEvents);
 }
 
 
@@ -186,7 +186,7 @@ App.prototype.sendOperatorEvent = function (msg, details, callback) {
       details: details
     }
   };
-  this.masterClient.sendEvent(event, callback);
+  this.masterClient.sendEvents([event], callback);
 };
 
 

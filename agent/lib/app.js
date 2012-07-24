@@ -405,7 +405,7 @@ App.prototype.sendEvent = function sendEvent(event) {
   var self = this;
   var log = self.log;
   log.info({event: event}, 'sending event');
-  self.relayClient.sendEvent(event, function (err) {
+  self.relayClient.sendEvents([event], function (err) {
     if (err) {
       log.error({event: event, err: err}, 'error sending event');
     }

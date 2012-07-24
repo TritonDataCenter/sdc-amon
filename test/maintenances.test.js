@@ -260,7 +260,7 @@ var maint1AlarmId;
 test('maint 1: stop amontestzone', {timeout: 60000}, function (t) {
   notifications = []; // reset
   common.vmStop({uuid: prep.amontestzone.uuid, timeout: 40000}, function (err) {
-    t.ifError(err, "stopping amontestzone");
+    t.ifError(err, "stopped amontestzone");
     t.end();
   });
 });
@@ -421,7 +421,7 @@ test('maint 2: create maint window', function (t) {
 test('maint 2: stop amontestzone', {timeout: 60000}, function (t) {
   notifications = []; // reset
   common.vmStop({uuid: prep.amontestzone.uuid, timeout: 60000}, function (err) {
-    t.ifError(err, "stopping amontestzone");
+    t.ifError(err, "stopped amontestzone");
     t.end();
   });
 });
