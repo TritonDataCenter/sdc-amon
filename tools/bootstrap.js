@@ -294,6 +294,27 @@ function unreserveHeadnodeForProvisioning(next) {
     next(err);
   });
 }
+var needToRereserve = false;
+function unreserveHeadnodeForProvisioning(next) {
+  var cmd1 = format('ssh %s /opt/smartdc/bin/sdc-cnapi /servers/%s | json reserved',
+    headnodeAlias, headnodeUuid);
+  exec(cmd1, function (err, stdout, stderr) {
+    if (err) {
+      next(err);
+    } else if (stdout.trim() === "true") {
+      needToRereserve = true;
+      var cmd2 = format('ssh %s /opt/smartdc/bin/sdc-cnapi /servers/%s -X POST -F reserved=false',
+        headnodeAlias, headnodeUuid);
+      exec(cmd2, function (err, stdout, stderr) {
+        next(err);
+      });
+    } else {
+      next();
+    }
+  });
+}
+
+
 
 
 function createAmondevzone(next) {
@@ -366,11 +387,15 @@ function createAmondevzone(next) {
 
 
 function rereserveHeadnodeForProvisioning(next) {
-  var cmd = format('ssh %s /opt/smartdc/bin/sdc-cnapi /servers/%s -X POST -F reserved=true',
-    headnodeAlias, headnodeUuid);
-  exec(cmd, function (err, stdout, stderr) {
-    next(err);
-  });
+  if (needToRereserve) {
+    var cmd = format('ssh %s /opt/smartdc/bin/sdc-cnapi /servers/%s -X POST -F reserved=true',
+      headnodeAlias, headnodeUuid);
+    exec(cmd, function (err, stdout, stderr) {
+      next(err);
+    });
+  } else {
+    next();
+  }
 }
 
 
@@ -485,7 +510,7 @@ function loadAmonObjects(next) {
       probe: 'whistlelog',
       body: {
         "machine": amondevzone.uuid,
-        "type": "logscan",
+        "type": "log-scan",
         "config": {
           "path": "/tmp/whistle.log",
           "regex": "tweet",
@@ -523,7 +548,7 @@ function loadAmonObjects(next) {
       probe: 'smartlogin',
       body: {
         "agent": headnodeUuid,
-        "type": "logscan",
+        "type": "log-scan",
         "config": {
           "path": "/var/svc/log/smartdc-agent-smartlogin:default.log",
           "regex": "Stopping",
