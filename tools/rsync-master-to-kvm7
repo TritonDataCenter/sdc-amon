@@ -21,8 +21,12 @@ rsync -av ${TOP}/master/ \
     --exclude "*.node" \
     --exclude amon-common \
     --exclude amon-plugins \
-    --exclude buffertools \
     --exclude tmp/
+# Restore buffertools.node that is always blown away the first time the
+# above is done.
+# TODO: same for dtrace_provider.node.
+ssh $NODE cp /zones/$AMON_ZONE/root/opt/smartdc/amon/node_modules/ldapjs/node_modules/buffertools/build/Release/buffertools.node \
+    /zones/$AMON_ZONE/root/opt/smartdc/amon/node_modules/sdc-clients/node_modules/ldapjs/node_modules/buffertools/build/Release/buffertools.node
 rsync -av ${TOP}/common/ \
     $NODE:/zones/$AMON_ZONE/root/opt/smartdc/amon/node_modules/amon-common/ \
     --exclude "*.node" \

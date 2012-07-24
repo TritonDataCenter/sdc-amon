@@ -76,6 +76,9 @@ function addEvents(req, res, next) {
 
   asyncForEach(events, validateAndProcess, function (err) {
     if (errs.length > 0) {
+      for (var i=0; i<errs.length; i++) {
+        req.log.warn(errs[i], 'error adding event')
+      }
       next(new restify.InternalError(errs.join(', ')));
     } else {
       res.send(202 /* Accepted */);

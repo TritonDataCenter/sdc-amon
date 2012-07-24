@@ -1301,7 +1301,47 @@ over a Unix domain socket (zsocket).
 Sends one or more events up to a relay (or the Amon master). Agents run
 the given probes and send an event when a probe test trips/fails.
 
-TODO
+### Inputs
+
+The body is an array of event objects. Currently it also accepts a single
+event object. See the [Event Types](#event-types) section below for details
+on event objects.
+
+### Errors
+
+TODO: errors
+
+### Example
+
+    $ sdc-amon /events -X POST -d '{
+    >   "v": 1,
+    >   "type": "probe",
+    >   "user": "a3040770-c93b-6b41-90e9-48d3142263cf",
+    >   "monitor": "mymonitor",
+    >   "probe": "myprobe",
+    >   "probeType": "machine-up",
+    >   "clear": true,
+    >   "data": {
+    >     "message": "Machine \"b662dd76-974d-4ab8-92c2-fd9d01d86fd3\" has come up.",
+    >     "value": null,
+    >     "details": {
+    >       "machine": "b662dd76-974d-4ab8-92c2-fd9d01d86fd3"
+    >     }
+    >   },
+    >   "machine": "b662dd76-974d-4ab8-92c2-fd9d01d86fd3"
+    > }'
+    HTTP/1.1 202 Accepted
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
+    Access-Control-Allow-Methods: POST
+    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
+    Connection: Keep-Alive
+    Date: Tue, 24 Jul 2012 20:36:50 GMT
+    Server: Amon Master/1.0.0
+    X-Request-Id: d23d2b65-f5a3-4054-ae77-53aee1917922
+    X-Response-Time: 86
+    Transfer-Encoding: chunked
+
 
 
 ## ListAgentProbes (GET /agentprobes)
@@ -1386,7 +1426,7 @@ caching on the server can be on the (smaller) `Content-MD5`.
 
 ### Errors
 
-TODO
+TODO: errors
 
 
 # Relay Admin API
