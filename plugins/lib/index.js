@@ -6,7 +6,7 @@
  */
 
 module.exports = {
-  'logscan': require('./logscan'),
+  'log-scan': require('./log-scan'),
   'machine-up': require('./machine-up'),
   'http': require('./http'),
   'icmp': require('./icmp')

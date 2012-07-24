@@ -36,7 +36,7 @@
  *      processing.
  *      XXX Link to event section in docs.
  *
- * Amon probe types should inherit from this base class -- see "logscan.js"
+ * Amon probe types should inherit from this base class -- see "log-scan.js"
  * for an example -- and implement the following interface:
  *
  *    Probe.prototype.type = <probe type string>;

@@ -501,7 +501,7 @@ TODO: errors
         "user": "a3046060-e49c-244e-a146-7a769550cbbb",
         "monitor": "whistle",
         "name": "whistlelog",
-        "type": "logscan",
+        "type": "log-scan",
         "agent": "729dae52-e157-4d8e-9a74-196e228caf58",
         "config": {
           "path": "/tmp/whistle.log",
@@ -551,7 +551,7 @@ TODO: errors
       "user": "a3046060-e49c-244e-a146-7a769550cbbb",
       "monitor": "whistle",
       "name": "whistlelog",
-      "type": "logscan",
+      "type": "log-scan",
       "agent": "729dae52-e157-4d8e-9a74-196e228caf58",
       "config": {
         "path": "/tmp/whistle.log",
@@ -589,7 +589,7 @@ TODO: errors
 ### Example
 
     [root@headnode (bh1-kvm7:0) ~]# sdc-amon /pub/bob/monitors/whistle/probes/whistlelog -X PUT -d '{
-    >   "type": "logscan",
+    >   "type": "log-scan",
     >   "agent": "729dae52-e157-4d8e-9a74-196e228caf58",
     >   "config": {
     >     "path": "/tmp/whistle.log",
@@ -616,7 +616,7 @@ TODO: errors
       "user": "a3046060-e49c-244e-a146-7a769550cbbb",
       "monitor": "whistle",
       "name": "whistlelog",
-      "type": "logscan",
+      "type": "log-scan",
       "agent": "729dae52-e157-4d8e-9a74-196e228caf58",
       "config": {
         "path": "/tmp/whistle.log",
@@ -1423,7 +1423,7 @@ agent/machine args for creation. Note remote/local on each probe section
 below.
 
 
-## Probe: logscan
+## Probe: log-scan
 
 Watch (tail -f) a log file for a particular pattern (regular expression).
 
@@ -1438,7 +1438,7 @@ Watch (tail -f) a log file for a particular pattern (regular expression).
 ### Example
 
     $ sdc-amon /pub/bob/monitors/mymonitor/probes/myservice -X PUT --data '{
-        "type": "logscan",
+        "type": "log-scan",
         "machine": "444d70d5-0187-e5d4-468f-7b49a6b014ff",
         "config": {
             "path": "/var/log/myservice.log",
@@ -1565,7 +1565,7 @@ these details.
 
 **WARNING: This is incomplete and underspecified.**
 
-Current event layouts (working on a spec for this). Event from logscan
+Current event layouts (working on a spec for this). Event from log-scan
 probe type (a "probe event"):
 
     {
@@ -1574,7 +1574,7 @@ probe type (a "probe event"):
       "user": "44444444-4444-4444-4444-444444444444",
       "monitor": "gz",
       "probe": "smartlogin",
-      "probeType": "logscan"
+      "probeType": "log-scan"
       "clear": false,
       "data":{
         "message":"Log \"/var/svc/log/smartdc-agent-smartlogin:default.log\" matched /Stopping/.",
@@ -1713,7 +1713,7 @@ Probes for watching relevant SDC log files for, say, "ERROR".
 
     # GZ probes
     sdc-amon /pub/otto/monitors/sdclogs/probes/headnode-ur -X PUT -d- < '{
-        "type": "logscan",
+        "type": "log-scan",
         "server": "564d70d5-0187-e5d4-468f-7b49a6b014ff",
         "config": {
             "path": "/var/svc/log/smartdc-agent-ur:default.log",
@@ -1722,9 +1722,9 @@ Probes for watching relevant SDC log files for, say, "ERROR".
             "period": 60
         }
     }'
-    # Or perhaps a specialized probe "smf-logscan" type for SMF logs.
+    # Or perhaps a specialized probe "smf-log-scan" type for SMF logs.
     sdc-amon /pub/otto/monitors/sdclogs/probes/headnode-heartbeater -X PUT -d- < '{
-        "type": "smf-logscan",
+        "type": "smf-log-scan",
         "server": "564d70d5-0187-e5d4-468f-7b49a6b014ff",
         "config": {
             "fmri": "svc:/smartdc/agent/heartbeater:default",
@@ -1738,7 +1738,7 @@ Probes for watching relevant SDC log files for, say, "ERROR".
     # SDC zones probes
     # Where 'ea3898cd-4ca9-410a-bfa6-0152ba07b1d7' is the ufds0 zone name.
     sdc-amon /pub/otto/monitors/sdclogs/probes/ufds0-ufds-server -X PUT -d- < '{
-        "type": "logscan",
+        "type": "log-scan",
         "machine": "ea3898cd-4ca9-410a-bfa6-0152ba07b1d7",
         "config": {
             "path": "/var/log/ufds/server.log",

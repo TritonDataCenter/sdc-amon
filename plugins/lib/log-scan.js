@@ -59,7 +59,7 @@ function LogScanProbe(options) {
 util.inherits(LogScanProbe, Probe);
 
 LogScanProbe.runLocally = true;
-LogScanProbe.prototype.type = 'logscan';
+LogScanProbe.prototype.type = 'log-scan';
 
 LogScanProbe.validateConfig = function (config) {
   if (!config)
@@ -78,7 +78,7 @@ LogScanProbe.prototype.start = function (callback) {
   this.timer = setInterval(function () {
     if (!self._running)
       return;
-    log.trace('clear logscan counter');
+    log.trace('clear log-scan counter');
     self._count = 0;
   }, this.period * SECONDS);
 
@@ -92,9 +92,9 @@ LogScanProbe.prototype.start = function (callback) {
     var line = _trim('' + data);
     if (self.regex.test(line)) {
       log.trace({line: line, threshold: self.threshold, count: self._count},
-        'logscan regex hit');
+        'log-scan regex hit');
       if (++self._count >= self.threshold) {
-        log.info({match: line}, 'logscan event');
+        log.info({match: line}, 'log-scan event');
         self.emitEvent(self.message, self._count, {match: line});
       }
     }
@@ -103,7 +103,7 @@ LogScanProbe.prototype.start = function (callback) {
   this.tail.on('exit', function (code) {
     if (!self._running)
       return;
-    log.fatal('logscan: tail exited (code=%d)', code);
+    log.fatal('log-scan: tail exited (code=%d)', code);
     clearInterval(self.timer);
   });
 

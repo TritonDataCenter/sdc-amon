@@ -139,7 +139,7 @@ test('email: notify', function (t) {
     "user": "a3040770-c93b-6b41-90e9-48d3142263cf",
     "monitor": "gz",
     "probe": "smartlogin",
-    "probeType": "logscan",
+    "probeType": "log-scan",
     "clear": false,
     "data": {
       "message": "Log \"blah.log\" matched /Stopping/.",

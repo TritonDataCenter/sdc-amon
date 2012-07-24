@@ -55,7 +55,7 @@ to install and manage in their VMs on their own.
     relay/          Amon relay (node.js package)
     agent/          Amon agent (node.js package)
     plugins/        "amon-plugins" node.js package that holds probe types
-                    (e.g. "logscan.js" implements the "logscan" probe type).
+                    (e.g. "log-scan.js" implements the "log-scan" probe type).
     common/         "amon-common" node.js module to share code between the
                     above packages.
     bin/            Some convenience scripts to run local builds of node, etc.
@@ -330,7 +330,7 @@ Add a couple probes to this monitor:
     {
       "name": "whistlelog",
       "machine": "global",
-      "type": "logscan",
+      "type": "log-scan",
       "config": {
         "path": "/tmp/whistle.log",
         "regex": "tweet",
@@ -344,7 +344,7 @@ Add a couple probes to this monitor:
     {
       "name": "whistlelog",
       "machine": "global",
-      "type": "logscan",
+      "type": "log-scan",
       "config": {
         "path": "/tmp/whistle.log",
         "regex": "tweet",
@@ -384,7 +384,7 @@ What should happen now:
             { user: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             monitor: 'whistle',
             name: 'whistlelog',
-            type: 'logscan' },
+            type: 'log-scan' },
          type: 'Integer',
          value: 2,
          data: { match: 'Tue Nov 22 15:50:19 PST 2011: tweet' },

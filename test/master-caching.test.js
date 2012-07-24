@@ -29,7 +29,7 @@ var FIXTURES = {
         contacts: ['email'],
         probes: {
           whistlelog: {
-            'type': 'logscan',
+            'type': 'log-scan',
             'machine': prep.amontestzone.uuid,
             'config': {
               'path': '/tmp/whistle.log',

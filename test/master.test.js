@@ -30,7 +30,7 @@ var FIXTURES = {
         probes: {
           whistlelog: {
             'machine': prep.amontestzone.uuid,
-            'type': 'logscan',
+            'type': 'log-scan',
             'config': {
               'path': '/tmp/whistle.log',
               'regex': 'tweet',
@@ -45,7 +45,7 @@ var FIXTURES = {
         probes: {
           whistlelog: {
             'machine': prep.amontestzone.uuid,
-            'type': 'logscan',
+            'type': 'log-scan',
             'config': {
               'path': '/tmp/whistle.log',
               'regex': 'tweet',
@@ -60,7 +60,7 @@ var FIXTURES = {
         probes: {
           smartlogin: {
             'machine': prep.headnodeUuid,
-            'type': 'logscan',
+            'type': 'log-scan',
             'config': {
               'path': '/var/svc/log/smartdc-agent-smartlogin:default.log',
               'regex': 'Stopping',
@@ -90,7 +90,7 @@ var FIXTURES = {
         probes: {
           smartlogin: {
             'machine': prep.headnodeUuid,
-            'type': 'logscan',
+            'type': 'log-scan',
             'config': {
               'path': '/var/svc/log/smartdc-agent-smartlogin:default.log',
               'regex': 'Stopping',
@@ -100,7 +100,7 @@ var FIXTURES = {
           },
           bogusserver: {
             'machine': '9b07ce48-52e4-3c49-b445-3c135c55311b', // bogus uuid
-            'type': 'logscan',
+            'type': 'log-scan',
             'config': {
               'path': '/var/svc/log/smartdc-agent-smartlogin:default.log',
               'regex': 'Stopping',
@@ -342,7 +342,7 @@ test('probes: create without owning zone', function (t) {
   var probes = {
     'donotown': {
       'machine': prep.otherZoneUuid, // Just using any zone ulrich doesn't own.
-      'type': 'logscan',
+      'type': 'log-scan',
       'config': {
         'path': '/tmp/whistle.log',
         'regex': 'tweet',
@@ -352,7 +352,7 @@ test('probes: create without owning zone', function (t) {
     },
     'doesnotexist': {
       'machine': 'fef43adb-8152-b94c-9dd9-058247579a3d', // some random uuid
-      'type': 'logscan',
+      'type': 'log-scan',
       'config': {
         'path': '/tmp/whistle.log',
         'regex': 'tweet',
