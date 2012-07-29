@@ -13,6 +13,26 @@ in the future when Amon design might have moved on. *Add new sections to
 the top.*
 
 
+# amon-agent runtime
+
+Discussion: <https://xmpp.joyent.com/logs/manta%40groupchat.joyent.com/2012-07-26.html#22:46:27.329541>
+
+DRAM usage for a node process is like 20MB. That sucks for an amon-agent
+running in every zone on a compute node. Think 256MB zones... or
+128/64/smaller for some. Sucking 20MB is a non-starter there. That means
+considering alternatives: Perl, Python, Luvit. Rackspace's luvit agent takes
+about 4-5MB
+(https://hub.joyent.com/wiki/display/dev/OSCON+2012+Trip+Report#OSCON2012TripReport-Onetinydaemontoharvestyourserverstatistics%28andmore%29%28Rackspace%29).
+Mark mentioned Perl/Python perhaps taking 1-2MB.
+TODO: investigate those numbers (for *static* builds).
+
+Obviously my (Trent) bias is going to be Python here. Though that *does*
+mean a Python build for the SmartOS GZ... which sucks. Better argument
+for Perl there.
+
+TODO: Think about scaling issues here.
+
+
 # contact objectclass in UFDS (20-July-2012)
 
 How do you add a contact entry? In the current design, contacts are fields
