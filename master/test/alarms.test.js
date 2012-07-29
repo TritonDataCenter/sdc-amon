@@ -24,7 +24,6 @@ var redis = require('redis');
 //---- globals
 
 var configPath = path.resolve(__dirname, '../cfg/amon-master.json');
-//var configPath = path.resolve(__dirname, '../config.json');
 var config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
 var log = new Logger({

@@ -24,8 +24,16 @@ var log = new Logger({
   level: 'trace'
 });
 
+
+// If there is a local configured Amon Master, then we'll borrow some
+// settings.
+var localConfig = {};
+try {
+  localConfig = require('../cfg/amon-master.json');
+} catch (e) {}
+
 var CONFIG = {
-  'datacenterName': 'testdc',
+  'datacenterName': localConfig.datacenterName || 'testdc',
   'notificationPlugins': {
     'sms': {
       'path': '../lib/notifications/twilio',
@@ -142,10 +150,10 @@ test('email: notify', function (t) {
     "probeType": "log-scan",
     "clear": false,
     "data": {
-      "message": "Log \"blah.log\" matched /Stopping/.",
+      "message": "Log \"test.log\" matched /This is the test suite/.",
       "value": 1,
       "details": {
-        "match": "Stopping"
+        "match": "This is the test suite"
       }
     },
     "machine": "44454c4c-3200-1042-804d-c2c04f575231"
