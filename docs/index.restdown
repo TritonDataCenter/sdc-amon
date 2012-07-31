@@ -1668,9 +1668,8 @@ whole userCache object.
 ||ufds.rootDn||UFDS root dn.||
 ||ufds.password||UFDS root dn password.||
 ||ufds.caching||Boolean indicating if UFDS caching should be enabled. Default true.||
-||mapi.url||MAPI client url.||
-||mapi.username||MAPI HTTP admin username.||
-||mapi.password||MAPI HTTP admin password.||
+||cnapi.url||CNAPI client url.||
+||vmapi.url||VMAPI client url.||
 ||redis.host||Redis server host or IP. Defaults to 127.0.0.1 if not given.||
 ||redis.port||Redis server port. Defaults to 6379 if not given.||
 ||userCache.size||The number of entries to cache.||

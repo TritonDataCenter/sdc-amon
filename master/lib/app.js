@@ -402,11 +402,7 @@ App.prototype.quitRedisClient = function () {
 /**
  * Gets Application up and listening.
  *
- * This method creates a zsock with the zone/path you passed in to the
- * constructor.  The callback is of the form function (error), where error
- * should be undefined.
- *
- * @param {Function} callback callback of the form function (error).
+ * @param callback {Function} `function (err)`.
  */
 App.prototype.listen = function (callback) {
   this.server.listen(this.config.port, '0.0.0.0', callback);
