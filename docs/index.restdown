@@ -569,14 +569,14 @@ Create a probe.
 
 ### Inputs
 
-||**Field**||**Type**||**Description**||
-||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||monitor (URL)||String||The name of the existing monitor to which this probe will belong.||
-||probe (URL)||String||Name of this probe. This is unique for probes in this monitor. It must be 1-512 chars, begin with alpha character and include only alphanumeric, '_', '.' and '-' ||
-||type||String||One of the supported [probe types](#probe-types).||
-||config||Object||Extra configuration information for the probe, if required. This is specific to the [probe type](#probe-types). Most probe types require some config information.||
-||agent||String||The UUID of the agent that will run this probe. An agent UUID is the UUID of the VM or node on which it is running. For some probe types the agent will be the same as "machine", e.g. a log-scan probe, for others it will be a separate, e.g. a ping (ICMP) probe is no use running on the same machine it is checking.||
-||machine||String||Optional. The UUID of the VM or node being monitored, if applicable. For some probe types (those that must run locally), "machine" is implied to be the same value as "agent" if not given. An example where "machine" is not applicable might be an HTTP check against a hostname that handled by multiple webheads behind a load balancer.||
+||**Field**||**Required?**||**Type**||**Description**||
+||user (URL)||-||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||monitor (URL)||-||String||The name of the existing monitor to which this probe will belong.||
+||probe (URL)||-||String||Name of this probe. This is unique for probes in this monitor. It must be 1-512 chars, begin with alpha character and include only alphanumeric, '_', '.' and '-' ||
+||type||String||required||One of the supported [probe types](#probe-types).||
+||config||Object||see [Probe Types](#probe-types)||Extra configuration information for the probe, if required. This is specific to the [probe type](#probe-types). Most probe types require some config information.||
+||agent||String||required||The UUID of the agent that will run this probe. An agent uses the UUID of the VM (`zonename` in a zone, ??? in a virtual machine) or node (`sysinfo | json UUID`) on which it is running as its UUID.||
+||machine||String||optional||The UUID of the VM or node being monitored, if applicable. For some probe types (those that must run locally), "machine" is the same value as the "agent". An example where "machine" is not applicable might be an HTTP check against a hostname that handled by multiple webheads behind a load balancer.||
 
 ### Returns
 
@@ -1059,7 +1059,7 @@ Only one of `all`, `monitors`, `machines` will exist.
 
 An example maintenance window:
 
-    XXX
+    TODO:XXX
 
 
 ## ListAllMaintenanceWindows (GET /maintenances)
@@ -1504,7 +1504,7 @@ None.
     Transfer-Encoding: chunked
 
 
-## RelayAdminLogLevel (POST /state?action=syncprobes)
+## RelayAdminLogLevel (POST /state?action=loglevel)
 
 Set the logging level for the amon-relay.
 
@@ -1541,14 +1541,29 @@ None.
 
 # Probe Types
 
-TODO:XXX describe local v. remote probe types here and implications with
-agent/machine args for creation. Note remote/local on each probe section
-below.
+A probe must be one of the types described in this section. See
+[PutProbe](#PutProbe) above for how to add a probe. The "config" field is
+specific to the probe type. Those are specified here.
+
+Some aggregated data on the probe types:
+
+||**Type**||**Requires Agent**||**Sends Clear Events**||
+||log-scan||yes||no||
+||machine-up||no||yes||
+||http||yes||no||
+||icmp||yes||no||
+
+"Requires Agent" means that a probe of this type needs an amon-agent running
+in the customer vm/zone to run the probe. "machine-up" is the exception here,
+it is run "by the system".
+
 
 
 ## Probe: log-scan
 
 Watch (tail -f) a log file for a particular pattern (regular expression).
+This probe type requires an amon-agent running inside the target VM (i.e.
+the VM with the UUID of the "agent" field).
 
 ### Config
 
@@ -1562,7 +1577,7 @@ Watch (tail -f) a log file for a particular pattern (regular expression).
 
     $ sdc-amon /pub/bob/monitors/mymonitor/probes/myservice -X PUT --data '{
         "type": "log-scan",
-        "machine": "444d70d5-0187-e5d4-468f-7b49a6b014ff",
+        "agent": "444d70d5-0187-e5d4-468f-7b49a6b014ff",
         "config": {
             "path": "/var/log/myservice.log",
             "regex": "ERROR",
@@ -1571,12 +1586,20 @@ Watch (tail -f) a log file for a particular pattern (regular expression).
         }
     }'
 
+
 ## Probe: machine-up
 
-Watch for a machine (i.e. a virtual machine) going up or down. Alarms for
+Watch for a VM (i.e. a virtual machine or zone) going up or down. Alarms for
 this probe will "clear", i.e. an alarm created for a machine going down
 will be automatically closed by the event sent when the machine comes back
 up.
+
+"machine-up" is an exceptional probe type in that it is executed by the
+system. A customer zone does not require an amon-agent running to handle
+running these probes. A minor confusion here is that the given "agent" UUID
+identifies the VM/machine to watch, but ultimately is not the amon-agent
+that ends up running the probe. (Dev Note: These probes are actually
+run by the amon-agent running in the VM *host* for a given VM.)
 
 ### Config
 
@@ -1586,12 +1609,15 @@ None.
 
     $ sdc-amon /pub/bob/monitors/mymonitor/probes/mywebhead -X PUT --data '{
         "type": "machine-up",
-        "machine": "a5134e62-1bed-5e48-a760-7b9b79aef729"
+        "agent": "a5134e62-1bed-5e48-a760-7b9b79aef729"
     }'
+
 
 ## Probe: http
 
 Watches a HTTP(S) URL for a specific body (regex), or status codes.
+This probe type requires an amon-agent running inside the target VM (i.e.
+the VM with the UUID of the "agent" field).
 
 ### Config
 
@@ -1617,16 +1643,19 @@ Watches http://google.com/ home page and fire when a non 2xx status code is retu
 
     $ sdc-amon /pub/bob/monitors/mymonitor/probes/googleprobe -X PUT --data '{
         "type": "http",
-        "machine": "a5134e62-1bed-5e48-a760-7b9b79aef729",
+        "agent": "a5134e62-1bed-5e48-a760-7b9b79aef729",
         "config":{
           "url":"http://google.com/"
         }
     }'
 
+
 ## Probe: icmp
 
 Performs an ICMP ping to a specific host and alarms when there are signs of
-packet loss
+packet loss.
+This probe type requires an amon-agent running inside the target VM (i.e.
+the VM with the UUID of the "agent" field).
 
 ### Config
 
@@ -1645,7 +1674,7 @@ interuptions or packet loss.
     sdc-amon /pub/admin/monitors/ping/probes/ping -X PUT --data '
     {
       "type":"icmp",
-      "server":"564da583-a93e-7fe7-5d61-5c3190ba44fb",
+      "agent":"564da583-a93e-7fe7-5d61-5c3190ba44fb",
       "config": {
         "host":"api.us-west.joyent.com"
       }
@@ -1770,54 +1799,17 @@ More detail:
   suppression for a pre-defined period of time).
 - Ability for operator to set a maintenance window on a CN and on the whole
   cloud. This would disable alerts to operator.
-  Q:    Disable alerts to customers? How about it adds a "BTW, this is during a
-        maint window" ps to each alert? To do this I think we should require an
-        explicit operator action to allow that. I.e. a "notifyCustomers=true"
-        boolean on the maint window or something. Bletch. Punt for now.
-  Q:    If op sets maint on CN-3, for example, there is no way to know to
-        disable a "ping" monitor that is running on CN-2 to check a zone
-        on CN-3.... unless we add "target_machine" field or something for
-        these purposes. Might be reasonable in the UI because the user
-        would start with the target machine: "Add ping check to this
-        machine. Run it from this other machine."  Do we need this?
 - Amon Master API integrated into Cloud API.
 - Integration of Monitor management into AdminUI and Portal.
 - Upgradable amon system.
 
 
 
-# Glossary
-
-- A **monitor** is a the main conceptual object that is configured by operators
-  and customers using Amon. It includes the details for what checks to
-  run and, when a check trips, who and how to notify ("contacts").
-- A **probe** is a single thing to check (the atom of physical monitoring
-  done by the Amon agents). E.g. "Check the running state of zone X." "Check
-  for 3 occurrences of 'ERROR' in 'foo.log' in zone X within 1 minute." A
-  monitor includes one or more probes.
-- An **event** is a message sent from an Amon agent up to the Amon master that
-  might create or update an alarm.
-- An open **alarm** is the state of a failing monitor. An alarm is created
-  when a monitor faults (i.e. one of its probes detects a fault). An alarm
-  can be closed by user action (via the API or in the Operator or User
-  Portals) or via an Amon *clear* event -- the failing state is no longer
-  failing, e.g. a halted machine has come back up. An alarm object lives
-  until it is closed.
-- A **fault** is a single probe failure. An open alarm has one or more
-  faults: one for each probe that reported a fault event.
-- A **notification** is a message sent for an alarm to one or more contacts
-  associated with that monitor. An alarm may result in many notifications
-  through its lifetime.
-- A **machine** is used to represent any of a software VM, a hardware VM
-  (i.e. a zone) or a node (i.e. a physical compute node or server). The
-  machine value is a UUID.
-
-
 
 # Use Cases
 
 Some Amon use cases to guide its design and to demonstrate how to use
-Amon. **Dev Note: Current Amon doesn't support all these use cases yet.**
+Amon. **Note: Current Amon doesn't support all these use cases yet.**
 
 In the examples below "otto" is an operator account commonly used
 in dev work on Amon, "564d70d5-0187-e5d4-468f-7b49a6b014ff" is the headnode
@@ -1827,49 +1819,49 @@ UUID, etc.
 
 ## 1. Operator SDC Log Monitor
 
+**LIMITATION: Don't have 'smf-log-scan' type yet. Also, current SDC7 logs are
+typically Bunyan logs in which "ERROR" does not literally appear. TODO:
+some Bunyan log-scan type or option.**
+
 Probes for watching relevant SDC log files for, say, "ERROR".
 
-    sdc-amon /pub/otto/monitors/sdclogs -X PUT -d- < '{
+    sdc-amon /pub/otto/monitors/sdclogs -X PUT -d '{
         "contacts": ["email"]
     }'
 
     # GZ probes
-    sdc-amon /pub/otto/monitors/sdclogs/probes/headnode-ur -X PUT -d- < '{
+    sdc-amon /pub/otto/monitors/sdclogs/probes/headnode-ur -X PUT -d '{
         "type": "log-scan",
-        "server": "564d70d5-0187-e5d4-468f-7b49a6b014ff",
+        "agent": "564d70d5-0187-e5d4-468f-7b49a6b014ff",
         "config": {
             "path": "/var/svc/log/smartdc-agent-ur:default.log",
-            "regex": "ERROR",
-            "threshold": 1,
-            "period": 60
+            "regex": "ERROR"
         }
     }'
     # Or perhaps a specialized probe "smf-log-scan" type for SMF logs.
-    sdc-amon /pub/otto/monitors/sdclogs/probes/headnode-heartbeater -X PUT -d- < '{
+    sdc-amon /pub/otto/monitors/sdclogs/probes/headnode-heartbeater -X PUT -d '{
         "type": "smf-log-scan",
-        "server": "564d70d5-0187-e5d4-468f-7b49a6b014ff",
+        "agent": "564d70d5-0187-e5d4-468f-7b49a6b014ff",
         "config": {
             "fmri": "svc:/smartdc/agent/heartbeater:default",
-            "regex": "ERROR",
-            "threshold": 1,
-            "period": 60
+            "regex": "ERROR"
         }
     }'
     ...
 
     # SDC zones probes
     # Where 'ea3898cd-4ca9-410a-bfa6-0152ba07b1d7' is the ufds0 zone name.
-    sdc-amon /pub/otto/monitors/sdclogs/probes/ufds0-ufds-server -X PUT -d- < '{
+    sdc-amon /pub/otto/monitors/sdclogs/probes/ufds0-ufds-server -X PUT -d '{
         "type": "log-scan",
-        "machine": "ea3898cd-4ca9-410a-bfa6-0152ba07b1d7",
+        "agent": "ea3898cd-4ca9-410a-bfa6-0152ba07b1d7",
         "config": {
             "path": "/var/log/ufds/server.log",
-            "regex": "ERROR",
-            "threshold": 1,
-            "period": 60
+            "regex": "ERROR"
         }
     }'
     ...
+
+TODO: script this up
 
 
 
@@ -1877,25 +1869,40 @@ Probes for watching relevant SDC log files for, say, "ERROR".
 
 Probe for SDC zones going up and down. Separate from "SDC Log monitor"
 because zone up/down alarms can clear.
-See <https://stuff.joyent.us/stuff/trent/screencasts/amon1.mov> for a
-screencast demonstrating this use case.
 
-    echo '{
+    sdc-amon /pub/otto/monitors/sdczones -X PUT -d '{
         "contacts": ["email"]
-    }' | sdc-amon /pub/SOME-OPERATOR/monitors/sdczones -X PUT -d @-
+    }'
 
-    # Where 'ea3898cd-4ca9-410a-bfa6-0152ba07b1d7' is the ufds0 zone name.
-    echo '{
-        "type": "machine-up",
-        "machine": "ea3898cd-4ca9-410a-bfa6-0152ba07b1d7"
-    }' | sdc-amon /pub/SOME-OPERATOR/monitors/sdczones/probes/ufds0 -X PUT -d @-
+    # Create a probe like the following for all SDC zones:
+    #    sdc-amon /pub/otto/monitors/sdczones/probes/ufds0 -X PUT -d '{
+    #        "type": "machine-up",
+    #        "agent": "ea3898cd-4ca9-410a-bfa6-0152ba07b1d7"
+    #    }'
+    admin_uuid=$(bash /lib/sdc/config.sh -json | json ufds_admin_uuid)
+    sdc_zones=$(sdc-vmapi /vms?owner_uuid=$admin_uuid \
+        | json -H -c "tags.smartdc_type" -a uuid alias -d:)
+    for z in $sdc_zones; do
+        uuid=${z%:*}
+        alias=${z#*:}
+        echo "# Add machine-up probe for zone $uuid ($alias)."
+        sdc-amon /pub/otto/monitors/sdczones/probes/$alias -X PUT -d "{
+            \"type\": \"machine-up\",
+            \"agent\": \"$uuid\"
+        }"
+    done
 
-    # ... one for each sdc zone (sdc-vmapi /vms?tag.smartdc_role=*)
-    # See "sdczones.sh" in <https://stuff.joyent.us/stuff/trent/screencasts/amon1-notes.txt>
+TODO: could update this to be smarter about whether the probe already
+exists to re-run.
+
+See <https://stuff.joyent.us/stuff/trent/screencasts/amon1.mov> (Joyent
+Internal) for a screencast demonstrating this use case.
 
 
 
 ## 3. Operator SDC Services monitor
+
+**LIMITATION: Don't have "smf" probe type yet.**
 
 Probe for SDC zones' and GZ's "smartdc" services going up/down.
 
@@ -1904,14 +1911,14 @@ Probe for SDC zones' and GZ's "smartdc" services going up/down.
         }
     PUT /my/monitors/services/probes/$machine_alias-$fmri_nickname < {
             "type": "smf",
-            "machine": "$machine_uuid",
+            "agent": "$machine_uuid",
             "config": {
                 "fmri": "$fmri"
             }
         }
     PUT /my/monitors/services/probes/$headnode_hostname-$fmri_nickname < {
             "type": "smf",
-            "server": "$compute_node_uuid",
+            "agent": "$compute_node_uuid",
             "config": {
                 "fmri": "$fmri"
             }
@@ -1925,7 +1932,7 @@ For example:
     # Where '564d70d5-0187-e5d4-468f-7b49a6b014ff' is my headnode UUID.
     sdc-amon /pub/otto/monitors/sdcservices/probes/headnode-smartlogin -X PUT -d- < '{
         "type": "smf",
-        "server": "564d70d5-0187-e5d4-468f-7b49a6b014ff",
+        "agent": "564d70d5-0187-e5d4-468f-7b49a6b014ff",
         "config": {
             "fmri": "svc:/smartdc/agent/smartlogin:default"
         }
@@ -1934,7 +1941,7 @@ For example:
     # Where 'ea3898cd-4ca9-410a-bfa6-0152ba07b1d7' is the ufds0 zone name.
     sdc-amon /pub/otto/monitors/sdcservices/probes/ufds0-ufds-capi -X PUT -d- < '{
         "type": "smf",
-        "machine": "ea3898cd-4ca9-410a-bfa6-0152ba07b1d7",
+        "agent": "ea3898cd-4ca9-410a-bfa6-0152ba07b1d7",
         "config": {
             "fmri": "svc:/smartdc/agent/smartlogin:default"
         }
@@ -1964,8 +1971,10 @@ be so bad.
         }
     PUT /my/monitors/machine-up/probes/$machine_uuid < {
             "type": "machine-up",
-            "machine": "$machine_uuid"
+            "agent": "$machine_uuid"
         }
+
+TODO: script this up.
 
 
 ## 5. Customer "Site up" monitor
@@ -1976,7 +1985,7 @@ Probe to "GET /canary" on the site from some other source location.
             "contacts": ["email"]
         }
     PUT /my/monitors/site/probes/webcheck < {
-            "machine": "$machine_uuid",  // <--- this is the machine to run HTTP request from
+            "agent": "$machine_uuid",  // <--- this is the machine to run HTTP request from
             "type": "http",
             "config": {
                 "url": "http://example.com/canary.html",
@@ -2000,7 +2009,7 @@ healthcheck on KVM.
         }
     PUT /my/monitors/kvmcheck/probes/foo < {
             "type": "mdbkernel",
-            "machine": "$machine_uuid",
+            "agent": "$machine_uuid",
             "runInGlobal": true,   // must be operator to set this
             "config": {
                 // This is essential wide open. That command can presumably
@@ -2057,7 +2066,7 @@ probe types that don't exist yet and that aren't a high priority right now.
     }'
     sdc-amon /pub/trent/monitors/webhead1/probes/machineup -X PUT -d '{
       type: "machine-up"
-      machine: UUID_WEBHEAD1,
+      agent: UUID_WEBHEAD1,
       // This probe type doesn't accept an agent: it runs from the compute
       // node GZ for `machine`.
     }'
@@ -2080,14 +2089,14 @@ probe types that don't exist yet and that aren't a high priority right now.
     }'
     sdc-amon /pub/trent/monitors/webhead1/probes/myservice -X PUT -d '{
       type: "smf",    // Not yet implemented
-      machine: UUID_WEBHEAD1,
+      agent: UUID_WEBHEAD1,
       config: {
         "fmri": "myservice"
       }
     }'
     sdc-amon /pub/trent/monitors/webhead1/probes/logerrors -X PUT -d '{
       type: "log-scan",   // or 'smf-log-scan' if/when that is added
-      machine: UUID_WEBHEAD1,
+      agent: UUID_WEBHEAD1,
       config: {
         "path": "/var/log/myservice.log",
         "regex": "ERROR"
@@ -2102,7 +2111,7 @@ probe types that don't exist yet and that aren't a high priority right now.
     }'
     sdc-amon /pub/trent/monitors/webhead1maint/probes/disk -X PUT -d '{
       type: "disk-free",   // Not yet implemented
-      machine: UUID_WEBHEAD1,
+      agent: UUID_WEBHEAD1,
       config: {
         "path": "/",        // or call this 'mount'?
         "capacity": 0.8   // alarm if disk usage is over 80%
@@ -2110,7 +2119,7 @@ probe types that don't exist yet and that aren't a high priority right now.
     }'
     sdc-amon /pub/trent/monitors/webhead1maint/probes/ram -X PUT -d '{
       type: "ram-free",   // Not yet implemented
-      machine: UUID_WEBHEAD1,
+      agent: UUID_WEBHEAD1,
       config: {
         "capacity": 0.9,   // alarm if RAM usage is over 90% 3 times in 5 minutes
         "threshold": 3,
