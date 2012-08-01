@@ -117,12 +117,12 @@ pkg: pkg_agent pkg_relay pkg_master
 
 .PHONY: pkg_relay
 pkg_relay:
-	rm -fr $(BUILD)/pkg/relay
-	mkdir -p $(BUILD)/pkg/relay/build
-	cp -PR $(NODE_INSTALL) $(BUILD)/pkg/relay/build/node
+	rm -fr $(BUILD)/pkg/amon-relay
+	mkdir -p $(BUILD)/pkg/amon-relay/build
+	cp -PR $(NODE_INSTALL) $(BUILD)/pkg/amon-relay/build/node
 	# '-H' to follow symlink for amon-common and amon-plugins node modules.
-	mkdir -p $(BUILD)/pkg/relay/node_modules
-	ls -d relay/node_modules/* | xargs -n1 -I{} cp -HR {} $(BUILD)/pkg/relay/node_modules/
+	mkdir -p $(BUILD)/pkg/amon-relay/node_modules
+	ls -d relay/node_modules/* | xargs -n1 -I{} cp -HR {} $(BUILD)/pkg/amon-relay/node_modules/
 	cp -PR relay/lib \
 		relay/main.js \
 		relay/package.json \
@@ -131,22 +131,22 @@ pkg_relay:
 		relay/bin \
 		relay/.npmignore \
 		test \
-		$(BUILD)/pkg/relay/
+		$(BUILD)/pkg/amon-relay/
 
 	# tools/amon-relay.exclude contains a list of files and patterns of some
 	#  unnecessary, duplicated, or dev-only pieces we don't want in the build.
 	(cd $(BUILD)/pkg && $(TAR) --exclude-from=$(TOP)/tools/amon-relay.exclude \
-		-zcf ../amon-relay-$(STAMP).tgz relay)
+		-zcf ../amon-relay-$(STAMP).tgz amon-relay)
 	@echo "Created '$(BUILD)/amon-relay-$(STAMP).tgz'."
 
 .PHONY: pkg_agent
 pkg_agent:
-	rm -fr $(BUILD)/pkg/agent
-	mkdir -p $(BUILD)/pkg/agent/build
-	cp -PR $(NODE_INSTALL) $(BUILD)/pkg/agent/build/node
+	rm -fr $(BUILD)/pkg/amon-agent
+	mkdir -p $(BUILD)/pkg/amon-agent/build
+	cp -PR $(NODE_INSTALL) $(BUILD)/pkg/amon-agent/build/node
 	# '-H' to follow symlink for amon-common and amon-plugins node modules.
-	mkdir -p $(BUILD)/pkg/agent/node_modules
-	ls -d agent/node_modules/* | xargs -n1 -I{} cp -HR {} $(BUILD)/pkg/agent/node_modules/
+	mkdir -p $(BUILD)/pkg/amon-agent/node_modules
+	ls -d agent/node_modules/* | xargs -n1 -I{} cp -HR {} $(BUILD)/pkg/amon-agent/node_modules/
 	cp -PR agent/lib \
 		agent/main.js \
 		agent/package.json \
@@ -154,12 +154,12 @@ pkg_agent:
 		agent/pkg \
 		agent/bin \
 		agent/.npmignore \
-		$(BUILD)/pkg/agent
+		$(BUILD)/pkg/amon-agent/
 
 	# tools/amon-agent.exclude contains a list of files and patterns of some
 	#  unnecessary, duplicated, or dev-only pieces we don't want in the build.
 	(cd $(BUILD)/pkg && $(TAR) --exclude-from=$(TOP)/tools/amon-agent.exclude \
-	  -zcf ../amon-agent-$(STAMP).tgz agent)
+	  -zcf ../amon-agent-$(STAMP).tgz amon-agent)
 	@echo "Created '$(BUILD)/amon-agent-$(STAMP).tgz'."
 
 .PHONY: pkg_master
