@@ -172,6 +172,7 @@
 - [Trent] test suite for relay and agent
 - 'ping-agent' probe type. Basically this is a test that the amon-relay <->
   amon-agent socket is working and that the agent is responding.
+- sigar
 - from workflow/mapi talk: Amon should have the monitor skel for provisioning
   workflow a la FWAPI (but still use normal Amon comm channel). Spec that.
 - check interval: cloudkick checks run every 2.5 minutes.

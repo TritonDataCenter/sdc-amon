@@ -1,16 +1,41 @@
 #!/bin/bash
+#
+# Post-install script.
+#
+# Usage:
+# 1. This is typically run by 'apm', the SDC agents package manager.
+#    In that case (as a minimal clone of npm), a number of "npm_*" envvars
+#    are created.
+# 2. This script also supports being run for a standalone install of
+#    the amon-agent, i.e. NOT part of the suite of agents in an SDC
+#    compute node GZ.
+#
 
-OS=$(uname -s)
-DIR=`dirname $0`
+if [ "$TRACE" != "" ]; then
+    export PS4='${BASH_SOURCE}:${LINENO}: ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+    set -o xtrace
+fi
+set -o errexit
+set -o pipefail
 
-if [[ $OS != "SunOS" ]]; then
+
+TOP=$(cd $(dirname $0)/../ >/dev/null; pwd)
+
+if [[ $(uname -s) != "SunOS" ]]; then
+    echo "error: this postinstall is only supported on SunOS"
     exit 0
 fi
 
+if [[ -n "$npm_config_prefix" ]]; then
+	PREFIX=$npm_config_prefix/lib/node_modules/amon-agent
+	VERSION=$npm_package_version
+	SMFDIR=$npm_config_smfdir
+else
+  PREFIX=$TOP
+  VERSION=$(json version <$TOP/package.json)
+  SMFDIR=$TOP/smf
+fi
 
-export PREFIX=$npm_config_prefix
-export VERSION=$npm_package_version
-export SMFDIR=$npm_config_smfdir
 
 subfile () {
   IN=$1
@@ -18,11 +43,10 @@ subfile () {
   sed -e "s#@@PREFIX@@#$PREFIX#g" \
       -e "s#@@VERSION@@#$VERSION#g" \
       $IN > $OUT
+  echo "wrote '$OUT'"
 }
 
-
-subfile "$DIR/../smf/manifests/amon-agent.xml.in" "$SMFDIR/amon-agent.xml"
-
+subfile "$TOP/smf/manifests/amon-agent.xml.in" "$SMFDIR/amon-agent.xml"
 svccfg import $SMFDIR/amon-agent.xml
 
 # Gracefully restart the agent if it is online.
@@ -36,5 +60,5 @@ else
   svcadm enable amon-agent
 fi
 
-# Ensure zero-exit value to not abort the npm install.
+# Ensure zero-exit value to not abort the apm install.
 exit 0
