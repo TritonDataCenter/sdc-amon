@@ -62,7 +62,7 @@ function clearUser() {
 
     if [[ ! -n "$opt_quick_clean" ]]; then
         local machines=$(sdc-vmapi /vms?owner_uuid=$uuid \
-            | json -Ha server_uuid uuid -d: | xargs)
+            | json -c 'state === "running"' -Ha server_uuid uuid -d: | xargs)
         for machine in $machines; do
             # We *could* do this:
             #    echo "# DELETE /vms/$machine"
@@ -72,7 +72,7 @@ function clearUser() {
             # VMAPI shouldn't get confused.
             local server_uuid=$(echo $machine | cut -d: -f1)
             local machine_uuid=$(echo $machine | cut -d: -f2)
-            echo "# Delete machine $machine_uuid (on server $server_uuid)."
+            echo "# [$(date -u)]Delete machine $machine_uuid (on server $server_uuid)."
             sdc-oneachnode -n $server_uuid vmadm delete $machine_uuid
         done
 
@@ -100,9 +100,7 @@ function clearUser() {
 
 
 function clearCaches() {
-    echo "# Clear VMAPI and Amon caches."
-    sdc-login vmapi svcadm restart vmapi   # VMAPI keeps a ListMachines cache
-    sleep 2
+    echo "# Clear Amon cache."
     sdc-amon /state?action=dropcaches -X POST > /dev/null
 }
 
