@@ -73,6 +73,16 @@ function Probe(app, data) {
       throw new TypeError(format('invalid probe data: no "monitor": %j', data));
     if (!data.user)
       throw new TypeError(format('invalid probe data: no "user": %j', data));
+
+    // 'skipauthz' in the probe data is a request to skip authorization
+    // for PUTting this probe. It exists to facilitate the setting of
+    // probes by core SDC zones during initial headnode setup, when all
+    // facilities (specificall VMAPI) for authZ might not be up yet.
+    // Note: This request is **only honoured for the admin user** (the
+    // only user for which probes should be added during headnode setup).
+    this._skipauthz = (data.skipauthz
+      ? data.user === app.config.adminUuid : false);
+
     this.dn = Probe.dn(data.user, data.monitor, data.name);
     raw = {
       amonprobe: data.name,
@@ -175,7 +185,9 @@ Probe.prototype.serialize = function serialize(priv) {
 /**
  * Authorize that this Probe can be added/updated.
  *
- * One of the following must be true
+ * One of the following must be true:
+ * 0. "skipauthz==true" must have been requested for this probe *and* the
+ *    probe owner is the core admin user.
  * 1. The probe targets an existing physical machine (i.e. compute node,
  *    phyical server, box, the GZ) and the user is an operator.
  * 2. The probe targets an existing virtual machine and the user is an owner
@@ -194,6 +206,12 @@ Probe.prototype.authorizePut = function (app, callback) {
   var self = this;
   var log = app.log;
   var machineUuid = this.agent;
+
+  // Early out if skipping authZ. See discussion on "skipauthz" above.
+  if (this._skipauthz) {
+    log.info('probe PUT authorized: skipauthz is true');
+    return callback();
+  }
 
   function isRunInVmHostOrErr(next) {
     if (plugins[self.type].runInVmHost) {
@@ -260,7 +278,7 @@ Probe.prototype.authorizePut = function (app, callback) {
         }
       });
     } else {
-      // 2. A virual machine owned by this user.
+      // 2. A virtual machine owned by this user.
       app.vmapiClient.getVm({uuid: machineUuid, owner_uuid: self.user},
                            function (vmErr, vm) {
         if (vmErr) {

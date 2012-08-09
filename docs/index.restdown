@@ -577,6 +577,7 @@ Create a probe.
 ||config||Object||see [Probe Types](#probe-types)||Extra configuration information for the probe, if required. This is specific to the [probe type](#probe-types). Most probe types require some config information.||
 ||agent||String||required||The UUID of the agent that will run this probe. An agent uses the UUID of the VM (`zonename` in a zone, ??? in a virtual machine) or node (`sysinfo | json UUID`) on which it is running as its UUID.||
 ||machine||String||optional||The UUID of the VM or node being monitored, if applicable. For some probe types (those that must run locally), "machine" is the same value as the "agent". An example where "machine" is not applicable might be an HTTP check against a hostname that handled by multiple webheads behind a load balancer.||
+||skipauthz||Boolean||optional||**Internal.** This is an admin-only option to skip PUT authorization. It is accepted only for the special system admin user. It exists to facilitate bootstrapping probe creation during SDC headnode setup when all services required for authZ may not yet be online.||
 
 ### Returns
 
@@ -1693,6 +1694,7 @@ settings. For example: if providing 'userCache', one must provide the
 whole userCache object.
 
 ||port||Port number on which to listen.||
+||adminUuid||The UUID of the admin user in this cloud. This is the 'ufds_admin_uuid' SDC config.||
 ||ufds.url||LDAP URL to connect to UFDS.||
 ||ufds.rootDn||UFDS root dn.||
 ||ufds.password||UFDS root dn password.||
@@ -2039,8 +2041,8 @@ probe types that don't exist yet and that aren't a high priority right now.
     # Setup a monitor for the service as a whole. Bad news if this one fails,
     # i.e. that's an argument for severities (TODO: severity).
     sdc-amon /pub/trent/monitors/myservice -X PUT -d '{
-      contacts: ["email", "sms"],
-      severity: 1
+      "contacts": ["email", "sms"],
+      "severity": 1
     }'
     sdc-amon /pub/trent/monitors/myservice/probes/ping -X PUT -d '{
       type: "icmp",
@@ -2156,6 +2158,29 @@ about the feature):
    page is to instead set it on the *machine* ("all monitors for this
    machine").
 5. Continue as above...
+
+
+## 8. Operator adding a monitor/probe to be shared amongst all operators
+
+Say an SDC instance has a number of operators, each with their own accounts.
+(This is probably suggested, rather than all ops sharing a single account.)
+If an operator wants to add monitoring on, say, a CN global zone that is to
+be shared amongst all operators, then how should that work?
+
+Suggestion: The monitor/probe is put on the admin/core/sys/system/sdc account
+(currently this is the "admin" user, separate discussion on whether that
+should actually be called "admin"). So really we'd just want the Operator
+Portal to allow a logged in operator to create monitors/probes either on
+their own account or on the shared "admin" account.
+
+    sdc-amon /pub/admin/monitors/blah -X PUT -d '{
+      contacts: ["lindaEmail"]
+    }'
+
+    ...
+
+In the above example, the "admin" account in UFDS needs to have a "lindaEmail"
+contact.
 
 
 

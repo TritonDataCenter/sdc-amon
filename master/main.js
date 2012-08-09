@@ -96,6 +96,13 @@ function loadConfig(configPath) {
     config.configPath = null;
   }
 
+  // Validation.
+  ['redis', 'ufds', 'cnapi', 'vmapi', 'adminUuid'].forEach(function (name) {
+    if (config[name] === undefined) {
+      throw new Error('config is missing "%s" variable', name);
+    }
+  });
+
   return config;
 }
 

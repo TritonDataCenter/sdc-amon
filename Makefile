@@ -20,8 +20,7 @@ SMF_MANIFESTS_IN = agent/smf/manifests/amon-agent.xml.in \
 CLEAN_FILES += agent/node_modules relay/node_modules \
 	master/node_modules common/node_modules plugins/node_modules \
 	./node_modules test/node_modules build/amon-*.tgz \
-	tmp/npm-cache build/amon-*.tar.bz2 \
-	lib build/pkg
+	build/amon-*.tar.bz2 lib build/pkg
 
 # The prebuilt sdcnode version we want. See
 # "tools/mk/Makefile.node_prebuilt.targ" for details.
