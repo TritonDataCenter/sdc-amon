@@ -5,6 +5,10 @@
  */
 
 var format = require('util').format;
+var urlParse = require('url').parse;
+
+var assert = require('assert-plus');
+
 
 
 function Webhook(log, config, datacenterName) {
@@ -24,16 +28,42 @@ Webhook.prototype.acceptsMedium = function (medium) {
   return (mediumLower.slice(-7) === 'webhook');
 };
 
-Webhook.prototype.notify = function (alarm, user, address, event, callback) {
-  var log = this.log;
-  log.info({address: address, user: user.uuid, alarm: alarm.id,
-    event: event.uuid}, 'webhook notify');
 
-  var data = event.data;
-  var monitorName = event.monitor;
+/**
+ * Notify.
+ *
+ * @param options {Object} with:
+ *    - @param alarm {alarms.Alarm}
+ *    - @param user {Object} User, as from `App.userFromId()`, owning this probe.
+ *    - @param event {Object} The probe event object.
+ *    - @param contact {Contact} The contact to notify. A contact is relative
+ *        to a user. See 'contact.js' for details. Note that when groups are
+ *        in UFDS, this contact could be a person other than `user` here.
+ *    - @param probeGroup {ProbeGroup} Probe group for which this
+ *        notification is being sent, if any.
+ *    - @param probe {Probe} Probe for which this notification is being
+ *        sent, if any.
+ * @param callback {Function} `function (err)` called on completion.
+ */
+Webhook.prototype.notify = function (options, callback) {
+  assert.object(options, 'options');
+  assert.object(options.alarm, 'options.alarm');
+  assert.object(options.user, 'options.user');
+  assert.object(options.event, 'options.event');
+  assert.object(options.contact, 'options.contact');
+  assert.optionalObject(options.probe, 'options.probe');
+  assert.optionalObject(options.probeGroup, 'options.probeGroup');
+  assert.func(callback, 'callback');
 
-  var url = require('url').parse(address);
+  var alarm = options.alarm;
+  var user = options.user;
+  var contactAddress = options.contact.address;
+  var event = options.event;
+  var log = this.log.child({event: event.uuid}, true);
+  log.info({address: address, user: user.uuid, alarm: alarm.id},
+    'email notify');
 
+  var url = urlParse(address);
   var options = {
     path: url.path,
     host: url.hostname,
@@ -58,9 +88,8 @@ Webhook.prototype.notify = function (alarm, user, address, event, callback) {
 
   var body = {
     alarm: alarm.serializePublic(),
-    message: data.message,
+    message: event.data.message,
     time: (new Date(event.time)).toUTCString(),
-    monitor: monitorName,
     datacenter: this.datacenterName,
     event: event
   };

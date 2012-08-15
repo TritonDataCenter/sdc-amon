@@ -29,6 +29,7 @@ function addEvents(req, res, next) {
     event.uuid = uuid();
     event.time = Date.now();
     event.agent = req._agent;
+    event.agentAlias = req._agentAlias;
     event.relay = req._relay;
   }
 

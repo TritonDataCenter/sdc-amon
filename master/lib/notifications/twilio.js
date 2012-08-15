@@ -7,6 +7,8 @@
 
 var https = require('https');
 var querystring = require('querystring');
+
+var assert = require('assert-plus');
 var retry = require('retry');
 
 
@@ -72,25 +74,43 @@ Twilio.prototype.sanitizeAddress = function (data) {
 /**
  * Notify.
  *
- * @param user {Object} UFDS sdcPerson being notified.
- * @param contactAddress {String}
- * @param event {Object} The probe event.
+ * @param options {Object} with:
+ *    - @param alarm {alarms.Alarm}
+ *    - @param user {Object} User, as from `App.userFromId()`, owning this probe.
+ *    - @param event {Object} The probe event object.
+ *    - @param contact {Contact} The contact to notify. A contact is relative
+ *        to a user. See 'contact.js' for details. Note that when groups are
+ *        in UFDS, this contact could be a person other than `user` here.
+ *    - @param probeGroup {ProbeGroup} Probe group for which this
+ *        notification is being sent, if any.
+ *    - @param probe {Probe} Probe for which this notification is being
+ *        sent, if any.
  * @param callback {Function} `function (err)` called on completion.
  */
-Twilio.prototype.notify = function (user, contactAddress, event, callback) {
-  if (!user) throw new TypeError('"user" required');
-  if (!contactAddress || typeof (contactAddress) !== 'string')
-    throw new TypeError('contactAddress must be a phone number');
-  if (!event) throw new TypeError('"event" required');
-  if (!callback) throw new TypeError('"callback" required');
+Twilio.prototype.notify = function (options, callback) {
+  assert.object(options, 'options');
+  assert.object(options.alarm, 'options.alarm');
+  assert.object(options.user, 'options.user');
+  assert.object(options.event, 'options.event');
+  assert.object(options.contact, 'options.contact');
+  assert.optionalObject(options.probe, 'options.probe');
+  assert.optionalObject(options.probeGroup, 'options.probeGroup');
+  assert.func(callback, 'callback');
 
-  var log = this.log.child({twilioEvent: event.probe.name});
+  var alarm = options.alarm;
+  var user = options.user;
+  var address = options.contact.address;
+  var event = options.event;
+  var log = this.log.child({event: event.uuid}, true);
+  log.info({address: address, user: user.uuid, alarm: alarm.id},
+    'twilio notify');
+
   var self = this;
   var auth = 'Basic ' +
     new Buffer(self.accountSid + ':' + self.authToken).toString('base64');
   var path = '/2008-08-01/Accounts/' + self.accountSid + '/Calls';
   var body = 'Caller=' + querystring.escape(self.from) +
-    '&Called=' + querystring.escape(contactAddress) +
+    '&Called=' + querystring.escape(address) +
     '&Method=GET&Url=' + querystring.escape(self.url);
 
   var options = {

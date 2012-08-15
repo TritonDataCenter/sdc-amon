@@ -9,22 +9,22 @@
  *
  *     function Foo(name, data) {...}
  *     Foo.objectclass = "amonfoo";
- *     Foo.validateName = function (name) {...}
  *     Foo.validate = function (raw) {...}
  *     Foo.dnFromRequest = function (req) {...}
  *     Foo.parentDnFromRequest = function (req) {...}
  *     Foo.prototype.serialize = function () {...}  # output for API responses
- *     Foo.prototype.authorizePut = function (app, callback)
+ *     Foo.prototype.authorizeWrite = function (app, callback)
  *     Foo.prototype.authorizeDelete = function (app, callback)
  *     <instance>.raw     # the raw UFDS data
  *     <instance>.dn      s# the UFDS DN for this object
  */
 
 var debug = console.warn;
-var assert = require('assert');
+
+var uuid = require('node-uuid');
 var ldap = require('ldapjs');
 var restify = require('restify');
-var RestCodes = restify.RestCodes;
+
 var objCopy = require('amon-common').utils.objCopy;
 
 
@@ -74,7 +74,7 @@ function modelList(app, Model, parentDn, log, callback) {
 
   var opts = {
     filter: '(objectclass=' + Model.objectclass + ')',
-    scope: 'sub'
+    scope: 'one'
   };
   log.trace({searchOpts: opts}, '<%s> modelList: ufds search: parentDn=\'%s\'',
     Model.name, parentDn);
@@ -107,6 +107,53 @@ function modelList(app, Model, parentDn, log, callback) {
 
 
 /**
+ * Create an instance of this model.
+ *
+ * @param app {App} The Amon Master app.
+ * @param Model {object} The Model "class" object.
+ * @param data {object} The model instance data.
+ * @param log {Bunyan Logger}
+ * @param callback {Function} `function (err, item)` where `err` is a
+ *    restify.RESTError instance on error, otherwise `item` is the created
+ *    Model instance.
+ */
+function modelCreate(app, Model, data, log, callback) {
+  log.info({data: data, modelName: Model.name}, 'modelCreate');
+
+  var item;
+  try {
+    item = new Model(app, data);
+  } catch (e) {
+    return callback(e);
+  }
+
+  // Access control check.
+  item.authorizeWrite(app, function (err) {
+    if (err) {
+      log.debug({err: err, modelName: Model.name, dn: item.dn},
+        'authorizeWrite err');
+      return callback(err);
+    }
+    log.debug({modelName: Model.name, dn: item.dn},
+      'authorizeWrite: authorized');
+
+    // Add it.
+    var dn = item.dn;
+    app.ufdsAdd(dn, item.raw, function (addErr) {
+      if (addErr) {
+        log.error(addErr, 'Error saving to UFDS (dn="%s")', dn);
+        callback(addErr);
+      } else {
+        log.trace('<%s> create item:', Model.name, item);
+        app.cacheInvalidateWrite(Model.name, item);
+        callback(null, item);
+      }
+    });
+  });
+}
+
+
+/**
  * Put (create or update) an instance of this model.
  *
  * @param app {App} The Amon Master app.
@@ -128,14 +175,14 @@ function modelPut(app, Model, data, log, callback) {
   }
 
   // Access control check.
-  item.authorizePut(app, function (err) {
+  item.authorizeWrite(app, function (err) {
     if (err) {
       log.debug({err: err, modelName: Model.name, dn: item.dn},
-        'authorizePut err');
+        'authorizeWrite err');
       return callback(err);
     }
     log.debug({modelName: Model.name, dn: item.dn},
-      'authorizePut: authorized');
+      'authorizeWrite: authorized');
 
     // Add it.
     var dn = item.dn;
@@ -288,6 +335,35 @@ function requestList(req, res, next, Model) {
 }
 
 
+function requestCreate(req, res, next, Model) {
+  req.log.trace({params: req.params, body: req.body},
+    '<%s> create entered', Model.name);
+
+  // Note this means that the *route variable names* need to match the
+  // expected `data` key names in the models (e.g. `probes.Probe`).
+  var data = {};
+  Object.keys(req.params).forEach(function (k) {
+    data[k] = req.params[k];
+  });
+  Object.keys(req.body).forEach(function (k) {
+    data[k] = req.body[k];
+  });
+  data.user = req._user.uuid;
+  data.uuid = uuid();
+
+  modelCreate(req._app, Model, data, req.log, function (err, item) {
+    if (err) {
+      next(err);
+    } else {
+      var d = item.serialize();
+      req.log.trace({data: d}, 'item from modelCreate:', item);
+      res.send(d);
+      next();
+    }
+  });
+}
+
+
 function requestPut(req, res, next, Model) {
   req.log.trace({params: req.params, body: req.body},
     '<%s> put entered', Model.name);
@@ -357,10 +433,12 @@ function requestDelete(req, res, next, Model) {
 
 module.exports = {
   modelList: modelList,
+  modelCreate: modelCreate,
   modelPut: modelPut,
   modelGet: modelGet,
   modelDelete: modelDelete,
   requestList: requestList,
+  requestCreate: requestCreate,
   requestPut: requestPut,
   requestGet: requestGet,
   requestDelete: requestDelete

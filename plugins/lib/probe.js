@@ -75,6 +75,7 @@ var AMON_EVENT_VERSION = 1;
 
 //---- plugin class
 
+//XXX s/Probe/BaseProbe/ to not have overload
 /**
  * Create a Probe instance.
  *
@@ -98,12 +99,10 @@ function Probe(options) {
 
   var data = options.data;
   this._user = data.user;
-  this._monitor = data.monitor;
-  this._probe = data.name;
+  this._probeUuid = data.uuid;
   if (data.machine) {
     this._machine = data.machine;
   }
-
 
   this.config = data.config;
 }
@@ -136,9 +135,7 @@ Probe.prototype.emitEvent = function (message, value, details, clear) {
     v: AMON_EVENT_VERSION,
     type: 'probe',
     user: this._user,
-    monitor: this._monitor,
-    probe: this._probe,
-    probeType: this.type,
+    probeUuid: this._probeUuid,
     clear: clear,
     data: {
       message: message,

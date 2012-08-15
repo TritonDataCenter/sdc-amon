@@ -14,8 +14,9 @@
  *   Background: http://www.amazon.com/Bob-Otto-Robert-Bruel/dp/1596432039
  * - otto will be an operator
  * - create a 'amondevzone' for bob
- * - add a monitor and probe for 'bob' in the 'amondevzone'
- * - add a monitor and probe for 'otto' in the headnode GZ
+ * - add a probe for 'bob' in the 'amondevzone'
+ * - add a probe for 'otto' in the headnode GZ
+ * - TODO: probegroups for bob and otto
  */
 
 var log = console.error;
@@ -442,55 +443,44 @@ function getAmonClient(next) {
 
 function loadAmonObject(obj, next) {
   if (obj === undefined) return;
-  if (obj.probe) {
-    amonClient.listProbes(obj.user, obj.monitor, function(err, probes) {
+  switch (obj.type) {
+  case 'probe':
+    //XXX Need to do uniqueness by name. START HERE
+    amonClient.listProbes(obj.user, function(err, probes) {
       if (err)
         return next(err);
       var foundIt = false;
       for (var i = 0; i < probes.length; i++) {
-        if (probes[i].name === obj.probe) {
+        if (probes[i].name === obj.body.name) {
           foundIt = probes[i];
           break;
         }
       }
       if (foundIt) {
-        if (foundIt.machine !== obj.body.machine) {
-          log("# Amon probe conflict (%s != %s): delete old one",
-            foundIt.machine, obj.body.machine)
-          amonClient.deleteProbe(obj.user, obj.monitor, obj.probe, function (err) {
+        if (foundIt.agent !== obj.body.agent) {
+          log("# Amon probe 'agent' conflict (%s != %s): delete old one",
+            foundIt.agent, obj.body.agent)
+          amonClient.deleteProbe(obj.user, obj.probe, function (err) {
             if (err) return next(err);
             loadAmonObject(obj, next);
           });
         }
-        log("# Amon object already exists: /pub/%s/monitors/%s/probes/%s",
-          obj.user, obj.monitor, obj.probe);
+        log("# Amon %s named '%s' already exists: /pub/%s/probes/%s",
+          obj.type, obj.body.name, obj.user, foundIt.uuid);
         return next();
       }
-      log("# Load Amon object: /pub/%s/monitors/%s/probes/%s", obj.user,
-          obj.monitor, obj.probe);
-      amonClient.putProbe(obj.user, obj.monitor, obj.probe, obj.body, next);
+      log("# Create Amon %s named '%s' for user '%s'", obj.type, obj.body.name,
+        obj.user);
+      amonClient.createProbe(obj.user, obj.body, function (err, probe) {
+        if (err) return next(err);
+        log("# Created Amon %s: /pub/%s/probes/%s", obj.type, probe.user,
+          probe.uuid);
+        next();
+      });
     });
-  } else if (obj.monitor) {
-    amonClient.listMonitors(obj.user, function(err, monitors) {
-      if (err)
-        return next(err);
-      var foundIt = false;
-      for (var i = 0; i < monitors.length; i++) {
-        if (monitors[i].name === obj.monitor) {
-          foundIt = true;
-          break;
-        }
-      }
-      if (foundIt) {
-        log("# Amon object already exists: /pub/%s/monitors/%s",
-          obj.user, obj.monitor);
-        return next();
-      }
-      log("# Load Amon object: /pub/%s/monitors/%s", obj.user, obj.monitor);
-      amonClient.putMonitor(obj.user, obj.monitor, obj.body, next);
-    });
-  } else {
-    next("WTF?")
+    break;
+  default:
+    throw new Error('unknown Amon object type: ' + obj.type);
   }
 }
 
@@ -498,62 +488,60 @@ function loadAmonObjects(next) {
   log("# Loading Amon objects.");
   var objs = [
     {
+      type: 'probe',
       user: bob.login,
-      monitor: 'whistle',
       body: {
-        contacts: ['email']
+        contacts: ['email'],
+        name: 'amondevzone',
+        agent: amondevzone.uuid,
+        type: 'machine-up'
       }
     },
+    //XXX START HERE: adding probegroup, with two probes: whistle1 and whistle2
+    //{
+    //  type: 'probe',
+    //  user: bob.login,
+    //  body: {
+    //    name: 'whistlelog',
+    //    agent: amondevzone.uuid,
+    //    type: 'log-scan',
+    //    config: {
+    //      path: '/tmp/whistle.log',
+    //      regex: 'tweet',
+    //      threshold: 1,
+    //      period: 60
+    //    }
+    //  }
+    //},
     {
+      type: 'probe',
       user: bob.login,
-      monitor: 'whistle',
-      probe: 'whistlelog',
       body: {
-        "machine": amondevzone.uuid,
-        "type": "log-scan",
-        "config": {
-          "path": "/tmp/whistle.log",
-          "regex": "tweet",
-          "threshold": 1,
-          "period": 60
+        contacts: ['email'],
+        name: 'whistlelog',
+        agent: amondevzone.uuid,
+        type: 'log-scan',
+        config: {
+          path: '/tmp/whistle.log',
+          regex: 'tweet',
+          threshold: 1,
+          period: 60
         }
       }
     },
     {
-      user: bob.login,
-      monitor: 'isup',
-      body: {
-        contacts: ['email']
-      }
-    },
-    {
-      user: bob.login,
-      monitor: 'isup',
-      probe: 'amondevzone',
-      body: {
-        "machine": amondevzone.uuid,
-        "type": "machine-up"
-      }
-    },
-    {
+      type: 'probe',
       user: otto.login,
-      monitor: 'gz',
       body: {
-        contacts: ['email']
-      }
-    },
-    {
-      user: otto.login,
-      monitor: 'gz',
-      probe: 'smartlogin',
-      body: {
-        "agent": headnodeUuid,
-        "type": "log-scan",
-        "config": {
-          "path": "/var/svc/log/smartdc-agent-smartlogin:default.log",
-          "regex": "Stopping",
-          "threshold": 1,
-          "period": 120
+        contacts: ['email', 'bogus'],
+        name: 'smartlogin',
+        agent: headnodeUuid,
+        type: 'log-scan',
+        config: {
+          path: '/var/svc/log/smartdc-agent-smartlogin:default.log',
+          regex: 'Stopping',
+          threshold: 1,
+          period: 120
         }
       }
     }

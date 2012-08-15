@@ -15,9 +15,7 @@
 var fs = require('fs');
 var net = require('net');
 var child_process = require('child_process'),
-  exec = child_process.exec,
-  execFile = child_process.execFile,
-  spawn = child_process.spawn;
+  execFile = child_process.execFile;
 var path = require('path');
 
 var Logger = require('bunyan');
@@ -188,7 +186,7 @@ function ensureDataDir(next) {
  */
 function listAllZones(callback) {
   log.info('Getting list of all zones from `zoneadm`.');
-  return execFile('/usr/sbin/zoneadm', ['list', '-c'],
+  execFile('/usr/sbin/zoneadm', ['list', '-c'],
                   function (err, stdout, stderr) {
     if (err || stderr) {
       return callback(new Error(
@@ -206,7 +204,7 @@ function listAllZones(callback) {
 function ensureComputeNodeUuid(next) {
   if (!config.computeNodeUuid) {
     log.info('Getting compute node UUID from `sysinfo`.');
-    return execFile('/usr/bin/sysinfo', [], function (err, stdout, stderr) {
+    execFile('/usr/bin/sysinfo', [], function (err, stdout, stderr) {
       if (err)
         return next(format(
           'Error calling sysinfo: %s stdout="%s" stderr="%s"',
@@ -272,7 +270,7 @@ function createMasterClient(next) {
 function startApp(app, callback) {
   return app.start(function (err) {
     if (!err)
-      app.log.info({agent: app.agent}, 'amon-relay app started for zone');
+      app.log.info({agent: app.agent}, 'amon-relay app started for machine');
     if (callback)
       callback(err);
     return;
@@ -417,10 +415,75 @@ function updateZoneApps(next) {
 function startUpdateZoneAppsInterval(next) {
   var SELF_HEAL_INTERVAL = 5 * 60 * 1000; // every 5 minutes
   setInterval(updateZoneApps, SELF_HEAL_INTERVAL);
-  //XXX Need to clear this interval on exit?
+  // TODO: Need to clear this interval on exit?
   next();
 }
 
+
+/**
+ * Update "agentAlias" attribute on the zoneApps.
+ *
+ * This is async, but no-one watches for its completion.
+ */
+function updateAgentAliases() {
+  log.info("updateAgentAliases: start");
+  execFile('/usr/sbin/vmadm', ['list', '-H', '-o', 'uuid,alias'],
+                  function (err, stdout, stderr) {
+    if (err || stderr) {
+      log.error({err: err, stdout: stdout, stderr: stderr},
+        "could not get aliases from vmadm");
+      return;
+    }
+    var lines = stdout.split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      if (line.trim().length === 0)
+        continue;
+      var bits = line.split(/\s+/);
+      var uuid = bits[0];
+      var alias = bits[1] || null;
+      var app = zoneApps[uuid];
+      if (app && app.agentAlias !== alias) {
+        log.info("updateAgentAliases for agent '%s': '%s' -> '%s'",
+          uuid, app.agentAlias, alias);
+        app.agentAlias = alias;
+      }
+    }
+
+    // Update for GZ in case hostname has changed.
+    execFile('/usr/bin/hostname', [], function (err, stdout, stderr) {
+      if (err || stderr) {
+        log.error({err: err, stdout: stdout, stderr: stderr},
+          "could not get hostname");
+        return;
+      }
+      var app = zoneApps['global'];
+      var alias = stdout.trim();
+      if (app && app.agentAlias !== alias) {
+        log.info("updateAgentAliases for agent 'global': '%s' -> '%s'",
+          app.agentAlias, alias);
+        app.agentAlias = alias;
+      }
+      log.info("updateAgentAliases: done");
+    });
+  });
+}
+
+
+/**
+ * Infrequent updating of cached VM aliases for `zoneApps`.
+ *
+ * An amon-relay adds the "machineAlias" (a vm alias or server hostname)
+ * to events. A vm alias or server hostname is generally static, but *can*
+ * be updated. This is only used for display updates, so a long cache is
+ * fine.
+ */
+function startUpdateAgentAliasesInterval(next) {
+  var ALIAS_UPDATE_INTERVAL = 60 * 60 * 1000; // every hour
+  setInterval(updateAgentAliases, ALIAS_UPDATE_INTERVAL);
+  // TODO: Need to clear this interval on exit?
+  next();
+}
 
 
 /**
@@ -491,7 +554,7 @@ function updateAgentProbes(next) {
  */
 function startUpdateAgentProbesInterval(next) {
   setInterval(updateAgentProbes, config.poll * 1000);
-  //XXX Need to clear this interval on exit?
+  // TODO: Need to clear this interval on exit?
   next();
 }
 
@@ -632,6 +695,7 @@ function main() {
     startUpdateZoneAppsInterval,
     updateAgentProbes,
     startUpdateAgentProbesInterval,
+    startUpdateAgentAliasesInterval,
     startAdminApp
   ], function (err) {
     if (err) {

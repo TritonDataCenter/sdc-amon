@@ -16,6 +16,7 @@ var sdcClients = require('sdc-clients'),
 var Cache = require('expiring-lru-cache');
 var redis = require('redis');
 var Pool = require('generic-pool').Pool;
+var async = require('async');
 
 var amonCommon = require('amon-common'),
   Constants = amonCommon.Constants,
@@ -25,8 +26,8 @@ var alarms = require('./alarms'),
   createAlarm = alarms.createAlarm,
   Alarm = alarms.Alarm;
 var maintenances = require('./maintenances');
-var monitors = require('./monitors'),
-  Monitor = monitors.Monitor;
+var probes = require('./probes'),
+  Probe = probes.Probe;
 var probes = require('./probes');
 var agentprobes = require('./agentprobes');
 var events = require('./events');
@@ -323,8 +324,8 @@ function App(config, cnapiClient, vmapiClient, log) {
       return next(new restify.MissingParameterError('"action" is required'));
     });
 
-  monitors.mountApi(server);
   probes.mountApi(server);
+  //XXX probegroups.mountApi(server);
   alarms.mountApi(server);
   maintenances.mountApi(server);
   agentprobes.mountApi(server);
@@ -437,15 +438,15 @@ App.prototype.cacheDel = function (scope, key) {
 /**
  * Invalidate caches as appropriate for the given DB object create/update.
  */
-App.prototype.cacheInvalidatePut = function (modelName, item) {
+App.prototype.cacheInvalidateWrite = function (modelName, item) {
   if (! this._ufdsCaching)
     return;
   var log = this.log;
 
   var dn = item.dn;
   assert.ok(dn);
-  log.trace('App.cacheInvalidatePut modelName="%s" dn="%s" machine=%s',
-    modelName, dn, (modelName === 'Probe' ? item.machine : '(N/A)'));
+  log.trace('App.cacheInvalidateWrite modelName="%s" dn="%s" agent=%s',
+    modelName, dn, (modelName === 'Probe' ? item.agent : '(N/A)'));
 
   // Reset the '${modelName}List' cache.
   // Note: This could be improved by only invalidating the item for this
@@ -458,7 +459,7 @@ App.prototype.cacheInvalidatePut = function (modelName, item) {
   this._cacheFromScope[modelName + 'Get'].del(dn);
 
   // Furthermore, if this is a probe, then need to invalidate the
-  // `headAgentProbes` for this probe's machine/server.
+  // `headAgentProbes` for this probe's agent.
   if (modelName === 'Probe') {
     this._cacheFromScope.headAgentProbes.del(item.agent);
   }
@@ -475,8 +476,8 @@ App.prototype.cacheInvalidateDelete = function (modelName, item) {
 
   var dn = item.dn;
   assert.ok(dn);
-  log.trace('App.cacheInvalidateDelete modelName="%s" dn="%s" machine=%s',
-    modelName, dn, (modelName === 'Probe' ? item.machine : '(N/A)'));
+  log.trace('App.cacheInvalidateDelete modelName="%s" dn="%s" agent=%s',
+    modelName, dn, (modelName === 'Probe' ? item.agent : '(N/A)'));
 
   // Reset the '${modelName}List' cache.
   // Note: This could be improved by only invalidating the item for this
@@ -488,7 +489,7 @@ App.prototype.cacheInvalidateDelete = function (modelName, item) {
   this._cacheFromScope[modelName + 'Get'].del(dn);
 
   // Furthermore, if this is a probe, then need to invalidate the
-  // `headAgentProbes` for this probe's machine.
+  // `headAgentProbes` for this probe's agent.
   if (modelName === 'Probe') {
     this._cacheFromScope.headAgentProbes.del(item.agent);
   }
@@ -582,6 +583,7 @@ App.prototype.ufdsAdd = function ufdsAdd(dn, data, callback) {
       return callback(new restify.ServiceUnavailableError(
         'service unavailable'));
     }
+log.debug({data: data, dn: dn}, "XXX adding to UFDS, again data:", data)
     client.add(dn, data, function (addErr) {
       pool.release(client);
       if (addErr) {
@@ -859,7 +861,7 @@ App.prototype.handleMaintenanceEnd = function (maintenance, callback) {
  *    'err' is undefined (success) or a restify Error instance (failure).
  *
  * XXX TODO: inability to send a notification should result in an alarm for
- *   the owner of the monitor.
+ *   the owner of the probe/probegroup.
  */
 App.prototype.processEvent = function (event, callback) {
   var self = this;
@@ -875,21 +877,46 @@ App.prototype.processEvent = function (event, callback) {
       format('unknown event type: "%s"', event.type)));
   }
 
+
+  // Gather available and necessary info for alarm creation and notification.
   var info = {event: event};
-  self.userFromId(event.user, function (err, user) {
-    if (err) {
-      return callback(err);
-    } else if (! user) {
-      return callback(new restify.InvalidArgumentError(
-        format('no such user: "%s"', event.user)));
-    }
-    info.user = user;
-    return Monitor.get(self, event.user, event.monitor,
-                       function (getErr, monitor) {
-      if (getErr) {
-        return callback(getErr);
+  async.series([
+      function getUser(next) {
+        self.userFromId(event.user, function (uErr, user) {
+          if (uErr) {
+            return next(uErr);
+          } else if (! user) {
+            return next(new restify.InvalidArgumentError(
+              format('no such user: "%s"', event.user)));
+          }
+          info.user = user;
+          next();
+        });
+      },
+      function getProbe(next) {
+        if (!event.probeUuid) {
+          return next();
+        }
+        Probe.get(self, event.user, event.probeUuid, function (pErr, probe) {
+          if (pErr)
+            return next(pErr);
+          info.userUuid = probe.user;
+          info.probe = probe;
+          next();
+        });
+      },
+      function getProbeGroup(next) {
+        if (info.probe && info.probe.group) {
+          // We don't fail if the group can't be found. Because we don't have
+          // UFDS transactions, it is possible (unlikely) to have stale
+          // probe group references. The alarm will then just be associated
+          // with the probe.
+          next(); //XXX no probe groups yet
+        } else {
+          next();
+        }
       }
-      info.monitor = monitor;
+    ], function (err) {
       self.getOrCreateAlarm(info, function (getOrCreateErr, alarm) {
         if (getOrCreateErr) {
           callback(getOrCreateErr);
@@ -902,8 +929,8 @@ App.prototype.processEvent = function (event, callback) {
           callback();
         }
       });
-    });
-  });
+    }
+  );
 };
 
 
@@ -914,9 +941,9 @@ App.prototype.processEvent = function (event, callback) {
  *
  * @param options {Object}
  *    - `event` {Object} Required. The Amon event.
- *    - `user` {Object} Required. User object as from `userFromId()`
- *    - `monitor` {monitors.Monitor} Required. The monitor for this event.
- *      XXX support this being null/excluded for non-"probe" events.
+ *    - `probe` {Probe} The Probe object associated with this event, if any.
+ *    - `probeGroup` {ProbeGroup} The probe group object associated with
+ *      this event, if any.
  * @param callback {Function} `function (err, alarm)`. If there was an
  *    error, the `err` is an Error instance. Else if `alarm` is either
  *    a related existing alarm, a new alarm, or null (if no new alarm
@@ -926,13 +953,14 @@ App.prototype.getOrCreateAlarm = function (options, callback) {
   var self = this;
   var log = this.log;
 
-  // Get all open alarms for this user/monitor.
+  // Get all open alarms for this user and probe/probe group.
   log.debug('getOrCreateAlarm: get candidate related alarms');
   Alarm.filter(
     self,
     {
-      user: options.user.uuid,
-      monitor: options.monitor.name,
+      user: options.probe.user,
+      probe: options.probe.uuid,
+      probeGroup: options.probe.group,
       closed: false
     },
     function (err, candidateAlarms) {
@@ -952,7 +980,8 @@ App.prototype.getOrCreateAlarm = function (options, callback) {
             'not creating a new alarm for a clear event');
           callback(null, null);
         } else {
-          createAlarm(self, options.user.uuid, options.monitor.name, callback);
+          createAlarm(self, options.probe.user, options.probe.uuid,
+            options.probe.group, callback);
         }
       });
     }
@@ -977,7 +1006,7 @@ App.prototype.getOrCreateAlarm = function (options, callback) {
  * return none, i.e. not related. Else, return that alarm. A 'clear' event
  * is excluded from this "1 hour" check.
  *
- * Eventually make this "1 hour" an optional var on monitor.
+ * Eventually make this "1 hour" an optional var on probe/probeGroup.
  * Eventually this algo can consider more vars.
  */
 App.prototype.chooseRelatedAlarm = function (candidateAlarms,
@@ -1060,26 +1089,29 @@ App.prototype.alarmConfig = function (userId, msg, callback) {
 /**
  * Send a notification for a probe event.
  *
- * @param alarm {alarms.Alarm}
- * @param user {Object} User, as from `App.userFromId()`, owning this monitor.
- * @param monitor {Monitor} Monitor for which this notification is being sent.
- * @param event {Object} The probe event object.
- * @param contact {Contact} The contact to notify. A contact is relative
- *    to a user. See 'contact.js' for details. Note that when groups are
- *    in UFDS, this contact could be a person other than `user` here.
+ * @param options {Object} with:
+ *    - @param alarm {alarms.Alarm}
+ *    - @param user {Object} User, as from `App.userFromId()`, owning this probe.
+ *    - @param event {Object} The probe event object.
+ *    - @param contact {Contact} The contact to notify. A contact is relative
+ *        to a user. See 'contact.js' for details. Note that when groups are
+ *        in UFDS, this contact could be a person other than `user` here.
+ *    - @param probeGroup {ProbeGroup} Probe group for which this
+ *        notification is being sent, if any.
+ *    - @param probe {Probe} Probe for which this notification is being
+ *        sent, if any.
  * @param callback {Function} `function (err) {}`.
  */
-App.prototype.notifyContact = function (alarm, user, monitor, contact, event,
-                                        callback) {
+App.prototype.notifyContact = function (options, callback) {
   var log = this.log;
-  var plugin = this.notificationPlugins[contact.notificationType];
+  var plugin = this.notificationPlugins[options.contact.notificationType];
   if (!plugin) {
     var msg = format('notification plugin "%s" not found',
                      contact.notificationType);
-    log.fatal(msg);
+    log.error(msg);
     return callback(new Error(msg));
   }
-  plugin.notify(alarm, user, contact.address, event, callback);
+  plugin.notify(options, callback);
 };
 
 

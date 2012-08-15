@@ -2,7 +2,7 @@
  * Copyright 2011 Joyent, Inc.  All rights reserved.
  *
  * Main entry-point for the Amon Master. The Amon master is the central
- * API for managing monitor/check config, receiving events/alarms from agents
+ * API for managing probe config, receiving events/alarms from agents
  * and sending notifications.
  */
 
@@ -32,7 +32,7 @@ var theApp;
 var log = new Logger({
   name: 'amon-master',
   src: (process.platform === 'darwin'),
-  //src: true,
+  src: true, //XXX
   serializers: {
     err: Logger.stdSerializers.err,
     req: Logger.stdSerializers.req,

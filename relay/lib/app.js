@@ -6,6 +6,9 @@ var path = require('path');
 var os = require('os');
 var Pipe = process.binding('pipe_wrap').Pipe;
 var crypto = require('crypto');
+var child_process = require('child_process'),
+  exec = child_process.exec;
+  execFile = child_process.execFile;
 
 var restify = require('restify');
 var zsock = require('zsock');
@@ -113,6 +116,10 @@ function App(options) {
   this.localMode = options.localMode || false;
   this.zoneApps = options.zoneApps;
 
+  // These are set in `start()`.
+  this.owner = null;
+  this.agentAlias = null;
+
   // If the zone is not running (at App creation time), then (obviously) no
   // socket into the zone will be created. The App's purpose then is limited
   // to updating agentprobe data for this zone: (a) in case the zone comes
@@ -146,6 +153,7 @@ function App(options) {
   server.on('after', restify.auditLogger({log: log, body: true}));
   function setup(req, res, next) {
     req._agent = self.agent;
+    req._agentAlias = self.agentAlias;
     req._relay = self.computeNodeUuid;
     req._app = self;
     req._masterClient = self.masterClient;
@@ -241,6 +249,36 @@ App.prototype.start = function (callback) {
     });
   }
 
+  function retrieveAgentAlias(next) {
+    if (self.closed) {
+      return next();
+    }
+    if (self.agent === self.computeNodeUuid) {
+      // This is the GZ, i.e. a server. Use the hostname as the alias.
+      execFile('/usr/bin/hostname', [], function (hErr, stdout, stderr) {
+        if (hErr || stderr) {
+          return next(new Error(
+            format('Error getting hostname: %s stdout="%s" stderr="%s"',
+            hErr, stdout, stderr)));
+        }
+        self.agentAlias = stdout.trim();
+        next();
+      });
+    } else {
+      var cmd = format('/usr/sbin/vmadm get %s | /usr/bin/json alias',
+        self.agent);
+      exec(cmd, function (vErr, stdout, stderr) {
+        if (vErr || stderr) {
+          return next(new Error(format(
+            'Error getting vm alias: cmd="%s" err="%s" stdout="%s" stderr="%s"',
+            cmd, vErr, stdout, stderr)));
+        }
+        self.agentAlias = stdout.trim();
+        next();
+      });
+    }
+  }
+
   function waitForMultiUser(next) {
     if (self.closed) {
       return next();
@@ -302,6 +340,7 @@ App.prototype.start = function (callback) {
   async.series([
     loadCache,
     retrieveOwner,
+    retrieveAgentAlias,
     waitForMultiUser,
     createSocket
   ], function (err) {

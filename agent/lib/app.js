@@ -90,8 +90,7 @@ function App(options) {
   this.probeDataCacheMD5 = null;
 
   // Active probe instances. Controlled in `updateProbes`.
-  // Maps probe id, '$user/$monitorName/$probeName', to either a Probe
-  // instance or a `ProbeError` instance.
+  // Maps probe uuid to either a Probe instance or a `ProbeError` instance.
   this.probeFromId = {};
 
   // If needed by a probe, the App will watch zoneevents and emit
@@ -235,8 +234,7 @@ App.prototype.updateProbes = function updateProbes(force) {
     // 2. Transform that to {id -> probe} mapping.
     var probeDataFromId = {};
     probeData.forEach(function (pd) {
-      var id = [pd.user, pd.monitor, pd.name].join('/');
-      probeDataFromId[id] = pd;
+      probeDataFromId[pd.uuid] = pd;
     });
 
     // 3. Gather list of changes (updates/adds/removes) of probes to do.

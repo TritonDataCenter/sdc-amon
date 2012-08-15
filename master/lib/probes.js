@@ -1,22 +1,24 @@
 /*
- * Copyright 2011 Joyent, Inc.  All rights reserved.
+ * Copyright 2012 Joyent, Inc.  All rights reserved.
  *
- * Amon Master controller for '/pub/:user/monitors/:monitor/probes/...'
- * endpoints.
+ * Amon Master controller for '/pub/:user/probes/...' endpoints.
  */
 
 var debug = console.warn;
 var events = require('events');
+var format = require('util').format;
 
+var assert = require('assert-plus');
 var ldap = require('ldapjs');
 var restify = require('restify');
 var async = require('async');
+
 var ufdsmodel = require('./ufdsmodel');
 var Monitor = require('./monitors').Monitor;
 var utils = require('amon-common').utils,
-  objCopy = utils.objCopy,
-  format = utils.format;
+  objCopy = utils.objCopy;
 var plugins = require('amon-plugins');
+
 
 
 
@@ -36,14 +38,10 @@ var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
  *
  * @param app
  * @param data {Object} The instance data. This can either be the public
- *    representation (augmented with 'name', 'monitor' and 'user'), e.g.:
- *      { name: 'whistlelog',
- *        monitor: 'serverHealth',
- *        user: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
- *        ...
+ *    representation (augmented with 'user' and 'uuid' from the URL)
  *    or the raw response from UFDS, e.g.:
- *      { dn: 'amonprobe=whistlelog, amonmonitor=serverHealth, uuid=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa, ou=users, o=smartdc',
- *        amonprobe: 'whistlelog',
+ *      { dn: 'amonprobe=:uuid, uuid=:uuid, ou=users, o=smartdc',
+ *        uuid: ':uuid',
  *        ...
  *        objectclass: 'amonprobe' }
  * @throws {restify.RESTError} if the given data is invalid.
@@ -65,14 +63,21 @@ function Probe(app, data) {
     delete raw.dn;
     var parsed = Probe.parseDn(data.dn);
     this.user = parsed.user;
-    this.monitor = parsed.monitor;
+    if (data.uuid !== parsed.uuid) {
+      throw new TypeError(format(
+        'invalid probe data: "uuid" (%s) does not match dn (%s)',
+        data.uuid, data.dn));
+    }
+    this.uuid = data.uuid;
   } else {
-    if (!data.name)
-      throw new TypeError(format('invalid probe data: no "name": %j', data));
-    if (!data.monitor)
-      throw new TypeError(format('invalid probe data: no "monitor": %j', data));
+    if (!data.uuid)
+      throw new TypeError(format('invalid probe data: no "uuid": %j', data));
+    if (!UUID_RE.test(data.uuid))
+      throw new TypeError(format('invalid probe data: "uuid" is not a valid UUID: %j', data));
     if (!data.user)
       throw new TypeError(format('invalid probe data: no "user": %j', data));
+    if (! UUID_RE.test(data.user))
+      throw new TypeError(format('invalid probe data: "user" is not a valid UUID: %j', data));
 
     // 'skipauthz' in the probe data is a request to skip authorization
     // for PUTting this probe. It exists to facilitate the setting of
@@ -83,26 +88,28 @@ function Probe(app, data) {
     this._skipauthz = (data.skipauthz
       ? data.user === app.config.adminUuid : false);
 
-    this.dn = Probe.dn(data.user, data.monitor, data.name);
+    this.dn = Probe.dn(data.user, data.uuid);
     raw = {
-      amonprobe: data.name,
+      uuid: data.uuid,
       type: data.type,
       agent: data.agent,
       objectclass: Probe.objectclass
     };
+    //XXX:TODO: disabled, contacts
+    if (data.name) raw.name = data.name;
+    if (data.contacts) raw.contact = data.contacts;  // singular intentional
     if (data.config) raw.config = JSON.stringify(data.config);
     if (data.agent) raw.agent = data.agent;
     if (data.machine) raw.machine = data.machine;
     this.user = data.user;
-    this.monitor = data.monitor;
+    this.uuid = data.uuid;
   }
 
-  Probe.validateName(raw.amonprobe);
   this.raw = Probe.validate(app, raw);
 
   var self = this;
   this.__defineGetter__('name', function () {
-    return self.raw.amonprobe;
+    return self.raw.name;
   });
   this.__defineGetter__('type', function () {
     return self.raw.type;
@@ -112,6 +119,9 @@ function Probe(app, data) {
   });
   this.__defineGetter__('machine', function () {
     return self.raw.machine;
+  });
+  this.__defineGetter__('contacts', function () {
+    return self.raw.contact;
   });
   this.__defineGetter__('runInVmHost', function () {
     return self.raw.runInVmHost;
@@ -132,28 +142,24 @@ Probe.objectclass = 'amonprobe';
 Probe.parseDn = function (dn) {
   var parsed = ldap.parseDN(dn);
   return {
-    user: parsed.rdns[2].uuid,
-    monitor: parsed.rdns[1].amonmonitor,
-    name: parsed.rdns[0].amonprobe
+    user: parsed.rdns[1].uuid,
+    uuid: parsed.rdns[0].amonprobe
   };
 };
 
-Probe.dn = function (user, monitor, name) {
-  return format('amonprobe=%s, amonmonitor=%s, uuid=%s, ou=users, o=smartdc',
-    name, monitor, user);
+Probe.dn = function (user, uuid) {
+  return format('amonprobe=%s, uuid=%s, ou=users, o=smartdc', uuid, user);
 };
-
 Probe.dnFromRequest = function (req) {
-  var monitorName = req.params.monitor;
-  Monitor.validateName(monitorName);
-  var name = req.params.name;
-  Probe.validateName(name);
-  return Probe.dn(req._user.uuid, monitorName, name);
+  var uuid = req.params.uuid;
+  if (! UUID_RE.test(uuid)) {
+    throw new restify.InvalidArgumentError(
+      format('invalid probe UUID: "%s"', uuid));
+  }
+  return Probe.dn(req._user.uuid, uuid);
 };
 Probe.parentDnFromRequest = function (req) {
-  var monitorName = req.params.monitor;
-  Monitor.validateName(monitorName);
-  return format('amonmonitor=%s, %s', monitorName, req._user.dn);
+  return req._user.dn;
 };
 
 
@@ -167,12 +173,16 @@ Probe.parentDnFromRequest = function (req) {
  */
 Probe.prototype.serialize = function serialize(priv) {
   var data = {
+    uuid: this.uuid,
     user: this.user,
-    monitor: this.monitor,
-    name: this.name,
     type: this.type,
     agent: this.agent
   };
+  if (this.name) data.name = this.name;
+  if (this.contacts) {
+    data.contacts = (typeof(this.contacts) === 'string' ? [this.contacts]
+      : this.contacts);
+  }
   if (this.config) data.config = this.config;
   if (this.machine) data.machine = this.machine;
   if (priv) {
@@ -197,12 +207,12 @@ Probe.prototype.serialize = function serialize(priv) {
  *
  * @param app {App} The amon-master app.
  * @param callback {Function} `function (err)`. `err` may be:
- *    undefined: put is authorized
+ *    undefined: write is authorized
  *    InvalidArgumentError: the named machine doesn't
  *        exist or isn't owned by the monitor owner
  *    InternalError: some other error in authorizing
  */
-Probe.prototype.authorizePut = function (app, callback) {
+Probe.prototype.authorizeWrite = function (app, callback) {
   var self = this;
   var log = app.log;
   var machineUuid = this.agent;
@@ -283,7 +293,7 @@ Probe.prototype.authorizePut = function (app, callback) {
                            function (vmErr, vm) {
         if (vmErr) {
           if (vmErr.httpCode === 404) {
-            // 3. Operator setting 'runInVmHost' monitor on virtual machine.
+            // 3. Operator setting 'runInVmHost' probe on virtual machine.
             var conditions3 = [
               isRunInVmHostOrErr,
               isExistingVmOrErr,
@@ -318,7 +328,7 @@ Probe.prototype.authorizePut = function (app, callback) {
 };
 
 Probe.prototype.authorizeDelete = function (app, callback) {
-  throw new Error('XXX authorize boom');
+  throw new Error('XXX authorizeDelete NYI');
 };
 
 
@@ -328,18 +338,15 @@ Probe.prototype.authorizeDelete = function (app, callback) {
  *
  * @param app {App} The Amon Master App.
  * @param user {String} The probe owner user UUID.
- * @param monitor {String} The monitor name.
- * @param name {String} The probe name.
+ * @param uuid {String} The probe UUID.
  * @param callback {Function} `function (err, probe)`
  */
-Probe.get = function get(app, user, monitor, name, callback) {
+Probe.get = function get(app, user, uuid, callback) {
   if (! UUID_RE.test(user)) {
     throw new restify.InvalidArgumentError(
       format('invalid user UUID: "%s"', user));
   }
-  Probe.validateName(name);
-  Monitor.validateName(monitor);
-  var dn = Probe.dn(user, monitor, name);
+  var dn = Probe.dn(user, uuid);
   ufdsmodel.modelGet(app, Probe, dn, app.log, callback);
 };
 
@@ -379,16 +386,11 @@ Probe.validate = function validate(app, raw) {
     }
   }
 
-  var requiredFields = {
-    // <raw field name>: <exported name>
-    'amonprobe': 'name',
-    'type': 'type'
-  };
-  Object.keys(requiredFields).forEach(function (field) {
+  // Other required fields.
+  ['type'].forEach(function (field) {
     if (!raw[field]) {
       throw new restify.MissingParameterError(
-        format('\'%s\' is a required parameter for a probe',
-          requiredFields[field]));
+        format('\'%s\' is a required parameter for a probe', field));
     }
   });
 
@@ -399,6 +401,11 @@ Probe.validate = function validate(app, raw) {
   if (raw.machine && !UUID_RE.test(raw.machine)) {
     throw new restify.InvalidArgumentError(
       format('invalid probe machine UUID: \'%s\'', raw.machine));
+  }
+
+  if (raw.name && raw.name.length > 512) {
+    throw new restify.InvalidArgumentError(
+      format('probe name is too long (max 512 characters): \'%s\'', raw.name));
   }
 
   // Validate the probe-type-specific config.
@@ -417,6 +424,7 @@ Probe.validate = function validate(app, raw) {
         format('probe config, %s, is invalid: "%s"', raw.config, err.message));
     }
   }
+
   if (ProbeType.runInVmHost) {
     raw.runInVmHost = true;
   }
@@ -424,28 +432,20 @@ Probe.validate = function validate(app, raw) {
   return raw;
 };
 
-/**
- * Validate the given name.
- *
- * @param name {String} The object name.
- * @throws {restify Error} if the name is invalid.
- */
-Probe.validateName = function validateName(name) {
-  if (! Probe._nameRegex.test(name)) {
-    throw new restify.InvalidArgumentError(
-      format('%s name is invalid: \'%s\'', Probe.name, name));
-  }
-};
-
-// Note: Should be in sync with "ufds/schema/amonprobe.js".
-Probe._nameRegex = /^[a-zA-Z0-9][a-zA-Z0-9_\.-]{0,511}$/;
-
 
 
 //---- API controllers
 
 function apiListProbes(req, res, next) {
   return ufdsmodel.requestList(req, res, next, Probe);
+}
+
+function apiPostProbe(req, res, next) {
+  return ufdsmodel.requestPost(req, res, next, Probe);
+}
+
+function apiCreateProbe(req, res, next) {
+  return ufdsmodel.requestCreate(req, res, next, Probe);
 }
 
 function apiPutProbe(req, res, next) {
@@ -468,16 +468,19 @@ function apiDeleteProbe(req, res, next) {
  */
 function mountApi(server) {
   server.get(
-    {path: '/pub/:user/monitors/:monitor/probes', name: 'ListProbes'},
+    {path: '/pub/:user/probes', name: 'ListProbes'},
     apiListProbes);
+  server.post(
+    {path: '/pub/:user/probes', name: 'CreateProbe'},
+    apiCreateProbe);
   server.put(
-    {path: '/pub/:user/monitors/:monitor/probes/:name', name: 'PutProbe'},
+    {path: '/pub/:user/probes/:uuid', name: 'PutProbe'},
     apiPutProbe);
   server.get(
-    {path: '/pub/:user/monitors/:monitor/probes/:name', name: 'GetProbe'},
+    {path: '/pub/:user/probes/:uuid', name: 'GetProbe'},
     apiGetProbe);
   server.del(
-    {path: '/pub/:user/monitors/:monitor/probes/:name', name: 'DeleteProbe'},
+    {path: '/pub/:user/probes/:uuid', name: 'DeleteProbe'},
     apiDeleteProbe);
 }
 

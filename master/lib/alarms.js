@@ -16,8 +16,8 @@
  * - id {Integer} The alarm id for this user. Unique for a user, i.e. the
  *    (user, id) 2-tuple is the unique id for an alarm. This is set on
  *    `createAlarm()`. See "Alarm Id" below.
- * - monitor {String} monitor name with which the alarm is associated.
- *   `null` if not associated with a monitor.
+ * - probe {UUID} probe UUID which the alarm is associated, if any.
+ * - probeGroup {UUID} probe group UUID which the alarm is associated, if any.
  * - timeOpened {Integer} Time (milliseconds since epoch) when first alarmed.
  * - timeClosed {Integer} Time (milliseconds since epoch) when closed.
  * - timeLastEvent {Integer} Time (milliseconds since epoch) when last event
@@ -51,16 +51,16 @@
  * FWIW, example email notification subjects using the Alarm id might be
  * something like this:
  *
- *    Subject: [Monitoring] Alarm trentm 1 in us-west-1: "All SDC Zones"
- *    Subject: [Alarm] trentm 1 in us-west-1: "All SDC Zones" monitor alarmed
+ *    Subject: [Alarm: probe=smartlogin, server=headnode, type=log-scan] otto#22 in bh1-kvm7
  *
  */
 
 
 var format = require('util').format;
-var assert = require('assert');
+
 var restify = require('restify');
 var async = require('async');
+var assert = require('assert-plus');
 
 var Contact = require('./contact');
 var maintenances = require('./maintenances');
@@ -106,7 +106,7 @@ function boolFromRedisString(value, default_, errName) {
  */
 function faultReprFromEvent(event) {
   if (event.type === 'probe') {
-    return format('probe:%s', event.probe);
+    return format('probe:%s', event.probeUuid);
   } else if (event.type === 'fake') {
     return 'fake';
   } else {
@@ -138,18 +138,22 @@ function faultObjFromRepr(repr) {
  *
  * @param app {App}
  * @param userUuid {Object} The user UUID to which this alarm belongs.
- * @param monitor {Object} The name of the monitor to which this alarm
- *    belong. If none, then use `null`.
+ * @param probeUuid {Object} The probe UUID to which this alarm
+ *    belongs. If none, then use `null`.
+ * @param probeGroupUuid {Object} The probe group UUID to which this alarm
+ *    belongs. If none, then use `null`.
  * @param callback {Function} `function (err, alarm)`
  */
-function createAlarm(app, userUuid, monitor, callback) {
+function createAlarm(app, userUuid, probeUuid, probeGroupUuid, callback) {
   var log = app.log;
-  log.info({user: userUuid, monitor: monitor}, 'createAlarm');
+  log.info({userUuid: userUuid, probeUuid: probeUuid,
+    probeGroupUuid: probeGroupUuid}, 'createAlarm');
 
   var data = {
-    user: userUuid,
-    monitor: monitor
+    user: userUuid
   };
+  if (probeUuid) data.probe = probeUuid;
+  if (probeGroupUuid) data.probeGroup = probeGroupUuid;
   var alarmsKey = 'alarms:' + userUuid;
   var redisClient = app.getRedisClient();
 
@@ -164,19 +168,22 @@ function createAlarm(app, userUuid, monitor, callback) {
     } catch (invalidErr) {
       return callback(invalidErr);
     }
+
+    var rdata = {
+      v: ALARM_MODEL_VERSION,
+      user: alarm.user,
+      id: alarm.id,
+      closed: alarm.closed,
+      suppressed: alarm.suppressed,
+      timeOpened: alarm.timeOpened,
+      timeClosed: alarm.timeClosed,
+      timeLastEvent: alarm.timeLastEvent
+    }
+    if (alarm.probe) rdata.probe = alarm.probe;
+    if (alarm.probeGroup) rdata.probeGroup = alarm.probeGroup;
     redisClient.multi()
       .sadd(alarmsKey, alarm.id)
-      .hmset(alarm._key, {
-        v: ALARM_MODEL_VERSION,
-        user: alarm.user,
-        id: alarm.id,
-        monitor: alarm.monitor,
-        closed: alarm.closed,
-        suppressed: alarm.suppressed,
-        timeOpened: alarm.timeOpened,
-        timeClosed: alarm.timeClosed,
-        timeLastEvent: alarm.timeLastEvent
-      })
+      .hmset(alarm._key, rdata)
       .exec(function (err, replies) {
         if (err) {
           log.error(err, 'error saving alarm to redis');
@@ -196,8 +203,9 @@ function createAlarm(app, userUuid, monitor, callback) {
  *    a new alarm:
  *      - `id` {Integer} Unique (for this user) alarm id.
  *      - `user` {String} The user UUID to which this alarm belongs.
- *      - `monitor` {String} The monitor name with which this alarm is
- *        associated. Or null if not associated with a monitor.
+ *    Other fields (not all of them documented):
+ *      - `probe` {UUID} The probe UUID, if any, for this alarm.
+ *      - `probeGroup` {UUID} The probe group UUID, if any, for this alarm.
  * @param log {Bunyan Logger} Required.
  * @throws {TypeError} if the data is invalid.
  */
@@ -213,7 +221,8 @@ function Alarm(data, log) {
   this.id = Number(data.id);
   this._key = ['alarm', this.user, this.id].join(':');
   this.log = log.child({alarm: this.user + ':' + this.id}, true);
-  this.monitor = data.monitor;
+  this.probe = data.probe;
+  this.probeGroup = data.probeGroup;
   this.closed = boolFromRedisString(data.closed, false, 'data.closed');
   this.timeOpened = Number(data.timeOpened) || Date.now();
   this.timeClosed = Number(data.timeClosed) || null;
@@ -296,7 +305,8 @@ Alarm.get = function get(app, userUuid, id, callback) {
  *    - `user` {String} Required. The user UUID. This requirement could be
  *      relaxed if wanted for dev/operator listing of all alarms. Typical
  *      usage should always scope on a user.
- *    - `monitor` {String} Optional. A monitor name.
+ *    - `probe` {String} Optional. A probe UUID.
+ *    - `probeGroup` {String} Optional. A probe group UUID.
  *    - `closed` {Boolean} Whether the alarm is closed.
  * @param callback {Function} `function (err, alarms)`
  */
@@ -304,8 +314,6 @@ Alarm.filter = function filter(app, options, callback) {
   if (!app) throw new TypeError('"app" (object) is required');
   if (!options) throw new TypeError('"options" (object) is required');
   if (!options.user) throw new TypeError('"options.user" (UUID) is required');
-  if (options.monitor !== undefined && typeof (options.monitor) !== 'string')
-    throw new TypeError('"options.monitor" is not a string');
   if (options.closed !== undefined && typeof (options.closed) !== 'boolean')
     throw new TypeError('"options.closed" is not a boolean');
   if (!callback) throw new TypeError('"callback" (object) is required');
@@ -335,14 +343,19 @@ Alarm.filter = function filter(app, options, callback) {
           // Alarm.get returns a null alarm for invalid data.
           return false;
         }
-        if (a.monitor !== options.monitor) {
-          log.trace({alarm: a}, 'filter out alarm (monitor: %j != %j)',
-            a.monitor, options.monitor);
-          return false;
-        }
         if (options.closed !== undefined && a.closed !== options.closed) {
           log.trace({alarm: a}, 'filter out alarm (closed: %j != %j)',
             a.closed, options.closed);
+          return false;
+        }
+        if (options.probe && a.probe !== options.probe) {
+          log.trace({alarm: a}, 'filter out alarm (probe: %j != %j)',
+            a.probe, options.probe);
+          return false;
+        }
+        if (options.probeGroup && a.probeGroup !== options.probeGroup) {
+          log.trace({alarm: a}, 'filter out alarm (probeGroup: %j != %j)',
+            a.probeGroup, options.probeGroup);
           return false;
         }
         return true;
@@ -360,7 +373,8 @@ Alarm.prototype.serializePublic = function serializePublic() {
   return {
     user: this.user,
     id: this.id,
-    monitor: this.monitor,
+    probe: this.probe,
+    probeGroup: this.probeGroup,
     closed: this.closed,
     suppressed: this.suppressed,
     timeOpened: this.timeOpened,
@@ -445,10 +459,10 @@ Alarm.prototype._updateMaintenanceFaults = function () {
  * Add an event to this alarm and notify, if necessary.
  *
  * @param options {Object} Containing:
- *    - `user` {Object} Required. User object, as from `App.userFromid()`.
+ *    - `user` {Object} Required. User object.
  *    - `event` {Amon event object} Required.
- *    - `monitor` {monitors.Monitor} Required. The monitor with which this
- *      event is associated.
+ *    - `probe` {probes.Probe} Optional.
+ *    - `probeGroup` {probegroups.ProbeGroup} Optional.
  * @param callback {Function} `function (err)` where `err` is set if there
  *    was a problem saving updated alarm/event info to redis. Note that
  *    notifying (if deemed necessary) is attempted even if updating redis
@@ -456,17 +470,15 @@ Alarm.prototype._updateMaintenanceFaults = function () {
  *    (though might result in a separate alarm for the monitor owner).
  */
 Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
-  if (!app) throw new TypeError('"app" is required');
-  if (!options) throw new TypeError('"options" (object) is required');
-  if (!options.user) throw new TypeError('"options.user" is required');
-  if (!options.event) throw new TypeError('"options.event" is required');
-  if (!options.monitor) throw new TypeError('"options.monitor" is required');
-  if (!callback) throw new TypeError('"callback" (Function) is required');
+  assert.object(app, 'app');
+  assert.object(options, 'options');
+  assert.object(options.user, 'options.user');
+  assert.object(options.event, 'options.event');
+  assert.func(callback, 'callback');
 
   var self = this;
-  var user = options.user;
+  var userUuid = options.userUuid;
   var event = options.event;
-  var monitor = options.monitor;
   var log = this.log.child({event_uuid: event.uuid, alarm_id: this.id,
     user: this.user}, true);
   log.info('handleEvent');
@@ -574,7 +586,7 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
       log.info({shouldNotify: shouldNotify, reason: reason}, 'should notify?');
       if (shouldNotify) {
         //XXX:TODO pass reason info to notify
-        self.notify(app, user, event, monitor, function (err) {
+        self.notify(app, options, function (err) {
           if (err) {
             //XXX Watch for infinite loop here.
             log.error(err, 'TODO:XXX send a user event about error notifying');
@@ -653,20 +665,25 @@ Alarm.prototype.unsuppress = function (app, callback) {
  * alarm.
  *
  * @param app {App}
- * @param user {Object} User, as from `App.userFromId()`, owning the monitor.
- * @param event {Object}
- * @param monitor {Object} The monitor for this alarm.
- *    Note: could make this optional.
+ * @param options {Object}
+ *    - @param user {Object} User, as from `App.userFromId()`, owning the monitor.
+ *    - @param event {Object}
+ *    - @param probe {Object} Optional.
+ *    - @param probeGroup {Object} Optional.
  * @param callback {Function} `function (err)`
  */
-Alarm.prototype.notify = function notify(app, user, event, monitor, callback) {
-  if (!app) throw new TypeError('"app" is required');
-  if (!user) throw new TypeError('"user" is required');
-  if (!event) throw new TypeError('"event" is required');
-  if (!monitor) throw new TypeError('"monitor" is required');
-  if (!callback) throw new TypeError('"callback" (Function) is required');
+Alarm.prototype.notify = function notify(app, options, callback) {
+  assert.object(app, 'app');
+  assert.object(options, 'options');
+  assert.object(options.user, 'options.user');
+  assert.object(options.event, 'options.event');
+  assert.optionalObject(options.probe, 'options.probe');
+  assert.optionalObject(options.probeGroup, 'options.probeGroup');
+  assert.func(callback, 'callback');
 
   var self = this;
+  var user = options.user;
+  var event = options.event;
   var log = this.log;
   log.trace('notify');
 
@@ -676,7 +693,7 @@ Alarm.prototype.notify = function notify(app, user, event, monitor, callback) {
   }
 
   function getAndNotifyContact(contactUrn, cb) {
-    log.debug({contact: contactUrn, monitor: monitor.name}, 'notify contact');
+    log.debug({contact: contactUrn, user: user.uuid}, 'notify contact');
     var contact;
     try {
       contact = Contact.create(app, user, contactUrn);
@@ -686,8 +703,10 @@ Alarm.prototype.notify = function notify(app, user, event, monitor, callback) {
       return cb();
     }
     if (!contact.address) {
-      log.warn('no contact address (contactUrn="%s" monitor="%s")'
-        + ' TODO: alarm monitor owner', contactUrn, monitor.name);
+      log.warn({contactUrn: contactUrn, event: event.uuid, user: user.uuid,
+        probe: options.probe && options.probe.uuid,
+        probeGroup: options.probeGroup && options.probeGroup.uuid},
+        "no contact address");
       //var msg = 'XXX'; // TODO
       //app.alarmConfig(monitor.user, msg, function (err) {
       //  if (err) {
@@ -697,8 +716,9 @@ Alarm.prototype.notify = function notify(app, user, event, monitor, callback) {
       //});
       cb();
     } else {
-      app.notifyContact(self, user, monitor, contact, event,
-                               function (err) {
+      options.alarm = self;
+      options.contact = contact;
+      app.notifyContact(options, function (err) {
         if (err) {
           log.warn({err: err, contact: contactUrn}, 'could not notify contact');
         } else {
@@ -709,9 +729,21 @@ Alarm.prototype.notify = function notify(app, user, event, monitor, callback) {
     }
   }
 
-  async.forEach(monitor.contacts, getAndNotifyContact, function (err) {
+  // If there is a probe group, its list of contacts wins. We can
+  // revisit that if we want.
+  var contacts = (options.probeGroup || options.probe).contacts;
+  if (!contacts) {
+    // Perhaps default to the owner's email?
+    log.warn({event: event.uuid, user: user.uuid,
+      probe: options.probe && options.probe.uuid,
+      probeGroup: options.probeGroup && options.probeGroup.uuid},
+      "no contacts for notification");
     callback();
-  });
+  } else {
+    async.forEach(contacts, getAndNotifyContact, function (err) {
+      callback();
+    });
+  }
 };
 
 

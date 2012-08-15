@@ -21,7 +21,8 @@
     "redis": "0.7.2",
     "hiredis": "0.1.14",
     "generic-pool": "1.0.10",
-    "tap": "0.2"
+    "tap": "0.2",
+    "assert-plus": "0.1.0"
   },
   "scripts": {
     "start": "node ./main.js"

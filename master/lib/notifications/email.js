@@ -6,6 +6,7 @@
 
 var format = require('util').format;
 
+var assert = require('assert-plus');
 var nodemailer = require('nodemailer');
 var retry = require('retry');
 
@@ -63,82 +64,136 @@ Email.prototype.sanitizeAddress = function (address) {
 /**
  * Notify.
  *
- * @param alarm {Alarm} Alarm for which this notification is being sent.
- * @param user {Object} UFDS sdcPerson being notified.
- * @param contactAddress {String}
- * @param event {Object} The Amon event that triggered this notification.
+ * @param options {Object} with:
+ *    - @param alarm {alarms.Alarm}
+ *    - @param user {Object} User, as from `App.userFromId()`, owning this probe.
+ *    - @param event {Object} The probe event object.
+ *    - @param contact {Contact} The contact to notify. A contact is relative
+ *        to a user. See 'contact.js' for details. Note that when groups are
+ *        in UFDS, this contact could be a person other than `user` here.
+ *    - @param probeGroup {ProbeGroup} Probe group for which this
+ *        notification is being sent, if any.
+ *    - @param probe {Probe} Probe for which this notification is being
+ *        sent, if any.
  * @param callback {Function} `function (err)` called on completion.
  */
-Email.prototype.notify = function (alarm,
-                                   user,
-                                   contactAddress,
-                                   event,
-                                   callback) {
-  if (!alarm) throw new TypeError('"alarm" required');
-  if (!user) throw new TypeError('"user" required');
-  if (!contactAddress) throw new TypeError('"contactAddress" required');
-  if (!event) throw new TypeError('"event" required');
-  if (!callback) throw new TypeError('"callback" required');
-  var log = this.log.child({alarm: alarm.user + ':' + alarm.id}, true);
+Email.prototype.notify = function (options, callback) {
+  assert.object(options, 'options');
+  assert.object(options.alarm, 'options.alarm');
+  assert.object(options.user, 'options.user');
+  assert.object(options.event, 'options.event');
+  assert.object(options.contact, 'options.contact');
+  assert.optionalObject(options.probe, 'options.probe');
+  assert.optionalObject(options.probeGroup, 'options.probeGroup');
+  assert.func(callback, 'callback');
 
-  // Add name to the email address if have it.
-  // XXX While we don't have UFDS *groups* the `contactAddress` and `user`
-  //     are the same person. When groups are added and the monitor
-  //     contact URN supports group members, then this is no longer the
-  //     same person.
-  var to = contactAddress;
-  var toNoQuotes = to;
+  var alarm = options.alarm;
+  var user = options.user;
+  var address = options.contact.address;
+  var event = options.event;
+  var log = this.log.child({event: event.uuid}, true);
+  log.info({address: address, user: user.uuid, alarm: alarm.id},
+    'email notify');
+
+  /* To.
+   *
+   * Add name to the email address if have it.
+   * XXX While we don't have UFDS *groups* the `address` and `user`
+   *     are the same person. When groups are added and the monitor
+   *     contact URN supports group members, then this is no longer the
+   *     same person.
+   */
+  var to = address;
   var contactName;
-  if (contactAddress.indexOf('<') === -1 && (user.cn || user.sn)) {
+  if (address.indexOf('<') === -1 && (user.cn || user.sn)) {
     contactName = (user.cn + ' ' + user.sn).trim();
-    to = format('%s <%s>', JSON.stringify(contactName), contactAddress);
-    toNoQuotes = format('%s <%s>', contactName, contactAddress);
+    to = format('%s <%s>', JSON.stringify(contactName), address);
   }
 
+/* BEGIN JSSTYLED */
+  /* Subject.
+   *
+   * Consider <http://www.jwz.org/doc/threading.html> for ensuring follow-ups
+   * are in the same thread/conversation in email clients. Gmail algo is
+   * just the subject "... but it will ignore ... anything in square brackets."
+   * <http://www.google.com/support/forum/p/gmail/thread?tid=07c8bfb80cb09135&hl=en>
+   *
+   * Subject pattern for a fault on a server (i.e. in a GZ):
+   *     [Alarm: NEW|CLOSED, probe=$name|$uuid, server=$hostname, type=$type] $alarmid
+   *
+   * Subject pattern for a fault in a VM:
+   *     [Alarm: NEW|CLOSED, probe=$name|$uuid, vm=$alias|$uuid, type=$type] $alarmid
+   *
+   * where "alarmid" is:
+   *     $login#$id in $dc
+   */
+/* END JSSTYLED */
+  var re = (alarm.numNotifications > 0 ? 'Re: ' : '');
+  var details = [];
+  var alarmState = '';
+  if (alarm.closed) {
+    details.push('CLOSED');
+  } else if (alarm.numNotifications === 0) {
+    details.push('NEW');
+  }
+  var probe = options.probe;
+  if (probe) {
+    details.push('probe=' + (probe.name || probe.uuid));
+    if (probe.machine) {
+      //XXX:TODO doc agentAlias on an event, get amon-relay to add that
+      //XXX:TODO add hostname to event.agentAlias.
+      if (probe.machine !== event.machine) {
+        // Being defensive here: The machine UUID from the event should
+        // match that on the probe unless (a) the probe was recently
+        // updated or (b) the agent is sending bogus events.
+        details.push('machine=' + probe.machine)
+      } else {
+        var alias = (event.machine === event.agent ? event.agentAlias : null);
+        if (event.machine === event.relay) {
+          // Relay's run in the GZ, so the machine is a GZ (i.e. a server).
+          details.push('server=' + (alias || probe.machine));
+        } else {
+          details.push('vm=' + (alias || probe.machine));
+        }
+      }
+    }
+    details.push('type=' + probe.type);
+  }
+  var subject = format(
+    '%s[Alarm%s] %s#%d in %s',
+    re,
+    (details.length ? ': ' + details.join(', ') : ''),
+    user.login,
+    alarm.id,
+    this.datacenterName);
+
+  // Body.
+  /* XXX:TODO Template this:
+
+  {{message}}
+
+  Alarm:      {{alarmId}} {{if alarmUrl}}({{alarmUrl}}){{endif}}
+  Time:       {{time}}
+  Probe:      {{probeName}}
+  Machine:    {{machineDesc}}
+  Datacenter: {{dcName}}
+  */
   var data = event.data;
-  var monitorName = event.monitor;
   var body = format('%s\n\n'
     + 'Alarm: %s (alarm is %s)\n'
     + 'Time: %s\n'
-    + 'Monitor: %s (owned by %s)\n'
+    //XXX TODO: add info about probe/probeGroup
     + 'Data Center: %s\n'
     + '\n\n%s',
     data.message,
     alarm.id,
     (alarm.closed ? 'closed' : 'open'),
     (new Date(event.time)).toUTCString(),
-    monitorName, toNoQuotes,
     this.datacenterName,
     JSON.stringify(event, null, 2));
 
-
-
-/* BEGIN JSSTYLED */
-
-/* XXX Template this:
-
-{{message}}
-
-Alarm:      {{alarmId}} {{if alarmUrl}}({{alarmUrl}}){{endif}}
-Time:       {{time}}
-Monitor:    {{monitorName}} {{if monitorUrl}}({{monitorUrl}}){{endif}}
-Probe:      {{probeName}}
-Machine:    {{machineDesc}}
-Datacenter: {{dcName}}
-*/
-
-  // Consider <http://www.jwz.org/doc/threading.html> for ensuring follow-ups
-  // are in the same thread/conversation in email clients. Gmail algo is
-  // just the subject "... but it will ignore ... anything in square brackets."
-  // <http://www.google.com/support/forum/p/gmail/thread?tid=07c8bfb80cb09135&hl=en>
-  //
-  // Subject: [Monitoring] Alarm 1 in us-west-1: "All SDC Zones" monitor alarmed
-/* END JSSTYLED */
-  var re = (alarm.numNotifications > 0 ? 'Re: ' : '');
-  var subject = format('%s[Monitoring] Alarm %s/%d in %s: "%s" monitor alarmed',
-    re, user.login, alarm.id, this.datacenterName, monitorName);
-
-  // XXX add retries (retry module)
+  // Send the email.
+  // XXX:TODO add retries (retry module)
   log.debug({email: {sender: this.from, to: to, subject: subject}},
     'email data');
   try {

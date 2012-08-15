@@ -91,6 +91,8 @@ UFDS (extra fields on the "sdcPerson" LDAP object).
 
 ## Monitors
 
+TODO: remove this
+
 Monitors and probes are the main conceptual objects configured by an Amon
 user. A **monitor** is a collection of one or more related "probes", the
 things to check, and "contacts", who to notify when a fault is detected by
@@ -446,15 +448,15 @@ TODO: errors
 
 # Master API: Probes
 
-A monitor has one or more probes. A "probe" object is the config information
-that tells an amon-agent a single thing to check or watch for. See the
-[Probes](#probes) section above for more details.
+A "probe" object is the config information that tells an amon-agent a single
+thing to check or watch for. See the [Probes](#probes) section above for more
+details.
 
 In the API, a probe contains the following fields:
 
 ||**Field**||**Type**||**Description**||
-||user||String||The UUID of the owning user of this monitor.||
-||monitor||String||Name of the monitor to which this probe belongs.||
+||uuid||String||The UUID of the probe.||
+||user||String||The UUID of the owning user.||
 ||name||String||Name of this probe. This is unique for probes on this monitor. It must be 1-512 chars, begin with alphanumeric character and include only alphanumeric, '_', '.' and '-' ||
 ||type||String||One of the supported [probe types](#probe-types).||
 ||config||Object||Extra configuration information for the probe, if required. This is specific to the [probe type](#probe-types). Most probe types require some config information.||
@@ -462,7 +464,7 @@ In the API, a probe contains the following fields:
 ||machine||String||Optional. The UUID of the VM or node being monitored, if applicable. An example where "machine" is not applicable might be an HTTP check against a hostname that handled by multiple webheads behind a load balancer.||
 
 
-## ListProbes (GET /pub/:account/monitors/:monitor/probes)
+## ListProbes (GET /pub/:account/probes)
 
 List all probes for this monitor.
 
@@ -481,7 +483,7 @@ TODO: errors
 ### Example
 
 
-    $ sdc-amon /pub/bob/monitors/whistle/probes
+    $ sdc-amon /pub/bob/probes
     HTTP/1.1 200 OK
     Content-Type: application/json
     Content-Length: 281
@@ -499,7 +501,7 @@ TODO: errors
     [
       {
         "user": "a3046060-e49c-244e-a146-7a769550cbbb",
-        "monitor": "whistle",
+        "uuid": "660bce77-0e80-c94b-9e6d-6d07b344baef",
         "name": "whistlelog",
         "type": "log-scan",
         "agent": "729dae52-e157-4d8e-9a74-196e228caf58",
@@ -514,9 +516,9 @@ TODO: errors
     ]
 
 
-## GetProbe (GET /pub/:account/monitors/:monitor/probes/:probe)
+## GetProbe (GET /pub/:account/probes/:uuid)
 
-Get a probe by name.
+Get a probe by uuid.
 
 ### Inputs
 
@@ -532,7 +534,7 @@ TODO: errors
 
 ### Example
 
-    $ sdc-amon /pub/bob/monitors/whistle/probes/whistlelog
+    $ sdc-amon /pub/bob/probes/whistlelog
     HTTP/1.1 200 OK
     Content-Type: application/json
     Content-Length: 279
@@ -549,7 +551,7 @@ TODO: errors
 
     {
       "user": "a3046060-e49c-244e-a146-7a769550cbbb",
-      "monitor": "whistle",
+      "uuid": "660bce77-0e80-c94b-9e6d-6d07b344baef",
       "name": "whistlelog",
       "type": "log-scan",
       "agent": "729dae52-e157-4d8e-9a74-196e228caf58",
@@ -563,9 +565,16 @@ TODO: errors
     }
 
 
-## PutProbe (PUT /pub/:account/monitors/:monitor/probes/:probe)
+## CreateProbe (POST /pub/:account/probes)
 
 Create a probe.
+
+XXX
+
+
+## PutProbe (PUT /pub/:account/monitors/:monitor/probes/:probe)
+
+Update a probe.
 
 ### Inputs
 
@@ -1305,8 +1314,8 @@ the given probes and send an event when a probe test trips/fails.
 ### Inputs
 
 The body is an array of event objects. Currently it also accepts a single
-event object. See the [Event Types](#event-types) section below for details
-on event objects.
+event object. See the [Events](#events) section below for details on event
+objects.
 
 ### Errors
 
@@ -1318,9 +1327,7 @@ TODO: errors
     >   "v": 1,
     >   "type": "probe",
     >   "user": "a3040770-c93b-6b41-90e9-48d3142263cf",
-    >   "monitor": "mymonitor",
-    >   "probe": "myprobe",
-    >   "probeType": "machine-up",
+    >   "probeUuid": "13512302-14d8-e64a-8a63-c8792fff1e9e",
     >   "clear": true,
     >   "data": {
     >     "message": "Machine \"b662dd76-974d-4ab8-92c2-fd9d01d86fd3\" has come up.",
@@ -1329,7 +1336,7 @@ TODO: errors
     >       "machine": "b662dd76-974d-4ab8-92c2-fd9d01d86fd3"
     >     }
     >   },
-    >   "machine": "b662dd76-974d-4ab8-92c2-fd9d01d86fd3"
+    >   "agent": "b662dd76-974d-4ab8-92c2-fd9d01d86fd3"
     > }'
     HTTP/1.1 202 Accepted
     Access-Control-Allow-Origin: *
@@ -1711,42 +1718,97 @@ whole userCache object.
 
 
 
-# Event Types
+# Events
 
-This is internal reference data. An Amon user shouldn't need to know
-these details.
+*This is internal reference data. An Amon user shouldn't need to know
+these details.*
 
-**WARNING: This is incomplete and underspecified.**
+An "event" is the thing an amon-agent sends up the stack (via AddEvents)
+when a probe fires. These are type "probe" events, the most common event.
+Other types of events are supported for minor usage.
 
-Current event layouts (working on a spec for this). Event from log-scan
-probe type (a "probe event"):
+Common event fields:
 
-    {
-      "v":1,
-      "type": "probe",
-      "user": "44444444-4444-4444-4444-444444444444",
-      "monitor": "gz",
-      "probe": "smartlogin",
-      "probeType": "log-scan"
-      "clear": false,
-      "data":{
-        "message":"Log \"/var/svc/log/smartdc-agent-smartlogin:default.log\" matched /Stopping/.",
-        "value":1,
-        "details":{
-          "match":"[ Mar 7 01:01:19 Stopping because service restarting. ]\n[ Mar 7 01:01:19 Executing stop method (:kill). ]"
-        }
-      },
-      "machine": UUID1,    // only from some probe types
+||**Field**||**Required?**||**Type**||**Description**||
+||v||required||Integer||Amon event version. A single integer, updated for backward compat breaking changes.||
+||type||required||String||One of "probe" or "fake". See sections below.||
+||user||required||UUID||x||
+||y||x||x||x||
+||y||x||x||x||
+||y||x||x||x||
+||y||x||x||x||
+||y||x||x||x||
 
       // Added by relay:
-      "uuid":"1e5933ba-c813-44fc-bb54-8b75ebf53eff" // unique event UUID
-      "time": 1331782620613,
-      "agent": UUID2,
-      "relay": UUID3,
+      "uuid": "f833288e-d68e-478a-bd11-58a4f1358b21",
+      "time": 1344920541118,
+      "agent": "44454c4c-3200-1042-804d-c2c04f575231",
+      "agentAlias": "headnode",
+      "relay": "44454c4c-3200-1042-804d-c2c04f575231"
+
+
+<!--
+||y||x||x||x||
+-->
+
+Other potential event types:
+
+- "operator event": send to (Amon) operator for some internal Amon problem
+- "user event": send to user for some configuration problem in their data?
+  E.g. I was think that with groups, notify the group owner if can't contact
+  one of the group members. Not sure though.
+- "relay" event? A problem report from a relay? A heartbeat from a relay?
+  Perhaps this is just an operator event? Not sure.
+
+
+
+## Event Type: probe
+
+An event from a probe firing.
+
+||**Field**||**Required?**||**Type**||**Description**||
+||probeUuid||required||UUID||x||
+||clear||required||Boolean||Whether this event should result in clearing a fault on an alarm (and possibly clearing the alarm).||
+||data||required||Object||Extra data specific to the type of probe.||
+||data.message||required||String||A brief prose description of the event.||
+||data.value||optional||Number||A numerical value useful for comparing/tracking/using the event.||
+||data.details||optional||Object||Additional probe type-specific info about the event.||
+||machine||required||UUID||The server or vm from which the event originated.||
+
+An example probe event:
+
+    {
+      "v": 1,
+      "type": "probe",
+      "user": "a3040770-c93b-6b41-90e9-48d3142263cf",
+      "probeUuid": "13b340ad-1e0f-40e3-86cb-e0429d9a4835",
+      "clear": false,
+      "data": {
+        "message": "Log \"/var/svc/log/smartdc-agent-smartlogin:default.log\" matched /Stopping/.",
+        "value": 1,
+        "details": {
+          "match": "[ Aug 14 05:02:21 Stopping because service restarting. ]"
+        }
+      },
+      "machine": "44454c4c-3200-1042-804d-c2c04f575231",
+
+      // Added by relay:
+      "uuid": "f833288e-d68e-478a-bd11-58a4f1358b21",
+      "time": 1344920541118,
+      "agent": "44454c4c-3200-1042-804d-c2c04f575231",
+      "agentAlias": "headnode",
+      "relay": "44454c4c-3200-1042-804d-c2c04f575231"
     }
 
-Test event from "POST /pub/:account/monitors/:monitor?action=fakefault"
-(a "test event" or a "monitor event", i.e. associated with a monitor):
+
+## Event Type: fake
+
+A "fake" event for testing from
+"POST /pub/:account/monitors/:monitor?action=fakefault".
+
+No extra fields.
+
+TODO: modernize this:
 
     {
       v: 1,
@@ -1760,15 +1822,6 @@ Test event from "POST /pub/:account/monitors/:monitor?action=fakefault"
       },
       uuid: uuid()
     }
-
-Other potential event types:
-
-- "operator event": send to (Amon) operator for some internal Amon problem
-- "user event": send to user for some configuration problem in their data?
-  E.g. I was think that with groups, notify the group owner if can't contact
-  one of the group members. Not sure though.
-- "relay" event? A problem report from a relay? Perhaps this is just an
-  operator event? Not sure.
 
 
 

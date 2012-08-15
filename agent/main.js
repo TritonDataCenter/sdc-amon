@@ -1,16 +1,13 @@
 /*
- * Copyright 2011 Joyent, Inc.  All rights reserved.
+ * Copyright 2012 Joyent, Inc.  All rights reserved.
  *
- * Main entry-point for the amon agent. This agent runs in a zone [*].
- * It gets control data (probes to run) from its amon-relay in the
+ * Main entry-point for the amon agent. We always have an agent running in
+ * a node's global zone, and each zone can run its own to allow monitoring
+ * in that zone.
+ *
+ * The agent gets control data (probes to run) from its amon-relay in the
  * global zone and emits events (to the relay) when a probe check fails
  * (or clears).
- *
- * [*] For the first rev of Amon we will only have Amon agents running in
- *    the global zone. This limits what monitoring can be done (can't
- *    expose ability to DOS from global zone to customers, can't monitor
- *    effectivly in a VM) but means we don't need to solve reliably running
- *    agents inside customer machines yet.
  */
 
 var fs = require('fs');

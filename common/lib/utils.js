@@ -24,8 +24,8 @@ module.exports.objCopy = function objCopy(obj) {
  * for use with `Array.sort()`.
  */
 module.exports.compareProbes = function compareProbes(a, b) {
-  var aId = [a.user, a.monitor, a.name].join('/');
-  var bId = [b.user, b.monitor, b.name].join('/');
+  var aId = a.uuid;
+  var bId = b.uuid;
   if (aId < bId)
     return -1;
   else if (aId > bId)

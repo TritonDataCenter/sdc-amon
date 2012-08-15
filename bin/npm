@@ -2,9 +2,10 @@
 
 TOP=$(cd $(dirname $0)/../; pwd)
 NODE_INSTALL=${TOP}/build/node
+NODE=${NODE_INSTALL}/bin/node
 TAR=tar
 if [[ `uname` == "SunOS" ]]; then
     TAR=gtar
 fi
 
-npm_config_tar=${TAR} PATH=${NODE_INSTALL}/bin:${PATH} npm "$@"
+npm_config_tar=${TAR} PATH=${NODE_INSTALL}/bin:${PATH} $NODE ${NODE_INSTALL}/bin/npm "$@"
