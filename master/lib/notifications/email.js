@@ -140,6 +140,9 @@ Email.prototype.notify = function (options, callback) {
   if (probe) {
     details.push('probe=' + (probe.name || probe.uuid));
     if (probe.machine) {
+      //XXX:BUG [Alarm: probe=amondevzone, vm=0336331c-81fb-4247-a016-9f533ffb917e, type=machine-up] bob#1 in bh1-kvm7
+      //    This was a clear, but did NOT have "CLOSED". Also no vm alias
+      //    (amondevzone).
       //XXX:TODO doc agentAlias on an event, get amon-relay to add that
       //XXX:TODO add hostname to event.agentAlias.
       if (probe.machine !== event.machine) {
@@ -178,14 +181,15 @@ Email.prototype.notify = function (options, callback) {
   Machine:    {{machineDesc}}
   Datacenter: {{dcName}}
   */
-  var data = event.data;
+  var message = (event.data && event.data.message
+    ? event.data.message + '\n\n' : '');
   var body = format('%s\n\n'
     + 'Alarm: %s (alarm is %s)\n'
     + 'Time: %s\n'
     //XXX TODO: add info about probe/probeGroup
     + 'Data Center: %s\n'
     + '\n\n%s',
-    data.message,
+    message,
     alarm.id,
     (alarm.closed ? 'closed' : 'open'),
     (new Date(event.time)).toUTCString(),

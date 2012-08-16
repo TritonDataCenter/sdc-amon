@@ -57,7 +57,7 @@ Webhook.prototype.notify = function (options, callback) {
 
   var alarm = options.alarm;
   var user = options.user;
-  var contactAddress = options.contact.address;
+  var address = options.contact.address;
   var event = options.event;
   var log = this.log.child({event: event.uuid}, true);
   log.info({address: address, user: user.uuid, alarm: alarm.id},

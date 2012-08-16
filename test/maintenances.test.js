@@ -3,9 +3,9 @@
  *
  * Test maintenance windows. Scenarios/steps:
  *
- * - Ulrich creates a 'maintmon' monitor with the 'testWebhook' contact
- *   (setup in prep.js at http://localhost:8000/). Add a 'maintprobe' probe
- *   in 'amontestzone' zone of type 'machine-up'.
+ * - Ulrich creates a 'maintprobe' probe with the 'testWebhook' contact
+ *   (setup in prep.js at http://localhost:8000/) in 'amontestzone' zone of
+ *   type 'machine-up'.
  * - Maintenance window basics tests:
  *    - create maint windows with all the creation options (values of start
  *      and end) and assert creation.
@@ -58,6 +58,8 @@ var ulrich = prep.ulrich;
 var MAINTSURL = '/pub/amontestuserulrich/maintenances';
 var ALARMSURL = '/pub/amontestuserulrich/alarms';
 
+var maintprobe = null;
+
 
 
 //---- setup
@@ -77,7 +79,7 @@ test('setup: webhook collector', function (t) {
       body += chunk;
     });
     req.on('end', function () {
-      console.log('# webhookCollector request (%s %s): %j',
+      console.log('# webhookCollector request (%s %s): %s',
         req.method, req.url, body);
       try {
         hit.body = JSON.parse(body);
@@ -99,40 +101,28 @@ test('setup: webhook collector', function (t) {
 });
 
 
-test('setup: maintmon', function (t) {
-  var monitor = {
-    contacts: ['testWebhook']
+test('setup: maintprobe', function (t) {
+  var data = {
+    name: 'maintprobe',
+    contacts: ['testWebhook'],
+    machine: prep.amontestzone.uuid,
+    type: 'machine-up'
   };
-  masterClient.put('/pub/amontestuserulrich/monitors/maintmon', monitor,
-    function (err, req, res, obj) {
-      t.ifError(err, 'PUT /pub/amontestuserulrich/monitors/maintmon');
+  var path = '/pub/amontestuserulrich/probes';
+  masterClient.post(path, data, function (err, req, res, obj) {
+      t.ifError(err, 'PUT ' + path);
       t.ok(obj, 'got a response body');
       if (obj) {
-        t.equal(obj.name, 'maintmon', 'created maintmon');
+        t.equal(obj.name, 'maintprobe', 'created maintprobe: uuid=' + obj.uuid);
         t.equal(obj.contacts[0], 'testWebhook', 'contacts are correct');
+        t.equal(obj.machine, data.machine);
+        t.equal(obj.agent, data.machine, 'expected "agent"');
+        t.equal(obj.type, data.type);
+        maintprobe = obj;
       }
       t.end();
     }
   );
-});
-
-
-test('setup: maintprobe', function (t) {
-  var probe = {
-    machine: prep.amontestzone.uuid,
-    type: 'machine-up'
-  };
-  var url = '/pub/amontestuserulrich/monitors/maintmon/probes/maintprobe';
-  masterClient.put(url, probe, function (err, req, res, obj) {
-    t.ifError(err, 'PUT ' + url);
-    t.ok(obj, 'got a response body');
-    if (obj) {
-      t.equal(obj.machine, probe.machine);
-      t.equal(obj.agent, probe.machine, 'expected "agent"');
-      t.equal(obj.type, probe.type);
-    }
-    t.end();
-  });
 });
 
 
@@ -153,10 +143,12 @@ test('setup: ensure no current alarms', function (t) {
   masterClient.get(url, function (err, req, res, obj) {
     t.ifError(err, 'GET ' + url);
     t.ok(obj, 'got a response body');
-    t.equal(obj.length, 0);
+    t.equal(obj.length, 0,
+      'ulrich should have no alarms: ' + JSON.stringify(obj));
     t.end();
   });
 });
+
 
 
 /*
@@ -250,6 +242,7 @@ test('maint basics: no maintenance windows', function (t) {
 });
 
 
+
 /*
  * - Shutdown amontestzone: assert get alarm and notification.
  *   Restart amontestzone: assert get notification and alarm clears.
@@ -289,8 +282,8 @@ test('maint 1: got notification on zone stop', function (t) {
         var notification = notifications[0];
         t.equal(notification.body.event.machine, prep.amontestzone.uuid,
           'notification was for an event on amontestzone vm');
-        t.equal(notification.body.alarm.monitor, 'maintmon',
-          'notification was for an alarm for "maintmon" monitor');
+        t.equal(notification.body.alarm.probe, maintprobe.uuid,
+          'notification was for an alarm for "maintprobe" probe');
       }
       t.end();
     }
@@ -305,11 +298,13 @@ test('maint 1: got alarm on zone stop', function (t) {
     t.equal(obj.length, 1, 'one alarm');
     var alarm = obj[0];
     maint1AlarmId = alarm.id; // save for subsequent test
-    t.equal(alarm.monitor, 'maintmon', 'alarm.monitor');
-    t.equal(alarm.closed, false);
-    t.equal(alarm.user, ulrich.uuid);
-    t.equal(alarm.faults.length, 1);
-    t.equal(alarm.faults[0].probe, 'maintprobe');
+    t.equal(alarm.probe, maintprobe.uuid, 'alarm.probe');
+    t.equal(alarm.closed, false, 'alarm.closed');
+    t.equal(alarm.user, ulrich.uuid, 'alarm.user');
+    t.equal(alarm.faults.length, 1, 'alarm.faults');
+    if (alarm.faults.length) {
+      t.equal(alarm.faults[0].probe, maintprobe.uuid, 'alarm.faults[0].probe');
+    }
     t.end();
   });
 });
@@ -346,14 +341,14 @@ test('maint 1: notification and alarm closed', function (t) {
         var notification = notifications[0];
         t.equal(notification.body.event.machine, prep.amontestzone.uuid,
           'notification was for an event on amontestzone vm');
-        t.equal(notification.body.alarm.monitor, 'maintmon',
-          'notification was for an alarm for "maintmon" monitor');
+        t.equal(notification.body.alarm.probe, maintprobe.uuid,
+          'notification was for an alarm for "maintprobe" probe');
       }
 
       var url = ALARMSURL + '/' + maint1AlarmId;
       masterClient.get(url, function (err, req, res, alarm) {
         t.ifError(err, 'GET ' + url);
-        t.equal(alarm.closed, true);
+        t.equal(alarm.closed, true, 'alarm is now closed');
         t.end();
       });
     }
@@ -385,6 +380,7 @@ test('maint 1: wait until restarted zone has settled', function (t) {
 });
 
 
+
 /*
  * - Set maint window. Shutdown amontestzone: assert get alarm, no
  *   notification.
@@ -396,12 +392,14 @@ var maint2 = {
   start: 'now',
   end: '10m',
   notes: 'maint 2',
-  monitors: 'maintmon'
+  probes: null  // will be filled in from `maintprobe.uuid`
 };
 var maint2Id = null;
 var maint2AlarmId = null;
 
 test('maint 2: create maint window', function (t) {
+  maint2.probes = maintprobe.uuid;
+
   var epsilon = 1000;  // 1 second slop
   var expectedStart = Date.now();
   var expectedEnd = expectedStart + 60 * 1000;
@@ -412,7 +410,7 @@ test('maint 2: create maint window', function (t) {
       t.ok(!isNaN(Number(obj.id)), 'id');
       maint2Id = obj.id;
       t.equal(obj.notes, maint2.notes, 'notes');
-      t.equal(obj.monitors[0], 'maintmon', '<maint>.monitors');
+      t.equal(obj.probes[0], maintprobe.uuid, '<maint>.probes');
     }
     t.end();
   });
@@ -454,12 +452,15 @@ test('maint 2: got alarm on zone stop', function (t) {
         t.equal(alarms.length, 1, 'one alarm');
         var alarm = alarms[0];
         maint2AlarmId = alarm.id; // save for subsequent test
-        t.equal(alarm.monitor, 'maintmon', 'alarm.monitor');
+        t.equal(alarm.probe, maintprobe.uuid, 'alarm.probe');
         t.equal(alarm.closed, false);
         t.equal(alarm.user, ulrich.uuid);
         t.equal(alarm.faults.length, 0);
-        t.equal(alarm.maintenanceFaults.length, 1);
-        t.equal(alarm.maintenanceFaults[0].probe, 'maintprobe');
+        t.equal(alarm.maintenanceFaults.length, 1, 'got a *maintenance* fault');
+        if (alarm.maintenanceFaults.length) {
+          t.equal(alarm.maintenanceFaults[0].probe, maintprobe.uuid,
+            'maint fault is for maintprobe uuid');
+        }
       }
       t.end();
     }
@@ -515,15 +516,15 @@ test('maint 2: got NO notification on zone start', function (t) {
 });
 
 test('maint 2: clean up', function (t) {
-  var url = ALARMSURL + '/' + maint2AlarmId;
-  masterClient.del(url, function (err, req, res, obj) {
-    t.ifError(err, 'DELETE ' + url);
-    t.equal(res.statusCode, 204);
+  var apath = ALARMSURL + '/' + maint2AlarmId;
+  masterClient.del(apath, function (err, req, res, obj) {
+    t.ifError(err, 'DELETE ' + apath);
+    t.equal(res.statusCode, 204, 'del returned 204 status');
 
-    var url = MAINTSURL + '/' + maint2Id;
-    masterClient.del(url, function (err2, req2, res2, obj2) {
-      t.ifError(err2, 'DELETE ' + url);
-      t.equal(res2.statusCode, 204);
+    var mpath = MAINTSURL + '/' + maint2Id;
+    masterClient.del(mpath, function (err2, req2, res2, obj2) {
+      t.ifError(err2, 'DELETE ' + mpath);
+      t.equal(res2.statusCode, 204, 'del returned 204 status');
       t.end();
     });
   });
@@ -575,16 +576,7 @@ test('maint 2: wait until restarted zone has settled', function (t) {
 //---- teardown
 
 test('teardown: delete maintprobe', function (t) {
-  var url = '/pub/amontestuserulrich/monitors/maintmon/probes/maintprobe';
-  masterClient.del(url, function (err, headers, res) {
-    t.ifError(err, 'DELETE ' + url);
-    t.equal(res.statusCode, 204);
-    t.end();
-  });
-});
-
-test('teardown: delete maintmon', function (t) {
-  var url = '/pub/amontestuserulrich/monitors/maintmon';
+  var url = '/pub/amontestuserulrich/probes/' + maintprobe.uuid;
   masterClient.del(url, function (err, headers, res) {
     t.ifError(err, 'DELETE ' + url);
     t.equal(res.statusCode, 204);

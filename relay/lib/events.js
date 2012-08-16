@@ -15,6 +15,7 @@ function addEvents(req, res, next) {
     events = [req.body];
   }
 
+  var rEvents = [];
   for (var i = 0; i < events.length; i++) {
     var event = events[i];
 
@@ -24,6 +25,13 @@ function addEvents(req, res, next) {
     //XXX - See TODO.txt notes on 'idObject'.
     //XXX Validate that the event schema matches the given `version`.
 
+    if (req._owner && event.user !== req._owner) {
+      req.log.info({event: event},
+        "drop event with invalid user: event.user (%s) !== owner (%s)",
+        event.user, req._owner);
+      continue;
+    }
+
     // Add data known by the relay (this is info the master can trust more
     // because the relay is always in the hands of the operator).
     event.uuid = uuid();
@@ -31,16 +39,22 @@ function addEvents(req, res, next) {
     event.agent = req._agent;
     event.agentAlias = req._agentAlias;
     event.relay = req._relay;
+
+    rEvents.push(event);
   }
 
-  req.log.debug({events: events}, 'relaying events (%d of them)',
-    events.length);
-  req._masterClient.sendEvents(events, function (err) {
+  if (rEvents.length === 0) {
+    return next();
+  }
+
+  req.log.debug({events: rEvents}, 'relaying events (%d of them)',
+    rEvents.length);
+  req._masterClient.sendEvents(rEvents, function (err) {
     if (err) {
       return next(err);
     }
     res.send(202 /* Accepted */);
-    return next();
+    next();
   });
 }
 

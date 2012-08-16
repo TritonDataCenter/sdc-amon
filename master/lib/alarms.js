@@ -484,12 +484,12 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
   log.info('handleEvent');
 
   maintenances.isEventInMaintenance({app: app, event: event, log: log},
-                                    function (maintErr, isInMaint) {
+                                    function (maintErr, maint) {
     if (maintErr) {
       log.error(maintErr, 'error determining if event is under maintenace');
       return callback(maintErr);
     }
-    log.info({isInMaint: isInMaint}, 'determined if event is in maint');
+    log.info({maint: maint}, 'determined if event is in maint');
 
     var redisClient = app.getRedisClient();
     var multi = redisClient.multi();
@@ -515,7 +515,7 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
       self.removeMaintenanceFault(fault);
       multi.srem(self._maintenanceFaultsKey, fault);
       indeces.numFaultsAfter++; indeces.numMaintenanceFaultsAfter++;
-    } else if (isInMaint) {
+    } else if (maint) {
       self.addMaintenanceFault(fault);
       multi.sadd(self._maintenanceFaultsKey, fault);
       indeces.numFaultsAfter++; indeces.numMaintenanceFaultsAfter++;

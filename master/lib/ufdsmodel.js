@@ -39,7 +39,7 @@ var objCopy = require('amon-common').utils.objCopy;
  * @param parentDn {object} Parent LDAP DN (distinguished name).
  * @param log {Bunyan Logger}
  * @param callback {Function} `function (err, items)` where `err` is a
- *    restify.RESTError instance on error, otherwise `items` is an array of
+ *    restify.RestError instance on error, otherwise `items` is an array of
  *    Model instances.
  */
 function modelList(app, Model, parentDn, log, callback) {
@@ -91,7 +91,7 @@ function modelList(app, Model, parentDn, log, callback) {
       try {
         instances.push(new Model(app, rawItems[i]));
       } catch (err2) {
-        if (err2 instanceof restify.RESTError) {
+        if (err2 instanceof restify.RestError) {
           log.warn('Ignoring invalid %s (dn=\'%s\'): %s', Model.name,
             rawItems[i].dn, err2);
         } else {
@@ -114,7 +114,7 @@ function modelList(app, Model, parentDn, log, callback) {
  * @param data {object} The model instance data.
  * @param log {Bunyan Logger}
  * @param callback {Function} `function (err, item)` where `err` is a
- *    restify.RESTError instance on error, otherwise `item` is the created
+ *    restify.RestError instance on error, otherwise `item` is the created
  *    Model instance.
  */
 function modelCreate(app, Model, data, log, callback) {
@@ -161,7 +161,7 @@ function modelCreate(app, Model, data, log, callback) {
  * @param data {object} The model instance data.
  * @param log {Bunyan Logger}
  * @param callback {Function} `function (err, item)` where `err` is a
- *    restify.RESTError instance on error, otherwise `item` is the put Model
+ *    restify.RestError instance on error, otherwise `item` is the put Model
  *    instance.
  */
 function modelPut(app, Model, data, log, callback) {
@@ -210,7 +210,7 @@ function modelPut(app, Model, data, log, callback) {
  * @param skipCache {Boolean} Optional. Default false. Set to true to skip
  *    looking up in the cache.
  * @param callback {Function} `function (err, item)` where `err` is a
- *    restify.RESTError instance on error, otherwise `item` is the Model
+ *    restify.RestError instance on error, otherwise `item` is the Model
  *    instance.
  */
 function modelGet(app, Model, dn, log, skipCache, callback) {
@@ -264,7 +264,7 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
       try {
         var item = new Model(app, entry);
       } catch (err2) {
-        if (err2 instanceof restify.RESTError) {
+        if (err2 instanceof restify.RestError) {
           log.warn('Ignoring invalid %s (dn=\'%s\'): %s', Model.name,
             entry.dn, err2);
         } else {
@@ -292,7 +292,7 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
  * @param skipCache {Boolean} Optional. Default false. Set to true to skip
  *    looking up in the cache.
  * @param callback {Function} `function (err)` where `err` is a
- *    restify.RESTError instance on error.
+ *    restify.RestError instance on error.
  */
 function modelDelete(app, Model, dn, log, callback) {
   log.info({dn: dn, modelName: Model.name}, 'modelDelete');

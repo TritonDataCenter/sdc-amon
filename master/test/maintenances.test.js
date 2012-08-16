@@ -76,7 +76,7 @@ test('raw maintenance window creation', function (t) {
   t.equal(maint.end, data.end, 'maint.id');
   t.equal(maint.notes, data.notes, 'maint.notes');
   t.equal(maint.all, true, 'maint.all');
-  t.equal(maint.monitors, undefined, 'maint.monitors');
+  t.equal(maint.probes, undefined, 'maint.probes');
   t.equal(maint.machines, undefined, 'maint.machines');
 
   // Check serializations.

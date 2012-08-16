@@ -7,7 +7,10 @@
 var fs = require('fs');
 var test = require('tap').test;
 
+var uuid = require('node-uuid');
 var Logger = require('bunyan');
+
+var Contact = require('../lib/contact');
 
 
 
@@ -135,33 +138,36 @@ test('email: notify', function (t) {
   };
   var user = {
     "login": "otto",
-    "email": "trentm+amontestemail@gmail.com",
+    "email": "trent.mick+amontestemail@joyent.com",
     "id": "a3040770-c93b-6b41-90e9-48d3142263cf",
     "firstName": "Trent",
     "lastName": "the Test Case"
   };
-  var contactAddress = "trentm+amonemailtest@gmail.com";
+  var contact = new Contact('my', 'email', 'email',
+    'trentm+amonemailtest@gmail.com');
   var event = {
     "v": 1,
     "type": "probe",
-    "user": "a3040770-c93b-6b41-90e9-48d3142263cf",
-    "monitor": "gz",
-    "probe": "smartlogin",
-    "clear": false,
-    "data": {
-      "message": "Log \"test.log\" matched /This is the test suite/.",
-      "value": 1,
-      "details": {
-        "match": "This is the test suite"
-      }
-    },
-    "machine": "44454c4c-3200-1042-804d-c2c04f575231"
+    "user": user.id,
+    time: Date.now(),
+    agent: uuid(),
+    agentAlias: "tehagent",
+    relay: uuid(),
+    data: {
+      message: 'This is a test from amon master test/notifications.test.js.'
+    }
   };
 
-  email.notify(alarm, user, contactAddress, event, function (err) {
-    t.ifError(err, err);
-    t.end();
-  });
+  email.notify({
+      alarm: alarm,
+      user: user,
+      event: event,
+      contact: contact
+    }, function (err) {
+      t.ifError(err, err);
+      t.end();
+    }
+  );
 });
 
 test('email: teardown', function (t) {

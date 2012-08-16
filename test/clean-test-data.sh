@@ -30,31 +30,27 @@ trap 'cleanup' EXIT
 
 function clearUser() {
     local login=$1
-    local uuid=$(sdc-amon /pub/$login | json -H id)
+    local uuid=$(sdc-amon /pub/$login | json -H uuid)
     echo "# Clear user $login (uuid=$uuid)."
     if [[ -z "$uuid" ]]; then
         echo "# No such user '$login'."
         return
     fi
 
-    local monitors=$(sdc-amon /pub/$login/monitors | json -Ha name | xargs)
-    for monitor in $monitors; do
-        local probes=$(sdc-amon /pub/$login/monitors/$monitor/probes | json -Ha name | xargs)
-        for probe in $probes; do
-            echo "# DELETE /pub/$login/monitors/$monitor/probes/$probe"
-            sdc-amon /pub/$login/monitors/$monitor/probes/$probe -X DELETE -f >/dev/null
-        done
-        echo "# DELETE /pub/$login/monitors/$monitor"
-        sdc-amon /pub/$login/monitors/$monitor -X DELETE -f >/dev/null
+    #XXX
+    #local probegroups=$(sdc-amon /pub/$login/probegroups | json -Ha uuid | xargs)
+    #for probegroup in $probegroups; do
+    #    echo "# DELETE /pub/$login/probegroups/$probegroup"
+    #    sdc-amon /pub/$login/probegroups/$probegroup -X DELETE -f >/dev/null
+    #done
+
+    local probes=$(sdc-amon /pub/$login/probes | json -Ha uuid | xargs)
+    for probe in $probes; do
+        echo "# DELETE /pub/$login/probes/$probe"
+        sdc-amon /pub/$login/probes/$probe -X DELETE -f >/dev/null
     done
 
-    local alarms=$(sdc-amon /pub/amontestuserulrich/alarms?state=all | json -Ha id | xargs)
-    for alarm in $alarms; do
-        echo "# DELETE /pub/$login/alarms/$alarm"
-        sdc-amon /pub/$login/alarms/$alarm -X DELETE -f >/dev/null
-    done
-
-    local maintenances=$(sdc-amon /pub/amontestuserulrich/maintenances | json -Ha id | xargs)
+    local maintenances=$(sdc-amon /pub/$login/maintenances | json -Ha id | xargs)
     for maintenance in $maintenances; do
         echo "# DELETE /pub/$login/maintenances/$maintenance"
         sdc-amon /pub/$login/maintenances/$maintenance -X DELETE -f >/dev/null
@@ -75,7 +71,20 @@ function clearUser() {
             echo "# [$(date -u)]Delete machine $machine_uuid (on server $server_uuid)."
             sdc-oneachnode -n $server_uuid vmadm delete $machine_uuid
         done
+    fi
 
+    # Blowing away the machines can result in an alarm from a
+    # not-yet-propagated deleted probe (from earlier). Wait for a bit (for
+    # alarms to get through), then delete them.
+    sleep 5
+    local alarms=$(sdc-amon /pub/$login/alarms?state=all | json -Ha id | xargs)
+    for alarm in $alarms; do
+        echo "# DELETE /pub/$login/alarms/$alarm"
+        sdc-amon /pub/$login/alarms/$alarm -X DELETE -f >/dev/null
+    done
+
+
+    if [[ ! -n "$opt_quick_clean" ]]; then
         local person="uuid=$uuid, ou=users, o=smartdc"
 
         # Blow away all children of the user to avoid "ldap_delete: Operation

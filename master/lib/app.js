@@ -20,7 +20,8 @@ var async = require('async');
 
 var amonCommon = require('amon-common'),
   Constants = amonCommon.Constants,
-  format = amonCommon.utils.format;
+  format = amonCommon.utils.format,
+  objCopy = amonCommon.utils.objCopy;
 var Contact = require('./contact');
 var alarms = require('./alarms'),
   createAlarm = alarms.createAlarm,
@@ -75,16 +76,11 @@ function ping(req, res, next) {
   }
 }
 
-function getUser(req, res, next) {
-  var user = req._user;
-  var data = {
-    login: user.login,
-    email: user.email,
-    id: user.uuid,
-    firstName: user.cn,
-    lastName: user.sn
-  };
-  res.send(data);
+function apiGetUser(req, res, next) {
+  var user = objCopy(req._user);
+  delete user.controls;
+  delete user.objectclass;
+  res.send(user);
   return next();
 }
 
@@ -298,7 +294,7 @@ function App(config, cnapiClient, vmapiClient, log) {
 
   // Debugging/dev/testing endpoints.
   server.get({path: '/ping', name: 'Ping'}, ping);
-  server.get({path: '/pub/:user', name: 'GetUser'}, getUser);
+  server.get({path: '/pub/:user', name: 'GetUser'}, apiGetUser);
   // XXX Kang-ify (https://github.com/davepacheco/kang)
   server.get({path: '/state', name: 'GetState'}, function (req, res, next) {
     res.send(self.getStateSnapshot());
@@ -583,7 +579,6 @@ App.prototype.ufdsAdd = function ufdsAdd(dn, data, callback) {
       return callback(new restify.ServiceUnavailableError(
         'service unavailable'));
     }
-log.debug({data: data, dn: dn}, "XXX adding to UFDS, again data:", data)
     client.add(dn, data, function (addErr) {
       pool.release(client);
       if (addErr) {
@@ -648,7 +643,7 @@ App.prototype.ufdsDelete = function ufdsDelete(dn, callback) {
  *
  * @param userId {String} UUID or login (aka username) of the user to get.
  * @param callback {Function} `function (err, user)`. 'err' is a restify
- *    RESTError instance if there is a problem. 'user' is null if no
+ *    RestError instance if there is a problem. 'user' is null if no
  *    error, but no such user was found.
  */
 App.prototype.userFromId = function (userId, callback) {
@@ -877,7 +872,6 @@ App.prototype.processEvent = function (event, callback) {
       format('unknown event type: "%s"', event.type)));
   }
 
-
   // Gather available and necessary info for alarm creation and notification.
   var info = {event: event};
   async.series([
@@ -952,15 +946,17 @@ App.prototype.processEvent = function (event, callback) {
 App.prototype.getOrCreateAlarm = function (options, callback) {
   var self = this;
   var log = this.log;
+  var event = options.event;
+  var probe = options.probe;
 
   // Get all open alarms for this user and probe/probe group.
   log.debug('getOrCreateAlarm: get candidate related alarms');
   Alarm.filter(
     self,
     {
-      user: options.probe.user,
-      probe: options.probe.uuid,
-      probeGroup: options.probe.group,
+      user: event.user,
+      probe: probe && probe.uuid,
+      probeGroup: probe && probe.group,
       closed: false
     },
     function (err, candidateAlarms) {
@@ -973,15 +969,15 @@ App.prototype.getOrCreateAlarm = function (options, callback) {
           callback(chooseErr);
         } else if (alarm) {
           callback(null, alarm);
-        } else if (options.event.clear) {
+        } else if (event.clear) {
           // A clear event with no related open alarm should be dropped.
           // Don't create an alarm for this.
-          log.info({event_uuid: options.event.uuid},
+          log.info({event_uuid: event.uuid},
             'not creating a new alarm for a clear event');
           callback(null, null);
         } else {
-          createAlarm(self, options.probe.user, options.probe.uuid,
-            options.probe.group, callback);
+          createAlarm(self, event.user, probe && probe.uuid,
+            probe && probe.group, callback);
         }
       });
     }
@@ -1046,7 +1042,7 @@ App.prototype.chooseRelatedAlarm = function (candidateAlarms,
  * particular plugin for handling the notification. E.g. both 'email'
  * and 'secondaryEmail' will map to the "email" notification type.
  *
- * @throws {restify.RESTError} if the no appropriate notification plugin could
+ * @throws {restify.RestError} if the no appropriate notification plugin could
  *    be determined.
  */
 App.prototype.notificationTypeFromMedium = function (medium) {

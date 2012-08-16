@@ -16,6 +16,7 @@
  */
 
 var log = console.error;
+var assert = require('assert');
 var fs = require('fs');
 var os = require('os');
 var path = require('path');
@@ -317,11 +318,13 @@ function createAmontestzone(next) {
     if (err) {
       return next(err);
     }
-    if (zones.length > 0) {
-      amontestzone = zones[0];
-      log('# Ulrich already has an "amontestzone" zone (%s).',
-        amontestzone.uuid);
-      return next();
+    for (var i = 0; i < zones.length; i++) {
+      if (zones[i].state === "running" || zones[i].state === "stopped") {
+        amontestzone = zones[i]; // intentionally global
+        log('# Ulrich already has an "amontestzone" zone (%s).',
+          amontestzone.uuid);
+        return next();
+      }
     }
     log('# Create a test zone for ulrich.');
     vmapiClient.createVm({
@@ -355,6 +358,22 @@ function createAmontestzone(next) {
 }
 
 
+function ensureAmontestzoneIsRunning(next) {
+  if (amontestzone.state === 'running') {
+    log('# amontestzone is running');
+    return next();
+  }
+  assert.equal(amontestzone.state, 'stopped');
+  log('# amontestzone is stopped, starting it');
+  common.vmStart({uuid: amontestzone.uuid, timeout: 40000}, function (err) {
+    if (err)
+      return next(err);
+    amontestzone.state = 'running';
+    next();
+  });
+}
+
+
 function rereserveHeadnodeForProvisioning(next) {
   if (needToRereserve) {
     var cmd = format('sdc-cnapi /servers/%s -X POST -F reserved=true',
@@ -382,6 +401,14 @@ function getAmonZoneUuid(next) {
   });
 }
 
+function syncRelaysAndAgents(next) {
+  // Currently, the only relevant relay and agent are the headnode GZ ones
+  // for the 'amontestzone'.
+  common.syncRelaysAndAgents(
+    [amontestzone.server_uuid],           // relay
+    [[amontestzone.server_uuid, null]],   // GZ amon-agent
+    next);
+}
 
 function writePrepJson(next) {
   var prepJson = '/var/tmp/amontest/prep.json';
@@ -419,9 +446,11 @@ async.series([
     getExternalNetworkUuid,
     unreserveHeadnodeForProvisioning,
     createAmontestzone,
+    ensureAmontestzoneIsRunning,
     // TODO: get rereserveHeadnodeForProvisioning() to run on createAmontestzone() failure
     rereserveHeadnodeForProvisioning,
     getAmonZoneUuid,
+    syncRelaysAndAgents,
     writePrepJson
   ],
   function (err) {

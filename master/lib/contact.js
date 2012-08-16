@@ -69,7 +69,7 @@ function Contact(scope, medium, notificationType, address) {
  * Parse a Contact URN. See module comment for URN spec. This is effectively
  * a contact URN validator as well.
  *
- * @throws {restify.RESTError} if the given URN is invalid.
+ * @throws {restify.RestError} if the given URN is invalid.
  */
 Contact.parseUrn = function (app, urn) {
   // For now just: '<medium>' or 'my:<medium>'. When/if UFDS user mgmt is

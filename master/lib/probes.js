@@ -14,10 +14,10 @@ var restify = require('restify');
 var async = require('async');
 
 var ufdsmodel = require('./ufdsmodel');
-var Monitor = require('./monitors').Monitor;
 var utils = require('amon-common').utils,
   objCopy = utils.objCopy;
 var plugins = require('amon-plugins');
+var Contact = require('./contact');
 
 
 
@@ -44,7 +44,7 @@ var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
  *        uuid: ':uuid',
  *        ...
  *        objectclass: 'amonprobe' }
- * @throws {restify.RESTError} if the given data is invalid.
+ * @throws {restify.RestError} if the given data is invalid.
  */
 /* END JSSTYLED */
 function Probe(app, data) {
@@ -95,7 +95,7 @@ function Probe(app, data) {
       agent: data.agent,
       objectclass: Probe.objectclass
     };
-    //XXX:TODO: disabled, contacts
+    //XXX:TODO: disabled
     if (data.name) raw.name = data.name;
     if (data.contacts) raw.contact = data.contacts;  // singular intentional
     if (data.config) raw.config = JSON.stringify(data.config);
@@ -406,6 +406,15 @@ Probe.validate = function validate(app, raw) {
   if (raw.name && raw.name.length > 512) {
     throw new restify.InvalidArgumentError(
       format('probe name is too long (max 512 characters): \'%s\'', raw.name));
+  }
+
+  if (raw.contact) {
+    if (!(raw.contact instanceof Array)) {
+      raw.contact = [raw.contact];
+    }
+    raw.contact.forEach(function (c) {
+      Contact.parseUrn(app, c);
+    });
   }
 
   // Validate the probe-type-specific config.

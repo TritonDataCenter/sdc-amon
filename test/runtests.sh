@@ -157,12 +157,14 @@ sdc-amon /state?action=dropcaches -X POST >/dev/null
 echo ""
 test_files=$(ls -1 test/*.test.js node_modules/amon-plugins/test/*.test.js)
 if [[ -n "$opt_test_pattern" ]]; then
-    test_files=$(echo "$test_files" | grep "$opt_test_pattern")
+    test_files=$(echo "$test_files" | grep "$opt_test_pattern" || true)
     echo "# Running filtered set of test files: $test_files"
 fi
 # maintenances.test.js needs longer timeout
-PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP --timeout 180 $test_files \
-    | tee $OUTPUT_DIR/amon-relay.tap
+if [[ -n "$test_files" ]]; then
+    PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP --timeout 180 $test_files \
+        | tee $OUTPUT_DIR/amon-relay.tap
+fi
 
 # Also run the tests in the Amon Master(s).
 echo ""

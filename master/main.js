@@ -32,13 +32,16 @@ var theApp;
 var log = new Logger({
   name: 'amon-master',
   src: (process.platform === 'darwin'),
-  src: true, //XXX
+  //src: true,
   serializers: {
     err: Logger.stdSerializers.err,
     req: Logger.stdSerializers.req,
     res: restify.bunyan.serializers.response,
     alarm: function (alarm) {
       return (alarm.serializeDb && alarm.serializeDb() || alarm);
+    },
+    maint: function (maint) {
+      return (maint.serializeDb && maint.serializeDb() || maint);
     }
   }
 });
@@ -153,6 +156,9 @@ function main() {
   function censor(key, value) {
     var censored = censorKeys[key];
     return (censored === undefined ? value : censored);
+  }
+  if (theConfig.logLevel && !rawOpts.verbose) {
+    log.level(theConfig.logLevel);
   }
   log.debug('config: %s', JSON.stringify(theConfig, censor, 2));
 

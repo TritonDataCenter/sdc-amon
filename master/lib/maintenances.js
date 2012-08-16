@@ -21,8 +21,9 @@
  *    window ends.
  * - notes {String} Short note on why this maint window. Can be empty.
  * - all {Boolean}
- * - monitors {String} Comma-separated set of monitor names to which this maint
+ * - probes {String} Comma-separated set of probe UUIDs to which this maint
  *    applies, if any.
+ * - XXX probeGroups
  * - machines {String} Comma-separated set of machine UUIDs to which this maint
  *    applies, if any.
  *
@@ -62,6 +63,7 @@ var amonCommon = require('amon-common'),
 var MAINTENANCE_MODEL_VERSION = 1;
 var MAX_NOTES_LENGTH = 255;
 var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+var MAX_REAPER_FREQ = 100;  // 100ms is max frequency of maint expiry reaping
 
 
 
@@ -318,12 +320,12 @@ function isPositiveInteger(s) {
  *      (minute, hour, day), e.g. "1h" is one hour from now.
  *    - notes {String} Optional.
  *    - all {Boolean} Optional.
- *    - monitors {String} Optional. Comma-separated list of monitor names.
- *      XXX Allow this to be an array of monitor names. Consider only this.
+ *    - probes {String} Optional. Comma-separated list of probe UUIDs.
+ *      XXX Change to an *array* of UUIDs.
  *    - machines {String} Optional. Comma-separated list of machines UUIDs.
- *      XXX Allow this to be an array of machine UUIDs. Consider only this.
+ *      XXX Change to an *array* of UUIDs.
  *
- *    One of 'all' (true), 'monitors' or 'machines' must be specified.
+ *    One of 'all' (true), 'probes' or 'machines' must be specified.
  * @param callback {Function} `function (err, maintenance)`
  *    where `err` is `TypeError` for invalid options or a redis module error
  *    for a redis problem.
@@ -343,12 +345,12 @@ function createMaintenance(options, callback) {
       '"options.notes" max length is ' + MAX_NOTES_LENGTH));
   var numScopes = 0;
   if (options.all) numScopes++;
-  if (options.monitors) numScopes++;
+  if (options.probes) numScopes++;
   if (options.machines) numScopes++;
   if (numScopes !== 1) {
     return callback(new TypeError(format('only one of "options.all" (%s), ' +
-      '"options.monitors" (%s) or "options.machines" (%s) may be specified',
-      options.all, options.monitors, options.machines)));
+      '"options.probes" (%s) or "options.machines" (%s) may be specified',
+      options.all, options.probes, options.machines)));
   }
   var log = options.app.log;
 
@@ -360,7 +362,7 @@ function createMaintenance(options, callback) {
     end: dateFromEnd(options.end).getTime(),
     notes: options.notes,
     all: options.all,
-    monitors: options.monitors && normalizeCSVRow(options.monitors),
+    probes: options.probes && normalizeCSVRow(options.probes),
     machines: options.machines && normalizeCSVRow(options.machines)
   };
   log.info(data, 'createMaintenance');
@@ -396,14 +398,20 @@ function createMaintenance(options, callback) {
 /**
  * Delete the given maintenance.
  *
+ * Note that this is also callable with a "fake maintenance" to allow
+ * removal of invalid maintenances. A fake maint is an object with just
+ * these fields: user, id, _key.
+ *
  * @param app
- * @param maintenance
+ * @param maintenance {Maintenance|fake maint}
  * @param callback {Function} `function (err)`
  */
 function deleteMaintenance(app, maintenance, callback) {
   if (!app) throw new TypeError('"app" is required');
   if (!maintenance) throw new TypeError('"maintenance" is required');
   if (!callback) throw new TypeError('"callback" is required');
+  var log = app.log;
+  log.info({maint: maintenance}, "deleteMaintenance");
 
   var multi = app.getRedisClient().multi()
     .srem('maintenances:' + maintenance.user, maintenance.id)
@@ -415,15 +423,23 @@ function deleteMaintenance(app, maintenance, callback) {
         //    is now stopped.
         return callback(redisErr);
       }
-      app.handleMaintenanceEnd(maintenance, function (endErr) {
-        scheduleNextMaintenanceExpiry(app); // may need to reschedule
-        if (endErr) {
-          log.error({err: endErr, maintenance: maintenance.serializePublic},
-            'error handling maintenance end (now deleted)');
-          return callback(endErr);
-        }
+      if (maintenance.end) {
+        app.handleMaintenanceEnd(maintenance, function (endErr) {
+          scheduleNextMaintenanceExpiry(app); // may need to reschedule
+          if (endErr) {
+            log.error({err: endErr, maintenance: (maintenance.serializePublic
+                ? maintenance.serializePublic() : maintenance)},
+              'error handling maintenance end (now deleted)');
+            return callback(endErr);
+          }
+          callback();
+        });
+      } else {
+        // This is a fake maint that we're just expunging from the DB.
+        // Re-scheduling of the next maint expiry will be handled by
+        // the caller.
         callback();
-      });
+      }
     }
   );
 }
@@ -510,26 +526,31 @@ function Maintenance(data, log) {
     throw TypeError('"data.end" (timestamp) is required');
   var numScopes = 0;
   if (data.all) numScopes++;
-  if (data.monitors) numScopes++;
+  if (data.probes) numScopes++;
   if (data.machines) numScopes++;
   if (numScopes !== 1) {
     throw TypeError(format('exactly one of "data.all" (%s), ' +
-      '"data.monitors" (%s) or "data.machines" (%s) must be specified',
-      data.all, data.monitors, data.machines));
+      '"data.probes" (%s) or "data.machines" (%s) must be specified',
+      data.all, data.probes, data.machines));
   }
   if (!log) throw new TypeError('"log" (Bunyan Logger) is required');
 
   this.v = MAINTENANCE_MODEL_VERSION;
   this.user = data.user;
   this.id = Number(data.id);
-  this._key = ['maintenance', this.user, this.id].join(':');
+  this._key = Maintenance.key(this.user, this.id);
   this.log = log.child({maintenance: this.user + ':' + this.id}, true);
   this.start = Number(data.start);
   this.end = Number(data.end);
   this.notes = data.notes;
   this.all = boolFromRedisString(data.all, false, 'data.all');
-  this.monitors = data.monitors && parseCSVRow(data.monitors);
+  this.probes = data.probes && parseCSVRow(data.probes);
   this.machines = data.machines && parseCSVRow(data.machines);
+}
+
+
+Maintenance.key = function key(userUuid, id) {
+  return ['maintenance', userUuid, id].join(':');
 }
 
 
@@ -566,10 +587,26 @@ Maintenance.get = function get(app, userUuid, id, callback) {
         maintenance = new Maintenance(data, log);
       } catch (invalidErr) {
         log.warn({err: invalidErr, data: data},
-          'invalid maintenance window data in redis (ignoring this ' +
+          'invalid maintenance window data in redis (removing this ' +
           'maintenance window)');
       }
-      callback(null, maintenance);
+      if (!maintenance) {
+        // Remove a bogus maintenance. This is necessary to avoid an
+        // infinite loop in the maintenance expiry reaper's continued use
+        // of a bogus maint in `maintenancesByEnd`.
+        var fakeMaint = {  // enough for `deleteMaintenance` to work
+          user: data.user,
+          id: data.id,
+          _key: Maintenance.key(data.user, data.id)
+        };
+        deleteMaintenance(app, fakeMaint, function (err) {
+          if (err)
+            log.error(err, "could not delete invalid maintenance");
+          callback(err, null);
+        });
+      } else {
+        callback(null, maintenance);
+      }
     });
 };
 
@@ -586,7 +623,7 @@ Maintenance.prototype.serializePublic = function serializePublic() {
   };
   if (this.notes) data.notes = this.notes;
   if (this.all) data.all = this.all;
-  if (this.monitors) data.monitors = this.monitors;
+  if (this.probes) data.probes = this.probes;
   if (this.machines) data.machines = this.machines;
   return data;
 };
@@ -597,7 +634,7 @@ Maintenance.prototype.serializePublic = function serializePublic() {
  */
 Maintenance.prototype.serializeDb = function serializeDb() {
   var obj = this.serializePublic();
-  if (obj.monitors) obj.monitors = serializeCSVRow(obj.monitors);
+  if (obj.probes) obj.probes = serializeCSVRow(obj.probes);
   if (obj.machines) obj.machines = serializeCSVRow(obj.machines);
   obj.v = this.v;
   return obj;
@@ -853,6 +890,9 @@ function scheduleNextMaintenanceExpiry(app) {
       var maintenanceRepr = nextMaint[0];
       var maintenanceEnd = nextMaint[1];
       var expiresIn = maintenanceEnd - Date.now();
+      // Guard against a too-small `expiresIn`. An accidental negative number
+      // is hard loop.
+      expiresIn = Math.max(MAX_REAPER_FREQ, expiresIn);
       log.info({maintenanceEnd: new Date(maintenanceEnd),
                 expiresIn: expiresIn,
                 maintenanceRepr: maintenanceRepr},
@@ -902,7 +942,10 @@ function scheduleNextMaintenanceExpiry(app) {
  *    - @param app {App} Required.
  *    - @param event {event Object} Required.
  *    - @param log {Bunyan Logger} Optional.
- * @param callback {Function} `function (err, boolean)`
+ * @param callback {Function} `function (err, maint)` where maint is null
+ *    if not in maintenance, and is a Maintenace instance if in maint. Note
+ *    that an event might be affected by multiple maintenance windows. This
+ *    does not return all relevant maintenance windows.
  */
 function isEventInMaintenance(options, callback) {
   if (!options) throw new TypeError('"options" is required')
@@ -913,30 +956,48 @@ function isEventInMaintenance(options, callback) {
   var log = options.log || options.app.log;
 
   var etime = event.time;
-  var emonitor = event.monitor;
+  var eprobe = event.probeUuid; // Note: not all events have a `probe`
   var emachine = event.machine; // Note: not all events have a `machine`
+  log.debug({etime: etime, eprobe: eprobe, emachine: emachine},
+    'isEventInMaintenance');
   listMaintenances(options.app, event.user, log,
                    function (listErr, maintenances) {
     if (listErr) {
       return callback(listErr);
     }
+    log.debug({num_maints: maintenances.length},
+      'isEventInMaintenance: maintenances to consider');
     for (var i = 0; i < maintenances.length; i++) {
       var m = maintenances[i];
+      log.trace({maint: m}, 'isEventInMaintenance: consider this maint');
       if (etime <= m.start || m.end <= etime) {
+        log.trace({maint_id: m.id}, 'isEventInMaintenance: no (maint expired)');
         continue;  // inactive maintenance window
       } else if (m.all) {
-        return callback(null, true);
-      } else if (m.monitors) {
-        if (m.monitors.indexOf(emonitor) !== -1) {
-          return callback(null, true);
+        log.debug({maint_id: m.id, all: true},
+          'isEventInMaintenance: yes');
+        return callback(null, m);
+      } else if (m.probes && eprobe) {
+        if (m.probes.indexOf(eprobe) !== -1) {
+          log.debug({maint_id: m.id, probe: eprobe},
+            'isEventInMaintenance: yes');
+          return callback(null, m);
+        } else {
+          log.trace({maint_id: m.id, probe: eprobe},
+            'isEventInMaintenance: no (not a matching probe)');
         }
       } else if (m.machines && emachine) {
         if (m.machines.indexOf(emachine) !== -1) {
-          return callback(null, true);
+          log.debug({maint_id: m.id, machine: emachine},
+            'isEventInMaintenance: yes');
+          return callback(null, m);
+        } else {
+          log.trace({maint_id: m.id, machine: emachine},
+            'isEventInMaintenance: no (not a matching machine)');
         }
       }
     }
-    callback(null, false);
+    callback(null, null);
   });
 }
 

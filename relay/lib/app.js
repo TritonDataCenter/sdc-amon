@@ -155,6 +155,7 @@ function App(options) {
     req._agent = self.agent;
     req._agentAlias = self.agentAlias;
     req._relay = self.computeNodeUuid;
+    req._owner = self.owner;
     req._app = self;
     req._masterClient = self.masterClient;
     return next();
