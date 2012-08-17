@@ -901,15 +901,20 @@ App.prototype.processEvent = function (event, callback) {
         });
       },
       function getProbeGroup(next) {
-        if (info.probe && info.probe.group) {
+        if (!info.probe || !info.probe.group) {
+          return next();
+        }
+        var groupUuid = info.probe.group;
+        ProbeGroup.get(self, event.user, groupUuid, function (pgErr, group) {
           // We don't fail if the group can't be found. Because we don't have
           // UFDS transactions, it is possible (unlikely) to have stale
           // probe group references. The alarm will then just be associated
           // with the probe.
-          next(); //XXX no probe groups yet
-        } else {
+          if (pgErr)
+            return next();
+          info.probeGroup = group;
           next();
-        }
+        });
       }
     ], function (err) {
       self.getOrCreateAlarm(info, function (getOrCreateErr, alarm) {
@@ -950,14 +955,26 @@ App.prototype.getOrCreateAlarm = function (options, callback) {
   var event = options.event;
   var probe = options.probe;
 
+  // An alarm is associated with a probe group (if it has a `group` attribute)
+  // *or* a probe, or with neither if there is no probe involved.
+  var associatedProbe = null;
+  var associatedProbeGroup = null;
+  if (probe) {
+    if (probe.group) {
+      associatedProbeGroup = probe.group;
+    } else {
+      associatedProbe = probe.uuid;
+    }
+  }
+
   // Get all open alarms for this user and probe/probe group.
   log.debug('getOrCreateAlarm: get candidate related alarms');
   Alarm.filter(
     self,
     {
       user: event.user,
-      probe: probe && probe.uuid,
-      probeGroup: probe && probe.group,
+      probe: associatedProbe,
+      probeGroup: associatedProbeGroup,
       closed: false
     },
     function (err, candidateAlarms) {
@@ -977,8 +994,8 @@ App.prototype.getOrCreateAlarm = function (options, callback) {
             'not creating a new alarm for a clear event');
           callback(null, null);
         } else {
-          createAlarm(self, event.user, probe && probe.uuid,
-            probe && probe.group, callback);
+          createAlarm(self, event.user, associatedProbe, associatedProbeGroup,
+            callback);
         }
       });
     }

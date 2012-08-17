@@ -186,11 +186,11 @@ function addUlrichKey(next) {
 }
 
 /**
- * Want a 'testWebhook' on ulrich for the test suite. Should be:
+ * Want a 'testWebhook' on ulrich and odin for the test suite. Should be:
  *    http://<global zone ip>:8000/
  */
 function addUlrichTestWebhookContact(next) {
-  log('# Add/update "testWebhook" contact for ulrich.');
+  log('# Add/update "testWebhook" contact for ulrich and odin.');
 
   // The test suite runs a webhook collector in the zone from which the test
   // suite is being run: typically the headnode GZ. We need the Amon Master
@@ -214,7 +214,11 @@ function addUlrichTestWebhookContact(next) {
   var changes = {
     'testWebhook': format('http://%s:8000/', gzIp)
   };
-  ufdsClient.updateUser(ulrich.login, changes, next);
+  ufdsClient.updateUser(ulrich.login, changes, function (err) {
+    if (err)
+      return next(err);
+    ufdsClient.updateUser(odin.login, changes, next);
+  });
 }
 
 function ufdsClientUnbind(next) {

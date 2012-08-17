@@ -461,8 +461,10 @@ Alarm.prototype._updateMaintenanceFaults = function () {
  * @param options {Object} Containing:
  *    - `user` {Object} Required. User object.
  *    - `event` {Amon event object} Required.
- *    - `probe` {probes.Probe} Optional.
- *    - `probeGroup` {probegroups.ProbeGroup} Optional.
+ *    - `probe` {probes.Probe} If the event is associated with a specific
+ *       probe.
+ *    - `probeGroup` {probegroups.ProbeGroup} If the event is associated with
+ *      a specific probe group.
  * @param callback {Function} `function (err)` where `err` is set if there
  *    was a problem saving updated alarm/event info to redis. Note that
  *    notifying (if deemed necessary) is attempted even if updating redis
@@ -483,8 +485,15 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
     user: this.user}, true);
   log.info('handleEvent');
 
-  maintenances.isEventInMaintenance({app: app, event: event, log: log},
-                                    function (maintErr, maint) {
+  maintenances.isEventInMaintenance({
+      app: app,
+      event: event,
+      probe: options.probe,
+      probeGroup: options.probeGroup,
+      log: log
+    }, function (maintErr, maint) {
+
+    //TODO: indent this block
     if (maintErr) {
       log.error(maintErr, 'error determining if event is under maintenace');
       return callback(maintErr);
@@ -595,7 +604,6 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
       }
     });
   });
-
 };
 
 

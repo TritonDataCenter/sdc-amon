@@ -398,7 +398,7 @@ var maint2Id = null;
 var maint2AlarmId = null;
 
 test('maint 2: create maint window', function (t) {
-  maint2.probes = maintprobe.uuid;
+  maint2.probes = [maintprobe.uuid];
 
   var epsilon = 1000;  // 1 second slop
   var expectedStart = Date.now();
@@ -407,6 +407,7 @@ test('maint 2: create maint window', function (t) {
     t.ifError(err, 'POST ' + MAINTSURL);
     t.ok(obj, 'got a response body');
     if (obj) {
+      console.log("XXX obj here:", JSON.stringify(obj));
       t.ok(!isNaN(Number(obj.id)), 'id');
       maint2Id = obj.id;
       t.equal(obj.notes, maint2.notes, 'notes');

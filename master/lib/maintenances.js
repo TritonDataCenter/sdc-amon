@@ -20,12 +20,16 @@
  * - end {Integer} Timestamp (milliseconds since epoch) when the maint
  *    window ends.
  * - notes {String} Short note on why this maint window. Can be empty.
- * - all {Boolean}
+ * - all {Boolean} [*]
  * - probes {String} Comma-separated set of probe UUIDs to which this maint
- *    applies, if any.
- * - XXX probeGroups
+ *   applies, if any. [*]
+ * - probeGroups {String} Comma-separated set of probe group UUIDs to which
+ *   this maint applies, if any. [*]
  * - machines {String} Comma-separated set of machine UUIDs to which this maint
- *    applies, if any.
+ *   applies, if any. [*]
+ *
+ * [*] Only ever one of 'all', 'probes', 'probeGroups' or 'machines' is used
+ * for a single maintenance window.
  *
  * Layout in redis:
  *
@@ -48,8 +52,8 @@
  */
 
 var format = require('util').format;
-var assert = require('assert');
 
+var assert = require('assert-plus');
 var restify = require('restify');
 var async = require('async');
 
@@ -144,160 +148,6 @@ function dateFromEnd(end) {
 }
 
 
-/**
- * Parse a CSV row (i.e. a single row) into an array of strings.
- *
- * c.f. http://en.wikipedia.org/wiki/Comma-separated_values
- *
- * I didn't use one of the existing node CSV modules (bad me) because the
- * few I looked at were all async APIs.
- *
- * Limitations/Opinions:
- * - don't support elements with line-breaks
- * - leading a trailing spaces are trimmed, unless the entry is quoted
- *
- * @throws {TypeError} if the given CSV row is invalid
- */
-function parseCSVRow(s) {
-  var DEBUG = false;
-  var row = [];
-  var i = 0;
-  var ch;
-
-  if (s.indexOf('\n') !== -1 || s.indexOf('\r') !== -1) {
-    throw new TypeError(
-      format('illegal char: newlines not supported: "%s"', s));
-  }
-
-  DEBUG && console.warn('--\ns: %j', s);
-  while (i < s.length) {
-    DEBUG && console.warn('start cell');
-    var cell = [];
-    var quoted = false;
-    var iQuote;
-
-    // Find first non-whitespace cell char.
-    while (i < s.length) {
-      var ch = s[i];
-      if (ch === ' ' || ch === '\t') {
-        cell.push(ch);
-      } else if (ch === '"') {
-        quoted = true;
-        iQuote = i;
-        cell = [ch]; // wipe out leading whitespace
-        i++;
-        break;
-      } else if (ch === ',') {
-        // Empty cell.
-        break;
-      } else {
-        cell.push(ch);
-        i++;
-        break;
-      }
-      i++;
-    }
-    DEBUG && console.warn('after first non-ws char: cell=%j, quoted=%j, i=%j', cell, quoted, i);
-
-    if (quoted) {
-      // Slurp up until end of string or close-quote.
-      while (true) {
-        if (i >= s.length) {
-          throw new TypeError(format(
-            "unterminated quoted string starting at position %d: '%s'",
-            iQuote, s));
-        }
-        var ch = s[i];
-        cell.push(ch);
-        if (ch === '"') {
-          if (i + 1 < s.length && s[i + 1] === '"') {
-            // Escaped quote.
-            i++;
-          } else {
-            // End of quoted string.
-            i++;
-            break;
-          }
-        }
-        i++;
-      }
-
-      // Advance to comma (or end of string).
-      while (i < s.length) {
-        var ch = s[i];
-        if (ch === ',') {
-          i++;
-          break;
-        } else if (ch !== ' ' && ch !== '\t') {
-          throw new TypeError(format(
-            "illegal char outside of quoted cell at position %d: '%s'",
-            i, s));
-        }
-        i++;
-      }
-    } else {
-      // Slurp up cell until end of string or comma.
-      while (i < s.length) {
-        var ch = s[i];
-        if (ch === ',') {
-          i++;
-          break;
-        } else if (ch === '"') {
-          throw new TypeError(
-            format("illegal double-quote at position %d: '%s'", i, s));
-        } else {
-          cell.push(ch);
-        }
-        i++;
-      }
-    }
-
-    // Post-process cell.
-    if (quoted) {
-      cell = cell.slice(1, cell.length - 1); // drop the quotes
-      cell = cell.join('');
-    } else {
-      cell = cell.join('').trim();
-    }
-    DEBUG && console.warn('cell: cell=%j i=%j', cell, i);
-    row.push(cell);
-  }
-
-  // Special case for trailing ','.
-  if (s[s.length - 1] === ',') {
-    DEBUG && console.warn('special case: add cell for trailing comma');
-    row.push('');
-  }
-
-  DEBUG && console.warn('return: %j\n', row);
-  return row;
-}
-
-/**
- * Serialize the given array to a CSV row.
- */
-function serializeCSVRow(a) {
-  var row = [];
-  for (var i = 0; i < a.length; i++) {
-    var elem = a[i];
-    if (elem.indexOf(' ') !== -1 || elem.indexOf('\t') !== -1 ||
-        elem.indexOf(',') !== -1 || elem.indexOf('"') !== -1) {
-      row.push('"' + elem.replace(/"/g, '""') + '"')
-    } else {
-      row.push(elem);
-    }
-  }
-  return row.join(',');
-}
-
-/**
- * Normalize the given CSV line.
- */
-function normalizeCSVRow(s) {
-  var row = parseCSVRow(s);
-  var noEmpties = row.filter(function (elem) { return !!elem });
-  return serializeCSVRow(noEmpties);
-}
 
 
 function isPositiveInteger(s) {
@@ -318,20 +168,19 @@ function isPositiveInteger(s) {
  *    - start {String|Integer} Required. Timestamp, date string, or "now".
  *    - end {String|Integer} Required. Timestamp, date string, or "N[mhd]"
  *      (minute, hour, day), e.g. "1h" is one hour from now.
- *    - notes {String} Optional.
- *    - all {Boolean} Optional.
- *    - probes {String} Optional. Comma-separated list of probe UUIDs.
- *      XXX Change to an *array* of UUIDs.
- *    - machines {String} Optional. Comma-separated list of machines UUIDs.
- *      XXX Change to an *array* of UUIDs.
+ *    - notes {String} Optional [*].
+ *    - all {Boolean} Optional [*].
+ *    - probes {Array} Optional [*]. Array of probe UUIDs.
+ *    - probeGroups {Array} Optional [*]. Array of probe group UUIDs.
+ *    - machines {Array} Optional [*]. Array of machine UUIDs.
  *
- *    One of 'all' (true), 'probes' or 'machines' must be specified.
+ *    [*] One of 'all' (true), 'probes', 'probeGroups' or 'machines' must be
+ *    specified.
  * @param callback {Function} `function (err, maintenance)`
  *    where `err` is `TypeError` for invalid options or a redis module error
  *    for a redis problem.
  */
 function createMaintenance(options, callback) {
-  if (!options) return callback(new TypeError('"options" is required'));
   if (!options.app)
     return callback(new TypeError('"options.app" is required'));
   if (!options.userUuid || !UUID_RE.test(options.userUuid))
@@ -345,12 +194,23 @@ function createMaintenance(options, callback) {
       '"options.notes" max length is ' + MAX_NOTES_LENGTH));
   var numScopes = 0;
   if (options.all) numScopes++;
-  if (options.probes) numScopes++;
-  if (options.machines) numScopes++;
+  if (options.probes) {
+    assert.arrayOfString(options.probes);
+    numScopes++;
+  }
+  if (options.probeGroups) {
+    assert.arrayOfString(options.probeGroups);
+    numScopes++;
+  }
+  if (options.machines) {
+    assert.arrayOfString(options.machines);
+    numScopes++;
+  }
   if (numScopes !== 1) {
-    return callback(new TypeError(format('only one of "options.all" (%s), ' +
-      '"options.probes" (%s) or "options.machines" (%s) may be specified',
-      options.all, options.probes, options.machines)));
+    return callback(new TypeError(format('exactly one of "options.all" (%s), ' +
+      '"options.probes" (%s), "options.probeGroups" (%s) or ' +
+      '"options.machines" (%s) must be specified',
+      options.all, options.probes, options.probeGroups, options.machines)));
   }
   var log = options.app.log;
 
@@ -362,8 +222,9 @@ function createMaintenance(options, callback) {
     end: dateFromEnd(options.end).getTime(),
     notes: options.notes,
     all: options.all,
-    probes: options.probes && normalizeCSVRow(options.probes),
-    machines: options.machines && normalizeCSVRow(options.machines)
+    probes: options.probes && JSON.stringify(options.probes),
+    probeGroups: options.probeGroups && JSON.stringify(options.probeGroups),
+    machines: options.machines && JSON.stringify(options.machines)
   };
   log.info(data, 'createMaintenance');
 
@@ -527,11 +388,13 @@ function Maintenance(data, log) {
   var numScopes = 0;
   if (data.all) numScopes++;
   if (data.probes) numScopes++;
+  if (data.probeGroups) numScopes++;
   if (data.machines) numScopes++;
   if (numScopes !== 1) {
     throw TypeError(format('exactly one of "data.all" (%s), ' +
-      '"data.probes" (%s) or "data.machines" (%s) must be specified',
-      data.all, data.probes, data.machines));
+      '"data.probes" (%s), "data.probeGroups (%s)" or "data.machines" (%s) ' +
+      'must be specified', data.all, data.probes, data.probeGroups,
+      data.machines));
   }
   if (!log) throw new TypeError('"log" (Bunyan Logger) is required');
 
@@ -544,8 +407,9 @@ function Maintenance(data, log) {
   this.end = Number(data.end);
   this.notes = data.notes;
   this.all = boolFromRedisString(data.all, false, 'data.all');
-  this.probes = data.probes && parseCSVRow(data.probes);
-  this.machines = data.machines && parseCSVRow(data.machines);
+  this.probes = data.probes && JSON.parse(data.probes);
+  this.probeGroups = data.probeGroups && JSON.parse(data.probeGroups);
+  this.machines = data.machines && JSON.parse(data.machines);
 }
 
 
@@ -624,6 +488,7 @@ Maintenance.prototype.serializePublic = function serializePublic() {
   if (this.notes) data.notes = this.notes;
   if (this.all) data.all = this.all;
   if (this.probes) data.probes = this.probes;
+  if (this.probeGroups) data.probeGroups = this.probeGroups;
   if (this.machines) data.machines = this.machines;
   return data;
 };
@@ -634,8 +499,9 @@ Maintenance.prototype.serializePublic = function serializePublic() {
  */
 Maintenance.prototype.serializeDb = function serializeDb() {
   var obj = this.serializePublic();
-  if (obj.probes) obj.probes = serializeCSVRow(obj.probes);
-  if (obj.machines) obj.machines = serializeCSVRow(obj.machines);
+  if (obj.probes) obj.probes = JSON.stringify(obj.probes);
+  if (obj.probeGroups) obj.probeGroups = JSON.stringify(obj.probeGroups);
+  if (obj.machines) obj.machines = JSON.stringify(obj.machines);
   obj.v = this.v;
   return obj;
 };
@@ -942,6 +808,10 @@ function scheduleNextMaintenanceExpiry(app) {
  *    - @param app {App} Required.
  *    - @param event {event Object} Required.
  *    - @param log {Bunyan Logger} Optional.
+ *    - @param probe {probes.Probe} If the event is associated with a specific
+ *      probe.
+ *    - @param probeGroup {probegroups.ProbeGroup} If the event is associated
+ *      with a specific probe group.
  * @param callback {Function} `function (err, maint)` where maint is null
  *    if not in maintenance, and is a Maintenace instance if in maint. Note
  *    that an event might be affected by multiple maintenance windows. This
@@ -957,6 +827,7 @@ function isEventInMaintenance(options, callback) {
 
   var etime = event.time;
   var eprobe = event.probeUuid; // Note: not all events have a `probe`
+  var eprobeGroup = options.probeGroup && options.probeGroup.uuid;
   var emachine = event.machine; // Note: not all events have a `machine`
   log.debug({etime: etime, eprobe: eprobe, emachine: emachine},
     'isEventInMaintenance');
@@ -975,12 +846,21 @@ function isEventInMaintenance(options, callback) {
         continue;  // inactive maintenance window
       } else if (m.all) {
         log.debug({maint_id: m.id, all: true},
-          'isEventInMaintenance: yes');
+          'isEventInMaintenance: yes (all)');
         return callback(null, m);
+      } else if (m.probeGroups && eprobeGroup) {
+        if (m.probeGroups.indexOf(eprobeGroup) !== -1) {
+          log.debug({maint_id: m.id, probeGroup: eprobeGroup},
+            'isEventInMaintenance: yes (probeGroup)');
+          return callback(null, m);
+        } else {
+          log.trace({maint_id: m.id, probe: eprobeGroup},
+            'isEventInMaintenance: no (not a matching probeGroup)');
+        }
       } else if (m.probes && eprobe) {
         if (m.probes.indexOf(eprobe) !== -1) {
           log.debug({maint_id: m.id, probe: eprobe},
-            'isEventInMaintenance: yes');
+            'isEventInMaintenance: yes (probe)');
           return callback(null, m);
         } else {
           log.trace({maint_id: m.id, probe: eprobe},
@@ -989,7 +869,7 @@ function isEventInMaintenance(options, callback) {
       } else if (m.machines && emachine) {
         if (m.machines.indexOf(emachine) !== -1) {
           log.debug({maint_id: m.id, machine: emachine},
-            'isEventInMaintenance: yes');
+            'isEventInMaintenance: yes (machine)');
           return callback(null, m);
         } else {
           log.trace({maint_id: m.id, machine: emachine},
@@ -1008,12 +888,8 @@ function isEventInMaintenance(options, callback) {
 module.exports = {
   Maintenance: Maintenance,
   MAINTENANCE_MODEL_VERSION: MAINTENANCE_MODEL_VERSION,
-  createMaintenance: createMaintenance,
   scheduleNextMaintenanceExpiry: scheduleNextMaintenanceExpiry,
   isEventInMaintenance: isEventInMaintenance,
 
   mountApi: mountApi,
-
-  // Only exported to test it.
-  parseCSVRow: parseCSVRow
 };

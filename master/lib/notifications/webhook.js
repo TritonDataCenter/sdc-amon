@@ -89,7 +89,7 @@ Webhook.prototype.notify = function (options, callback) {
   var body = {
     alarm: alarm.serializePublic(),
     message: event.data.message,
-    time: (new Date(event.time)).toUTCString(),
+    time: Date.now(),
     datacenter: this.datacenterName,
     event: event
   };
