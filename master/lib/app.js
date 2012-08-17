@@ -29,7 +29,8 @@ var alarms = require('./alarms'),
 var maintenances = require('./maintenances');
 var probes = require('./probes'),
   Probe = probes.Probe;
-var probes = require('./probes');
+var probegroups = require('./probegroups'),
+  ProbeGroup = probegroups.ProbeGroup;
 var agentprobes = require('./agentprobes');
 var events = require('./events');
 
@@ -218,17 +219,17 @@ function App(config, cnapiClient, vmapiClient, log) {
   // because it allows the interdependant cache-invalidation to be
   // centralized.
   this._cacheFromScope = {
-    MonitorGet: new Cache({
+    ProbeGroupGet: new Cache({
       size:100,
       expiry:300000,
       log:log,
-      name:'MonitorGet'
+      name:'ProbeGroupGet'
     }),
-    MonitorList: new Cache({
+    ProbeGroupList: new Cache({
       size:100,
       expiry:300000,
       log:log,
-      name:'MonitorList'
+      name:'ProbeGroupList'
     }),
     ProbeGet: new Cache({
       size:100,
@@ -320,8 +321,8 @@ function App(config, cnapiClient, vmapiClient, log) {
       return next(new restify.MissingParameterError('"action" is required'));
     });
 
+  probegroups.mountApi(server);
   probes.mountApi(server);
-  //XXX probegroups.mountApi(server);
   alarms.mountApi(server);
   maintenances.mountApi(server);
   agentprobes.mountApi(server);

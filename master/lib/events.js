@@ -1,14 +1,10 @@
 /*
- * Copyright 2011 Joyent, Inc.  All rights reserved.
+ * Copyright 2012 Joyent, Inc.  All rights reserved.
  *
  * Amon Master controller for '/events' endpoints.
  */
 
-var assert = require('assert');
-var ufdsmodel = require('./ufdsmodel');
 var restify = require('restify');
-var RestCodes = restify.RestCodes;
-var Monitor = require('./monitors').Monitor;
 
 
 

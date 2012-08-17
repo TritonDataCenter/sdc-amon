@@ -199,14 +199,14 @@ test('probes: create (for ulrich)', function (t) {
       function (err, req, res, obj) {
         t.ifError(err, 'POST /pub/amontestuserulrich/probes');
         t.ok(obj, 'got a response body: ' + JSON.stringify(obj));
-        if (obj) {
+        if (obj && !err) {
           t.ok(UUID_RE.test(obj.uuid), 'created probe uuid');
           if (name === 'whistlelog')
             gUlrichWhistlelogProbeUuid = obj.uuid;
           else if (name === 'watchtestzone')
             gUlrichWatchtestzoneProbeUuid = obj.uuid;
           t.equal(obj.name, name, 'created probe name');
-          t.equal(obj.contacts.sort().join(','),
+          t.equal(obj.contacts && obj.contacts.sort().join(','),
             data.contacts.sort().join(','),
             format('probe.contacts: %s === %s', obj.contacts, data.contacts));
           t.equal(obj.agent, data.agent);

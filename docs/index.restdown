@@ -20,8 +20,8 @@ Public endpoints of the Amon Master API are under a "/pub" prefix to
 facilitate proxying to Cloud API. For example, the set of open alarms for an
 user is:
 
-    GET  /pub/:account/monitors        # Amon Master API
-    GET  /:login/monitors              # Cloud API
+    GET  /pub/:account/probes        # Amon Master API
+    GET  /:login/probes              # Cloud API (**to be determined**)
 
 Where ":account" is typically a user UUID. However, for convenience in
 development, ":account" may also be a user's login string. Note that Amon
@@ -66,8 +66,8 @@ the user point of view Amon provides an API (part of Cloud API) and UI
 (in the portals) to configure monitoring. Configuration information is
 propagated to an amon-agent running in their zone (a few types of probes
 don't require the user to run an amon-agent). On detecting a fault, the
-amon-agent will send an event to the central master, typically resulting an
-alarm (and object accessible via the API and portals) and a notification
+amon-agent will send an event to the central master, typically resulting in
+an alarm (an object accessible via the API and portals) and a notification
 (email, SMS, webhook, etc.).
 
 Operationally, Amon has three components: a central master ("amon-master"), a
@@ -78,35 +78,24 @@ Guide](#operators-guide) for more details.
 
 # Key Concepts
 
-**Monitors**
-(grouping of probes and contacts) and **probes** (things to check and alarm
-on) are configured on the master (i.e. by calling the "Amon Master API").
-Probe data is passed from the master, via the relays to the appropriate agent
-where the probe is run. When a probe faults it raises an event, which passes
-through the relays up to the master. The master handles events by creating or
-updating **alarms** and sending notifications to the configured contacts, if
-appropriate. **Maintenance windows** and de-duplication rules can mean a
-notification is not always sent). Contact info lives with the user account in
-UFDS (extra fields on the "sdcPerson" LDAP object).
-
-## Monitors
-
-TODO: remove this
-
-Monitors and probes are the main conceptual objects configured by an Amon
-user. A **monitor** is a collection of one or more related "probes", the
-things to check, and "contacts", who to notify when a fault is detected by
-this monitor. A monitors has a "name" that is unique to that user. See
-[Master API: Monitors](#master-api-monitors) for how to create/list/delete
-monitors.
+**Probes** (things to check and alarm on) and **probe groups** (optional
+grouping of related probes) are configured on the master (i.e. by calling the
+"Amon Master API"). Probe data is passed from the master, via the relays to
+the appropriate agent where the probe is run. When a probe faults it raises
+an event, which passes through the relays up to the master. The master
+handles events by creating or updating **alarms** and sending notifications
+to the configured contacts, if appropriate. **Maintenance windows** and
+de-duplication rules can mean a notification is not always sent). Contact
+info lives with the user account in UFDS (extra fields on the "sdcPerson"
+LDAP object).
 
 
 ## Contacts
 
-A **contact** provides the data needed to send a notification. Each monitor
-has a list of contact names that are all notified for alarms. Currently,
-a contact is a name/value pair stored on the "sdcPerson" object in UFDS.
-For example, this user (ulrich):
+A **contact** provides the data needed to send a notification. Each probe
+or probe group has a list of contact names that are all notified for alarms.
+Currently, a contact is a name/value pair stored on the "sdcPerson" object in
+UFDS. For example, this user (ulrich):
 
     $ ldapsearch ... login=ulrich
     dn: uuid=deadbeef-1111-1111-1111-111111111111, ou=users, o=smartdc
@@ -128,14 +117,32 @@ TODO: Describe the new contacts API and handling when implemented (MON-150)
 
 ## Probes
 
-A **probe** is a single thing to check (the atom of physical monitoring
-done by the Amon agents). E.g. "Check the running state of vm X." "Check
-for 3 occurrences of 'ERROR' in 'foo.log' in vm X within 1 minute." "Check
-if the average ping (ICMP) time to host X is under 50ms." A probe belongs
-to a monitor (which may have zero or more probes). A probe has a "name" that
-is unique to that user and monitor. See [Master API:
+A **probe** is a single thing to check. E.g. "Check the running state of vm
+X." "Check for 3 occurrences of 'ERROR' in 'foo.log' in vm X within 1
+minute." "Check if the average ping (ICMP) time to host X is under 50ms."
+A probe has a UUID, a free form name (to assist users with identification,
+not guaranteed to be unique), a set of contacts to be notified, and optionally
+a probe group to which it belongs. See [Master API:
 Probes](#master-api-probes) for how to create/list/delete probes. See
 [Probe Types](#probe-types) for a description of supported probe types.
+
+
+## Probe Groups
+
+Optionally one can group a number of probes into one set. For larger
+setups (with many machines, services, probes) this can be helpful:
+
+- The set of contacts for probes in the group is specified on the group,
+  rather than separately on each probe.
+- Events/notifications for all probes in a group will be grouped under a
+  single alarm. That means that related failures will be shown together in
+  the portal, notifications and the API.
+- Maintenance windows (to suppress notifications) and disabling probes
+  can all be done on the group.
+
+Like probes, a probe group has a UUID and a free form name (to assist with
+identification, not unique). See [Master API: Probe
+Groups](#master-api-probe-groups) for how to create/list/delete probe groups.
 
 
 ## Maintenance Windows
@@ -172,17 +179,16 @@ alarms.
 
 - An **event** is a message sent from an Amon agent up to the Amon master that
   might create or update an alarm.
-- An open **alarm** is the state of a failing monitor. An alarm is created
-  when a monitor faults (i.e. one of its probes detects a fault). An alarm
-  can be closed by user action (via the API or in the Operator or User
-  Portals) or via an Amon *clear* event -- the failing state is no longer
-  failing, e.g. a halted machine has come back up. An alarm object lives
-  until it is closed.
+- An open **alarm** is the state of a failing probe (or probe group). An
+  alarm is created when a probe faults. An alarm can be closed by user action
+  (via the API or in the Operator or User Portals) or via an Amon *clear*
+  event -- the failing state is no longer failing, e.g. a halted machine has
+  come back up. An alarm object lives until it is closed.
 - A **fault** is a single probe failure. An open alarm has one or more
   faults: one for each probe that reported a fault event.
 - A **notification** is a message sent for an alarm to one or more contacts
-  associated with that monitor. An alarm may result in many notifications
-  through its lifetime.
+  associated with that probe (or probe group). An alarm may result in many
+  notifications through its lifetime.
 - A **machine** is used to represent any of a software VM, a hardware VM
   (i.e. a zone) or a node (i.e. a physical compute node or server). The
   machine value is a UUID.
@@ -217,26 +223,25 @@ they can leverage the codes above.
 
 
 
-# Master API: Monitors
+# Master API: Probe Groups
 
-A monitor is the primary object for defining what and how to monitor and
-who should be notified on alarms. A monitor holds a reference to
-contacts to notify when this monitor alarms. A set of probes to run (e.g.
-check for N occurrences of "ERROR" in "/var/foo/bar.log" in a minute) are
-[added](#PutProbe) to a monitor. See the [Monitors](#monitors) section above
-for more details.
+A probe group is an optional grouping of probes. When a member of a group,
+the groups "contacts" take precedence. Probes in a group can be disabled
+as a group, put in a maintenance window as a group, etc. See the [Probe
+Groups](#probe-groups) section above for more details.
 
-In the API, a monitor contains the following fields:
+In the API, a probe group contains the following fields:
 
 ||**Field**||**Type**||**Description**||
-||user||String||The UUID of the owning user of this monitor.||
-||name||String||Name of this monitor. This is unique for monitors owned by this user. It must be 1-512 chars, begin with alphanumeric character and include only alphanumeric, '_', '.' and '-' ||
-||contacts||Array||Set of contact names that are to be notified when this monitor alarms.||
+||user||String||The UUID of the owning user of this probe group.||
+||uuid||UUID||Unique identifier for this probe group.||
+||name||String||Free form name (max 512 chars).||
+||contacts||Array||Set of contact names that are to be notified when a probe in the group alarms.||
 
 
-## ListMonitors (GET /pub/:account/monitors)
+## ListProbeGroups (GET /pub/:account/probegroups)
 
-List all monitors for this user.
+List all probe groups for this user.
 
 ### Inputs
 
@@ -244,7 +249,7 @@ None.
 
 ### Returns
 
-An array of monitor objects.
+An array of probe group objects.
 
 ### Errors
 
@@ -252,42 +257,13 @@ TODO: errors
 
 ### Example
 
-    $ sdc-amon /pub/bob/monitors
-    HTTP/1.1 200 OK
-    Content-Type: application/json
-    Content-Length: 170
-    Access-Control-Allow-Origin: *
-    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
-    Access-Control-Allow-Methods: GET
-    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
-    Connection: Keep-Alive
-    Content-MD5: aPdvA3zqGEk8THhmD9i/HQ==
-    Date: Fri, 20 Jul 2012 19:49:25 GMT
-    Server: Amon Master/1.0.0
-    X-Request-Id: 86fba3a6-0c08-47f0-851d-a1a27e87d664
-    X-Response-Time: 78
-
-    [
-      {
-        "user": "a3046060-e49c-244e-a146-7a769550cbbb",
-        "name": "whistle",
-        "contacts": [
-          "email"
-        ]
-      },
-      {
-        "user": "a3046060-e49c-244e-a146-7a769550cbbb",
-        "name": "isup",
-        "contacts": [
-          "email"
-        ]
-      }
-    ]
+    $ sdc-amon /pub/bob/probegroups
+    XXX
 
 
-## GetMonitor (GET /pub/:account/monitors/:monitor)
+## GetProbeGroup (GET /pub/:account/probegroups/:uuid)
 
-Get a monitor by name.
+Get a probe group by name.
 
 ### Inputs
 
@@ -295,7 +271,7 @@ None.
 
 ### Returns
 
-A monitor object.
+A probe group object.
 
 ### Errors
 
@@ -303,47 +279,24 @@ TODO: errors
 
 ### Example
 
-    $ sdc-amon /pub/bob/monitors/whistle
-    HTTP/1.1 200 OK
-    Content-Type: application/json
-    Content-Length: 85
-    Access-Control-Allow-Origin: *
-    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
-    Access-Control-Allow-Methods: GET
-    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
-    Connection: Keep-Alive
-    Content-MD5: gKnnSwwxUHQCzfs7mCiPzA==
-    Date: Fri, 20 Jul 2012 19:50:10 GMT
-    Server: Amon Master/1.0.0
-    X-Request-Id: 6b432586-be91-4bdf-a134-e8fb9b0b27ae
-    X-Response-Time: 84
-
-    {
-      "user": "a3046060-e49c-244e-a146-7a769550cbbb",
-      "name": "whistle",
-      "contacts": [
-        "email"
-      ]
-    }
+    $ sdc-amon /pub/bob/probegroup/2d29ad72-ce54-ed4c-871e-7c651e50af15
+    XXX
 
 
-## PutMonitor (PUT /pub/:account/monitors/:monitor)
+## CreateProbeGroup (POST /pub/:account/probegroups)
 
-Create a monitor.
+Create a probe group.
 
 ### Inputs
 
-||**Field**||**Type**||**Description**||
-||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||monitor||String||The monitor name. This is unique for monitors owned by this user. It must be 1-512 chars, begin with alphanumeric character and include only alphanumeric, '_', '.' and '-' ||
-||contacts||Array||An array of contact names.||
-
-Note that the contact names are not validated. IOW, at the time of creation
-of a monitor, the referenced contacts do not yet need to exist.
+||**Field**||**Required?**||**Type**||**Description**||
+||user (URL)||-||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||contacts||required||Array||An array of contact names to notify when probes in this group alarm.||
+||name||optional||String||Name of this probe group (max 512 chars). Meant to assist with identifying this group.||
 
 ### Returns
 
-A monitor object.
+A probe group object.
 
 ### Errors
 
@@ -351,71 +304,37 @@ TODO: errors
 
 ### Example
 
-    $ sdc-amon /pub/bob/monitors/whistle -X PUT -d '{
-      "contacts": ["email"]
-    }'
-    HTTP/1.1 200 OK
-    Content-Type: application/json
-    Content-Length: 86
-    Access-Control-Allow-Origin: *
-    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
-    Access-Control-Allow-Methods: PUT
-    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
-    Connection: Keep-Alive
-    Content-MD5: bgvfPWxK1auIyxeaZNNVbA==
-    Date: Fri, 20 Jul 2012 20:04:57 GMT
-    Server: Amon Master/1.0.0
-    X-Request-Id: 9bb46d35-e451-4ba9-bea8-bff78de57e5f
-    X-Response-Time: 97
-
-    {
-      "user": "a3046060-e49c-244e-a146-7a769550cbbb",
-      "name": "whistle",
-      "contacts": [
-        "email"
-      ]
-    }
+TODO: example
 
 
-## FakeMonitorFault (POST /pub/:account/monitors/:monitor?action=fakefault)
+## PutProbeGroup (PUT /pub/:account/probegroups/:uuid)
 
-Fake a fault on this monitor. This will send in fake event for this monitor.
-Typically this will result in creation of an alarm and sending a notification
-to all contacts for this monitor (depending on current suppression rules).
+Update a probe group.
 
 ### Inputs
 
-||**Field**||**Type**||**Description**||
-||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||monitor (URL)||String||The monitor name.||
-||action||String||"fakefault"||
-||clear||String||Optional. Use "true" to send a "clear" event. This should typically clear an alarm created by a previous fake fault call.||
+||**Field**||**Required?**||**Type**||**Description**||
+||user (URL)||-||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||contacts||required||Array||An array of contact names to notify when probes in this group alarm.||
+||name||optional||String||Name of this probe group (max 512 chars). Meant to assist with identifying this group.||
+
+
+### Returns
+
+The updated probe group object.
+
+### Errors
+
+TODO: errors
 
 ### Example
 
-    $ sdc-amon /pub/bob/monitors/whistle?action=fakefault -X POST
-    HTTP/1.1 200 OK
-    Access-Control-Allow-Origin: *
-    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
-    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
-    Server: Amon Master/1.0.0
-    X-Request-Id: 9fb2a9f3-f34d-4261-ac86-985dc376c442
-    Access-Control-Allow-Methods: POST
-    Connection: close
-    Content-Length: 16
-    Content-MD5: c2PoX+nt7m8FOksxlYjAhg==
-    Content-Type: application/json
-    Date: Wed, 07 Mar 2012 09:23:31 GMT
-    X-Response-Time: 479
-
-    {
-      "success": true
-    }
+TODO: example
 
 
-## DeleteMonitor (DELETE /pub/:account/monitors/:monitor)
+## DeleteProbeGroup (DELETE /pub/:account/probegroups/:uuid)
 
-Delete a monitor.
+Delete a probe group.
 
 ### Inputs
 
@@ -431,7 +350,7 @@ TODO: errors
 
 ### Example
 
-    $ sdc-amon /pub/bob/monitors/whistle -X DELETE
+    $ sdc-amon /pub/bob/probegroups/661b5edf-c41a-8742-b7b0-c304988a0bbe -X DELETE
     HTTP/1.1 204 No Content
     Access-Control-Allow-Origin: *
     Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
@@ -442,7 +361,6 @@ TODO: errors
     Server: Amon Master/1.0.0
     X-Request-Id: dcdbf00e-40de-438f-8882-689b5bda3354
     X-Response-Time: 111
-
 
 
 
@@ -462,6 +380,8 @@ In the API, a probe contains the following fields:
 ||config||Object||Extra configuration information for the probe, if required. This is specific to the [probe type](#probe-types). Most probe types require some config information.||
 ||agent||String||The UUID of the agent that will run this probe. An agent UUID is the UUID of the VM or node on which it is running. For some probe types the agent will be the same as "machine", e.g. a log-scan probe, for others it will be a separate, e.g. a ping (ICMP) probe is no use running on the same machine it is checking.||
 ||machine||String||Optional. The UUID of the VM or node being monitored, if applicable. An example where "machine" is not applicable might be an HTTP check against a hostname that handled by multiple webheads behind a load balancer.||
+||contacts||Array||Optional. Set of contact names for this probe. If the probe is a member of a group then the group's contacts take precedence.||
+||group||UUID||Optional. UUID of a probe group to which this probe belongs, if any.||
 
 
 ## ListProbes (GET /pub/:account/probes)
@@ -569,28 +489,21 @@ TODO: errors
 
 Create a probe.
 
-XXX
-
-
-## PutProbe (PUT /pub/:account/monitors/:monitor/probes/:probe)
-
-Update a probe.
-
 ### Inputs
 
 ||**Field**||**Required?**||**Type**||**Description**||
 ||user (URL)||-||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||monitor (URL)||-||String||The name of the existing monitor to which this probe will belong.||
-||probe (URL)||-||String||Name of this probe. This is unique for probes in this monitor. It must be 1-512 chars, begin with alpha character and include only alphanumeric, '_', '.' and '-' ||
 ||type||String||required||One of the supported [probe types](#probe-types).||
 ||config||Object||see [Probe Types](#probe-types)||Extra configuration information for the probe, if required. This is specific to the [probe type](#probe-types). Most probe types require some config information.||
 ||agent||String||required||The UUID of the agent that will run this probe. An agent uses the UUID of the VM (`zonename` in a zone, ??? in a virtual machine) or node (`sysinfo | json UUID`) on which it is running as its UUID.||
 ||machine||String||optional||The UUID of the VM or node being monitored, if applicable. For some probe types (those that must run locally), "machine" is the same value as the "agent". An example where "machine" is not applicable might be an HTTP check against a hostname that handled by multiple webheads behind a load balancer.||
+||contacts||Array||optional||Set of contact names for this probe. If the probe is a member of a group then the group's contacts take precedence.||
+||group||UUID||optional||UUID of a probe group to which to add this probe.||
 ||skipauthz||Boolean||optional||**Internal.** This is an admin-only option to skip PUT authorization. It is accepted only for the special system admin user. It exists to facilitate bootstrapping probe creation during SDC headnode setup when all services required for authZ may not yet be online.||
 
 ### Returns
 
-A probe object.
+The created probe object.
 
 ### Errors
 
@@ -598,47 +511,41 @@ TODO: errors
 
 ### Example
 
-    [root@headnode (bh1-kvm7:0) ~]# sdc-amon /pub/bob/monitors/whistle/probes/whistlelog -X PUT -d '{
-    >   "type": "log-scan",
-    >   "agent": "729dae52-e157-4d8e-9a74-196e228caf58",
-    >   "config": {
-    >     "path": "/tmp/whistle.log",
-    >     "regex": "tweet",
-    >     "threshold": 1,
-    >     "period": 60
-    >   }
-    > }'
-    HTTP/1.1 200 OK
-    Content-Type: application/json
-    Content-Length: 280
-    Access-Control-Allow-Origin: *
-    Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
-    Access-Control-Allow-Methods: PUT
-    Access-Control-Expose-Headers: X-Api-Version, X-Request-Id, X-Response-Time
-    Connection: Keep-Alive
-    Content-MD5: lAzTun1rhqSkEtUJcRasLg==
-    Date: Fri, 20 Jul 2012 22:51:05 GMT
-    Server: Amon Master/1.0.0
-    X-Request-Id: 25bd6dcc-a902-46c1-80b5-96bce493021a
-    X-Response-Time: 59
-
-    {
-      "user": "a3046060-e49c-244e-a146-7a769550cbbb",
-      "monitor": "whistle",
-      "name": "whistlelog",
-      "type": "log-scan",
-      "agent": "729dae52-e157-4d8e-9a74-196e228caf58",
-      "config": {
-        "path": "/tmp/whistle.log",
-        "regex": "tweet",
-        "threshold": 1,
-        "period": 60
-      },
-      "machine": "729dae52-e157-4d8e-9a74-196e228caf58"
-    }
+XXX
 
 
-## DeleteProbe (DELETE /pub/:account/monitors/:monitor/probes/:probe)
+## PutProbe (PUT /pub/:account/probes/:uuid)
+
+Update a probe.
+
+XXX Is this just diffs? Or is the whole thing required?
+
+### Inputs
+
+||**Field**||**Required?**||**Type**||**Description**||
+||user (URL)||-||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||uuid (URL)||-||UUID||UUID of the probe.||
+||type||String||required||One of the supported [probe types](#probe-types).||
+||config||Object||see [Probe Types](#probe-types)||Extra configuration information for the probe, if required. This is specific to the [probe type](#probe-types). Most probe types require some config information.||
+||agent||String||required||The UUID of the agent that will run this probe. An agent uses the UUID of the VM (`zonename` in a zone, ??? in a virtual machine) or node (`sysinfo | json UUID`) on which it is running as its UUID.||
+||machine||String||optional||The UUID of the VM or node being monitored, if applicable. For some probe types (those that must run locally), "machine" is the same value as the "agent". An example where "machine" is not applicable might be an HTTP check against a hostname that handled by multiple webheads behind a load balancer.||
+||contacts||Array||optional||Set of contact names for this probe. If the probe is a member of a group then the group's contacts take precedence.||
+||group||UUID||optional||UUID of a probe group to which to add this probe.||
+
+### Returns
+
+The updated probe object.
+
+### Errors
+
+TODO: errors
+
+### Example
+
+XXX
+
+
+## DeleteProbe (DELETE /pub/:account/probes/:uuid)
 
 Delete a probe.
 
@@ -656,7 +563,7 @@ TODO: errors
 
 ### Example
 
-    $ sdc-amon /pub/bob/monitors/whistle/probes/whistlelog -X DELETE
+    $ sdc-amon /pub/bob/probes/2a90d100-1a38-9e46-b890-365cc42e6e14 -X DELETE
     HTTP/1.1 204 No Content
     Access-Control-Allow-Origin: *
     Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version

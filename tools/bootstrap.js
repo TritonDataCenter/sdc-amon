@@ -14,9 +14,7 @@
  *   Background: http://www.amazon.com/Bob-Otto-Robert-Bruel/dp/1596432039
  * - otto will be an operator
  * - create a 'amondevzone' for bob
- * - add a probe for 'bob' in the 'amondevzone'
- * - add a probe for 'otto' in the headnode GZ
- * - TODO: probegroups for bob and otto
+ * - add some probes and probegroups for bob and otto
  */
 
 var log = console.error;
@@ -442,40 +440,101 @@ function getAmonClient(next) {
 
 
 function loadAmonObject(obj, next) {
+  function probeGroupFromName(user, name, cb) {
+    if (!name) {
+      return cb(null, null);
+    }
+    amonClient.listProbeGroups(user, function (err, groups) {
+      if (err) return cb(err);
+      for (var i = 0; i < groups.length; i++) {
+        if (groups[i].name === name) {
+          return cb(null, groups[i]);
+        }
+      }
+      cb(null, null);
+    })
+  }
+
   if (obj === undefined) return;
+  log("# Create Amon %s '%s' for '%s'.", obj.type, obj.body.name, obj.user);
+
   switch (obj.type) {
-  case 'probe':
+  case 'probegroup':
     //XXX Need to do uniqueness by name. START HERE
-    amonClient.listProbes(obj.user, function(err, probes) {
+    amonClient.listProbeGroups(obj.user, function(err, groups) {
       if (err)
         return next(err);
       var foundIt = false;
-      for (var i = 0; i < probes.length; i++) {
-        if (probes[i].name === obj.body.name) {
-          foundIt = probes[i];
+      for (var i = 0; i < groups.length; i++) {
+        if (groups[i].name === obj.body.name) {
+          foundIt = groups[i];
           break;
         }
       }
       if (foundIt) {
-        if (foundIt.agent !== obj.body.agent) {
-          log("# Amon probe 'agent' conflict (%s != %s): delete old one",
-            foundIt.agent, obj.body.agent)
-          amonClient.deleteProbe(obj.user, obj.probe, function (err) {
-            if (err) return next(err);
-            loadAmonObject(obj, next);
-          });
-        }
-        log("# Amon %s named '%s' already exists: /pub/%s/probes/%s",
+        log("# Amon %s named '%s' already exists: /pub/%s/probegroups/%s",
           obj.type, obj.body.name, obj.user, foundIt.uuid);
         return next();
       }
-      log("# Create Amon %s named '%s' for user '%s'", obj.type, obj.body.name,
-        obj.user);
-      amonClient.createProbe(obj.user, obj.body, function (err, probe) {
+      amonClient.createProbeGroup(obj.user, obj.body, function (err, group) {
         if (err) return next(err);
-        log("# Created Amon %s: /pub/%s/probes/%s", obj.type, probe.user,
-          probe.uuid);
+        log("# Created Amon %s: /pub/%s/probegroups/%s", obj.type, group.user,
+          group.uuid);
         next();
+      });
+    });
+    break;
+
+  case 'probe':
+    probeGroupFromName(obj.user, obj.probegroup, function (err, group) {
+      if (err) return next(err);
+      if (!group && obj.probegroup) {
+        return next(new Error(
+          format('no such probegroup: "%s"', obj.probegroup)));
+      }
+      if (group) {
+        obj.body.group = group.uuid;
+      }
+      amonClient.listProbes(obj.user, function(err, probes) {
+        if (err)
+          return next(err);
+        var foundIt = false;
+        for (var i = 0; i < probes.length; i++) {
+          if (probes[i].name === obj.body.name) {
+            foundIt = probes[i];
+            break;
+          }
+        }
+        if (foundIt) {
+          if ((foundIt.group || obj.body.group)
+              && foundIt.group !== obj.body.group) {
+            log("# Amon probe 'group' conflict (%s != %s): delete old one",
+              foundIt.group, obj.body.group)
+            amonClient.deleteProbe(obj.user, obj.probe, function (err) {
+              if (err) return next(err);
+              loadAmonObject(obj, next);
+            });
+            return;
+          }
+          if (foundIt.agent !== obj.body.agent) {
+            log("# Amon probe 'agent' conflict (%s != %s): delete old one",
+              foundIt.agent, obj.body.agent)
+            amonClient.deleteProbe(obj.user, obj.probe, function (err) {
+              if (err) return next(err);
+              loadAmonObject(obj, next);
+            });
+            return;
+          }
+          log("# Amon %s named '%s' already exists: /pub/%s/probes/%s",
+            obj.type, obj.body.name, obj.user, foundIt.uuid);
+          return next();
+        }
+        amonClient.createProbe(obj.user, obj.body, function (err, probe) {
+          if (err) return next(err);
+          log("# Created Amon %s: /pub/%s/probes/%s", obj.type, probe.user,
+            probe.uuid);
+          next();
+        });
       });
     });
     break;
@@ -497,35 +556,39 @@ function loadAmonObjects(next) {
         type: 'machine-up'
       }
     },
-    //XXX START HERE: adding probegroup, with two probes: whistle1 and whistle2
-    //{
-    //  type: 'probe',
-    //  user: bob.login,
-    //  body: {
-    //    name: 'whistlelog',
-    //    agent: amondevzone.uuid,
-    //    type: 'log-scan',
-    //    config: {
-    //      path: '/tmp/whistle.log',
-    //      regex: 'tweet',
-    //      threshold: 1,
-    //      period: 60
-    //    }
-    //  }
-    //},
+    {
+      type: 'probegroup',
+      user: bob.login,
+      body: {
+        name: 'logs',
+        contacts: ['email']
+      }
+    },
     {
       type: 'probe',
       user: bob.login,
+      probegroup: 'logs',
       body: {
-        contacts: ['email'],
+        name: 'whistle1',
+        agent: amondevzone.uuid,
+        type: 'log-scan',
+        config: {
+          path: '/tmp/whistle1.log',
+          regex: 'tweet'
+        }
+      }
+    },
+    {
+      type: 'probe',
+      user: bob.login,
+      probegroup: 'logs',
+      body: {
         name: 'whistlelog',
         agent: amondevzone.uuid,
         type: 'log-scan',
         config: {
-          path: '/tmp/whistle.log',
-          regex: 'tweet',
-          threshold: 1,
-          period: 60
+          path: '/tmp/whistle2.log',
+          regex: 'tweet'
         }
       }
     },
@@ -533,7 +596,7 @@ function loadAmonObjects(next) {
       type: 'probe',
       user: otto.login,
       body: {
-        contacts: ['email', 'bogus'],
+        contacts: ['email'],
         name: 'smartlogin',
         agent: headnodeUuid,
         type: 'log-scan',

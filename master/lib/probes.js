@@ -12,12 +12,14 @@ var assert = require('assert-plus');
 var ldap = require('ldapjs');
 var restify = require('restify');
 var async = require('async');
+var uuid = require('node-uuid');
 
 var ufdsmodel = require('./ufdsmodel');
 var utils = require('amon-common').utils,
   objCopy = utils.objCopy;
 var plugins = require('amon-plugins');
 var Contact = require('./contact');
+var ProbeGroup = require('./probegroups').ProbeGroup;
 
 
 
@@ -30,82 +32,44 @@ var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 //---- Probe model
 // Interface is as required by "ufdsmodel.js".
-// Presuming routes as follows: '.../monitors/:monitor/probes/:probe'.
 
-/* BEGIN JSSTYLED */
 /**
- * Create a Probe. `new Probe(app, data)`.
+ * Create a Probe object from raw DB (i.e. UFDS) data. External usage should
+ * use `Probe.create`.
  *
- * @param app
- * @param data {Object} The instance data. This can either be the public
- *    representation (augmented with 'user' and 'uuid' from the URL)
- *    or the raw response from UFDS, e.g.:
+ * @param app {App}
+ * @param raw {Object} The raw instance data from the DB (or manually in
+ *    that form). E.g.:
  *      { dn: 'amonprobe=:uuid, uuid=:uuid, ou=users, o=smartdc',
  *        uuid: ':uuid',
  *        ...
  *        objectclass: 'amonprobe' }
- * @throws {restify.RestError} if the given data is invalid.
+ * @throws {Error} if the given data is invalid.
  */
-/* END JSSTYLED */
-function Probe(app, data) {
-  if (!app) throw new TypeError('"app" is required');
-  if (!data) throw new TypeError('"data" is required');
-
-  var raw;
-  if (data.objectclass) {  // from UFDS
-    if (data.objectclass !== Probe.objectclass) {
-      throw new TypeError(format(
-        'invalid probe data: objectclass "%s" !== "%s"',
-        data.objectclass, Probe.objectclass));
-    }
-    this.dn = data.dn;
-    raw = objCopy(data);
-    delete raw.dn;
-    var parsed = Probe.parseDn(data.dn);
-    this.user = parsed.user;
-    if (data.uuid !== parsed.uuid) {
-      throw new TypeError(format(
-        'invalid probe data: "uuid" (%s) does not match dn (%s)',
-        data.uuid, data.dn));
-    }
-    this.uuid = data.uuid;
-  } else {
-    if (!data.uuid)
-      throw new TypeError(format('invalid probe data: no "uuid": %j', data));
-    if (!UUID_RE.test(data.uuid))
-      throw new TypeError(format('invalid probe data: "uuid" is not a valid UUID: %j', data));
-    if (!data.user)
-      throw new TypeError(format('invalid probe data: no "user": %j', data));
-    if (! UUID_RE.test(data.user))
-      throw new TypeError(format('invalid probe data: "user" is not a valid UUID: %j', data));
-
-    // 'skipauthz' in the probe data is a request to skip authorization
-    // for PUTting this probe. It exists to facilitate the setting of
-    // probes by core SDC zones during initial headnode setup, when all
-    // facilities (specificall VMAPI) for authZ might not be up yet.
-    // Note: This request is **only honoured for the admin user** (the
-    // only user for which probes should be added during headnode setup).
-    this._skipauthz = (data.skipauthz
-      ? data.user === app.config.adminUuid : false);
-
-    this.dn = Probe.dn(data.user, data.uuid);
-    raw = {
-      uuid: data.uuid,
-      type: data.type,
-      agent: data.agent,
-      objectclass: Probe.objectclass
-    };
-    //XXX:TODO: disabled
-    if (data.name) raw.name = data.name;
-    if (data.contacts) raw.contact = data.contacts;  // singular intentional
-    if (data.config) raw.config = JSON.stringify(data.config);
-    if (data.agent) raw.agent = data.agent;
-    if (data.machine) raw.machine = data.machine;
-    this.user = data.user;
-    this.uuid = data.uuid;
+function Probe(app, raw) {
+  assert.object(app, 'app');
+  assert.object(raw, 'raw');
+  assert.string(raw.uuid, 'raw.uuid');
+  assert.string(raw.objectclass, 'raw.objectclass');
+  if (raw.objectclass !== Probe.objectclass) {
+    assert.equal(raw.objectclass, Probe.objectclass,
+      format('invalid probe data: objectclass "%s" !== "%s"',
+      raw.objectclass, Probe.objectclass));
   }
 
-  this.raw = Probe.validate(app, raw);
+  this.user = raw.user;
+  this.uuid = raw.uuid;
+  this.dn = Probe.dn(this.user, this.uuid);
+  if (raw.dn) {
+    assert.equal(raw.dn, this.dn,
+      format('invalid probe data: "dn" (%s) does not calculated "dn" (%s)',
+      raw.dn, this.dn));
+  }
+
+  var rawCopy = objCopy(raw);
+  delete rawCopy.dn;
+  delete rawCopy.controls;
+  this.raw = Probe.validate(app, rawCopy);
 
   var self = this;
   this.__defineGetter__('name', function () {
@@ -135,18 +99,123 @@ function Probe(app, data) {
     }
     return self._config;
   });
+  this.__defineGetter__('group', function () {
+    return self.raw.group;
+  });
+  this.__defineGetter__('disabled', function () {
+    return self.raw.disabled;
+  });
 }
+
+
+/**
+ * Create a new Probe (with validation).
+ *
+ * @param app {App}
+ * @param data {Object} The probe data.
+ * @param callback {Function} `function (err, probe)`.
+ */
+Probe.create = function createProbe(app, data, callback) {
+  assert.object(app, 'app');
+  assert.object(data, 'data');
+  assert.func(callback, 'callback');
+
+  // Basic validation.
+  // TODO: not sure assert-plus is right here. It is for pre-conditions,
+  // not for API data validation. With NO_DEBUG (or whatever the envvar),
+  // all validation will be broken.
+  try {
+    assert.string(data.user, 'data.user');
+    assert.ok(UUID_RE.test(data.user),
+      format('invalid probe data: "user" is not a valid UUID: %j', data));
+    assert.string(data.type, 'data.type');
+    assert.optionalString(data.agent, 'data.agent');
+    if (data.agent) {
+      assert.ok(UUID_RE.test(data.agent),
+        format('invalid probe data: "agent" is not a valid UUID: %j', data));
+    }
+    assert.optionalString(data.machine, 'data.machine');
+    if (data.machine) {
+      assert.ok(UUID_RE.test(data.machine),
+        format('invalid probe data: "machine" is not a valid UUID: %j', data));
+    }
+    assert.optionalBool(data.skipauthz, 'data.skipauthz');
+    assert.optionalString(data.name, 'data.name');
+    if (data.name) {
+      assert.ok(data.name.length < 512,
+        format('probe name is too long (max 512 characters): "%s"', data.name));
+    }
+    // Use `optionalArrayOfString` once node-assert-plus#2 is fixed.
+    if (data.contacts) {
+      assert.arrayOfString(data.contacts, 'data.contacts');
+    }
+    assert.optionalObject(data.config, 'data.config');
+    assert.optionalString(data.group, 'data.group');
+    if (data.group) {
+      assert.ok(UUID_RE.test(data.group),
+        format('invalid probe data: "group" is not a valid UUID: %j', data));
+    }
+    assert.optionalBool(data.disabled, 'data.disabled');
+  } catch (aErr) {
+    return callback(aErr);
+  }
+
+  // Validate group.
+  function getGroup(groupUuid, cb) {
+    if (!groupUuid)
+      return cb();
+    ProbeGroup.get(app, data.user, groupUuid, cb);
+  }
+  getGroup(data.group, function (gErr, group) {
+    if (gErr)
+      return callback(gErr);
+
+    // Put together the raw data.
+    var newUuid = uuid();
+    var raw = {
+      user: data.user,
+      uuid: newUuid,
+      type: data.type,
+      agent: data.agent,
+      disabled: data.disabled || false,
+      objectclass: Probe.objectclass
+    };
+    if (data.name) raw.name = data.name;
+    if (data.contacts) raw.contact = data.contacts;  // singular intentional
+    if (data.config) raw.config = JSON.stringify(data.config);
+    if (data.machine) raw.machine = data.machine;
+    if (data.group) raw.group = data.group;
+
+    var probe = null;
+    try {
+      probe = new Probe(app, raw);
+    } catch (cErr) {
+      return callback(cErr);
+    }
+
+    // 'skipauthz' in the probe data is a request to skip authorization
+    // for PUTting this probe. It exists to facilitate the setting of
+    // probes by core SDC zones during initial headnode setup, when all
+    // facilities (specificall VMAPI) for authZ might not be up yet.
+    // Note: This request is **only honoured for the admin user** (the
+    // only user for which probes should be added during headnode setup).
+    probe._skipauthz = (data.skipauthz
+      ? data.user === app.config.adminUuid : false);
+
+    callback(null, probe);
+  });
+};
+
 
 Probe.objectclass = 'amonprobe';
 
-Probe.parseDn = function (dn) {
-  var parsed = ldap.parseDN(dn);
-  return {
-    user: parsed.rdns[1].uuid,
-    uuid: parsed.rdns[0].amonprobe
-  };
-};
-
+//Probe.parseDn = function (dn) {
+//  var parsed = ldap.parseDN(dn);
+//  return {
+//    user: parsed.rdns[1].uuid,
+//    uuid: parsed.rdns[0].amonprobe
+//  };
+//};
 Probe.dn = function (user, uuid) {
   return format('amonprobe=%s, uuid=%s, ou=users, o=smartdc', uuid, user);
 };
@@ -162,7 +231,6 @@ Probe.parentDnFromRequest = function (req) {
   return req._user.dn;
 };
 
-
 /**
  * Return the API view of this Probe's data.
  *
@@ -176,9 +244,11 @@ Probe.prototype.serialize = function serialize(priv) {
     uuid: this.uuid,
     user: this.user,
     type: this.type,
-    agent: this.agent
+    agent: this.agent,
+    disabled: this.disabled || false
   };
   if (this.name) data.name = this.name;
+  if (this.group) data.group = this.group;
   if (this.contacts) {
     data.contacts = (typeof(this.contacts) === 'string' ? [this.contacts]
       : this.contacts);
@@ -352,7 +422,7 @@ Probe.get = function get(app, user, uuid, callback) {
 
 
 /**
- * Validate the raw data and optionally massage some fields.
+ * Validate the raw data and massage some fields. This is synchronous.
  *
  * @param app {App} The amon-master app.
  * @param raw {Object} The raw data for this object.

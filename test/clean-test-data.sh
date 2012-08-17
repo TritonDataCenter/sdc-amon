@@ -37,17 +37,16 @@ function clearUser() {
         return
     fi
 
-    #XXX
-    #local probegroups=$(sdc-amon /pub/$login/probegroups | json -Ha uuid | xargs)
-    #for probegroup in $probegroups; do
-    #    echo "# DELETE /pub/$login/probegroups/$probegroup"
-    #    sdc-amon /pub/$login/probegroups/$probegroup -X DELETE -f >/dev/null
-    #done
-
     local probes=$(sdc-amon /pub/$login/probes | json -Ha uuid | xargs)
     for probe in $probes; do
         echo "# DELETE /pub/$login/probes/$probe"
         sdc-amon /pub/$login/probes/$probe -X DELETE -f >/dev/null
+    done
+
+    local probegroups=$(sdc-amon /pub/$login/probegroups | json -Ha uuid | xargs)
+    for probegroup in $probegroups; do
+        echo "# DELETE /pub/$login/probegroups/$probegroup"
+        sdc-amon /pub/$login/probegroups/$probegroup -X DELETE -f >/dev/null
     done
 
     local maintenances=$(sdc-amon /pub/$login/maintenances | json -Ha id | xargs)
@@ -71,12 +70,14 @@ function clearUser() {
             echo "# [$(date -u)]Delete machine $machine_uuid (on server $server_uuid)."
             sdc-oneachnode -n $server_uuid vmadm delete $machine_uuid
         done
+
+        # Blowing away the machines can result in an alarm from a
+        # not-yet-propagated deleted probe (from earlier). Wait for a bit (for
+        # alarms to get through), then delete them.
+        sleep 2
     fi
 
-    # Blowing away the machines can result in an alarm from a
-    # not-yet-propagated deleted probe (from earlier). Wait for a bit (for
-    # alarms to get through), then delete them.
-    sleep 5
+    # Alarms done *after* machine deletion, see previous comment.
     local alarms=$(sdc-amon /pub/$login/alarms?state=all | json -Ha id | xargs)
     for alarm in $alarms; do
         echo "# DELETE /pub/$login/alarms/$alarm"

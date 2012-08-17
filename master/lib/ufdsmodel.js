@@ -7,7 +7,8 @@
  * function with the following interface (see comments in the model
  * implementations for details):
  *
- *     function Foo(name, data) {...}
+ *     function Foo(app, data) {...}
+ *     Foo.create = function (app, data, callback) {...}
  *     Foo.objectclass = "amonfoo";
  *     Foo.validate = function (raw) {...}
  *     Foo.dnFromRequest = function (req) {...}
@@ -67,7 +68,7 @@ function modelList(app, Model, parentDn, log, callback) {
   }
 
   function cacheAndCallback(cErr, cItems) {
-    var data = cItems && cItems.map(function (i) { return i.serialize(); });
+    var data = cItems && cItems.map(function (i) { return i.raw; });
     app.cacheSet(cacheScope, cacheKey, {err: cErr, data: data});
     callback(cErr, cItems);
   }
@@ -120,34 +121,34 @@ function modelList(app, Model, parentDn, log, callback) {
 function modelCreate(app, Model, data, log, callback) {
   log.info({data: data, modelName: Model.name}, 'modelCreate');
 
-  var item;
-  try {
-    item = new Model(app, data);
-  } catch (e) {
-    return callback(e);
-  }
-
-  // Access control check.
-  item.authorizeWrite(app, function (err) {
-    if (err) {
-      log.debug({err: err, modelName: Model.name, dn: item.dn},
-        'authorizeWrite err');
-      return callback(err);
+  // 1. Create the object (this handles validation).
+  Model.create(app, data, function (cErr, item) {
+    if (cErr) {
+      return callback(cErr); //XXX wrap this error?
     }
-    log.debug({modelName: Model.name, dn: item.dn},
-      'authorizeWrite: authorized');
 
-    // Add it.
-    var dn = item.dn;
-    app.ufdsAdd(dn, item.raw, function (addErr) {
-      if (addErr) {
-        log.error(addErr, 'Error saving to UFDS (dn="%s")', dn);
-        callback(addErr);
-      } else {
-        log.trace('<%s> create item:', Model.name, item);
-        app.cacheInvalidateWrite(Model.name, item);
-        callback(null, item);
+    // 2. Access control check.
+    item.authorizeWrite(app, function (err) {
+      if (err) {
+        log.debug({err: err, modelName: Model.name, dn: item.dn},
+          'authorizeWrite err');
+        return callback(err);
       }
+      log.debug({modelName: Model.name, dn: item.dn},
+        'authorizeWrite: authorized');
+
+      // 3. Add it.
+      var dn = item.dn;
+      app.ufdsAdd(dn, item.raw, function (addErr) {
+        if (addErr) {
+          log.error(addErr, 'Error saving to UFDS (dn="%s")', dn);
+          callback(addErr);
+        } else {
+          log.trace('<%s> create item:', Model.name, item);
+          app.cacheInvalidateWrite(Model.name, item);
+          callback(null, item);
+        }
+      });
     });
   });
 }
@@ -243,7 +244,7 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
 
   function cacheAndCallback(err, item) {
     if (!skipCache) {
-      app.cacheSet(cacheScope, dn, {err: err, data: item && item.serialize()});
+      app.cacheSet(cacheScope, dn, {err: err, data: item && item.raw});
     }
     callback(err, item);
   }

@@ -34,7 +34,7 @@ var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
  * @param log {Bunyan Logger}
  * @param callback {Function} `function (err, probes)`.
  *
- * Note: Probes are sorted by (user, monitor, name) to ensure a stable order,
+ * Note: Probes are sorted by (user, uuid) to ensure a stable order,
  * necessary to ensure reliable Content-MD5 for HEAD and caching usage.
  */
 function findProbes(app, agent, log, callback) {
