@@ -17,4 +17,9 @@ rsync -av ${TOP}/test/ \
     --exclude "config.json" \
     --exclude "prep.json" \
     --exclude tmp/
+# Restore buffertools.node that is always blown away the first time the
+# above is done.
+# TODO: same for dtrace_provider.node.
+ssh $NODE cp /opt/smartdc/agents/lib/node_modules/amon-relay/test/node_modules/ldapjs/node_modules/buffertools/build/Release/buffertools.node \
+    /opt/smartdc/agents/lib/node_modules/amon-relay/test/node_modules/sdc-clients/node_modules/ldapjs/node_modules/buffertools/build/Release/buffertools.node
 
