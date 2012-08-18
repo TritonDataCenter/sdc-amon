@@ -16,7 +16,8 @@ var uuid = require('node-uuid');
 
 var ufdsmodel = require('./ufdsmodel');
 var utils = require('amon-common').utils,
-  objCopy = utils.objCopy;
+  objCopy = utils.objCopy,
+  boolFromString = utils.boolFromString;
 var plugins = require('amon-plugins');
 var Contact = require('./contact');
 
@@ -77,9 +78,7 @@ function ProbeGroup(app, raw) {
   this.__defineGetter__('contacts', function () {
     return self.raw.contact;
   });
-  this.__defineGetter__('disabled', function () {
-    return self.raw.disabled;
-  });
+  this.disabled = boolFromString(this.raw.disabled, false, 'raw.disabled');
 }
 
 
@@ -143,6 +142,7 @@ ProbeGroup.objectclass = 'amonprobegroup';
 ProbeGroup.dn = function (user, uuid) {
   return format('amonprobegroup=%s, uuid=%s, ou=users, o=smartdc', uuid, user);
 };
+
 ProbeGroup.dnFromRequest = function (req) {
   var uuid = req.params.uuid;
   if (! UUID_RE.test(uuid)) {
@@ -151,6 +151,7 @@ ProbeGroup.dnFromRequest = function (req) {
   }
   return ProbeGroup.dn(req._user.uuid, uuid);
 };
+
 ProbeGroup.parentDnFromRequest = function (req) {
   return req._user.dn;
 };

@@ -16,7 +16,8 @@ var uuid = require('node-uuid');
 
 var ufdsmodel = require('./ufdsmodel');
 var utils = require('amon-common').utils,
-  objCopy = utils.objCopy;
+  objCopy = utils.objCopy,
+  boolFromString = utils.boolFromString;
 var plugins = require('amon-plugins');
 var Contact = require('./contact');
 var ProbeGroup = require('./probegroups').ProbeGroup;
@@ -71,6 +72,7 @@ function Probe(app, raw) {
   delete rawCopy.controls;
   this.raw = Probe.validate(app, rawCopy);
 
+  // TODO: consider dropping getters (we don't update live objs)
   var self = this;
   this.__defineGetter__('name', function () {
     return self.raw.name;
@@ -102,9 +104,7 @@ function Probe(app, raw) {
   this.__defineGetter__('group', function () {
     return self.raw.group;
   });
-  this.__defineGetter__('disabled', function () {
-    return self.raw.disabled;
-  });
+  this.disabled = boolFromString(this.raw.disabled, false, 'raw.disabled');
 }
 
 
@@ -209,16 +209,10 @@ Probe.create = function createProbe(app, data, callback) {
 
 Probe.objectclass = 'amonprobe';
 
-//Probe.parseDn = function (dn) {
-//  var parsed = ldap.parseDN(dn);
-//  return {
-//    user: parsed.rdns[1].uuid,
-//    uuid: parsed.rdns[0].amonprobe
-//  };
-//};
 Probe.dn = function (user, uuid) {
   return format('amonprobe=%s, uuid=%s, ou=users, o=smartdc', uuid, user);
 };
+
 Probe.dnFromRequest = function (req) {
   var uuid = req.params.uuid;
   if (! UUID_RE.test(uuid)) {
@@ -227,9 +221,11 @@ Probe.dnFromRequest = function (req) {
   }
   return Probe.dn(req._user.uuid, uuid);
 };
+
 Probe.parentDnFromRequest = function (req) {
   return req._user.dn;
 };
+
 
 /**
  * Return the API view of this Probe's data.

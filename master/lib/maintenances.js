@@ -57,8 +57,9 @@ var assert = require('assert-plus');
 var restify = require('restify');
 var async = require('async');
 
-var amonCommon = require('amon-common'),
-  objCopy = amonCommon.utils.objCopy;
+var utils = require('amon-common').utils,
+  objCopy = utils.objCopy,
+  boolFromString = utils.boolFromString;
 
 
 
@@ -72,31 +73,6 @@ var MAX_REAPER_FREQ = 100;  // 100ms is max frequency of maint expiry reaping
 
 
 //---- internal support routines
-
-/**
- * Convert a boolean or redis string representing a boolean into a
- * boolean, or raise TypeError trying.
- *
- * @param value {Boolean|String} The input value to convert.
- * @param default_ {Boolean} The default value is `value` is undefined.
- * @param errName {String} The variable name to quote in the possibly
- *    raised TypeError.
- */
-function boolFromRedisString(value, default_, errName) {
-  if (value === undefined) {
-    return default_;
-  } else if (value === 'false') { // redis hash string
-    return false;
-  } else if (value === 'true') { // redis hash string
-    return true;
-  } else if (typeof (value) === 'boolean') {
-    return value;
-  } else {
-    throw new TypeError(
-      format('invalid value for "%s": %j', errName, value));
-  }
-}
-
 
 /**
  * Convert a given maintenance window "start" value to a Date instance.
@@ -406,7 +382,7 @@ function Maintenance(data, log) {
   this.start = Number(data.start);
   this.end = Number(data.end);
   this.notes = data.notes;
-  this.all = boolFromRedisString(data.all, false, 'data.all');
+  this.all = boolFromString(data.all, false, 'data.all');
   this.probes = data.probes && JSON.parse(data.probes);
   this.probeGroups = data.probeGroups && JSON.parse(data.probeGroups);
   this.machines = data.machines && JSON.parse(data.machines);
