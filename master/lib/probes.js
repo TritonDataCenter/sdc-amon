@@ -241,7 +241,7 @@ Probe.prototype.serialize = function serialize(priv) {
     user: this.user,
     type: this.type,
     agent: this.agent,
-    group: this.group,
+    group: this.group || null,
     disabled: this.disabled || false
   };
   if (this.name) data.name = this.name;
@@ -469,9 +469,7 @@ Probe.validate = function validate(app, raw) {
       format('invalid probe machine UUID: \'%s\'', raw.machine));
   }
 
-  if (raw.group === undefined) {
-    raw.group = null;  // Explicitly want 'group: null' in serialization.
-  } else if (raw.group && !UUID_RE.test(raw.group)) {
+  if (raw.group && !UUID_RE.test(raw.group)) {
     throw new restify.InvalidArgumentError(
       format('invalid probe group UUID: \'%s\'', raw.group));
   }
