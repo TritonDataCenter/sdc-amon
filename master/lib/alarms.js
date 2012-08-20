@@ -27,7 +27,7 @@
  * - closed {Boolean} Whether this alarm is closed.
  * - faults {Set} A set of current outstanding faults (a fault is a single
  *   probe failure).
- *
+ * - numEvents {Integer} The number of events attached to this alarm.
  *
  * Layout in redis:
  *
@@ -229,6 +229,7 @@ function Alarm(data, log) {
   this.timeLastEvent = Number(data.timeLastEvent) || null;
   this.suppressed = boolFromRedisString(data.suppressed, false,
     'data.suppressed');
+  this.numEvents = Number(data.numEvents) || 0;
 
   this._faultsKey = ['faults', this.user, this.id].join(':');
   this._faultSet = {};
@@ -382,6 +383,7 @@ Alarm.prototype.serializePublic = function serializePublic() {
     timeLastEvent: this.timeLastEvent,
     faults: this.faults,
     maintenanceFaults: this.maintenanceFaults,
+    numEvents: this.numEvents,
   };
 };
 
@@ -502,39 +504,42 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
 
     var redisClient = app.getRedisClient();
     var multi = redisClient.multi();
-    var indeces = {  // index into `replies` below
+    var idx = {  // index into `replies` below
       numFaultsBefore: 0,
       numFaultsAfter: 0,
-      numMaintenanceFaultsAfter: 0
+      numMaintFaultsAfter: 0,
+      numEvents: 0
     };
     multi.scard(self._faultsKey);
-    indeces.numFaultsAfter++; indeces.numMaintenanceFaultsAfter++;
+    idx.numFaultsAfter++; idx.numMaintFaultsAfter++; idx.numEvents++;
 
     // Update data (on `this` and in redis).
+    multi.hincrby(self._key, 'numEvents', 1);
+    idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
     self.timeLastEvent = event.time;
     multi.hset(self._key, 'timeLastEvent', self.timeLastEvent);
-    indeces.numFaultsAfter++; indeces.numMaintenanceFaultsAfter++;
+    idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
 
     // Update faults.
     var fault = faultReprFromEvent(event);
     if (event.clear) {
       self.removeFault(fault);
       multi.srem(self._faultsKey, fault);
-      indeces.numFaultsAfter++; indeces.numMaintenanceFaultsAfter++;
+      idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
       self.removeMaintenanceFault(fault);
       multi.srem(self._maintenanceFaultsKey, fault);
-      indeces.numFaultsAfter++; indeces.numMaintenanceFaultsAfter++;
+      idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
     } else if (maint) {
       self.addMaintenanceFault(fault);
       multi.sadd(self._maintenanceFaultsKey, fault);
-      indeces.numFaultsAfter++; indeces.numMaintenanceFaultsAfter++;
+      idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
     } else {
       self.addFault(fault);
       multi.sadd(self._faultsKey, fault);
-      indeces.numFaultsAfter++; indeces.numMaintenanceFaultsAfter++;
+      idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
     }
     multi.scard(self._faultsKey);
-    indeces.numMaintenanceFaultsAfter++;
+    idx.numMaintFaultsAfter++;
     multi.scard(self._maintenanceFaultsKey);
 
     multi.exec(function (saveErr, replies) {
@@ -544,10 +549,11 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
         callback(saveErr);
       } else {
         stats = {};
-        Object.keys(indeces).forEach(function (k) {
-          stats[k] = replies[indeces[k]];
+        Object.keys(idx).forEach(function (k) {
+          stats[k] = replies[idx[k]];
         });
-        var numFaults = stats.numFaultsAfter + stats.numMaintenanceFaultsAfter;
+        self.numEvents = stats.numEvents;
+        var numFaults = stats.numFaultsAfter + stats.numMaintFaultsAfter;
         if (event.clear && numFaults === 0) {
           log.info('cleared last fault: close this alarm');
           self.closed = true;

@@ -1541,7 +1541,7 @@ the VM with the UUID of the "agent" field).
 ||url||Required||-||URL to probe, this url must be accessable from the machine or server running the probe||
 ||method||Optional||GET||Curently Supports GET (default) or POST||
 ||headers||Optional||-||Additional headers to include with request (an object)||
-||body||Optional||-||string of form data||
+||body||Optional||-||string of form data (TODO: example)||
 ||username||Optional||-||Username used for HTTP Basic Auth||
 ||password||Optional||-||Password used for HTTP Basic Auth||
 ||interval||Optional||90||interval in seconds to check the specified URL||

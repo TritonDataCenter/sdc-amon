@@ -128,12 +128,11 @@ Email.prototype.notify = function (options, callback) {
    *     $login#$id in $dc
    */
 /* END JSSTYLED */
-  var re = (alarm.numNotifications > 0 ? 'Re: ' : '');
+  var re = (alarm.numEvents > 1 ? 'Re: ' : '');
   var details = [];
-  var alarmState = '';
   if (alarm.closed) {
     details.push('CLOSED');
-  } else if (alarm.numNotifications === 0) {
+  } else if (alarm.numEvents === 1) {
     details.push('NEW');
   }
   var probe = options.probe;
