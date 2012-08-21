@@ -1,0 +1,39 @@
+#!/bin/bash
+#
+# Rsync the agent in this working copy to the install on the bh1-kvm7
+# "amondevzone" (created by ./tools/bootstrap.js) in /opt/amon-agent.
+#
+
+#set -x
+TOP=$(cd $(dirname $0)/../; pwd)
+AGENT_DIR=$TOP/agent
+NODE=root@10.2.207.2
+SSH_OPTIONS="-q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+SSH="ssh $SSH_OPTIONS"
+JSON3=$TOP/test/node_modules/.bin/json3
+
+if [[ -z "$AMONDEVZONE" ]]; then
+    AMONDEVZONE=$(ssh $NODE "/opt/smartdc/bin/sdc-vmapi /vms" 2>/dev/null \
+        | $JSON3 -H -c 'alias == "amondevzone"' \
+            -c 'this.state === "running"' 0.uuid)
+fi
+echo "AMONDEVZONE: $AMONDEVZONE"
+
+rsync -av -e "$SSH" ${AGENT_DIR}/ \
+    $NODE:/zones/$AMONDEVZONE/root/opt/amon-agent/ \
+    --exclude deps/ \
+    --exclude "*.node" \
+    --exclude amon-common \
+    --exclude amon-plugins \
+    --exclude tmp/
+rsync -av -e "$SSH" ${TOP}/common/ \
+    $NODE:/zones/$AMONDEVZONE/root/opt/amon-agent/node_modules/amon-common/ \
+    --exclude "*.node" \
+    --exclude tmp/
+rsync -av -e "$SSH" ${TOP}/plugins/ \
+    $NODE:/zones/$AMONDEVZONE/root/opt/amon-agent/node_modules/amon-plugins/ \
+    --exclude "*.node" \
+    --exclude tmp/
+
+ssh ${NODE} svcadm -z $AMONDEVZONE clear amon-agent
+ssh ${NODE} svcadm -z $AMONDEVZONE restart amon-agent

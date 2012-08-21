@@ -31,8 +31,15 @@ var SECONDS = 1000;
 module.exports = Icmp;
 
 
-// --- Probe Constructor
-//
+
+/**
+ * Create an Icmp probe.
+ *
+ * @param options {Object}
+ *    - `uuid` {String} The probe uuid.
+ *    - `data` {Object} The probe data, including its `config`.
+ *    - `log` {Bunyan Logger}
+ */
 function Icmp(options) {
   Probe.call(this, options);
 

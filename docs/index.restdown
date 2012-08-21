@@ -427,7 +427,9 @@ TODO: errors
         "agent": "729dae52-e157-4d8e-9a74-196e228caf58",
         "config": {
           "path": "/tmp/whistle.log",
-          "regex": "tweet",
+          "match": {
+            "pattern": "tweet"
+          },
           "threshold": 1,
           "period": 60
         },
@@ -477,7 +479,9 @@ TODO: errors
       "agent": "729dae52-e157-4d8e-9a74-196e228caf58",
       "config": {
         "path": "/tmp/whistle.log",
-        "regex": "tweet",
+        "match": {
+          "pattern": "tweet"
+        },
         "threshold": 1,
         "period": 60
       },
@@ -1318,7 +1322,9 @@ TODO: errors
         "agent": "44454c4c-3200-1042-804d-c2c04f575231",
         "config": {
           "path": "/var/svc/log/smartdc-agent-smartlogin:default.log",
-          "regex": "Stopping",
+          "match": {
+            "pattern": "Stopping"
+          },
           "threshold": 1,
           "period": 120
         },
@@ -1467,7 +1473,7 @@ Some aggregated data on the probe types:
 ||log-scan||yes||no||
 ||machine-up||no||yes||
 ||http||yes||no||
-||icmp||yes||no||
+||icmp (i.e. ping)||yes||no||
 
 "Requires Agent" means that a probe of this type needs an amon-agent running
 in the customer vm/zone to run the probe. "machine-up" is the exception here,
@@ -1485,7 +1491,12 @@ the VM with the UUID of the "agent" field).
 
 ||**Parameter**||**Required?**||**Default**||**Description**||
 ||path||Required||-||Path to the log file to watch.||
-||regex||Required||-||Regular expression pattern to match against each log line.||
+||match||Required||-||Match data to match against each log line.||
+||match.pattern||Required||-||The pattern with which to match.||
+||match.type||Optional||regex||One of 'substring' or 'regex'. Defines the type of 'match.pattern'.||
+||match.flags||Optional||-||Pattern flags. 'i' to ignore case. 'm' for multiline match (i.e. '^' and '$' match the start and end of lines within a multiline string).||
+||match.matchWord||Optional||false||A boolean indicating if matching should be restricted to word boundaries.||
+||match.invert||Optional||false||Set to true to invert the sense of matching (i.e. alarm on log lines that do NOT match).||
 ||period||Optional||60||Integer number of seconds. Time window in which `threshold` number of matches must be found to alarm.||
 ||threshold||Optional||1||Integer. Number of times a match must be found within `period` to alarm.||
 
@@ -1496,7 +1507,9 @@ the VM with the UUID of the "agent" field).
         "agent": "444d70d5-0187-e5d4-468f-7b49a6b014ff",
         "config": {
             "path": "/var/log/myservice.log",
-            "regex": "ERROR",
+            "match": {
+              "pattern": "ERROR"
+            },
             "threshold": 1,
             "period": 60
         }
@@ -1531,9 +1544,9 @@ None.
 
 ## Probe: http
 
-Watches a HTTP(S) URL for a specific body (regex), or status codes.
-This probe type requires an amon-agent running inside the target VM (i.e.
-the VM with the UUID of the "agent" field).
+Watches a HTTP(S) URL for response status, response body matches, response
+time, etc. This probe type requires an amon-agent running inside the target
+VM (i.e. the VM with the UUID of the "agent" field).
 
 ### Config
 
@@ -1549,8 +1562,12 @@ the VM with the UUID of the "agent" field).
 ||threshold||Optional||1||Integer. Number of times a match must be found within `period` to alarm.||
 ||maxResponseTime||Optional||-||When response time (ms) exceeds `maxResponseTime`, an event will fire||
 ||timeout||Optional||30||Maximum time in seconds that you allow the connection to the server to take.||
-||regex.pattern||Optional||-||check the response body for the regex pattern, if there are no matches, an event is fired||
-||regex.flags||Optional||-||flags to use with `regex.pattern` (ie `g` for global matching, `i` to ignore case sensitivity||
+||bodyMatch||Optional||-||Match data to match against the response body. A given bodyMatch means that this probe will fire if the response body does **not** match the given pattern. See `bodyMatch.invert` to change that sense.||
+||bodyMatch.pattern||Optional||-||The pattern with which to match.||
+||bodyMatch.type||Optional||regex||One of 'substring' or 'regex'. Defines the type of 'match.pattern'.||
+||bodyMatch.flags||Optional||-||Pattern flags. 'i' to ignore case. 'm' for multiline match (i.e. '^' and '$' match the start and end of lines within a multiline string).||
+||bodyMatch.matchWord||Optional||false||A boolean indicating if matching should be restricted to word boundaries.||
+||bodyMatch.invert||Optional||false||Set to true to invert the sense of matching (i.e. alarm if the body does NOT match).||
 ||statusCodes||Optional||[200,201,202,204]||an array of status codes to be compared to the response, if statusCodes does not contain include the response status code form the request, then an alarm is fired||
 
 ### Example
@@ -1664,7 +1681,7 @@ Other potential event types:
 An event from a probe firing.
 
 ||**Field**||**Required?**||**Type**||**Description**||
-||probeUuid||required||UUID||x||
+||probeUuid||required||UUID||The UUID of the probe that generated this event.||
 ||clear||required||Boolean||Whether this event should result in clearing a fault on an alarm (and possibly clearing the alarm).||
 ||data||required||Object||Extra data specific to the type of probe.||
 ||data.message||required||String||A brief prose description of the event.||
@@ -1787,7 +1804,9 @@ Probes for watching relevant SDC log files for, say, "ERROR".
         "agent": "564d70d5-0187-e5d4-468f-7b49a6b014ff",
         "config": {
             "path": "/var/svc/log/smartdc-agent-ur:default.log",
-            "regex": "ERROR"
+            "match": {
+                "pattern": "ERROR"
+            }
         }
     }'
     # Or perhaps a specialized probe "smf-log-scan" type for SMF logs.
@@ -1796,7 +1815,9 @@ Probes for watching relevant SDC log files for, say, "ERROR".
         "agent": "564d70d5-0187-e5d4-468f-7b49a6b014ff",
         "config": {
             "fmri": "svc:/smartdc/agent/heartbeater:default",
-            "regex": "ERROR"
+            "match": {
+                "pattern": "ERROR"
+            }
         }
     }'
     ...
@@ -1808,7 +1829,9 @@ Probes for watching relevant SDC log files for, say, "ERROR".
         "agent": "ea3898cd-4ca9-410a-bfa6-0152ba07b1d7",
         "config": {
             "path": "/var/log/ufds/server.log",
-            "regex": "ERROR"
+            "match": {
+                "pattern": "ERROR"
+            }
         }
     }'
     ...
@@ -1943,7 +1966,7 @@ Probe to "GET /canary" on the site from some other source location.
                 "url": "http://example.com/canary.html",
                 "method": "GET",
                 "statusCodes": [200,201,204,401] // number or list of HTTP status numbers to expect
-                "regex": "...", // (optional) check for a pattern in returned content
+                "bodyMatch": {...}, // (optional) check for a pattern in returned content
                 "interval": 60,  // how often to check (in seconds),
                 "period": 300, // alert window
                 "threshold": 1 // # of times event must occur within the alert window before alarming
@@ -1967,7 +1990,7 @@ healthcheck on KVM.
                 // This is essential wide open. That command can presumably
                 // do anything.
                 "command": ...,
-                "regex": "...",   // check for a pattern in returned content?
+                "match": {...},   // check for a pattern in returned content?
                 // Something to check exit value?
                 "interval": 60  // how frequently to check.
             }
@@ -2051,7 +2074,9 @@ probe types that don't exist yet and that aren't a high priority right now.
       agent: UUID_WEBHEAD1,
       config: {
         "path": "/var/log/myservice.log",
-        "regex": "ERROR"
+        "match": {
+            "pattern": "ERROR"
+        }
       }
     }'
 

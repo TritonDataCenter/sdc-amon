@@ -574,7 +574,9 @@ function loadAmonObjects(next) {
         type: 'log-scan',
         config: {
           path: '/tmp/whistle1.log',
-          regex: 'tweet'
+          match: {
+            pattern: 'tweet',
+          }
         }
       }
     },
@@ -583,12 +585,16 @@ function loadAmonObjects(next) {
       user: bob.login,
       probegroup: 'logs',
       body: {
-        name: 'whistlelog',
+        name: 'whistle2',
         agent: amondevzone.uuid,
         type: 'log-scan',
         config: {
           path: '/tmp/whistle2.log',
-          regex: 'tweet'
+          match: {
+            pattern: 'tweet',
+            flags: 'i',
+            matchWord: true
+          }
         }
       }
     },
@@ -602,6 +608,11 @@ function loadAmonObjects(next) {
         type: 'log-scan',
         config: {
           path: '/var/svc/log/smartdc-agent-smartlogin:default.log',
+          // Testing the temporary backward compat in log-scan.js.
+          //match: {
+          //  pattern: 'Stopping',
+          //  type: 'substring'
+          //},
           regex: 'Stopping',
           threshold: 1,
           period: 120

@@ -31,7 +31,9 @@ var FIXTURES = {
       agent: prep.amontestzone.uuid,
       config: {
         path: '/tmp/whistle.log',
-        regex: 'tweet'
+        match: {
+          pattern: 'tweet'
+        }
       }
     }
   }

@@ -91,7 +91,7 @@ function App(options) {
 
   // Active probe instances. Controlled in `updateProbes`.
   // Maps probe uuid to either a Probe instance or a `ProbeError` instance.
-  this.probeFromId = {};
+  this.probeFromUuid = {};
 
   // If needed by a probe, the App will watch zoneevents and emit
   // events the relevant probes can watch.
@@ -169,12 +169,12 @@ App.prototype.loadProbeDataCacheSync = function () {
 /**
  * Create a new probe and start it.
  *
- * @param id {String} The probe id.
+ * @param probeUuid {String} The probe uuid.
  * @param probeData {Object} The probe data.
  * @param callback {Function} `function (err, probe)` called with the
  *    started probe instance. On failure `err` is `ProbeError` instance.
  */
-App.prototype.createProbe = function (id, probeData, callback) {
+App.prototype.createProbe = function (probeUuid, probeData, callback) {
   var self = this;
 
   var ProbeType = plugins[probeData.type];
@@ -185,7 +185,7 @@ App.prototype.createProbe = function (id, probeData, callback) {
 
   try {
     var probe = new ProbeType({
-      id: id,
+      uuid: probeUuid,
       data: probeData,
       log: self.log,
       app: self
@@ -231,35 +231,35 @@ App.prototype.updateProbes = function updateProbes(force) {
       }
     }
 
-    // 2. Transform that to {id -> probe} mapping.
-    var probeDataFromId = {};
+    // 2. Transform that to {uuid -> probe} mapping.
+    var probeDataFromUuid = {};
     probeData.forEach(function (pd) {
-      probeDataFromId[pd.uuid] = pd;
+      probeDataFromUuid[pd.uuid] = pd;
     });
 
     // 3. Gather list of changes (updates/adds/removes) of probes to do.
-    var todos = []; // [<action>, <probe-id>]
-    Object.keys(self.probeFromId).forEach(function (id) {
-      if (! probeDataFromId[id]) {
-        todos.push(['delete', id]); // Delete this probe.
+    var todos = []; // [<action>, <probe-uuid>]
+    Object.keys(self.probeFromUuid).forEach(function (uuid) {
+      if (! probeDataFromUuid[uuid]) {
+        todos.push(['delete', uuid]); // Delete this probe.
       }
     });
-    Object.keys(probeDataFromId).forEach(function (id) {
-      var probe = self.probeFromId[id];
+    Object.keys(probeDataFromUuid).forEach(function (uuid) {
+      var probe = self.probeFromUuid[uuid];
       if (!probe) {
-        todos.push(['add', id]); // Add this probe.
+        todos.push(['add', uuid]); // Add this probe.
       } else {
         var oldDataStr = probe.json;  // `Probe.json` or `ProbeError.json`
-        var newDataStr = JSON.stringify(probeDataFromId[id]);
+        var newDataStr = JSON.stringify(probeDataFromUuid[uuid]);
         // Note: This is presuming stable key order.
         if (newDataStr !== oldDataStr) {
-          todos.push(['update', id]); // Update this probe.
+          todos.push(['update', uuid]); // Update this probe.
         }
       }
     });
     log.trace({todos: todos}, 'update probes: todos');
 
-    // 4. Handle each of those todos and log when finished. `probeFromId`
+    // 4. Handle each of those todos and log when finished. `probeFromUuid`
     //    global is updated here.
     var stats = {
       added: 0,
@@ -270,20 +270,20 @@ App.prototype.updateProbes = function updateProbes(force) {
 
     function handleProbeTodo(todo, cb) {
       var action = todo[0];
-      var id = todo[1];
+      var uuid = todo[1];
 
       switch (action) {
       case 'add':
-        log.debug({id: id, probeData: probeDataFromId[id]},
+        log.debug({probeUuid: uuid, probeData: probeDataFromUuid[uuid]},
           'update probes: create probe');
-        self.createProbe(id, probeDataFromId[id], function (err, probe) {
+        self.createProbe(uuid, probeDataFromUuid[uuid], function (err, probe) {
           if (err) {
-            log.error({id: id, err: err},
+            log.error({probeUuid: uuid, err: err},
                       'could not create probe (continuing)');
-            self.probeFromId[id] = err;
+            self.probeFromUuid[uuid] = err;
             stats.errors++;
           } else {
-            self.probeFromId[id] = probe;
+            self.probeFromUuid[uuid] = probe;
             stats.added++;
           }
           cb();
@@ -292,11 +292,11 @@ App.prototype.updateProbes = function updateProbes(force) {
 
       case 'delete':
         (function () {
-          var probe = self.probeFromId[id];
+          var probe = self.probeFromUuid[uuid];
           var isProbeError = (probe instanceof ProbeError);
 
           log.debug({
-            id: id,
+            probeUuid: uuid,
             isProbeError: isProbeError,
             probeData: probe.json
           }, 'update probes: delete probe');
@@ -305,7 +305,7 @@ App.prototype.updateProbes = function updateProbes(force) {
             probe.stop();
           }
 
-          delete self.probeFromId[id];
+          delete self.probeFromUuid[uuid];
           stats.deleted++;
           cb();
         })();
@@ -314,24 +314,24 @@ App.prototype.updateProbes = function updateProbes(force) {
       case 'update':
         // Changed probe.
         (function update() {
-          var probe = self.probeFromId[id];
+          var probe = self.probeFromUuid[uuid];
           var isProbeError = (probe instanceof ProbeError);
-          var data = probeDataFromId[id];
-          log.debug({id: id, oldProbeData: probe.json,
+          var data = probeDataFromUuid[uuid];
+          log.debug({probeUuid: uuid, oldProbeData: probe.json,
               isProbeError: isProbeError, newProbeData: data},
               'update probes: update probe');
           if (!isProbeError) {
             probe.stop();
           }
-          delete self.probeFromId[id];
-          self.createProbe(id, data, function (errCreate, createdProbe) {
+          delete self.probeFromUuid[uuid];
+          self.createProbe(uuid, data, function (errCreate, createdProbe) {
             if (errCreate) {
-              log.error({id: id, err: errCreate},
+              log.error({probeUuid: uuid, err: errCreate},
                 'could not create probe (continuing)');
-              self.probeFromId[id] = errCreate;
+              self.probeFromUuid[uuid] = errCreate;
               stats.errors++;
             } else {
-              self.probeFromId[id] = createdProbe;
+              self.probeFromUuid[uuid] = createdProbe;
               stats.updated++;
             }
             cb();
@@ -360,9 +360,9 @@ App.prototype.onProbesUpdated = function () {
 
   // Start/stop zoneevent watcher as necessary.
   var needZoneEvents = false;
-  var ids = Object.keys(self.probeFromId);
+  var ids = Object.keys(self.probeFromUuid);
   for (var i = 0; i < ids.length; i++) {
-    var probe = self.probeFromId[ids[i]];
+    var probe = self.probeFromUuid[ids[i]];
     if (!probe) continue;
     if (probe instanceof ProbeError) continue;
     if (probe.type === 'machine-up') {

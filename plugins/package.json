@@ -6,7 +6,10 @@
   "private": true,
   "main": "lib/index.js",
   "dependencies": {
-    "bunyan": "0.10.0",
+    "bunyan": "0.13.1",
+    "assert-plus": "0.1.0"
+  },
+  "devDependencies": {
     "tap": "0.2"
   },
   "engines": {

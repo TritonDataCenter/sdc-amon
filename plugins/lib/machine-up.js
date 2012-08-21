@@ -19,9 +19,9 @@ var Probe = require('./probe');
  * Create a MachineUp probe.
  *
  * @param options {Object}
- *    - `id` {String}
+ *    - `uuid` {String} The probe uuid.
  *    - `data` {Object} The probe data, including its `config`.
- *    - `log` {Buyan Logger}
+ *    - `log` {Bunyan Logger}
  *    - `app` {EventEmitter} Event emitter which provides 'zoneUp' and
  *      'zoneDown' events.
  */

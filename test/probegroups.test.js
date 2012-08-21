@@ -79,7 +79,9 @@ VALKYRIE1 = {  // a probe
   type: 'log-scan',
   config: {
     path: '/var/tmp/battle.log',
-    regex: 'a warrior died'
+    match: {
+      pattern: 'a warrior died'
+    }
   }
 };
 
@@ -89,7 +91,9 @@ VALKYRIE2 = {  // a probe
   type: 'log-scan',
   config: {
     path: '/var/tmp/battle.log',
-    regex: 'another warrior died'
+    match: {
+      pattern: 'another warrior died'
+    }
   }
 };
 

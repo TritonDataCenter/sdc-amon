@@ -37,7 +37,9 @@ var FIXTURES = {
       type: 'log-scan',
       config: {
         path: '/tmp/whistle.log',
-        regex: 'tweet',
+        match: {
+          pattern: 'tweet',
+        },
         threshold: 1,
         period: 60
       }
@@ -50,7 +52,9 @@ var FIXTURES = {
       type: 'log-scan',
       config: {
         path: '/tmp/whistle.log',
-        regex: 'tweet',
+        match: {
+          pattern: 'tweet',
+        },
         threshold: 1,
         period: 60
       }
@@ -63,7 +67,9 @@ var FIXTURES = {
       type: 'log-scan',
       config: {
         path: '/var/svc/log/smartdc-agent-smartlogin:default.log',
-        regex: 'Stopping',
+        match: {
+          pattern: 'Stopping',
+        },
         threshold: 1,
         period: 60
       }
@@ -86,7 +92,9 @@ var FIXTURES = {
       type: 'log-scan',
       config: {
         path: '/var/svc/log/smartdc-agent-smartlogin:default.log',
-        regex: 'Stopping',
+        match: {
+          pattern: 'Stopping',
+        },
         threshold: 1,
         period: 60
       }
@@ -98,7 +106,9 @@ var FIXTURES = {
       type: 'log-scan',
       config: {
         path: '/var/svc/log/smartdc-agent-smartlogin:default.log',
-        regex: 'Stopping',
+        match: {
+          pattern: 'Stopping',
+        },
         threshold: 1,
         period: 60
       }
@@ -314,7 +324,9 @@ test('probes: create without owning zone', function (t) {
       'type': 'log-scan',
       'config': {
         'path': '/tmp/whistle.log',
-        'regex': 'tweet',
+        'match': {
+          'pattern': 'tweet',
+        },
         'threshold': 1,
         'period': 60
       }
@@ -324,7 +336,9 @@ test('probes: create without owning zone', function (t) {
       'type': 'log-scan',
       'config': {
         'path': '/tmp/whistle.log',
-        'regex': 'tweet',
+        'match': {
+          'pattern': 'tweet',
+        },
         'threshold': 1,
         'period': 60
       }

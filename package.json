@@ -8,7 +8,7 @@
     "sdc-clients": "git+ssh://git@git.joyent.com:node-sdc-clients.git#6a1b4a818356d1848a484dc3c979f3a588950753",
     "amon-common": "1.0.0",
 
-    "bunyan": "0.10.0",
+    "bunyan": "0.13.1",
     "restify": "1.4.4",
     "jshint": "0.7.1",
     "ldapjs": "0.5.4",

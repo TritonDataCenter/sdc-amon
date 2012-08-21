@@ -1,19 +1,8 @@
 /**
  * Copyright 2012 Joyent, Inc.  All rights reserved.
- */
-
-/**
- * Creates an HTTP Probe
  *
- * An HTTP probe can be planted to monitor any URL that the machine running the
- * probe has access to.
- *
- * @param options {Object}
- *  - id {String}
- *  - data {Object} The Probe data, including it's config
- *  - log {Buyan Logger}
- *
- * @see config options, see docs/index.restdown
+ * An HTTP probe can be planted to monitor any URL that the machine running
+ * the probe has access to.
  */
 
 /**
@@ -31,22 +20,28 @@ var format = util.format;
 
 var Probe = require('./probe');
 
-var SECONDS = 1000;
 
-// ==== Exports
-//
-module.exports = HttpProbe;
+//---- globals
+
+var SECONDS = 1000;
 
 
 var HTTP_OK = [200, 201, 202, 203, 204];
 
 
 
-// --- Probe Constructor
-//
+//---- probe class
+
+/**
+ * Create an Http probe.
+ *
+ * @param options {Object}
+ *    - `uuid` {String} The probe uuid.
+ *    - `data` {Object} The probe data, including its `config`.
+ *    - `log` {Bunyan Logger}
+ */
 function HttpProbe(options) {
   Probe.call(this, options);
-
   HttpProbe.validateConfig(this.config);
 
   this.url = url.parse(this.config.url);
@@ -64,12 +59,9 @@ function HttpProbe(options) {
     this.headers['Authorization'] = format('Basic %s', str);
   }
 
-  if (this.config.regex && this.config.regex.pattern) {
-    var pattern = this.config.regex.pattern;
-    var flags = this.config.regex.flags || '';
-
-    this.regex = new RegExp(pattern, flags);
-  }
+  this.bodyMatcher = (this.config.bodyMatch
+    ? this.matcherFromMatchConfig(this.config.bodyMatch)
+    : null);
 
   this.requestOptions = {
     hostname: this.url.hostname,
@@ -121,6 +113,10 @@ HttpProbe.validateConfig = function (config) {
   if (config.maxResponseTime && typeof (config.maxResponseTime) !== 'number') {
     throw new TypeError('config.maxResponseTime when present must be a number');
   }
+
+  if (config.bodyMatch) {
+    Probe.validateMatchConfig(config.bodyMatch, 'config.bodyMatch');
+  }
 };
 
 HttpProbe.prototype.doRequest = function () {
@@ -164,15 +160,19 @@ HttpProbe.prototype.doRequest = function () {
             self.maxResponseTime, responseTime));
       }
 
-      if (self.regex) {
-        var matches = self._regexMatch(body);
-
-        if (matches.length !== 0) {
-          eventMessages.push(
-            format('Body matches (%s)', self.regex.toString())
-          );
-          eventDetails.regex = self.regex.toString();
-          eventDetails.matches = matches;
+      if (self.bodyMatcher) {
+        var matches = self.bodyMatcher.matches(body);
+        if (self.bodyMatcher.invert) {
+          if (matches.length !== 0) {
+            eventMessages.push(
+              format('Body matches %s', self.bodyMatcher));
+            eventDetails.matches = matches;
+          }
+        } else {
+          if (matches.length === 0) {
+            eventMessages.push(
+              format('Body does not match %s', self.bodyMatcher));
+          }
         }
       }
 
@@ -258,3 +258,9 @@ HttpProbe.prototype._regexMatch = function (body) {
   }
   return matches;
 };
+
+
+
+//---- exports
+
+module.exports = HttpProbe;
