@@ -223,7 +223,8 @@ test('probes: create (for ulrich)', function (t) {
           t.equal(obj.type, data.type);
           if (obj.config) {
             Object.keys(obj.config).forEach(function (k) {
-              t.equal(obj.config[k], data.config[k]);
+              t.equal(JSON.stringify(obj.config[k]),
+                JSON.stringify(data.config[k]));
             });
           }
         }
@@ -251,7 +252,8 @@ test('probes: create (for odin)', function (t) {
           t.equal(obj.agent, data.agent);
           t.equal(obj.type, data.type);
           Object.keys(obj.config).forEach(function (k) {
-            t.equal(obj.config[k], data.config[k]);
+            t.equal(JSON.stringify(obj.config[k]),
+              JSON.stringify(data.config[k]));
           });
         }
         next();
@@ -301,7 +303,8 @@ test('probes: get', function (t) {
     t.equal(obj.agent, data.agent);
     t.equal(obj.type, data.type);
     Object.keys(obj.config).forEach(function (k) {
-      t.equal(obj.config[k], data.config[k]);
+      t.equal(JSON.stringify(obj.config[k]),
+        JSON.stringify(data.config[k]));
     });
     t.end();
   });
