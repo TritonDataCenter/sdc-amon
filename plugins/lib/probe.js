@@ -118,7 +118,7 @@ function Probe(options) {
   this.uuid = options.uuid;
   this.json = JSON.stringify(options.data);
   this.log = options.log.child({probeUuid: this.uuid,
-    probeName: options.data.name}, true);
+    probeName: options.data.name, probeType: this.type}, true);
 
   var data = options.data;
   this._user = data.user;

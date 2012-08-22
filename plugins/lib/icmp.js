@@ -77,30 +77,26 @@ Icmp.prototype.doPing = function () {
   var log = this.log;
   var self = this;
   var ping = spawn(
-    '/usr/sbin/ping', ['-s', this.host, this.dataSize, this.npackets], '/usr'
-  );
+    '/usr/sbin/ping', ['-s', this.host, this.dataSize, this.npackets]);
 
   var out = '';
   ping.stdout.on('data', function (data) {
-    log.info(data);
     out += data;
   });
-  var err = '';
 
+  var err = '';
   ping.stderr.on('data', function (data) {
     err += data;
   });
 
   ping.on('exit', function (code) {
-    log.info('icmp: ping stdout %s', out);
-    log.info('icmp: ping stderr %s', err);
+    log.trace({stdout: out, stderr: err}, 'ping output');
+    if (code !== 0) {
+      log.error('ping errored out (code=%d)', code);
+    }
 
     var metrics = self._parseMetrics(out);
-    log.info('icmp: metrics %o', metrics);
-
-    if (code !== 0) {
-      log.fatal('icmp: ping exited (code=%d)', code);
-    }
+    log.info({metrics: metrics}, 'ping results');
 
     if (metrics['packet loss'] > 0 || code !== 0) {
       var msg = format('ICMP ping was not successful or exhibited packet loss');
