@@ -314,8 +314,6 @@ function unreserveHeadnodeForProvisioning(next) {
 }
 
 
-
-
 function createAmondevzone(next) {
   // First check if there is a zone for bob.
   vmapiClient.listVms({owner_uuid: bob.uuid, alias: 'amondevzone'},
@@ -323,20 +321,26 @@ function createAmondevzone(next) {
     if (err) {
       return next(err);
     }
-    if (zones.length > 0) {
-      amondevzone = zones[0];
-      log('# Bob already has an "amondevzone" zone (%s).',
-        amondevzone.uuid);
-      return next();
+    for (var i = 0; i < zones.length; i++) {
+      if (zones[i].state === "running" || zones[i].state === "stopped") {
+        amondevzone = zones[i]; // intentionally global
+        log('# Bob already has an "amondevzone" zone (%s).',
+          amondevzone.uuid);
+        return next();
+      }
     }
-    log('# Create a test zone for bob.');
+    log('# Create a test zone for bob (amondevzone).');
+    var userScriptPath = path.join(__dirname, 'amondevzone.user-script');
     vmapiClient.createVm({
         owner_uuid: bob.uuid,
         dataset_uuid: smartosDatasetUuid,
         brand: 'joyent',
         ram: '128',
         alias: 'amondevzone',
-        networks: externalNetworkUuid
+        networks: [{uuid: externalNetworkUuid}],
+        customer_metadata: {
+          'user-script': fs.readFileSync(userScriptPath, 'utf8')
+        }
       },
       function (err2, createInfo) {
         // TODO: Better would be to get `job_uuid` and wait on completion
@@ -510,7 +514,7 @@ function loadAmonObject(obj, next) {
               && foundIt.group !== obj.body.group) {
             log("# Amon probe 'group' conflict (%s != %s): delete old one",
               foundIt.group, obj.body.group)
-            amonClient.deleteProbe(obj.user, obj.probe, function (err) {
+            amonClient.deleteProbe(obj.user, foundIt.uuid, function (err) {
               if (err) return next(err);
               loadAmonObject(obj, next);
             });
@@ -519,7 +523,7 @@ function loadAmonObject(obj, next) {
           if (foundIt.agent !== obj.body.agent) {
             log("# Amon probe 'agent' conflict (%s != %s): delete old one",
               foundIt.agent, obj.body.agent)
-            amonClient.deleteProbe(obj.user, obj.probe, function (err) {
+            amonClient.deleteProbe(obj.user, foundIt.uuid, function (err) {
               if (err) return next(err);
               loadAmonObject(obj, next);
             });

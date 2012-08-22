@@ -249,10 +249,6 @@ test-kvm7:
 tmp:
 	mkdir -p tmp
 
-.PHONY: devrun
-devrun: tmp $(NODE_DEV)
-	tools/devrun.sh
-
 .PHONY: install_agent_pkg
 install_agent_pkg:
 	/opt/smartdc/agents/bin/apm --no-registry install ./`ls -1 amon-agent*.tgz | tail -1`

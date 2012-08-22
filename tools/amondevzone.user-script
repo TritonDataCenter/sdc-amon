@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+#
+# User-script for setting up the amondevzone.user-script.
+#
+
+export PS4='${BASH_SOURCE}:${LINENO}: ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+set -o xtrace
+set -o errexit
+
+
+TAR=tar
+if [[ $(uname -s) == 'SunOS' ]]; then
+    TAR=gtar
+fi
+BITS_URL=http://stuff:kie7Ooph@stuff.smartdatacenter.org
+
+
+# Find the latest amon-agent build.
+amon_dir=$BITS_URL/amon/master-latest/amon/
+latest=$(curl -f -sS -k $amon_dir \
+    | grep "href" | cut -d '"' -f2 | grep "^amon-agent-")
+
+echo $latest_amon_agent
+wget -O /var/tmp/amon-agent.tgz $amon_dir$latest
+
+cd /opt && $TAR xf /var/tmp/amon-agent.tgz
+
+/opt/amon-agent/pkg/postinstall.sh
