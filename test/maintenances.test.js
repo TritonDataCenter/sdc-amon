@@ -407,7 +407,6 @@ test('maint 2: create maint window', function (t) {
     t.ifError(err, 'POST ' + MAINTSURL);
     t.ok(obj, 'got a response body');
     if (obj) {
-      console.log("XXX obj here:", JSON.stringify(obj));
       t.ok(!isNaN(Number(obj.id)), 'id');
       maint2Id = obj.id;
       t.equal(obj.notes, maint2.notes, 'notes');

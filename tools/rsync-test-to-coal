@@ -22,3 +22,6 @@ rsync -av ${TOP}/test/ \
 # TODO: same for dtrace_provider.node.
 ssh $NODE cp /opt/smartdc/agents/lib/node_modules/amon-relay/test/node_modules/ldapjs/node_modules/buffertools/build/Release/buffertools.node \
     /opt/smartdc/agents/lib/node_modules/amon-relay/test/node_modules/sdc-clients/node_modules/ldapjs/node_modules/buffertools/build/Release/buffertools.node
+
+rsync -av ${TOP}/plugins/test/ \
+    $NODE:/opt/smartdc/agents/lib/node_modules/amon-relay/node_modules/amon-plugins/test/

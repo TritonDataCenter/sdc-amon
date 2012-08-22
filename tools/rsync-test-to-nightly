@@ -18,3 +18,6 @@ rsync -av -e "$SSH" ${TOP}/test/ \
     --exclude "config.json" \
     --exclude "prep.json" \
     --exclude tmp/
+
+rsync -av -e "$SSH" ${TOP}/plugins/test/ \
+    $NODE:/opt/smartdc/agents/lib/node_modules/amon-relay/node_modules/amon-plugins/test/
