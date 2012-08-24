@@ -641,6 +641,26 @@ function loadAmonObjects(next) {
           period: 120
         }
       }
+    },
+    {
+      // Run with a bogus service name. This can't cause runtime issues.
+      type: 'probe',
+      user: otto.login,
+      body: {
+        contacts: ['email'],
+        name: 'bogus service',
+        agent: headnodeUuid,
+        type: 'log-scan',
+        config: {
+          smfServiceName: 'bogus-service-name',
+          match: {
+            pattern: 'Stopping',
+            type: 'substring'
+          },
+          threshold: 1,
+          period: 120
+        }
+      }
     }
   ];
 
