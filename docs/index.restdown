@@ -1434,7 +1434,7 @@ Set the logging level for the amon-relay.
 
 ||**Field**||**Type**||**Description**||
 ||action||String||"loglevel"||
-||loglevel||String||One of the [Bunyan supported log level strings](https://github.com/trentm/node-bunyan#levels), e.g. "debug", "trace".||
+||level||String||One of the [Bunyan supported log level strings](https://github.com/trentm/node-bunyan#levels), e.g. "debug", "trace".||
 
 ### Returns
 
@@ -1446,7 +1446,7 @@ None.
 
 ### Example
 
-    $ curl -i localhost:4307/state?action=loglevel\&loglevel=trace -X POST
+    $ curl -i localhost:4307/state?action=loglevel\&level=trace -X POST
     HTTP/1.1 202 Accepted
     Access-Control-Allow-Origin: *
     Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version
@@ -1495,7 +1495,7 @@ the VM with the UUID of the "agent" field).
 ||match||Required||-||Match data to match against each log line.||
 ||match.pattern||Required||-||The pattern with which to match.||
 ||match.type||Optional||regex||One of 'substring' or 'regex'. Defines the type of 'match.pattern'.||
-||match.flags||Optional||-||Pattern flags. 'i' to ignore case. 'm' for multiline match (i.e. '^' and '$' match the start and end of lines within a multiline string).||
+||match.flags||Optional||-||Pattern flags. 'i' to ignore case. 'm' for multiline match (i.e. '^' and '$' match the start and end of lines within a multiline string). Note that matching is not always on a single line, so if your regular expression pattern uses '^' or '$' you will want the 'm' flag.||
 ||match.matchWord||Optional||false||A boolean indicating if matching should be restricted to word boundaries.||
 ||match.invert||Optional||false||Set to true to invert the sense of matching (i.e. alarm on log lines that do NOT match).||
 ||period||Optional||60||Integer number of seconds. Time window in which `threshold` number of matches must be found to alarm.||
@@ -1581,7 +1581,7 @@ VM (i.e. the VM with the UUID of the "agent" field).
 ||bodyMatch||Optional||-||Match data to match against the response body. A given bodyMatch means that this probe will fire if the response body does **not** match the given pattern. See `bodyMatch.invert` to change that sense.||
 ||bodyMatch.pattern||Optional||-||The pattern with which to match.||
 ||bodyMatch.type||Optional||regex||One of 'substring' or 'regex'. Defines the type of 'match.pattern'.||
-||bodyMatch.flags||Optional||-||Pattern flags. 'i' to ignore case. 'm' for multiline match (i.e. '^' and '$' match the start and end of lines within a multiline string).||
+||bodyMatch.flags||Optional||-||Pattern flags. 'i' to ignore case. 'm' for multiline match (i.e. '^' and '$' match the start and end of lines within a multiline string). Note that matching is not always on a single line, so if your regular expression pattern uses '^' or '$' you will want the 'm' flag.||
 ||bodyMatch.matchWord||Optional||false||A boolean indicating if matching should be restricted to word boundaries.||
 ||bodyMatch.invert||Optional||false||Set to true to invert the sense of matching (i.e. alarm if the body does NOT match).||
 ||statusCodes||Optional||[200,201,202,204]||an array of status codes to be compared to the response, if statusCodes does not contain include the response status code form the request, then an alarm is fired||

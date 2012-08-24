@@ -15,23 +15,19 @@ var util = require('util'),
 
 var Probe = require('./probe');
 
+
+
+//---- globals
+
 var SECONDS = 1000;
 
-//---- internal support stuff
-
-function _trim(s) {
-  s = s.replace(/(^\s*)|(\s*$)/gi, '');
-  s = s.replace(/[ ]{2,}/gi, ' ');
-  s = s.replace(/\n /, '\n');
-  return s;
-}
 
 
 
 //---- probe class
 
 /**
- * Create a LogScan probe.
+ * Create a LogScanProbe.
  *
  * @param options {Object}
  *    - `uuid` {String} The probe uuid.
@@ -86,7 +82,7 @@ LogScanProbe.prototype._getPath = function (callback) {
       }
     );
   } else {
-    callback(new Error("cannot get LogScan probe path"));
+    callback(new Error("cannot get LogScanProbe path"));
   }
 }
 
@@ -128,6 +124,7 @@ LogScanProbe.validateConfig = function (config) {
 };
 
 
+
 /**
  * TODO: get callers to watch for `err` response.
  */
@@ -149,21 +146,20 @@ LogScanProbe.prototype.start = function (callback) {
 
     self._running = true;
     self.tail = spawn('/usr/bin/tail', ['-1cF', path]);
-    self.tail.stdout.on('data', function (data) {
+    self.tail.stdout.on('data', function (chunk) {
       if (!self._running) {
         return;
       }
 
-      // TODO: drop _trimming. Does this handle splitting per line?
-      //log.debug("XXX line is: '%s'", line)
-      var line = _trim('' + data);
-
-      if (self.matcher.test(line)) {
-        log.trace({line: line, threshold: self.threshold, count: self._count},
+      //log.debug('chunk: %s', JSON.stringify(chunk.toString()));
+      if (self.matcher.test(chunk)) {
+        var s = chunk.toString();
+        log.trace({chunk: s, threshold: self.threshold, count: self._count},
           'log-scan match hit');
         if (++self._count >= self.threshold) {
-          log.info({match: line}, 'log-scan event');
-          self.emitEvent(self._getMessage(), self._count, {match: line});
+          log.info({match: s, count: self._count, threshold: self.threshold},
+            'log-scan event');
+          self.emitEvent(self._getMessage(), self._count, {match: s});
         }
       }
     });
