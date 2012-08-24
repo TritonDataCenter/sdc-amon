@@ -132,57 +132,69 @@ LogScanProbe.prototype.start = function (callback) {
   var self = this;
   var log = this.log;
 
-  self._getPath(function (err, path) {
-    if (err) {
-      return callback(new Error(format("failed to start probe: %s", err)));
-    }
+  var GET_PATH_RETRY = 5 * 60 * 1000; // Every 5 minutes.
 
-    self.timer = setInterval(function () {
-      if (!self._running)
-        return;
-      log.trace('clear log-scan counter');
-      self._count = 0;
-    }, self.period * SECONDS);
-
-    self._running = true;
-    self.tail = spawn('/usr/bin/tail', ['-1cF', path]);
-    self.tail.stdout.on('data', function (chunk) {
-      if (!self._running) {
+  function getPathAndStart(cb) {
+    log.info('get path')
+    self._getPath(function (err, path) {
+      if (err) {
+        log.info(err, 'could not get path to scan, recheck in %dms',
+          GET_PATH_RETRY);
+        self.pathRetrier = setTimeout(getPathAndStart, GET_PATH_RETRY);
         return;
       }
+      log.info({path: path}, 'got path')
 
-      //log.debug('chunk: %s', JSON.stringify(chunk.toString()));
-      if (self.matcher.test(chunk)) {
-        var s = chunk.toString();
-        log.trace({chunk: s, threshold: self.threshold, count: self._count},
-          'log-scan match hit');
-        if (++self._count >= self.threshold) {
-          log.info({match: s, count: self._count, threshold: self.threshold},
-            'log-scan event');
-          self.emitEvent(self._getMessage(), self._count, {match: s});
+      self.timer = setInterval(function () {
+        if (!self._running)
+          return;
+        log.trace('clear log-scan counter');
+        self._count = 0;
+      }, self.period * SECONDS);
+
+      self._running = true;
+      self.tail = spawn('/usr/bin/tail', ['-1cF', path]);
+      self.tail.stdout.on('data', function (chunk) {
+        if (!self._running) {
+          return;
         }
-      }
-    });
 
-    self.tail.on('exit', function (code) {
-      if (!self._running)
-        return;
-      log.fatal('log-scan: tail exited (code=%d)', code);
-      clearInterval(self.timer);
-    });
+        //log.debug('chunk: %s', JSON.stringify(chunk.toString()));
+        if (self.matcher.test(chunk)) {
+          var s = chunk.toString();
+          log.trace({chunk: s, threshold: self.threshold, count: self._count},
+            'log-scan match hit');
+          if (++self._count >= self.threshold) {
+            log.info({match: s, count: self._count, threshold: self.threshold},
+              'log-scan event');
+            self.emitEvent(self._getMessage(), self._count, {match: s});
+          }
+        }
+      });
 
-    if (callback && (callback instanceof Function)) {
-      return callback();
-    }
-  });
+      self.tail.on('exit', function (code) {
+        if (!self._running)
+          return;
+        log.fatal('log-scan: tail exited (code=%d)', code);
+        clearInterval(self.timer);
+      });
+    });
+  }
+
+  process.nextTick(getPathAndStart);
+  if (callback && (callback instanceof Function)) {
+    return callback();
+  }
 };
 
 LogScanProbe.prototype.stop = function (callback) {
   this._running = false;
-  clearInterval(this.timer);
+  if (this.pathRetrier)
+    clearTimeout(this.pathRetrier);
+  if (this.timer)
+    clearInterval(this.timer);
   if (this.tail)
     this.tail.kill();
-
   if (callback && (callback instanceof Function))
     return callback();
 };
