@@ -7,7 +7,9 @@
 
 var events = require('events');
 var fs = require('fs');
-var spawn = require('child_process').spawn;
+var child_process = require('child_process'),
+  spawn = child_process.spawn,
+  execFile = child_process.execFile;
 var util = require('util'),
   format = util.format;
 
@@ -40,27 +42,74 @@ function LogScanProbe(options) {
   Probe.call(this, options);
   LogScanProbe.validateConfig(this.config);
 
+  // One of `path` or `smfServiceName` is defined.
   this.path = this.config.path;
+  this.smfServiceName = this.config.smfServiceName;
   this.matcher = this.matcherFromMatchConfig(this.config.match);
 
   this.threshold = this.config.threshold || 1;
   this.period = this.config.period || 60;
-
-  if (this.threshold > 1) {
-    this.message = format('Log "%s" matched %s >=%d times in %d seconds.',
-      this.path, this.matcher, this.threshold, this.period);
-  } else {
-    this.message = format('Log "%s" matched %s.', this.path, this.matcher);
-  }
 
   this._count = 0;
   this._running = false;
 }
 util.inherits(LogScanProbe, Probe);
 
+
 LogScanProbe.runLocally = true;
 
+
 LogScanProbe.prototype.type = 'log-scan';
+
+
+LogScanProbe.prototype._getPath = function (callback) {
+  var self = this;
+  if (this._pathCache) {
+    return callback(null, this._pathCache);
+  }
+  if (this.path) {
+    this._pathCache = this.path;
+    callback(null, this._pathCache);
+  } else if (this.smfServiceName) {
+    execFile('/usr/bin/svcs', ['-L', this.smfServiceName],
+      function (sErr, stdout, stderr) {
+        if (sErr) {
+          callback(sErr); //XXX wrap error
+        } else if (stderr) {
+          callback(new Error(format(
+            'error getting SMF service path: `svcs -L %s`: %s',
+            self.smfServiceName, stderr)));
+        } else {
+          self._pathCache = stdout.trim();
+          callback(null, self._pathCache);
+        }
+      }
+    );
+  } else {
+    callback(new Error("cannot get LogScan probe path"));
+  }
+}
+
+
+/**
+ * Get an appropriate message for a log-scan event.
+ *
+ * Note: We cheat and use `this._pathCache`. The assumption is that
+ * this method is only ever called after `_getPath()` success.
+ */
+LogScanProbe.prototype._getMessage = function () {
+  if (! this._messageCache) {
+    var msg;
+    if (this.threshold > 1) {
+      msg = format('Log "%s" matched %s >=%d times in %d seconds.',
+        this._pathCache, this.matcher, this.threshold, this.period);
+    } else {
+      msg = format('Log "%s" matched %s.', this._pathCache, this.matcher);
+    }
+    this._messageCache = msg;
+  }
+  return this._messageCache;
+}
 
 
 LogScanProbe.validateConfig = function (config) {
@@ -72,59 +121,71 @@ LogScanProbe.validateConfig = function (config) {
 
   if (!config)
     throw new TypeError('"config" is required');
-  if (!config.path)
-    throw new TypeError('"config.path" is required');
+  if (!config.path && !config.smfServiceName)
+    throw new TypeError(
+      'either "config.path" or "config.smfServiceName" is required');
   Probe.validateMatchConfig(config.match, 'config.match');
 };
 
 
+/**
+ * TODO: get callers to watch for `err` response.
+ */
 LogScanProbe.prototype.start = function (callback) {
   var self = this;
   var log = this.log;
 
-  this.timer = setInterval(function () {
-    if (!self._running)
-      return;
-    log.trace('clear log-scan counter');
-    self._count = 0;
-  }, this.period * SECONDS);
-
-  this._running = true;
-  this.tail = spawn('/usr/bin/tail', ['-1cF', this.path]);
-  this.tail.stdout.on('data', function (data) {
-    if (!self._running) {
-      return;
+  self._getPath(function (err, path) {
+    if (err) {
+      return callback(new Error(format("failed to start probe: %s", err)));
     }
 
-    // TODO: drop _trimming. Does this handle splitting per line?
-    //log.debug("XXX line is: '%s'", line)
-    var line = _trim('' + data);
+    self.timer = setInterval(function () {
+      if (!self._running)
+        return;
+      log.trace('clear log-scan counter');
+      self._count = 0;
+    }, self.period * SECONDS);
 
-    if (self.matcher.test(line)) {
-      log.trace({line: line, threshold: self.threshold, count: self._count},
-        'log-scan match hit');
-      if (++self._count >= self.threshold) {
-        log.info({match: line}, 'log-scan event');
-        self.emitEvent(self.message, self._count, {match: line});
+    self._running = true;
+    self.tail = spawn('/usr/bin/tail', ['-1cF', path]);
+    self.tail.stdout.on('data', function (data) {
+      if (!self._running) {
+        return;
       }
+
+      // TODO: drop _trimming. Does this handle splitting per line?
+      //log.debug("XXX line is: '%s'", line)
+      var line = _trim('' + data);
+
+      if (self.matcher.test(line)) {
+        log.trace({line: line, threshold: self.threshold, count: self._count},
+          'log-scan match hit');
+        if (++self._count >= self.threshold) {
+          log.info({match: line}, 'log-scan event');
+          self.emitEvent(self._getMessage(), self._count, {match: line});
+        }
+      }
+    });
+
+    self.tail.on('exit', function (code) {
+      if (!self._running)
+        return;
+      log.fatal('log-scan: tail exited (code=%d)', code);
+      clearInterval(self.timer);
+    });
+
+    if (callback && (callback instanceof Function)) {
+      return callback();
     }
   });
-
-  this.tail.on('exit', function (code) {
-    if (!self._running)
-      return;
-    log.fatal('log-scan: tail exited (code=%d)', code);
-    clearInterval(self.timer);
-  });
-
-  if (callback && (callback instanceof Function))
-    return callback();
 };
 
 LogScanProbe.prototype.stop = function (callback) {
   this._running = false;
   clearInterval(this.timer);
-  this.tail.kill();
+  if (this.tail)
+    this.tail.kill();
 
   if (callback && (callback instanceof Function))
     return callback();

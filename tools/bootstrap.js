@@ -622,6 +622,25 @@ function loadAmonObjects(next) {
           period: 120
         }
       }
+    },
+    {
+      type: 'probe',
+      user: otto.login,
+      body: {
+        contacts: ['email'],
+        name: 'zonetracker',
+        agent: headnodeUuid,
+        type: 'log-scan',
+        config: {
+          smfServiceName: 'zonetracker-v2',
+          match: {
+            pattern: 'Stopping',
+            type: 'substring'
+          },
+          threshold: 1,
+          period: 120
+        }
+      }
     }
   ];
 

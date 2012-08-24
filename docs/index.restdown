@@ -1490,7 +1490,8 @@ the VM with the UUID of the "agent" field).
 ### Config
 
 ||**Parameter**||**Required?**||**Default**||**Description**||
-||path||Required||-||Path to the log file to watch.||
+||path||Required(\*)||-||Path to the log file to watch. One of "path" or "smfServiceName" must be provided.||
+||smfServiceName||Required(\*)||-||The name of an SMF service to watch. SMF is a SmartOS/illumos service management framework. `svcs -L $name` is used to get the service's log path to watch. One of "path" or "smfServiceName" must be provided.||
 ||match||Required||-||Match data to match against each log line.||
 ||match.pattern||Required||-||The pattern with which to match.||
 ||match.type||Optional||regex||One of 'substring' or 'regex'. Defines the type of 'match.pattern'.||
@@ -1500,13 +1501,28 @@ the VM with the UUID of the "agent" field).
 ||period||Optional||60||Integer number of seconds. Time window in which `threshold` number of matches must be found to alarm.||
 ||threshold||Optional||1||Integer. Number of times a match must be found within `period` to alarm.||
 
-### Example
+### Examples
 
-    $ sdc-amon /pub/bob/monitors/mymonitor/probes/myservice -X PUT --data '{
+    $ sdc-amon /pub/bob/probes -X POST -d '{
         "type": "log-scan",
+        "name": "my service log error",
         "agent": "444d70d5-0187-e5d4-468f-7b49a6b014ff",
         "config": {
             "path": "/var/log/myservice.log",
+            "match": {
+              "pattern": "ERROR"
+            },
+            "threshold": 1,
+            "period": 60
+        }
+    }'
+
+    $ sdc-amon /pub/bob/probes -X PUT -d '{
+        "type": "log-scan",
+        "name": "foo svc error",
+        "agent": "444d70d5-0187-e5d4-468f-7b49a6b014ff",
+        "config": {
+            "smfServiceName": "foo",
             "match": {
               "pattern": "ERROR"
             },

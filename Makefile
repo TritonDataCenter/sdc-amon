@@ -87,7 +87,7 @@ agent: common plugins | $(NPM_EXEC)
 	(cd agent && $(NPM) link amon-common amon-plugins && $(NPM) install && $(NPM) update)
 
 .PHONY: relay
-relay: common testbuild | $(NPM_EXEC)
+relay: common plugins testbuild | $(NPM_EXEC)
 	(cd relay && $(NPM) link amon-common amon-plugins && $(NPM) install && $(NPM) update)
 
 .PHONY: master
