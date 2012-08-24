@@ -532,7 +532,8 @@ function updateAgentProbes(next) {
             if (isVmHostChange) {
               zoneApps['global'].cacheInvalidateDownstream();
             }
-            applog.info('Successfully updated agent probes from master '
+            applog.info({isVmHostChange: isVmHostChange},
+              'Successfully updated agent probes from master '
               + '(md5: %s -> %s).', currMD5 || '(none)', masterMD5);
           }
           return nextOne();

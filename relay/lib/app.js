@@ -388,7 +388,7 @@ App.prototype.close = function (callback) {
  * This is called in response to changes in agent probes from upstream.
  */
 App.prototype.cacheInvalidateDownstream = function () {
-  this.log.trace('cacheInvalidateDownstream');
+  this.log.debug('cacheInvalidateDownstream');
   this.downstreamAgentProbesMD5 = null;
   this.downstreamAgentProbes = null;
 };
@@ -611,8 +611,8 @@ App.prototype.writeAgentProbes = function (agentProbes, md5, callback) {
       self.upstreamAgentProbesMD5 = md5;  // upstream cache
       self.cacheInvalidateDownstream();   // downstream cache
       var isVmHostChange = (oldVmHostMD5 !== newVmHostMD5);
-      log.trace({isVmHostChange: isVmHostChange, oldVmHostMD5: oldVmHostMD5,
-        newVmHostMD5: newVmHostMD5}, 'isVmHostChange in writeAgentProbes');
+      log.debug({isVmHostChange: isVmHostChange, oldVmHostMD5: oldVmHostMD5,
+        newVmHostMD5: newVmHostMD5}, 'isVmHostChange in writeAgentProbes?');
       if (backedUpPaths.length) {
         cleanBackup(backedUpPaths, function (err4) {
           if (err4) {
