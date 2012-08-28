@@ -568,7 +568,8 @@ function startUpdateAgentProbesInterval(next) {
 function startAdminApp(callback) {
   var adminApp = new AdminApp({
     log: log,
-    updateAgentProbes: updateAgentProbes
+    updateAgentProbes: updateAgentProbes,
+    zoneApps: zoneApps
   });
   adminApp.listen(function (err) {
     if (err)

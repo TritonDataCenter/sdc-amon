@@ -30,21 +30,32 @@ var ADMIN_PORT = 4307;
  * @param options {Object}
  *    - log {Bunyan Logger instance}
  *    - updateAgentProbes {Function} Handler to update the agent probes
+ *    - zoneApps {Object} The main zoneApps object for the relay
  */
 function AdminApp(options) {
   if (!options) throw TypeError('"options" is required');
   if (!options.log) throw TypeError('"options.log" is required');
   if (!options.updateAgentProbes)
     throw TypeError('"options.updateAgentProbes" is required');
+  if (!options.zoneApps)
+    throw TypeError('"options.zoneApps" is required');
+
   var log = this.log = options.log.child({component: 'adminapp'}, true);
   //this.updateAgentProbes = options.updateAgentProbes;
+  this.zoneApps = options.zoneApps;
+  var self = this;
 
   var server = this.server = restify.createServer({
     name: 'Amon Relay Admin',
     log: log
   });
   server.use(restify.queryParser());
-  server.on('after', restify.auditLogger({log: log, body: true}));
+  server.use(function setupReq(req, res, next) {
+    req._app = self;
+    next();
+  });
+  // `body` is false here because don't need to log full RelayAdminGetState.
+  server.on('after', restify.auditLogger({log: log, body: false}));
 
   // Routes.
   this.server.get({path: '/ping', name: 'RelayAdminPing'},
@@ -52,6 +63,8 @@ function AdminApp(options) {
       res.send({'ping': 'pong'});
       next();
     });
+  this.server.get({path: '/state', name: 'RelayAdminGetState'},
+    apiRelayAdminGetState);
   this.server.post({path: '/state', name: 'RelayAdminAction'},
     function apiRelayAdminSyncProbes(req, res, next) {
       if (req.query.action !== 'syncprobes')
@@ -98,6 +111,29 @@ AdminApp.prototype.listen = function (callback) {
   this.server.listen(ADMIN_PORT, address, callback);
 };
 
+
+//---- some of the endpoints
+
+function apiRelayAdminGetState(req, res, next) {
+  var zoneAppsData = {};
+  Object.keys(req._app.zoneApps).forEach(function (name) {
+    var za = req._app.zoneApps[name];
+    zoneAppsData[name] = {
+      isZoneRunning: za.isZoneRunning,
+      owner: za.owner,
+      agentAlias: za.agentAlias,
+      upstreamAgentProbesMD5: za.upstreamAgentProbesMD5,
+      downstreamAgentProbesMD5: za.downstreamAgentProbesMD5,
+      downstreamAgentProbes: za.downstreamAgentProbes
+    }
+  });
+
+  snapshot = {
+    zoneApps: zoneAppsData
+  };
+  res.send(snapshot);
+  next();
+}
 
 
 //---- exports
