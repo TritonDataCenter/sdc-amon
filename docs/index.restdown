@@ -1470,15 +1470,15 @@ specific to the probe type. Those are specified here.
 Some aggregated data on the probe types:
 
 ||**Type**||**Requires Agent**||**Sends Clear Events**||
-||log-scan||yes||no||
 ||machine-up||no||yes||
+||log-scan||yes||no||
+||bunyan-log-scan||yes||no||
 ||http||yes||no||
 ||icmp (i.e. ping)||yes||no||
 
 "Requires Agent" means that a probe of this type needs an amon-agent running
 in the customer vm/zone to run the probe. "machine-up" is the exception here,
 it is run "by the system".
-
 
 
 ## Probe: log-scan
@@ -1492,7 +1492,7 @@ the VM with the UUID of the "agent" field).
 ||**Parameter**||**Required?**||**Default**||**Description**||
 ||path||Required(\*)||-||Path to the log file to watch. One of "path" or "smfServiceName" must be provided.||
 ||smfServiceName||Required(\*)||-||The name of an SMF service to watch. SMF is a SmartOS/illumos service management framework. `svcs -L $name` is used to get the service's log path to watch. One of "path" or "smfServiceName" must be provided.||
-||match||Required||-||Match data to match against each log line.||
+||match||Required||-||Match data to match against log content.||
 ||match.pattern||Required||-||The pattern with which to match.||
 ||match.type||Optional||regex||One of 'substring' or 'regex'. Defines the type of 'match.pattern'.||
 ||match.flags||Optional||-||Pattern flags. 'i' to ignore case. 'm' for multiline match (i.e. '^' and '$' match the start and end of lines within a multiline string). Note that matching is not always on a single line, so if your regular expression pattern uses '^' or '$' you will want the 'm' flag.||
@@ -1531,6 +1531,61 @@ the VM with the UUID of the "agent" field).
         }
     }'
 
+
+
+## Probe: bunyan-log-scan
+
+Watch (a la `tail -f`) a log file in the
+[Bunyan](https://github.com/trentm/node-bunyan) format. This is an extension
+of the "log-scan" probe type to allows some conveniences for Bunyan-format
+logs. This probe type requires an amon-agent running inside the target VM
+(i.e. the VM with the UUID of the "agent" field).
+
+
+### Config
+
+The bolded parameters below are those that differ from the "log-scan"
+probe type.
+
+
+||**Parameter**||**Required?**||**Default**||**Description**||
+||path||Required(\*)||-||Path to the log file to watch. One of "path" or "smfServiceName" must be provided.||
+||smfServiceName||Required(\*)||-||The name of an SMF service to watch. SMF is a SmartOS/illumos service management framework. `svcs -L $name` is used to get the service's log path to watch. One of "path" or "smfServiceName" must be provided.||
+||**fields**||Required(\*)||-||A set of key/value pairs to compare against each JSON log record. Each field is compared for equality. The "level" field is special in that you can specify a Bunyan log level name (e.g. "error") instead of the Bunyan level *integers* (e.g. 50) used in the log records. Deeper objects can be specified with a "foo.bar.blah" lookup format, e.g. `"fields": {"foo.bar": true}`||
+||match||Required(\*)||-||Match data to match against log content. At least one of "fields" or "match" is required.||
+||match.pattern||Required||-||The pattern with which to match. If a "match" is given, then this is required.||
+||match.type||Optional||regex||One of 'substring' or 'regex'. Defines the type of 'match.pattern'.||
+||match.flags||Optional||-||Pattern flags. 'i' to ignore case. 'm' for multiline match (i.e. '^' and '$' match the start and end of lines within a multiline string). Note that matching is not always on a single line, so if your regular expression pattern uses '^' or '$' you will want the 'm' flag.||
+||match.matchWord||Optional||false||A boolean indicating if matching should be restricted to word boundaries.||
+||match.invert||Optional||false||Set to true to invert the sense of matching (i.e. alarm on log lines that do NOT match).||
+||**match.field**||Optional||-||Limit the match to the given log record field. E.g., use `field: "msg"` to limit to just the Bunyan log record *message*.||
+||period||Optional||60||Integer number of seconds. Time window in which `threshold` number of matches must be found to alarm.||
+||threshold||Optional||1||Integer. Number of times a match must be found within `period` to alarm.||
+
+### Examples
+
+    # Look for a log.error with component="memory".
+    $ sdc-amon /pub/bob/probes -X POST -d '{
+        "name": "my api memory error",
+        "type": "bunyan-log-scan",
+        "agent": "444d70d5-0187-e5d4-468f-7b49a6b014ff",
+        "config": {
+            "smfServiceName": "elvisapi",
+            "fields": {
+              "level": "error",    # special case, can use the bunyan level names
+              "component": "memory",
+              # ... any key/value equality
+            },
+            # Can still do a basic match (a la log-scan probe type).
+            # However, can limit the match to a field. E.g. here we
+            # alarm on a match of 'exceeded' in the 'msg' log record
+            # field.
+            "match": {
+              "pattern": "exceeded",
+              "field": "msg"
+            }
+        }
+    }'
 
 ## Probe: machine-up
 
@@ -1731,28 +1786,6 @@ An example probe event:
     }
 
 
-## Event Type: fake
-
-A "fake" event for testing from
-"POST /pub/:account/monitors/:monitor?action=fakefault".
-
-No extra fields.
-
-TODO: modernize this:
-
-    {
-      v: 1,
-      time: Date.now(),
-      type: "fake",
-      user: UUID,
-      monitor: NAME
-      clear: CLEAR,
-      data:{
-        message: "Test notification.",
-      },
-      uuid: uuid()
-    }
-
 
 
 # MVP
@@ -1810,13 +1843,16 @@ some Bunyan log-scan type or option.**
 
 Probes for watching relevant SDC log files for, say, "ERROR".
 
-    sdc-amon /pub/otto/monitors/sdclogs -X PUT -d '{
-        "contacts": ["email"]
+    sdc-amon /pub/otto/probegroups -X POST -d '{
+        "contacts": ["email"],
+        "name": "sdclogs"
     }'
 
     # GZ probes
-    sdc-amon /pub/otto/monitors/sdclogs/probes/headnode-ur -X PUT -d '{
+    sdc-amon /pub/otto/probes -X POST -d '{
         "type": "log-scan",
+        "name": "headnode-ur",
+        "group": "...",
         "agent": "564d70d5-0187-e5d4-468f-7b49a6b014ff",
         "config": {
             "path": "/var/svc/log/smartdc-agent-ur:default.log",

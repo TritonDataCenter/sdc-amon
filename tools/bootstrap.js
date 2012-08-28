@@ -612,12 +612,10 @@ function loadAmonObjects(next) {
         type: 'log-scan',
         config: {
           path: '/var/svc/log/smartdc-agent-smartlogin:default.log',
-          // Testing the temporary backward compat in log-scan.js.
-          //match: {
-          //  pattern: 'Stopping',
-          //  type: 'substring'
-          //},
-          regex: 'Stopping',
+          match: {
+            pattern: 'Stopping',
+            type: 'substring'
+          },
           threshold: 1,
           period: 120
         }
@@ -659,6 +657,27 @@ function loadAmonObjects(next) {
           },
           threshold: 1,
           period: 120
+        }
+      }
+    },
+    {
+      // Run with a bogus service name. This can't cause runtime issues.
+      type: 'probe',
+      user: otto.login,
+      body: {
+        contacts: ['email'],
+        name: 'elvis is in the building',
+        agent: headnodeUuid,
+        type: 'bunyan-log-scan',
+        config: {
+          path: '/var/tmp/elvis.log',
+          match: {
+            pattern: 'rock',
+            field: 'msg'
+          },
+          fields: {
+            level: 'info'
+          }
         }
       }
     }

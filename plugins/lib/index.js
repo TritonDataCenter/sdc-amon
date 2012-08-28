@@ -7,6 +7,7 @@
 
 module.exports = {
   'log-scan': require('./log-scan'),
+  'bunyan-log-scan': require('./bunyan-log-scan'),
   'machine-up': require('./machine-up'),
   'http': require('./http'),
   'icmp': require('./icmp')

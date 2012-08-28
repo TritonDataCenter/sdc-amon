@@ -275,8 +275,11 @@ Matcher.prototype.test = function (s) {
  * Return an array of all matches in `s`.
  *
  * @param s {String} String in which to look for matches.
+ * @returns {Array} An array of matches, or null if no matches.
  */
 Matcher.prototype.matches = function (s) {
+  assert.string(s, 's');
+
   var CONTEXT = 20;  // Num chars before and after to include in context.
 
   // Make a new regex with 'g' to allow finding successive matches.
@@ -296,7 +299,7 @@ Matcher.prototype.matches = function (s) {
       context: s.slice(cstart, cend)
     });
   }
-  return matches;
+  return (matches.length ? matches : null);
 };
 
 

@@ -9,7 +9,7 @@
     "amon-common": "1.0.0",
     "amon-plugins": "1.0.0",
 
-    "bunyan": "0.13.1",
+    "bunyan": "0.13.3",
     "restify": "1.4.4",
     "async": "0.1.22",
     "nopt": "1.0.10",

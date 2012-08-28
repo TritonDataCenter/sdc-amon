@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Joyent, Inc.  All rights reserved.
+ * Copyright 2012 Joyent, Inc.  All rights reserved.
  *
  * An Amon probe plugin for scanning log files: i.e. reporting events when
  * a pattern appears in a log file.
@@ -36,12 +36,13 @@ var SECONDS = 1000;
  */
 function LogScanProbe(options) {
   Probe.call(this, options);
-  LogScanProbe.validateConfig(this.config);
+  this.validateConfig(this.config);
 
   // One of `path` or `smfServiceName` is defined.
   this.path = this.config.path;
   this.smfServiceName = this.config.smfServiceName;
-  this.matcher = this.matcherFromMatchConfig(this.config.match);
+  if (this.config.match)
+    this.matcher = this.matcherFromMatchConfig(this.config.match);
 
   this.threshold = this.config.threshold || 1;
   this.period = this.config.period || 60;
@@ -56,6 +57,22 @@ LogScanProbe.runLocally = true;
 
 
 LogScanProbe.prototype.type = 'log-scan';
+
+
+
+LogScanProbe.validateConfig = function (config) {
+  if (!config)
+    throw new TypeError('"config" is required');
+  if (!config.path && !config.smfServiceName)
+    throw new TypeError(
+      'either "config.path" or "config.smfServiceName" is required');
+  Probe.validateMatchConfig(config.match, 'config.match');
+};
+
+
+LogScanProbe.prototype.validateConfig = function (config) {
+  return LogScanProbe.validateConfig(config);
+}
 
 
 LogScanProbe.prototype._getPath = function (callback) {
@@ -108,21 +125,16 @@ LogScanProbe.prototype._getMessage = function () {
 }
 
 
-LogScanProbe.validateConfig = function (config) {
-  // TODO(trent): Remove this after a couple days. MON-164.
-  // This is backward compat for transition from regex -> matcher on config.
-  if (config && config.regex && !config.match) {
-    config.match = {pattern: config.regex};
-  }
-
-  if (!config)
-    throw new TypeError('"config" is required');
-  if (!config.path && !config.smfServiceName)
-    throw new TypeError(
-      'either "config.path" or "config.smfServiceName" is required');
-  Probe.validateMatchConfig(config.match, 'config.match');
-};
-
+/**
+ * Find matches in this chunk of log data.
+ *
+ * @param chunk {Buffer} A buffer of log data.
+ * @returns {Array} An array of matches, or null if no matches.
+ *
+ */
+LogScanProbe.prototype._matchChunk = function (chunk) {
+  return this.matcher.matches(chunk.toString());
+}
 
 
 /**
@@ -160,14 +172,17 @@ LogScanProbe.prototype.start = function (callback) {
         }
 
         //log.debug('chunk: %s', JSON.stringify(chunk.toString()));
-        if (self.matcher.test(chunk)) {
-          var s = chunk.toString();
-          log.trace({chunk: s, threshold: self.threshold, count: self._count},
-            'log-scan match hit');
+        var matches = self._matchChunk(chunk)
+        if (matches) {
+          if (log.trace()) {
+            log.trace({chunk: chunk.toString(), threshold: self.threshold,
+              count: self._count, matches: matches}, 'log-scan match hit');
+          }
+          // TODO: collect matches from previous counts under threshold
           if (++self._count >= self.threshold) {
-            log.info({match: s, count: self._count, threshold: self.threshold},
+            log.info({matches: matches, count: self._count, threshold: self.threshold},
               'log-scan event');
-            self.emitEvent(self._getMessage(), self._count, {match: s});
+            self.emitEvent(self._getMessage(), self._count, {matches: matches});
           }
         }
       });
