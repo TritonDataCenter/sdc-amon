@@ -184,8 +184,9 @@ alarms.
   (via the API or in the Operator or User Portals) or via an Amon *clear*
   event -- the failing state is no longer failing, e.g. a halted machine has
   come back up. An alarm object lives until it is closed.
-- A **fault** is a single probe failure. An open alarm has one or more
-  faults: one for each probe that reported a fault event.
+- A **fault** is a single probe failure (i.e. it finds the condition for
+  which it is configured to check). An open alarm has one or more faults: one
+  for each probe that reported a fault event.
 - A **notification** is a message sent for an alarm to one or more contacts
   associated with that probe (or probe group). An alarm may result in many
   notifications through its lifetime.
@@ -618,7 +619,7 @@ alarm ("Yah, I know it is a problem, but I can't deal with it right now.").
 ||timeLastEvent||Integer||Timestamp (milliseconds since the epoch) at which the last event for this alarm occurred.||
 ||v||Integer||The version of this Alarm object schema. Currently this is only exposed via the internal APIs.||
 
-An example alarm:
+An example alarm (XXX: update this example):
 
     {
       "user": "deadbeef-5555-5555-5555-555555555555",

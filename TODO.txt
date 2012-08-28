@@ -157,7 +157,6 @@
 - "sdc-amon /pub/trent.mick" messes up on '.' in username -> restify upgrade
   Check for this being fixed with restify 1.x
 - amon-relay and amon-agent: move node to build/node (a la portal and others)
-- [Trent] master/config.json.in and use that in usb-headnode/zones/amon/setup
 - from master/lib/probes.js:
     //XXX validate the type is an existing probe type
     //XXX validate data for that probe type

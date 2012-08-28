@@ -34,9 +34,9 @@
  * - Amon uses redis db 1: `SELECT 1`.
  * - 'alarms:$userUuid' is a set of alarm ids for that user.
  * - 'alarm:$userUuid:$alarmId' is a hash with the alarm data.
- * - 'faults:$userUuid:$alarmId' is a set of strings representing each fault
- *   for that alarm. `faultReprFromEvent` and `faultObjFromRepr` handle
- *   encoding/decoding those strings.
+ * - 'faults:$userUuid:$alarmId' is a hash mapping fault-id to the fault
+ *   data (JSON-ified object) for the faults in this alarm.
+ * - 'maintFaults:$userUuid:$alarmId' Ditto for maintenance faults.
  * - 'alarmIds' is a hash with a (lazy) alarm id counter for each user.
  *   `HINCRBY alarmIds $userUuid 1` to get the next alarm id for that user.
  *
@@ -47,12 +47,6 @@
  * **unique for that user**, i.e. use the (user, id) 2-tuple for uniqueness
  * within a data center. To be unique to the cloud you need
  * (dc-name, user, id).
- *
- * FWIW, example email notification subjects using the Alarm id might be
- * something like this:
- *
- *    Subject: [Alarm: probe=smartlogin, server=headnode, type=log-scan] otto#22 in bh1-kvm7
- *
  */
 
 
@@ -102,30 +96,43 @@ function boolFromRedisString(value, default_, errName) {
 
 
 /**
- * Return a fault string representation for the given event.
+ * Return a fault object for the given event.
  */
-function faultReprFromEvent(event) {
+function faultFromEvent(event) {
   if (event.type === 'probe') {
-    return format('probe:%s', event.probeUuid);
-  } else if (event.type === 'fake') {
-    return 'fake';
+    return {
+      type: 'probe',
+      probe: event.probeUuid,
+      // Whitelist the event fields to pass through.
+      event: {
+        v: event.v,
+        type: event.type,
+        user: event.user,
+        probeUuid: event.probeUuid,
+        clear: event.clear,
+        data: event.data,
+        machine: event.machine,
+        uuid: event.uuid,
+        time: event.time,
+        agent: event.agent,
+        agentAlias: event.agentAlias
+        // Explicitly excluding: event.relay
+      }
+    }
   } else {
     throw TypeError(format(
       'cannot create fault string: unknown event type: "%s"', event.type));
   }
 }
 
-function faultObjFromRepr(repr) {
-  var fields = repr.split(':');
-  if (fields[0] === 'fake') {
-    return {type: 'fake'};
-  } else if (fields[0] === 'probe') {
-    return {
-      type: 'probe',
-      probe: fields[1]
-    };
+/**
+ * Return an id for the given fault.
+ */
+function idFromFault(fault) {
+  if (fault.type === 'probe') {
+    return 'probe:' + fault.probe;
   } else {
-    throw TypeError(format('cannot create fault obj from "%s"', repr));
+    throw TypeError(format('unknown type of fault: %j', fault));
   }
 }
 
@@ -216,6 +223,7 @@ function Alarm(data, log) {
     throw new TypeError('"data.user" (UUID) is required');
   if (!log) throw new TypeError('"log" (Bunyan Logger) is required');
 
+  var self = this;
   this.v = ALARM_MODEL_VERSION;
   this.user = data.user;
   this.id = Number(data.id);
@@ -232,23 +240,32 @@ function Alarm(data, log) {
   this.numEvents = Number(data.numEvents) || 0;
 
   this._faultsKey = ['faults', this.user, this.id].join(':');
-  this._faultSet = {};
+  var h = this._faultsHash = {};
   if (data.faults) {
-    for (var i = 0; i < data.faults.length; i++) {
-      this._faultSet[data.faults[i]] = true;
-    }
+    Object.keys(data.faults).forEach(function (fid) {
+      try {
+        h[fid] = JSON.parse(data.faults[fid])
+      } catch (e) {
+        self.log.warn({faultStr: data.faults[fid], faultId: fid},
+          'error parsing fault data from redis (ignoring it)')
+      }
+    });
   }
   this._updateFaults();
 
-  this._maintenanceFaultsKey = [
-    'maintenanceFaults', this.user, this.id].join(':');
-  this._maintenanceFaultSet = {};
-  if (data.maintenanceFaults) {
-    for (var i = 0; i < data.maintenanceFaults.length; i++) {
-      this._maintenanceFaultSet[data.maintenanceFaults[i]] = true;
-    }
+  this._maintFaultsKey = ['maintFaults', this.user, this.id].join(':');
+  h = this._maintFaultsHash = {};
+  if (data.maintFaults) {
+    Object.keys(data.maintFaults).forEach(function (fid) {
+      try {
+        h[fid] = JSON.parse(data.maintFaults[fid])
+      } catch (e) {
+        self.log.warn({faultStr: data.maintFaults[fid], faultId: fid},
+          'error parsing maintenance fault data from redis (ignoring it)')
+      }
+    });
   }
-  this._updateMaintenanceFaults();
+  this._updateMaintFaults();
 }
 
 
@@ -272,12 +289,12 @@ Alarm.get = function get(app, userUuid, id, callback) {
   var log = app.log;
   var alarmKey = ['alarm', userUuid, id].join(':');
   var faultsKey = ['faults', userUuid, id].join(':');
-  var maintenanceFaultsKey = ['maintenanceFaults', userUuid, id].join(':');
+  var maintFaultsKey = ['maintFaults', userUuid, id].join(':');
 
   app.getRedisClient().multi()
     .hgetall(alarmKey)
-    .smembers(faultsKey)
-    .smembers(maintenanceFaultsKey)
+    .hgetall(faultsKey)
+    .hgetall(maintFaultsKey)
     .exec(function (err, replies) {
       if (err) {
         log.error(err, 'error retrieving "%s" data from redis', alarmKey);
@@ -285,7 +302,7 @@ Alarm.get = function get(app, userUuid, id, callback) {
       }
       var alarmObj = replies[0];
       alarmObj.faults = replies[1];
-      alarmObj.maintenanceFaults = replies[2];
+      alarmObj.maintFaults = replies[2];
       var alarm = null;
       try {
         alarm = new Alarm(alarmObj, log);
@@ -382,7 +399,7 @@ Alarm.prototype.serializePublic = function serializePublic() {
     timeClosed: this.timeClosed,
     timeLastEvent: this.timeLastEvent,
     faults: this.faults,
-    maintenanceFaults: this.maintenanceFaults,
+    maintFaults: this.maintFaults,
     numEvents: this.numEvents,
   };
 };
@@ -401,9 +418,9 @@ Alarm.prototype.serializeDb = function serializeDb() {
 /**
  * Add a fault to this alarm (i.e. for a new incoming event).
  */
-Alarm.prototype.addFault = function addFault(fault) {
-  if (!this._faultSet.hasOwnProperty(fault)) {
-    this._faultSet[fault] = true;
+Alarm.prototype.addFault = function addFault(id, fault) {
+  if (this._faultsHash[id] === undefined) {
+    this._faultsHash[id] = fault;
     this._updateFaults();
   }
 };
@@ -411,49 +428,54 @@ Alarm.prototype.addFault = function addFault(fault) {
 /**
  * Remove a fault from this alarm (i.e. for a new incoming *clear* event).
  */
-Alarm.prototype.removeFault = function removeFault(fault) {
-  if (this._faultSet.hasOwnProperty(fault)) {
-    delete this._faultSet[fault];
+Alarm.prototype.removeFault = function removeFault(id) {
+  if (this._faultsHash[id] !== undefined) {
+    delete this._faultsHash[id];
     this._updateFaults();
   }
 };
 
+/**
+ * Update `this.faults` to a form we want to show for API responses.
+ */
 Alarm.prototype._updateFaults = function _updateFaults() {
-  // Faults stored in redis (and in `_faultSet`) are encoded as a
-  // string by `faultReprFromEvent`.
-  // Let's give a nicer representation for the API.
   this.faults = [];
-  var reprs = Object.keys(this._faultSet);
-  for (var i = 0; i < reprs.length; i++) {
-    this.faults.push(faultObjFromRepr(reprs[i]));
+  var ids = Object.keys(this._faultsHash);
+  ids.sort();  // Sort for stable API response Content-MD5.
+  for (var i = 0; i < ids.length; i++) {
+    this.faults.push(this._faultsHash[ids[i]]);
   }
 };
 
 /**
  * Add a maintenance fault to this alarm (i.e. for a new incoming event).
  */
-Alarm.prototype.addMaintenanceFault = function (fault) {
-  if (!this._maintenanceFaultSet.hasOwnProperty(fault)) {
-    this._maintenanceFaultSet[fault] = true;
-    this._updateMaintenanceFaults();
+Alarm.prototype.addMaintFault = function addMaintFault(id, fault) {
+  if (this._maintFaultsHash[id] === undefined) {
+    this._maintFaultsHash[id] = fault;
+    this._updateMaintFaults();
   }
 };
 
 /**
  * Remove a maint fault from this alarm (i.e. for a new incoming *clear* event).
  */
-Alarm.prototype.removeMaintenanceFault = function (fault) {
-  if (this._maintenanceFaultSet.hasOwnProperty(fault)) {
-    delete this._maintenanceFaultSet[fault];
-    this._updateMaintenanceFaults();
+Alarm.prototype.removeMaintFault = function removeMaintFault(id) {
+  if (this._maintFaultsHash[id] !== undefined) {
+    delete this._maintFaultsHash[id];
+    this._updateMaintFaults();
   }
 };
 
-Alarm.prototype._updateMaintenanceFaults = function () {
-  this.maintenanceFaults = [];
-  var reprs = Object.keys(this._maintenanceFaultSet);
-  for (var i = 0; i < reprs.length; i++) {
-    this.maintenanceFaults.push(faultObjFromRepr(reprs[i]));
+/**
+ * Update `this.maintFaults` to a form we want to show for API responses.
+ */
+Alarm.prototype._updateMaintFaults = function _updateMaintFaults() {
+  this.maintFaults = [];
+  var ids = Object.keys(this._maintFaultsHash);
+  ids.sort();  // Sort for stable API response Content-MD5.
+  for (var i = 0; i < ids.length; i++) {
+    this.maintFaults.push(this._maintFaultsHash[ids[i]]);
   }
 };
 
@@ -510,37 +532,38 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
       numMaintFaultsAfter: 0,
       numEvents: 0
     };
-    multi.scard(self._faultsKey);
+    multi.hlen(self._faultsKey); // numFaultsBefore
     idx.numFaultsAfter++; idx.numMaintFaultsAfter++; idx.numEvents++;
 
     // Update data (on `this` and in redis).
-    multi.hincrby(self._key, 'numEvents', 1);
+    multi.hincrby(self._key, 'numEvents', 1); // numEvents
     idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
     self.timeLastEvent = event.time;
     multi.hset(self._key, 'timeLastEvent', self.timeLastEvent);
     idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
 
     // Update faults.
-    var fault = faultReprFromEvent(event);
+    var fault = faultFromEvent(event);
+    var faultId = idFromFault(fault);
     if (event.clear) {
-      self.removeFault(fault);
-      multi.srem(self._faultsKey, fault);
+      self.removeFault(faultId);
+      multi.hdel(self._faultsKey, faultId);
       idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
-      self.removeMaintenanceFault(fault);
-      multi.srem(self._maintenanceFaultsKey, fault);
+      self.removeMaintFault(faultId);
+      multi.hdel(self._maintFaultsKey, faultId);
       idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
     } else if (maint) {
-      self.addMaintenanceFault(fault);
-      multi.sadd(self._maintenanceFaultsKey, fault);
+      self.addMaintFault(faultId, fault);
+      multi.hset(self._maintFaultsKey, faultId, JSON.stringify(fault));
       idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
     } else {
-      self.addFault(fault);
-      multi.sadd(self._faultsKey, fault);
+      self.addFault(faultId, fault);
+      multi.hset(self._faultsKey, faultId, JSON.stringify(fault));
       idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
     }
-    multi.scard(self._faultsKey);
+    multi.hlen(self._faultsKey); // numFaultsAfter
     idx.numMaintFaultsAfter++;
-    multi.scard(self._maintenanceFaultsKey);
+    multi.hlen(self._maintFaultsKey); // numMaintFaultsAfter
 
     multi.exec(function (saveErr, replies) {
       var stats = null;
@@ -1054,6 +1077,7 @@ function apiDeleteAlarm(req, res, next) {
   multi.srem(alarmsKey, alarm.id);
   multi.del(alarm._key);
   multi.del(alarm._faultsKey);
+  multi.del(alarm._maintFaultsKey);
   multi.exec(function (err, replies) {
     if (err) {
       return next(err);  //XXX xlate redis err
