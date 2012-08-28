@@ -456,9 +456,9 @@ test('maint 2: got alarm on zone stop', function (t) {
         t.equal(alarm.closed, false);
         t.equal(alarm.user, ulrich.uuid);
         t.equal(alarm.faults.length, 0);
-        t.equal(alarm.maintenanceFaults.length, 1, 'got a *maintenance* fault');
-        if (alarm.maintenanceFaults.length) {
-          t.equal(alarm.maintenanceFaults[0].probe, maintprobe.uuid,
+        t.equal(alarm.maintFaults.length, 1, 'got a *maint* fault');
+        if (alarm.maintFaults.length) {
+          t.equal(alarm.maintFaults[0].probe, maintprobe.uuid,
             'maint fault is for maintprobe uuid');
         }
       }

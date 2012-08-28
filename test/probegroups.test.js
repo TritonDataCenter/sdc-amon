@@ -439,10 +439,10 @@ test('got an alarm for valhalla while in maint', function (t) {
           'alarm should NOT have a probe attr b/c associated with a *group*');
         t.equal(ALARM.probeGroup, VALHALLA.uuid, 'alarm is for valhalla group');
         t.equal(ALARM.faults.length, 0, 'no faults');
-        t.equal(ALARM.maintenanceFaults.length, 1, 'one maintenance fault');
-        if (ALARM.maintenanceFaults.length) {
-          t.equal(ALARM.maintenanceFaults[0].type, 'probe', 'it is a probe fault');
-          t.equal(ALARM.maintenanceFaults[0].probe, VALKYRIE1.uuid, 'probe is valkyrie1');
+        t.equal(ALARM.maintFaults.length, 1, 'one maintenance fault');
+        if (ALARM.maintFaults.length) {
+          t.equal(ALARM.maintFaults[0].type, 'probe', 'it is a probe fault');
+          t.equal(ALARM.maintFaults[0].probe, VALKYRIE1.uuid, 'probe is valkyrie1');
         }
         t.equal(ALARM.closed, false, 'alarm.closed');
       }
