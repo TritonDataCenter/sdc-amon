@@ -661,7 +661,6 @@ function loadAmonObjects(next) {
       }
     },
     {
-      // Run with a bogus service name. This can't cause runtime issues.
       type: 'probe',
       user: otto.login,
       body: {
@@ -678,6 +677,20 @@ function loadAmonObjects(next) {
           fields: {
             level: 'info'
           }
+        }
+      }
+    },
+    {
+      type: 'probe',
+      user: otto.login,
+      body: {
+        contacts: ['email'],
+        name: '/root out of space',
+        agent: headnodeUuid,
+        type: 'cmd',
+        config: {
+          cmd: 'test ! $(df -k /root | tail -1 | awk \'{print $5}\' | cut -d% -f1) -gt 90',
+          interval: 60
         }
       }
     }

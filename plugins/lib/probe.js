@@ -263,6 +263,7 @@ function Matcher(mconfig) {
 
 
 Matcher.prototype.test = function (s) {
+  assert.string(s, 's');
   if (this.invert) {
     return !this._regexp.test(s)
   } else {

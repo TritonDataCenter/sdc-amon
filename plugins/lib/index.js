@@ -10,5 +10,6 @@ module.exports = {
   'bunyan-log-scan': require('./bunyan-log-scan'),
   'machine-up': require('./machine-up'),
   'http': require('./http'),
-  'icmp': require('./icmp')
+  'icmp': require('./icmp'),
+  'cmd': require('./cmd')
 };

@@ -1469,12 +1469,13 @@ specific to the probe type. Those are specified here.
 
 Some aggregated data on the probe types:
 
-||**Type**||**Requires Agent**||**Sends Clear Events**||
-||machine-up||no||yes||
-||log-scan||yes||no||
-||bunyan-log-scan||yes||no||
-||http||yes||no||
-||icmp (i.e. ping)||yes||no||
+||**Type**||**Requires Agent**||**Sends Clear Events**||**Description**||
+||machine-up||no||yes||watch for a vm going down (shutdown, reboot)||
+||log-scan||yes||no||watch for a pattern in a log file||
+||bunyan-log-scan||yes||no||watch for a pattern or field matches in a Bunyan log file||
+||http||yes||no||hit an HTTP(S) endpoint and assert a status, body match, response time, etc.||
+||icmp (i.e. ping)||yes||no||ping a host and assert a response time, etc.||
+||cmd||yes||no||run a command and assert an exit status, stdout match||
 
 "Requires Agent" means that a probe of this type needs an amon-agent running
 in the customer vm/zone to run the probe. "machine-up" is the exception here,
@@ -1684,6 +1685,49 @@ interuptions or packet loss.
       }
     }'
 
+## Probe: cmd
+
+Periodically run a command and assert an exit status, or stdout content,
+etc. This probe type requires an amon-agent running inside the target VM
+(i.e. the VM with the UUID of the "agent" field).
+
+### Config
+
+||**Parameter**||**Required?**||**Default**||**Description**||
+||cmd||Required||-||The command to run.||
+||cwd||Optional||-||Current working directory in which to run the command.||
+||env||Optional||-||Object of key/value pairs to set in the environment of the cmd.||
+||encoding||Optional||utf-8||Encoding of stdout/stderr content from the command.||
+||ignoreExitStatus||Optional||false||By default the exit status is checked (non-zero means a failure). Set this to true to ignore the exit status (including that from a timeout).||
+||stdoutMatch||Optional||-||Data to match against stdout content. Alarm if a match is found in stdout.||
+||stdoutMatch.pattern||Required (\*)||-||The pattern with which to match. This is required only if `stdoutMatch` is used at all.||
+||stdoutMatch.type||Optional||regex||One of 'substring' or 'regex'. Defines the type of 'stdoutMatch.pattern'.||
+||stdoutMatch.flags||Optional||-||Pattern flags. 'i' to ignore case. 'm' for multiline match (i.e. '^' and '$' match the start and end of lines within a multiline string). Note that matching is not always on a single line, so if your regular expression pattern uses '^' or '$' you will want the 'm' flag.||
+||stdoutMatch.matchWord||Optional||false||A boolean indicating if matching should be restricted to word boundaries.||
+||stdoutMatch.invert||Optional||false||Set to true to invert the sense of matching (i.e. XXX alarm on log lines that do NOT match).||
+||stderrMatch||Optional||-||Data to match against stdout content. Alarm if a match is found in stdout.||
+||stderrMatch.*||-||-||All options as per `stdoutMatch.*`.||
+||timeout||Optional||5||Time (in seconds) after which to kill the probe command. Timing out will result in an alarm.||
+||interval||Optional||90||Time in seconds between checks (i.e. running the command and asserting exit status or match).||
+||period||Optional||300||Time window (in seconds) in which `threshold` number of checks must fail to alarm.||
+||threshold||Optional||1||Number of check failures within `period` before alarming. With the default `1`, every check failure will result in an alarm being raised.||
+
+TODO: consider the ability for clearing alarms via a passing cmd.
+
+TODO: consider longer multiline scripts. Using same 'cmd' field or 'script'?
+
+
+### Examples
+
+    # The 'test !' inverts the exit status to get non-zero on failure.
+    $ sdc-amon /pub/bob/probes -X POST -d '{
+        "type": "cmd",
+        "name": "/opt out of space",
+        "agent": "444d70d5-0187-e5d4-468f-7b49a6b014ff",
+        "config": {
+            "cmd": "test ! $(df -k /opt | tail -1 | awk '{print $5}' | cut -d% -f1) -gt 90"
+        }
+    }'
 
 
 # Master Configuration

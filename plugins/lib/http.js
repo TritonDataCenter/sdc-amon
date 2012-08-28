@@ -5,12 +5,6 @@
  * the probe has access to.
  */
 
-/**
- * TODO want an "invertMatch" or something to assert that the response body
- *     does NOT match the given regex. E.g. "make sure this URL doesn't
- *     have 'Error' in the body".
- */
-
 var events = require('events');
 var util = require('util');
 var assert = require('assert');
