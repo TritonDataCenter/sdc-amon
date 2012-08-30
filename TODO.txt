@@ -1,74 +1,63 @@
-# higher-level prios
+# higher-level plan
 
-- maintenance windows (MON-113):
-    - regrok: alarm.handleEvent, app.handleMaintenanceEnd,
-      maintenances.apiListAllMaintenanceWindows
-    - add app.handleMaintenanceEnd
-        - add 'reason' code field to `alarm.notify(...)` for the notification
-          types to handle different reasons
-    - tests for maintenance windows
-    - separate commit: replace SuppressAlarmNotifications and UnsuppressAlarmNotifications
-      with a maint window on that alarm's monitor
-    - XXX's in maintenances.js
-    - fix this app crash (when that alarm id is a 404):
-        [root@headnode (bh1-kvm7:0) ~]# sdc-amon /pub/deadbeef-4444-4444-4444-444444444444/alarms/2 -X DELETE
-        curl: (52) Empty reply from server
-      traceback:
-        node.js:201
-                throw e; // process.nextTick error, or 'error' event on first tick
-                      ^
-        TypeError: Cannot set property 'faults' of null
-            at /opt/smartdc/amon/lib/alarms.js:277:23
-            at /opt/smartdc/amon/node_modules/redis/index.js:996:13
+This is meant to capture all the major pieces of required with for Amon
+shipping in SDC7. The ultimate authority on details is "MON" jira tickets
+assigned to the SDC7 release, but this gives an overview.
+
+Items marked with "[now]" are for Trent to do before moving on to mainly
+working on IMGAPI et al.
 
 
-- ticket triage
-- sysevent-based events: use case #2, machine-running-state probe type (?)
-- agent in all zones
-- MON-120: authorizeDelete finish (should merge with authorizePut logic)
-- finish CRUD on UFDS objects
-- sdc-healthcheck
-- notification formatting: templating? Show open/closed state in notifications.
-  Design section on what info should be included in notification.
-- upgrade plan: What if UFDS schema needs to change? How do we rev the Master
-  with older agents in the wild. Upgrading Agent versions? What about
-  an old amon-agent? old amon-relay?
-- cloudapi
-- portal (c.f. http://circonus.com/resources/videos#play-video-check-creation)
-- adminui
+- [now] MON-113: maintenance windows
+- [now] MON-114: disabling of probes and probegroups
+- [now] MON-177: remove 'suppression' on alarms (use maint windows instead)
+- [now] MON-178: doc review: clean up use cases, purge 'monitor'
+- [now] MON-179: plan for more common usage/dogfooding/utility within dev group
+- [now] MON-120: authorizeDelete finish (should merge with authorizePut logic)
+- [now] MON-21: finish CRUD on UFDS objects (mainly update/PUT)
+- [now] MON-108: clean up error story (verror, spec)
+- [now] ticket triage
+- [now] demo with ops people and feedback
+- [kevin] adminui integration
+- [risk-high] agent release process for running in customer zones
+- MON-28: sdc backup/restore/upgrade for Amon
+- MON-24: sdc-healthcheck
+- MON-150: contacts refactor
+- amon-relay heartbeating to detect whole CN going down
+- notification content: spec webhook payload, email clean up and make
+  more useful
+- cloudapi integration
+- portal integration
+- alarm re-notification (see section in design.restdown)
+- [risk-high] amon-agent re-write in non-node
 - load testing. Estimate of design-limit on number of
   probes/notifications/events
 - HA
+- upgrade plan: What if UFDS schema needs to change? How do we rev the Master
+  with older agents in the wild. Upgrading Agent versions? What about
+  an old amon-agent? old amon-relay?
 
 
 
-# todo (in no particular order)
+# v2 items (i.e. post-SDC7)
 
-- bitrot:
-    - amon-master's manual ldap pooling: use ufds.js
-    - restify
-    - bunyan
-    - node 0.8
-- might want ssh in amon zone for dev work?
-  josh: You can also enable ssh if you want, it's just a matter of importing a manifest for it and starting.
-  kevin: https://stuff.joyent.us/stuff/joshw/ssh.xml
-- dogfood:
-    - devs using in kvm test machines
-    - devs using in COAL
-    - trevor using it in BH-1. For what exactly?
-    - monitoring jenkins builds? or space usage in jenkins?
-    - space usage on stuff
-    - is DSAPI up?
-    - is mo.jo up?
-    - others? email around
+- amon-agent for non-SmartOS
+
+
+
+# todo
+
+In no particular order, other things to look at in Amon.
+
+- smf service probe type, with clear support
+- bitrot: amon-master's manual ldap pooling: use ufds.js
 - update to latest ldapjs for #49 and #50 fixes (already done I think)
-- update to restify 1.4.1 when that is released (there is a ticket for this)
-- update to and use npm shrinkwrap
 - ldapjs with pooling when that is ready.
+- fix, update, use and test relay/lib/app.js#sendOperatorEvent
+- update to and use npm shrinkwrap
 - removing old alarms after a week
 - how to monitor percentiles? E.g. prio1 alarm if 90th percentile
   response time is >200ms or something?
-- err cleanup (MON-108)
 - Relay needs to have guards for run away agents. One case is an infinite
   loop: a probe watching for "ERROR" in amon logs, where sending the
   event results in an "ERROR". Handle this with relay per-agent throttling
@@ -86,20 +75,12 @@
 - design use cases, assign a use case driver for each prio
     - use case #3: needs "smf" probe type to watch smf state transitions
       if possible
-    - use case #6: needs a "mdb-kernel-cmd" or just a "cmd" probe type
-      to periodically run a command.
-    - use case #1: perhaps add 'smf-log-scan' probe type instead of
-      giving the full service path. Important to periodically reget
-      the smf log path via 'svcs -L' because it changes related to
-      rotation or "file is open" snafus.
 - hit up Ben for some "best practices for perf monitoring" info
   per https://mail.google.com/mail/u/1/?ui=2&shva=1#inbox/132dfa4e26d17478
 - clear event scenario: A monitor with 'machine-up' probes on two zones.
   Both go down. One comes back up. That alarm should not clear, **but it
   does currently**.
 - node-retry in PutEvents in RelayClient.
-- 'sdc-amon /pub/hamish/monitors/whistle -X DELETE' fails
-    ERROR: Error deleting 'amonmonitor=whistle, uuid=7b23ae63-37c9-420e-bb88-8d4bf5e30455, ou=customers, o=smartdc' from UFDS: NotAllowedOnNonLeafError:...
 - What if a whole CN goes down? Could have heartbeats from the relays. Then
   have a probetype that fires for "missing" data. I.e. missed a heartbeat
   from the relay. Should this "fire on missing data" be a generic probe
@@ -107,35 +88,9 @@
   See <http://circonus.com/resources/videos#play-video-rule-notifications>
   for generic probe (aka rule) facilities: on match, invert match, on
   value change, on absence.
-- <probe>.idObject details on probe events from agent is *wrong*. Insecure.
-  The userUuid value must come from relay (and should be the zone owner-uuid
-  cfg var). Relay should probably also add the "zone" from which the event
-  came? Relay should also validate that given event is for a probe that
-  *exists* for that zone, if not then drop it.
-- consistent `new restify.FooError(...)` usage and document this
 - send an op notification if Redis is down when attempting to process an event
-- relay: improve this log line to know which zone/zsock this request came
-  from. Perhaps the "unknown" could be the zone name. Also perhaps "anonymous"
-  could be the owner uuid (only if no cost to that).
-    unknown - anonymous [23/11/2011:21:38:26 GMT] "HEAD /agentprobes HTTP/1.1" 200 0 1
-- disallow '/' in name fields (so can use that as sep char for a string id).
-  If this isn't acceptable then update id'ification in agent.
-  Perhaps ':' would be preferable for id'ification? Meh.
-- name fields in Master API: percent escaping
-  Also consider adding a "slug" field to Monitor and Probe. This is used as
-  the 'id'. Guarantee uniqueness, export method (and library?) for calculating
-  the slug. Still allow addressing by name? But perhaps as a query param?
-  Think about it. The downside of "whatever goes" name as the only id is:
-  inelegant alarm naming (use " 1" or "-1" suffix), potential for edge
-  case errors up the stack (portal, cloudapi, adminui) all would have to
-  get all the edge cases correct including unicode, PITA for using the API
-  on the CLI (hand quoting URL parts), inelegant URLs in the portals
 - walk through a server boot (and boot of all its zones): does Amon eventing
   go crazy?
-- http://circonus.com/resources/videos#play-video-rule-notifications for
-  probe facilities.
-- probe types to consider: https://support.cloudkick.com/Category:Checks
-  https://nodefly.com/
 
 
 # someday/maybe
@@ -150,25 +105,23 @@
     Twitter (direct messages from @circonusops)
     SMS
     PagerDuty
-- saving the alarm events in redis? Are those needed for anything? Not
-  bothering until we have UI that would use this.
-- endpoint to test sending to a contact "POST /pub/:uuid/testnotify"
+- http://circonus.com/resources/videos#play-video-rule-notifications for
+  probe facilities.
+- probe types to consider: https://support.cloudkick.com/Category:Checks
+  https://nodefly.com/
+- endpoint to test sending to a contact
 - restify v2.x
 - "sdc-amon /pub/trent.mick" messes up on '.' in username -> restify upgrade
   Check for this being fixed with restify 1.x
-- amon-relay and amon-agent: move node to build/node (a la portal and others)
 - from master/lib/probes.js:
     //XXX validate the type is an existing probe type
     //XXX validate data for that probe type
 - [Trent] :login -> :uuid
-- Amon test cases for alarming
 - docs: move contact URN spec from master/lib/contact.js to the docs
 - Idea: have amon-master create event/alarm to operator if it cannot
   connect/work with UFDS.
 - look at New Relic: http://newrelic.com/
 - test Amon on CN
-- throttling on MonitorFakeFault
-- [Trent] test suite for relay and agent
 - 'ping-agent' probe type. Basically this is a test that the amon-relay <->
   amon-agent socket is working and that the agent is responding.
 - sigar
@@ -240,7 +193,6 @@
 - TODO: test how events are handled when redis runs out of memory
   Might want "maxmemory" and "maxmemory-policy ..." or "vm-enabled yes" in
   redis.conf
-
 
 Ensure do "SELECT 1" (or some value of N) to stay indep of other users of
 redis. TODO: Come up with a system for sharing this out. Suggest not using 0
@@ -347,13 +299,36 @@ Where:
 If not obvious, you can send multiple metrics per check.
 
 
+# notes: maintenance windows
 
-# notes: severity
+- regrok: alarm.handleEvent, app.handleMaintenanceEnd,
+  maintenances.apiListAllMaintenanceWindows
+- add app.handleMaintenanceEnd
+    - add 'reason' code field to `alarm.notify(...)` for the notification
+      types to handle different reasons
+- tests for maintenance windows
+- separate commit: replace SuppressAlarmNotifications and UnsuppressAlarmNotifications
+  with a maint window on that alarm's monitor
+- XXX's in maintenances.js
+- fix this app crash (when that alarm id is a 404):
+    [root@headnode (bh1-kvm7:0) ~]# sdc-amon /pub/deadbeef-4444-4444-4444-444444444444/alarms/2 -X DELETE
+    curl: (52) Empty reply from server
+  traceback:
+    node.js:201
+            throw e; // process.nextTick error, or 'error' event on first tick
+                  ^
+    TypeError: Cannot set property 'faults' of null
+        at /opt/smartdc/amon/lib/alarms.js:277:23
+        at /opt/smartdc/amon/node_modules/redis/index.js:996:13
 
-model Monitor:
-  severity: ???
 
-model Probe:
-  severity: 1,2,3? circo. has 1-5.
+# notes: dogfoog
 
-Circonus has severity on the probe equiv.
+- devs using in kvm test machines
+- devs using in COAL
+- trevor using it in BH-1. For what exactly?
+- monitoring jenkins builds? or space usage in jenkins?
+- space usage on stuff
+- is DSAPI up?
+- is mo.jo up?
+- others? email around
