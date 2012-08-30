@@ -68,12 +68,12 @@ test('setup: webhook collector', function (t) {
 
 //---- create a probe group and two probes on odin
 
-VALHALLA = {  // a probe group
+var VALHALLA = {  // a probe group
   contacts: ['testWebhook'],
   name: 'valhalla'
 };
 
-VALKYRIE1 = {  // a probe
+var VALKYRIE1 = {  // a probe
   name: 'valkyrie1',
   agent: prep.headnodeUuid,
   type: 'log-scan',
@@ -85,7 +85,7 @@ VALKYRIE1 = {  // a probe
   }
 };
 
-VALKYRIE2 = {  // a probe
+var VALKYRIE2 = {  // a probe
   name: 'valkyrie2',
   agent: prep.headnodeUuid,
   type: 'log-scan',
@@ -206,7 +206,7 @@ test('odin should have no alarms to start', function (t) {
 
 test('trigger valkyrie1 probe', function (t) {
   webhooks = []; // reset
-  var cmd = 'echo "a warrior died" >> /var/tmp/battle.log'
+  var cmd = 'echo "a warrior died" >> /var/tmp/battle.log';
   exec(cmd, function (err, stdout, stderr) {
     t.ifError(err, format('poked battle.log: err=%s  stdout="%s"  stderr="%s"',
       err, stdout, stderr));
@@ -278,7 +278,7 @@ test('got an alarm for valhalla', function (t) {
 
 test('trigger valkyrie2 probe', function (t) {
   webhooks = []; // reset
-  var cmd = 'echo "another warrior died" >> /var/tmp/battle.log'
+  var cmd = 'echo "another warrior died" >> /var/tmp/battle.log';
   exec(cmd, function (err, stdout, stderr) {
     t.ifError(err, format('poked battle.log: err=%s  stdout="%s"  stderr="%s"',
       err, stdout, stderr));
@@ -322,7 +322,6 @@ test('got second webhook notification for valhalla fault', function (t) {
   );
 });
 
-var ALARM = null;
 test('still the same alarm, but with another fault', function (t) {
   var path = '/pub/amontestoperatorodin/alarms';
   masterClient.get(path, function (err, req, res, obj) {
@@ -371,7 +370,7 @@ var MEAD = {  // maintenance window while warriors drink mead.
 
 test('create maint on valhalla', function (t) {
   MEAD.probeGroups = [VALHALLA.uuid];
-  var path = '/pub/amontestoperatorodin/maintenances'
+  var path = '/pub/amontestoperatorodin/maintenances';
   masterClient.post(path, MEAD, function (err, req, res, obj) {
     t.ifError(err, 'POST ' + path);
     if (!err) {
@@ -397,7 +396,7 @@ test('odin should have no alarms', function (t) {
 
 test('trigger valkyrie1 probe (now in maint)', function (t) {
   webhooks = []; // reset
-  var cmd = 'echo "a warrior died" >> /var/tmp/battle.log'
+  var cmd = 'echo "a warrior died" >> /var/tmp/battle.log';
   exec(cmd, function (err, stdout, stderr) {
     t.ifError(err, format('poked battle.log: err=%s  stdout="%s"  stderr="%s"',
       err, stdout, stderr));
@@ -455,7 +454,7 @@ test('got NO notification for fault while in maint', function (t) {
   t.equal(webhooks.length, 0,
     'no webhook notifications:' + JSON.stringify(webhooks));
   t.end();
-})
+});
 
 
 
