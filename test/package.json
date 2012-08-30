@@ -7,7 +7,7 @@
   "dependencies": {
     "sdc-clients": "git+ssh://git@git.joyent.com:node-sdc-clients.git#6a1b4a818356d1848a484dc3c979f3a588950753",
 
-    "bunyan": "0.13.3",
+    "bunyan": "0.13.5",
     "restify": "1.4.4",
     "async": "0.1",
     "node-uuid": "1.3",
