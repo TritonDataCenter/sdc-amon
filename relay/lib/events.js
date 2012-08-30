@@ -22,7 +22,6 @@ function addEvents(req, res, next) {
     //XXX This is where validation would be done.
     //XXX - Can we quickly drop bogus events here? I.e. one with a 'probe'
     //XXX   setting that is spoofed?
-    //XXX - See TODO.txt notes on 'idObject'.
     //XXX Validate that the event schema matches the given `version`.
 
     if (req._owner && event.user !== req._owner) {
