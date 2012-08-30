@@ -4,7 +4,6 @@
  * Shared bits for the Amon test files.
  */
 
-var log = console.log;
 var fs = require('fs');
 var path = require('path');
 var Logger = require('bunyan');
@@ -53,7 +52,7 @@ function waitForVmapiJob(options, callback) {
   var jobInfo = options.jobInfo;
   var timeout = options.timeout || 30000;  /* default 30s timeout */
 
-  log('# Waiting for job %s to complete.', jobInfo.job_uuid);
+  console.log('# Waiting for job %s to complete.', jobInfo.job_uuid);
   var jobUuid = jobInfo.job_uuid;
   var job = null;
   var POLL = 1500;
@@ -68,7 +67,7 @@ function waitForVmapiJob(options, callback) {
       }
       sentinel--;
       setTimeout(function () {
-        log('# Check if job is complete (sentinel=%d).', sentinel);
+        console.log('# Check if job is complete (sentinel=%d).', sentinel);
         vmapiClient.getJob(jobUuid, function (err2, job_) {
           if (err2) {
             return next(err2);

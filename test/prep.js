@@ -301,8 +301,8 @@ function unreserveHeadnodeForProvisioning(next) {
       needToRereserve = true;
       var cmd2 = format('sdc-cnapi /servers/%s -X POST -F reserved=false',
         headnodeUuid);
-      exec(cmd2, function (err, stdout, stderr) {
-        next(err);
+      exec(cmd2, function (err2, stdout2, stderr2) {
+        next(err2);
       });
     } else {
       next();
@@ -346,11 +346,11 @@ function createAmontestzone(next) {
         common.waitForVmapiJob({
             vmapiClient: vmapiClient,
             jobInfo: jobInfo,
-            timeout: 2 * 60 * 1000, /* 2 minutes */
-          }, function (err2) {
-            if (err2) return next(err2);
-            vmapiClient.getVm({uuid: jobInfo.vm_uuid}, function (err3, zone) {
-              if (err3) return next(err3);
+            timeout: 2 * 60 * 1000 /* 2 minutes */
+          }, function (err3) {
+            if (err3) return next(err3);
+            vmapiClient.getVm({uuid: jobInfo.vm_uuid}, function (err4, zone) {
+              if (err4) return next(err4);
               amontestzone = zone;
               next();
             });

@@ -26,7 +26,9 @@ test('url check', function (t) {
   t.throws(function () {
     var opts = Object.create(_default_opts());
     opts.data.config.url = 'bogus://not-a-url';
-    var probe = new HttpProbe(opts);
+    /*jsl:ignore*/
+    new HttpProbe(opts);
+    /*jsl:end*/
   }, new TypeError('config.url must be valid http(s) url'));
   t.end();
 });
@@ -82,7 +84,7 @@ function createProbe(config) {
 
   Object.keys(config).forEach(function (key) {
     opts.data.config[key] = config[key];
-  })
+  });
 
   opts.data.config.url = 'http://localhost:9000/';
   return new HttpProbe(opts);
@@ -90,7 +92,7 @@ function createProbe(config) {
 
 function createServer(code, body) {
   return require('http').createServer(function (req, res) {
-    res.writeHead(code, {})
+    res.writeHead(code, {});
     res.end(body);
   });
 }
@@ -202,7 +204,7 @@ test('probe bodyMatch test', function (t) {
       });
     } catch (e) {
       t.ifError(e, 'error creating probe:' + e);
-      t.end()
+      t.end();
       return;
     }
 

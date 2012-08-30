@@ -346,8 +346,8 @@ test('maint 1: notification and alarm closed', function (t) {
       }
 
       var url = ALARMSURL + '/' + maint1AlarmId;
-      masterClient.get(url, function (err, req, res, alarm) {
-        t.ifError(err, 'GET ' + url);
+      masterClient.get(url, function (err2, req, res, alarm) {
+        t.ifError(err2, 'GET ' + url);
         t.equal(alarm.closed, true, 'alarm is now closed');
         t.end();
       });
@@ -374,7 +374,7 @@ test('maint 1: wait until restarted zone has settled', function (t) {
   //      [2012-07-17T18:37:49.631Z]  INFO: amon-relay/6076 on headnode: Amon-relay started (agent=1a4d0111-3279-4d99-b4c9-aaa5e6d2c2e3)
   // However, I'm taking the quick way out right now and sleeping for 10s.
   setTimeout(function () {
-    t.ok(true, "slept for 10s to let amontestzone settle (hack)")
+    t.ok(true, "slept for 10s to let amontestzone settle (hack)");
     t.end();
   }, 10000);
 });
@@ -411,6 +411,7 @@ test('maint 2: create maint window', function (t) {
       maint2Id = obj.id;
       t.equal(obj.notes, maint2.notes, 'notes');
       t.equal(obj.probes[0], maintprobe.uuid, '<maint>.probes');
+      t.ok(Math.abs(obj.end - expectedEnd) < epsilon, 'end');
     }
     t.end();
   });
@@ -533,7 +534,7 @@ test('maint 2: clean up', function (t) {
 test('maint 2: wait until restarted zone has settled', function (t) {
   // HACK: See HACK discussion above.
   setTimeout(function () {
-    t.ok(true, "slept for 10s to let amontestzone settle (hack)")
+    t.ok(true, "slept for 10s to let amontestzone settle (hack)");
     t.end();
   }, 10000);
 });

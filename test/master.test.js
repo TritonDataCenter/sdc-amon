@@ -38,7 +38,7 @@ var FIXTURES = {
       config: {
         path: '/tmp/whistle.log',
         match: {
-          pattern: 'tweet',
+          pattern: 'tweet'
         },
         threshold: 1,
         period: 60
@@ -53,7 +53,7 @@ var FIXTURES = {
       config: {
         path: '/tmp/whistle.log',
         match: {
-          pattern: 'tweet',
+          pattern: 'tweet'
         },
         threshold: 1,
         period: 60
@@ -68,7 +68,7 @@ var FIXTURES = {
       config: {
         path: '/var/svc/log/smartdc-agent-smartlogin:default.log',
         match: {
-          pattern: 'Stopping',
+          pattern: 'Stopping'
         },
         threshold: 1,
         period: 60
@@ -93,7 +93,7 @@ var FIXTURES = {
       config: {
         path: '/var/svc/log/smartdc-agent-smartlogin:default.log',
         match: {
-          pattern: 'Stopping',
+          pattern: 'Stopping'
         },
         threshold: 1,
         period: 60
@@ -107,7 +107,7 @@ var FIXTURES = {
       config: {
         path: '/var/svc/log/smartdc-agent-smartlogin:default.log',
         match: {
-          pattern: 'Stopping',
+          pattern: 'Stopping'
         },
         threshold: 1,
         period: 60
@@ -328,7 +328,7 @@ test('probes: create without owning zone', function (t) {
       'config': {
         'path': '/tmp/whistle.log',
         'match': {
-          'pattern': 'tweet',
+          'pattern': 'tweet'
         },
         'threshold': 1,
         'period': 60
@@ -340,7 +340,7 @@ test('probes: create without owning zone', function (t) {
       'config': {
         'path': '/tmp/whistle.log',
         'match': {
-          'pattern': 'tweet',
+          'pattern': 'tweet'
         },
         'threshold': 1,
         'period': 60
@@ -494,7 +494,7 @@ test('relay api: clean up', function (t) {
     return t.end();
   }
 
-  var path = format('/pub/%s/alarms/%s', ulrich.login, gUlrichHiMomAlarmId)
+  var path = format('/pub/%s/alarms/%s', ulrich.login, gUlrichHiMomAlarmId);
   masterClient.del(path, function (err, req, res) {
     t.ifError(err, 'DELETE ' + path);
     t.equal(res.statusCode, 204, '204 response deleting ' + path);

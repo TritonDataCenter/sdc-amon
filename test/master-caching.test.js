@@ -222,7 +222,6 @@ test('ListAgentProbes', function (t) {
 //---- test deletes (and clean up test data)
 
 test('probes: delete', function (t) {
-  var data = FIXTURES.ulrich.whistlelog;
   var path = '/pub/amontestuserulrich/probes/' + gWhistlelogProbeUuid;
   masterClient.del(path, function (err, headers, res) {
     t.ifError(err);
@@ -261,7 +260,6 @@ test('probes: list empty again', function (t) {
 });
 
 test('probes: get a probe now removed', function (t) {
-  var data = FIXTURES.ulrich.whistlelog;
   var path = '/pub/amontestuserulrich/probes/' + gWhistlelogProbeUuid;
   masterClient.get(path, function (err, req, res, obj) {
     t.ok(err, 'GET ' + path);
