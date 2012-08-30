@@ -12,7 +12,7 @@ var https = require('https');
 var url = require('url');
 var restify = require('restify');
 var assert = require('assert');
-var format = require('./utils').format;
+var format = require('util').format;
 
 var Constants = require('./constants');
 

@@ -12,9 +12,6 @@ var path = require('path');
 var restify = require('restify');
 var async = require('async');
 
-var amonCommon = require('amon-common'),
-  format = amonCommon.utils.format;
-
 
 
 //---- controllers

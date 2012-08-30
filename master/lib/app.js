@@ -7,6 +7,7 @@
 var http = require('http');
 var assert = require('assert');
 var debug = console.log;
+var format = require('util').format;
 
 var ldap = require('ldapjs');
 var restify = require('restify');
@@ -20,7 +21,6 @@ var async = require('async');
 
 var amonCommon = require('amon-common'),
   Constants = amonCommon.Constants,
-  format = amonCommon.utils.format,
   objCopy = amonCommon.utils.objCopy;
 var Contact = require('./contact');
 var alarms = require('./alarms'),

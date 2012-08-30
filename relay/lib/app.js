@@ -6,6 +6,7 @@ var path = require('path');
 var os = require('os');
 var Pipe = process.binding('pipe_wrap').Pipe;
 var crypto = require('crypto');
+var format = require('util').format;
 var child_process = require('child_process'),
   exec = child_process.exec;
   execFile = child_process.execFile;
@@ -21,7 +22,6 @@ var async = require('async');
 
 var amonCommon = require('amon-common'),
   Constants = amonCommon.Constants,
-  format = amonCommon.utils.format,
   compareProbes = amonCommon.compareProbes;
 var agentprobes = require('./agentprobes');
 var events = require('./events');

@@ -5,13 +5,11 @@
  */
 
 var debug = console.warn;
+var format = require('util').format;
 var crypto = require('crypto');
 var restify = require('restify');
-var HttpCodes = restify.HttpCodes;
-var RestCodes = restify.RestCodes;
 
 var amonCommon = require('amon-common'),
-  format = amonCommon.utils.format,
   compareProbes = amonCommon.utils.compareProbes;
 var Probe = require('./probes').Probe;
 

@@ -4,11 +4,9 @@
  * Generic utils for the amon-relay.
  */
 
+var format = require('util').format;
 var child_process = require('child_process'),
   execFile = child_process.execFile;
-
-var amonCommon = require('amon-common'),
-  format = amonCommon.utils.format;
 
 
 /**

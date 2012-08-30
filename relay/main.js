@@ -16,6 +16,7 @@ var fs = require('fs');
 var net = require('net');
 var child_process = require('child_process'),
   execFile = child_process.execFile;
+var format = require('util').format;
 
 var Logger = require('bunyan');
 var restify = require('restify');
@@ -29,8 +30,7 @@ if (process.platform === 'sunos'
 
 var App = require('./lib/app');
 var amonCommon = require('amon-common'),
-  RelayClient = amonCommon.RelayClient,
-  format = amonCommon.utils.format;
+  RelayClient = amonCommon.RelayClient;
 var AdminApp = require('./lib/adminapp');
 var ZoneEventWatcher = require('./lib/zoneeventwatcher');
 

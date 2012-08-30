@@ -6,11 +6,11 @@
  */
 
 var fs = require('fs');
-var util = require('util');
+var util = require('util'),
+  format = util.format;
 
 var amonCommon = require('amon-common'),
-  RelayClient = amonCommon.RelayClient,
-  format = amonCommon.utils.format;
+  RelayClient = amonCommon.RelayClient
 var plugins = require('amon-plugins');
 var ZoneEventWatcher = require('./zoneeventwatcher');
 

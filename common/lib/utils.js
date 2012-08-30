@@ -1,10 +1,10 @@
 /*
- * Copyright 2011 Joyent, Inc.  All rights reserved.
+ * Copyright 2012 Joyent, Inc.  All rights reserved.
  *
  * Amon utilities.
  */
 
-var util = require('util');
+var format = require('util').format;
 
 
 function objCopy(obj) {
@@ -62,7 +62,6 @@ function boolFromString(value, default_, errName) {
 //---- exports
 
 module.exports = {
-  format: util.format,   //TODO: remove this
   objCopy: objCopy,
   compareProbes: compareProbes,
   boolFromString: boolFromString
