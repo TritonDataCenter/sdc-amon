@@ -27,7 +27,7 @@ var LOG_DIR = '/var/tmp/amontest';
 //---- internal support functions
 
 function ensureLogDir() {
-  if (!path.existsSync(LOG_DIR)) {
+  if (!fs.existsSync(LOG_DIR)) {
     fs.mkdirSync(LOG_DIR);
   }
 }

@@ -25,7 +25,7 @@ CLEAN_FILES += agent/node_modules relay/node_modules \
 # The prebuilt sdcnode version we want. See
 # "tools/mk/Makefile.node_prebuilt.targ" for details.
 ifeq ($(shell uname -s),SunOS)
-	NODE_PREBUILT_VERSION=v0.6.19
+	NODE_PREBUILT_VERSION=v0.8.8
 	NODE_PREBUILT_TAG=gz
 endif
 
@@ -54,11 +54,10 @@ NODE_DEV := ./node_modules/.bin/node-dev
 TAP := ./node_modules/.bin/tap
 JSHINT := node_modules/.bin/jshint
 JSSTYLE_FLAGS := -f tools/jsstyle.conf
-NPM_FLAGS += --tar=$(TAR)
 
 # Need to get our tools/bin on PATH to get our 'python'
 # first on the PATH. See RELENG-302.
-NPM := PATH=$(TOP)/tools/bin:$(TOP)/$(NODE_INSTALL)/bin:$(PATH) $(NPM) $(NPM_FLAGS)
+NPM := PATH=$(TOP)/tools/bin:$(TOP)/$(NODE_INSTALL)/bin:$(PATH) node $(TOP)/$(NODE_INSTALL)/bin/npm --tar=$(TAR)
 
 
 #

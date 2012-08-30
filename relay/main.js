@@ -16,14 +16,14 @@ var fs = require('fs');
 var net = require('net');
 var child_process = require('child_process'),
   execFile = child_process.execFile;
-var path = require('path');
 
 var Logger = require('bunyan');
 var restify = require('restify');
 var async = require('async');
 var nopt = require('nopt');
 var zutil;
-if (process.platform === 'sunos') {
+if (process.platform === 'sunos'
+    || process.platform === 'solaris' /* node#3944 */) {
   zutil = require('zutil');
 }
 
@@ -165,7 +165,7 @@ function getMasterUrl(poll, callback) {
 
 // Create data dir, if necessary.
 function ensureDataDir(next) {
-  if (!path.existsSync(config.dataDir)) {
+  if (!fs.existsSync(config.dataDir)) {
     log.info('Create data dir: %s', config.dataDir);
     fs.mkdirSync(config.dataDir, 0777);
   }

@@ -56,7 +56,7 @@ var gzIp;
 //---- internal support functions
 
 function ensureDirSync(dir) {
-  if (!path.existsSync(dir)) {
+  if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir);
   }
 }

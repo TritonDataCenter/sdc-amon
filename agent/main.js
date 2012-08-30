@@ -131,7 +131,7 @@ function main() {
   log.debug({config: config}, 'config');
 
   // Create data dir, if necessary.
-  if (!path.existsSync(config.dataDir)) {
+  if (!fs.existsSync(config.dataDir)) {
     log.info({dataDir: config.dataDir}, 'create data dir');
     fs.mkdirSync(config.dataDir, 0777);
   }

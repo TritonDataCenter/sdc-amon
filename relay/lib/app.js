@@ -13,7 +13,8 @@ var child_process = require('child_process'),
 var restify = require('restify');
 var zsock = require('zsock');
 var zutil;
-if (process.platform === 'sunos') {
+if (process.platform === 'sunos'
+    || process.platform === 'solaris' /* node#3944 */) {
   zutil = require('zutil');
 }
 var async = require('async');
@@ -190,6 +191,7 @@ App.prototype.sendOperatorEvent = function (msg, details, callback) {
     v: 1,
     type: 'operator',
     //XXX Include uuid for this CN in this event. "Which relay is this? --Op"
+    //  See added fields in events.js.
     data: {
       msg: msg,
       details: details
@@ -302,13 +304,26 @@ App.prototype.start = function (callback) {
     });
   }
 
+  function unlinkIfExists(path, next) {
+    fs.exists(path, function (exists) {
+      if (exists)
+        fs.unlink(path, next);
+      else
+        next();
+    });
+  }
+
   function createSocket(next) {
     if (self.closed) {
       return next();
     }
     if (self.localMode) {
       log.debug('Starting app on local socket "%s".', self.socket);
-      return self.server.listen(self.socket, next);
+      return unlinkIfExists(self.socket, function (uErr) {
+        if (uErr)
+          return next(uErr);
+        self.server.listen(self.socket, next);
+      });
     }
     if (!self.isZoneRunning) {
       return next();
@@ -532,7 +547,7 @@ App.prototype.writeAgentProbes = function (agentProbes, md5, callback) {
     var backedUpPaths = [];
     utils.asyncForEach([vmGuestJsonPath, vmHostJsonPath, md5Path],
                        function (p, cb2) {
-      path.exists(p, function (exists) {
+      fs.exists(p, function (exists) {
         if (exists) {
           log.trace('Backup \'%s\' to \'%s\'.', p, p + '.bak');
           backedUpPaths.push([p, p + '.bak']);

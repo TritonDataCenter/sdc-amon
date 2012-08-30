@@ -6,7 +6,6 @@
  */
 
 var fs = require('fs');
-var path = require('path');
 var util = require('util');
 
 var amonCommon = require('amon-common'),
@@ -145,7 +144,7 @@ App.prototype.stop = function (callback) {
 App.prototype.loadProbeDataCacheSync = function () {
   var config = this.config;
   var log = this.log;
-  if (path.existsSync(config.pdCachePath)) {
+  if (fs.existsSync(config.pdCachePath)) {
     try {
       this.probeDataCache = JSON.parse(
         fs.readFileSync(config.pdCachePath, 'utf8'));
@@ -155,7 +154,7 @@ App.prototype.loadProbeDataCacheSync = function () {
       this.probeDataCache = [];
     }
   }
-  if (path.existsSync(config.pdMD5CachePath)) {
+  if (fs.existsSync(config.pdMD5CachePath)) {
     try {
       this.probeDataCacheMD5 = fs.readFileSync(config.pdMD5CachePath, 'utf8');
     } catch (e) {

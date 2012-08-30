@@ -1,6 +1,3 @@
-[submodule "deps/node"]
-	path = deps/node
-	url = git://github.com/joyent/node.git
 [submodule "deps/restdown"]
 	path = deps/restdown
 	url = git://github.com/trentm/restdown.git
