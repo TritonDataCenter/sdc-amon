@@ -87,7 +87,7 @@ BunyanLogScanProbe.validateConfig = function (config) {
   if (config.match) {
     ProbeType.validateMatchConfig(config.match, 'config.match');
     if (config.match.invert) {
-      // TODO
+      // TODO: bunyan-log-scan config.match.invert
       throw new TypeError(
         'bunyan-log-scan config.match.invert is not yet implemented');
     }

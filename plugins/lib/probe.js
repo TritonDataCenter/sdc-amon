@@ -34,7 +34,7 @@
  *    Event: 'event'
  *      Sent for any probe event. These are sent up to the master for
  *      processing.
- *      XXX Link to event section in docs.
+ *      See <https://mo.joyent.com/docs/amon/master/#events> for details.
  *
  *    (Also various *Match* methods. See "Match Config Objects" below.)
  *

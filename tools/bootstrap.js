@@ -464,7 +464,6 @@ function loadAmonObject(obj, next) {
 
   switch (obj.type) {
   case 'probegroup':
-    //XXX Need to do uniqueness by name. START HERE
     amonClient.listProbeGroups(obj.user, function(err, groups) {
       if (err)
         return next(err);
