@@ -402,7 +402,7 @@ test('maint 2: create maint window', function (t) {
 
   var epsilon = 1000;  // 1 second slop
   var expectedStart = Date.now();
-  var expectedEnd = expectedStart + 60 * 1000;
+  var expectedEnd = expectedStart + 10 * 60 * 1000;
   masterClient.post(MAINTSURL, maint2, function (err, req, res, obj) {
     t.ifError(err, 'POST ' + MAINTSURL);
     t.ok(obj, 'got a response body');
