@@ -24,10 +24,8 @@ CLEAN_FILES += agent/node_modules relay/node_modules \
 
 # The prebuilt sdcnode version we want. See
 # "tools/mk/Makefile.node_prebuilt.targ" for details.
-ifeq ($(shell uname -s),SunOS)
-	NODE_PREBUILT_VERSION=v0.8.8
-	NODE_PREBUILT_TAG=gz
-endif
+NODE_PREBUILT_VERSION=v0.8.8
+NODE_PREBUILT_TAG=gz
 
 
 #
@@ -35,9 +33,9 @@ endif
 #
 include ./tools/mk/Makefile.defs
 ifeq ($(shell uname -s),SunOS)
-	include ./tools/mk/Makefile.node_prebuilt.defs
+       include ./tools/mk/Makefile.node_prebuilt.defs
 else
-	include ./tools/mk/Makefile.node.defs
+       include ./tools/mk/Makefile.node.defs
 endif
 include ./tools/mk/Makefile.smf.defs
 
@@ -262,9 +260,9 @@ install_relay_pkg:
 
 include ./tools/mk/Makefile.deps
 ifeq ($(shell uname -s),SunOS)
-	include ./tools/mk/Makefile.node_prebuilt.targ
+       include ./tools/mk/Makefile.node_prebuilt.targ
 else
-	include ./tools/mk/Makefile.node.targ
+       include ./tools/mk/Makefile.node.targ
 endif
 include ./tools/mk/Makefile.smf.targ
 include ./tools/mk/Makefile.targ

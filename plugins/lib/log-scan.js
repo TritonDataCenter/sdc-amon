@@ -13,7 +13,7 @@ var child_process = require('child_process'),
 var util = require('util'),
   format = util.format;
 
-var Probe = require('./probe');
+var ProbeType = require('./probe');
 
 
 
@@ -35,7 +35,7 @@ var SECONDS = 1000;
  *    - `log` {Bunyan Logger}
  */
 function LogScanProbe(options) {
-  Probe.call(this, options);
+  ProbeType.call(this, options);
   this.validateConfig(this.config);
 
   // One of `path` or `smfServiceName` is defined.
@@ -50,7 +50,7 @@ function LogScanProbe(options) {
   this._count = 0;
   this._running = false;
 }
-util.inherits(LogScanProbe, Probe);
+util.inherits(LogScanProbe, ProbeType);
 
 
 LogScanProbe.runLocally = true;
@@ -66,7 +66,7 @@ LogScanProbe.validateConfig = function (config) {
   if (!config.path && !config.smfServiceName)
     throw new TypeError(
       'either "config.path" or "config.smfServiceName" is required');
-  Probe.validateMatchConfig(config.match, 'config.match');
+  ProbeType.validateMatchConfig(config.match, 'config.match');
 };
 
 

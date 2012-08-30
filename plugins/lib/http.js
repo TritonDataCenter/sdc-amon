@@ -12,7 +12,7 @@ var http = require('http');
 var url = require('url');
 var format = util.format;
 
-var Probe = require('./probe');
+var ProbeType = require('./probe');
 
 
 //---- globals
@@ -35,7 +35,7 @@ var HTTP_OK = [200, 201, 202, 203, 204];
  *    - `log` {Bunyan Logger}
  */
 function HttpProbe(options) {
-  Probe.call(this, options);
+  ProbeType.call(this, options);
   HttpProbe.validateConfig(this.config);
 
   this.url = url.parse(this.config.url);
@@ -74,7 +74,7 @@ function HttpProbe(options) {
   this._alerted = false;
 }
 
-util.inherits(HttpProbe, Probe);
+util.inherits(HttpProbe, ProbeType);
 
 HttpProbe.prototype.type = 'http';
 
@@ -109,7 +109,7 @@ HttpProbe.validateConfig = function (config) {
   }
 
   if (config.bodyMatch) {
-    Probe.validateMatchConfig(config.bodyMatch, 'config.bodyMatch');
+    ProbeType.validateMatchConfig(config.bodyMatch, 'config.bodyMatch');
   }
 };
 

@@ -12,7 +12,7 @@ var child_process = require('child_process'),
 var util = require('util'),
   format = util.format;
 
-var Probe = require('./probe');
+var ProbeType = require('./probe');
 
 
 
@@ -34,7 +34,7 @@ var SECONDS = 1000;
  *    - `log` {Bunyan Logger}
  */
 function CmdProbe(options) {
-  Probe.call(this, options);
+  ProbeType.call(this, options);
   CmdProbe.validateConfig(this.config);
 
   this.cmd = this.config.cmd;
@@ -61,7 +61,7 @@ function CmdProbe(options) {
   this._count = 0;
   this._running = false;
 }
-util.inherits(CmdProbe, Probe);
+util.inherits(CmdProbe, ProbeType);
 
 
 CmdProbe.runLocally = true;
@@ -74,9 +74,9 @@ CmdProbe.validateConfig = function validateConfig(config) {
   if (!config)
     throw new TypeError('"config" is required');
   if (config.stdoutMatch)
-    Probe.validateMatchConfig(config.stdoutMatch, 'config.stdoutMatch');
+    ProbeType.validateMatchConfig(config.stdoutMatch, 'config.stdoutMatch');
   if (config.stderrMatch)
-    Probe.validateMatchConfig(config.stderrMatch, 'config.stderrMatch');
+    ProbeType.validateMatchConfig(config.stderrMatch, 'config.stderrMatch');
 
   //TODO: enforce some reasonable ranges on threshold, period, timeout, interval
 };

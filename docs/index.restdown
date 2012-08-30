@@ -258,8 +258,7 @@ TODO: errors
 
 ### Example
 
-    $ sdc-amon /pub/bob/probegroups
-    XXX
+TODO: example
 
 
 ## GetProbeGroup (GET /pub/:account/probegroups/:uuid)
@@ -280,8 +279,7 @@ TODO: errors
 
 ### Example
 
-    $ sdc-amon /pub/bob/probegroup/2d29ad72-ce54-ed4c-871e-7c651e50af15
-    XXX
+TODO: example
 
 
 ## CreateProbeGroup (POST /pub/:account/probegroups)
@@ -516,14 +514,14 @@ TODO: errors
 
 ### Example
 
-XXX
+TODO: example
 
 
 ## PutProbe (PUT /pub/:account/probes/:uuid)
 
 Update a probe.
 
-XXX Is this just diffs? Or is the whole thing required?
+TODO: Clarify: Is this just diffs? Or is the whole thing required?
 
 ### Inputs
 
@@ -547,7 +545,7 @@ TODO: errors
 
 ### Example
 
-XXX
+TODO: example
 
 
 ## DeleteProbe (DELETE /pub/:account/probes/:uuid)
@@ -619,7 +617,7 @@ alarm ("Yah, I know it is a problem, but I can't deal with it right now.").
 ||timeLastEvent||Integer||Timestamp (milliseconds since the epoch) at which the last event for this alarm occurred.||
 ||v||Integer||The version of this Alarm object schema. Currently this is only exposed via the internal APIs.||
 
-An example alarm (XXX: update this example):
+An example alarm (TODO: update this example):
 
     {
       "user": "deadbeef-5555-5555-5555-555555555555",
@@ -979,9 +977,8 @@ suppress notifications for probe failures.
 
 Only one of `all`, `monitors`, `machines` will exist.
 
-An example maintenance window:
+An example maintenance window (TODO):
 
-    TODO:XXX
 
 
 ## ListAllMaintenanceWindows (GET /maintenances)
@@ -1005,21 +1002,17 @@ Returns an array of maintenance windows (see
 
 ### Example
 
-    $ sdc-amon /maintenances
-    HTTP/1.1 200 OK
-    ...
-
-    XXX
+TODO: example
 
 
 ## ListMaintenanceWindows (GET /pub/:account/maintenances)
 
-XXX
+TODO: doc endpoint
 
 
 ## GetMaintenanceWindow (POST /pub/:account/maintenances/:maintenance)
 
-XXX
+TODO: doc endpoint
 
 
 ## CreateMaintenanceWindow (POST /pub/:account/maintenances)
@@ -1050,14 +1043,15 @@ For all possible errors, see [Error Response](#error-responses) above.
 
 ### Example
 
+TODO: example
+
     $ sdc-amon /pub/bob/maintenance -X POST -d start=now -d end=1d \
         -d monitors=mymonitor
-    XXX
 
 
 ## DeleteMaintenanceWindow (DELETE /pub/:account/maintenances/:maintenance)
 
-XXX
+TODO: doc endpoint
 
 
 
@@ -1705,7 +1699,7 @@ etc. This probe type requires an amon-agent running inside the target VM
 ||stdoutMatch.type||Optional||regex||One of 'substring' or 'regex'. Defines the type of 'stdoutMatch.pattern'.||
 ||stdoutMatch.flags||Optional||-||Pattern flags. 'i' to ignore case. 'm' for multiline match (i.e. '^' and '$' match the start and end of lines within a multiline string). Note that matching is not always on a single line, so if your regular expression pattern uses '^' or '$' you will want the 'm' flag.||
 ||stdoutMatch.matchWord||Optional||false||A boolean indicating if matching should be restricted to word boundaries.||
-||stdoutMatch.invert||Optional||false||Set to true to invert the sense of matching (i.e. XXX alarm on log lines that do NOT match).||
+||stdoutMatch.invert||Optional||false||Set to true to invert the sense of matching (i.e. alarm on stdout NOT including the given pattern)||
 ||stderrMatch||Optional||-||Data to match against stdout content. Alarm if a match is found in stdout.||
 ||stderrMatch.*||-||-||All options as per `stdoutMatch.*`.||
 ||timeout||Optional||5||Time (in seconds) after which to kill the probe command. Timing out will result in an alarm.||

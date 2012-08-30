@@ -17,7 +17,7 @@ var util = require('util'),
 var bunyan = require('bunyan');
 
 var objCopy = require('amon-common').utils.objCopy;
-var Probe = require('./probe');
+var ProbeType = require('./probe');
 var LogScanProbe = require('./log-scan');
 
 
@@ -85,7 +85,7 @@ BunyanLogScanProbe.validateConfig = function (config) {
     throw new TypeError(
       'at least one of "config.fields" or "config.match" is required');
   if (config.match) {
-    Probe.validateMatchConfig(config.match, 'config.match');
+    ProbeType.validateMatchConfig(config.match, 'config.match');
     if (config.match.invert) {
       // TODO
       throw new TypeError(

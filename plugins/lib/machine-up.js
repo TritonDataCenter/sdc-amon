@@ -9,7 +9,7 @@ var fs = require('fs');
 var util = require('util'),
   format = util.format;
 
-var Probe = require('./probe');
+var ProbeType = require('./probe');
 
 
 
@@ -26,7 +26,7 @@ var Probe = require('./probe');
  *      'zoneDown' events.
  */
 function MachineUpProbe(options) {
-  Probe.call(this, options);
+  ProbeType.call(this, options);
   if (!options.app) throw new TypeError('"options.app" is required');
   MachineUpProbe.validateConfig(this.config);
 
@@ -44,7 +44,7 @@ function MachineUpProbe(options) {
       null, {machine: self.machine}, false);
   };
 }
-util.inherits(MachineUpProbe, Probe);
+util.inherits(MachineUpProbe, ProbeType);
 
 MachineUpProbe.runInVmHost = true;
 MachineUpProbe.runLocally = true;

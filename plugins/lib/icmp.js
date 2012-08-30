@@ -3,7 +3,7 @@
  */
 
 /**
- * Creates an ICMP Probe
+ * Creates an ICMP ProbeType
  *
  * An ICMP probe can be planted to monitor any host that the machine/server
  * executing the probe can access.
@@ -22,28 +22,28 @@ var assert = require('assert');
 var format = util.format;
 var spawn = require('child_process').spawn;
 
-var Probe = require('./probe');
+var ProbeType = require('./probe');
 
 var SECONDS = 1000;
 
 // --- Exports
 //
-module.exports = Icmp;
+module.exports = IcmpProbe;
 
 
 
 /**
- * Create an Icmp probe.
+ * Create an ICMP probe (aka "ping").
  *
  * @param options {Object}
  *    - `uuid` {String} The probe uuid.
  *    - `data` {Object} The probe data, including its `config`.
  *    - `log` {Bunyan Logger}
  */
-function Icmp(options) {
-  Probe.call(this, options);
+function IcmpProbe(options) {
+  ProbeType.call(this, options);
 
-  Icmp.validateConfig(this.config);
+  IcmpProbe.validateConfig(this.config);
 
   this.host = this.config.host;
 
@@ -57,11 +57,11 @@ function Icmp(options) {
   this._count = 0;
 }
 
-util.inherits(Icmp, Probe);
+util.inherits(IcmpProbe, ProbeType);
 
-Icmp.prototype.type = 'icmp';
+IcmpProbe.prototype.type = 'icmp';
 
-Icmp.validateConfig = function (config) {
+IcmpProbe.validateConfig = function (config) {
   if (! config)
     throw new TypeError('config is required');
 
@@ -73,7 +73,7 @@ Icmp.validateConfig = function (config) {
     throw new TypeError('config.npackets must be a number (when provided)');
 };
 
-Icmp.prototype.doPing = function () {
+IcmpProbe.prototype.doPing = function () {
   var log = this.log;
   var self = this;
   var ping = spawn(
@@ -112,7 +112,7 @@ Icmp.prototype.doPing = function () {
 
 };
 
-Icmp.prototype.start = function (callback) {
+IcmpProbe.prototype.start = function (callback) {
   this.periodTimer = setInterval(
     this.resetCounter.bind(this),
     this.period * SECONDS);
@@ -126,11 +126,11 @@ Icmp.prototype.start = function (callback) {
   }
 };
 
-Icmp.prototype.resetCounter = function () {
+IcmpProbe.prototype.resetCounter = function () {
   this._count = 0;
 };
 
-Icmp.prototype.stop = function (callback) {
+IcmpProbe.prototype.stop = function (callback) {
   clearInterval(this.intervalTimer);
   clearInterval(this.periodTimer);
 
@@ -139,7 +139,7 @@ Icmp.prototype.stop = function (callback) {
   }
 };
 
-Icmp.prototype._parseMetrics = function (data) {
+IcmpProbe.prototype._parseMetrics = function (data) {
   var metrics = {};
 
   data.split('\n').forEach(function (line) {

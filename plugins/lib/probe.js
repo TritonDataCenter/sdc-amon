@@ -2,7 +2,7 @@
  * Copyright 2012 Joyent, Inc.  All rights reserved.
  *
  * Base class for Amon probe types.
- * Interface provided by the base "Probe" class:
+ * Interface provided by the base "ProbeType" class:
  *
  *    <probe>.uuid
  *      This string identifier for this probe (given at creation time).
@@ -41,22 +41,22 @@
  * Amon probe types should inherit from this base class -- see "log-scan.js"
  * for an example -- and implement the following interface:
  *
- *    Probe.prototype.type = <probe type string>;
+ *    ProbeType.prototype.type = <probe type string>;
  *      This must match the name used in "./index.js".
  *
- *    Probe.runInVmHost = <boolean>;
- *      Some Probe types must be run in the VM host (i.e. the global zone).
+ *    ProbeType.runInVmHost = <boolean>;
+ *      Some ProbeType types must be run in the VM host (i.e. the global zone).
  *      E.g. The "machine-up" probe type works by watching for system
  *      sysevents in the GZ.
  *
- *    Probe.runLocally = <boolean>;
- *      Some Probe types run locally, i.e. the 'agent' and 'machine' fields are
- *      the same. E.g. a log scanning probe must run on the machine in question
- *      and a ping (ICMP) probe need not (and should not). Local probes can be
- *      created without passing in the 'agent' option (it is inferred from
- *      'machine'), and vice versa.
+ *    ProbeType.runLocally = <boolean>;
+ *      Some ProbeType types run locally, i.e. the 'agent' and 'machine' fields
+ *      are the same. E.g. a log scanning probe must run on the machine in
+ *      question and a ping (ICMP) probe need not (and should not). Local probes
+ *      can be created without passing in the 'agent' option (it is inferred
+ *      from 'machine'), and vice versa.
  *
- *    Probe.validateConfig(config) {...}
+ *    ProbeType.validateConfig(config) {...}
  *      @param config {Object} The config data for a probe.
  *      @throws {TypeError} if invalid.
  *
@@ -83,7 +83,7 @@
  * Some probes allow the user to provide a pattern to match against log
  * output or command output or whatever. That handling should be common.
  * Relevant probes should use the functionality here (see all *Match* methods
- * on the Probe class). The config field name should be "match" or, if there
+ * on the ProbeType class). The config field name should be "match" or, if there
  * are multiple match fields, then something like "fooMatch". See log-scan.js
  * for example usage.
  */
@@ -98,16 +98,15 @@ var AMON_EVENT_VERSION = 1;
 
 //---- plugin class
 
-//XXX s/Probe/BaseProbe/ to not have overload
 /**
- * Create a Probe instance.
+ * Create a ProbeType instance.
  *
  * @param options {Object}
  *    - `uuid` {String} The probe uuid.
  *    - `data` {Object} The probe data, including its `config`.
  *    - `log` {Bunyan Logger}
  */
-function Probe(options) {
+function ProbeType(options) {
   process.EventEmitter.call(this);
 
   if (!options) throw new TypeError('"options" is required');
@@ -129,10 +128,10 @@ function Probe(options) {
 
   this.config = data.config;
 }
-util.inherits(Probe, process.EventEmitter);
+util.inherits(ProbeType, process.EventEmitter);
 
-Probe.runInVmHost = false;
-Probe.runLocally = false;
+ProbeType.runInVmHost = false;
+ProbeType.runLocally = false;
 
 
 /**
@@ -146,7 +145,7 @@ Probe.runLocally = false;
  *    if none.
  * @param clear {Boolean} `true` if this is a clear event.
  */
-Probe.prototype.emitEvent = function (message, value, details, clear) {
+ProbeType.prototype.emitEvent = function (message, value, details, clear) {
   if (!message) throw new TypeError('"message" is required');
   if (value === undefined) throw new TypeError('"value" is required');
   if (details === undefined) throw new TypeError('"details" is required');
@@ -186,7 +185,7 @@ var MATCH_TYPES = {regex: true, substring: true};
  * @param errName {String} The name of the field to use in raised errors.
  * @throws {TypeError} if the object is invalid.
  */
-Probe.validateMatchConfig = function (mconfig, errName) {
+ProbeType.validateMatchConfig = function (mconfig, errName) {
   if (!mconfig)
     throw new TypeError(format('"%s" is required', errName));
   if (!mconfig.pattern)
@@ -230,7 +229,7 @@ Probe.validateMatchConfig = function (mconfig, errName) {
 /**
  * Return a 'matcher' object for the given match config.
  */
-Probe.prototype.matcherFromMatchConfig = function (mconfig) {
+ProbeType.prototype.matcherFromMatchConfig = function (mconfig) {
   return new Matcher(mconfig);
 };
 
@@ -321,4 +320,4 @@ Matcher.prototype.toString = function () {
 
 //---- exports
 
-module.exports = Probe;
+module.exports = ProbeType;
