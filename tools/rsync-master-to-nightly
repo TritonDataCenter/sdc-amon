@@ -10,11 +10,10 @@ TOP=$(cd $(dirname $0)/../; pwd)
 NODE=root@10.2.106.7
 SSH_OPTIONS="-q -i $HOME/.ssh/automation.id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 SSH="ssh $SSH_OPTIONS"
-JSON3=$TOP/test/node_modules/.bin/json3
 
 if [[ -z "$AMON_ZONE" ]]; then
     AMON_ZONE=$(ssh $NODE "/opt/smartdc/bin/sdc-vmapi /vms" 2>/dev/null \
-        | $JSON3 -H -c 'this.tags && this.tags.smartdc_role === "amon"' \
+        | json -H -c 'this.tags && this.tags.smartdc_role === "amon"' \
             -c 'this.state === "running"' 0.uuid)
 fi
 echo "AMON_ZONE: $AMON_ZONE"
