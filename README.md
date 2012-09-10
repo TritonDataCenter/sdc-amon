@@ -416,7 +416,7 @@ suite (everything under "test/...") is installed with the Amon Relay
 You can run the test suite from there as follows:
 
     cd /opt/smartdc/agents/lib/node_modules/amon-relay
-    ./test/runtests.sh
+    ./test/runtests
 
 This will run all the main tests against the running Amon system and also
 login to the Amon Master zone(s) and run its local test suite. Results

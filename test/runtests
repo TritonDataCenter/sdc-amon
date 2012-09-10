@@ -10,7 +10,7 @@
 # can be processed by a TAP reader. Testing config and log files are
 # also placed in this dir.
 #
-# Run `./runtests.sh -h` for usage info.
+# Run `./runtests -h` for usage info.
 #
 
 if [ "$TRACE" != "" ]; then
@@ -19,6 +19,21 @@ if [ "$TRACE" != "" ]; then
 fi
 set -o errexit
 set -o pipefail
+
+
+
+#---- guard
+
+if [[ ! -f "/lib/sdc/.sdc-test-no-production-data" ]]; then
+    cat <<EOF
+To run this test you must create the file:
+
+    /lib/sdc/.sdc-test-no-production-data
+
+after ensuring you have no production data on this SDC.
+EOF
+    exit 2
+fi
 
 
 
@@ -33,7 +48,7 @@ function fatal
 function usage
 {
     echo "Usage:"
-    echo "  runtests.sh [OPTIONS...]"
+    echo "  runtests [OPTIONS...]"
     echo ""
     echo "Options:"
     echo "  -c          Just clean up test data, don't run the tests."
@@ -183,7 +198,7 @@ for amon_master in $amon_masters; do
     echo "# Run Amon Master ${amon_master_zonename} (alias $amon_master_alias) test suite (on CN ${amon_master_node})."
     output=$(sdc-oneachnode -j -n ${amon_master_node} \
         zlogin ${amon_master_zonename} \
-        /opt/smartdc/amon/test/runtests.sh $opt_test_pattern \
+        /opt/smartdc/amon/test/runtests $opt_test_pattern \
         || true)
     #echo "$output" | json 0
     amon_master_output=$OUTPUT_DIR/amon-master-$amon_master_alias.tap

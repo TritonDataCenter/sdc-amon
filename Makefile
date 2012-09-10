@@ -225,7 +225,7 @@ jshint:
 test:
 	[ $(shell uname) == "SunOS" ] \
 		|| (echo "error: can only run test suite on smartos GZ (perhaps try 'make test-coal'" && exit 1)
-	./test/runtests.sh
+	./test/runtests
 
 .PHONY: test-coal
 COAL=root@10.99.99.7
@@ -233,7 +233,7 @@ test-coal:
 	./tools/rsync-master-to-coal
 	./tools/rsync-relay-to-coal
 	./tools/rsync-agent-to-coal
-	ssh $COAL /opt/smartdc/agents/lib/node_modules/amon-relay/test/runtests.sh
+	ssh $COAL /opt/smartdc/agents/lib/node_modules/amon-relay/test/runtests
 
 # Test on Trent's kvm7.
 .PHONY: test-kvm7
@@ -241,7 +241,7 @@ test-kvm7:
 	./tools/rsync-master-to-kvm7
 	./tools/rsync-relay-to-kvm7
 	./tools/rsync-agent-to-kvm7
-	ssh kvm7 /opt/smartdc/agents/lib/node_modules/amon-relay/test/runtests.sh
+	ssh kvm7 /opt/smartdc/agents/lib/node_modules/amon-relay/test/runtests
 
 tmp:
 	mkdir -p tmp
