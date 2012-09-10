@@ -153,7 +153,7 @@ echo ""
 echo "# Drop Amon Master caches."
 sdc-amon /state?action=dropcaches -X POST >/dev/null
 
-# Run the tests includes with the relay.
+# Run the tests included with the amon-relay.
 echo ""
 test_files=$(ls -1 test/*.test.js node_modules/amon-plugins/test/*.test.js)
 if [[ -n "$opt_test_pattern" ]]; then
@@ -206,7 +206,7 @@ echo "# test output:"
 ls $OUTPUT_DIR/*.tap
 
 
-# Colored summary of results (borrowed from illumos-live.git/src/vm/run-tests).
+# Colored summary of results (borrowed from smartos-live.git/src/vm/run-tests).
 echo ""
 echo "# test results:"
 
@@ -225,3 +225,7 @@ if [[ ${fail} -gt 0 ]]; then
     echo -e "# \033[31mFAIL: ${fail} / ${tests}\033[39m"
 fi
 echo ""
+
+if [[ ${tests} != ${passed} ]]; then
+    exit 1
+fi
