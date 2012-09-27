@@ -11,5 +11,6 @@ module.exports = {
   'machine-up': require('./machine-up'),
   'http': require('./http'),
   'icmp': require('./icmp'),
-  'cmd': require('./cmd')
+  'cmd': require('./cmd'),
+  'disk-usage': require('./disk-usage')
 };

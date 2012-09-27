@@ -1471,6 +1471,7 @@ Some aggregated data on the probe types:
 ||http||yes||no||hit an HTTP(S) endpoint and assert a status, body match, response time, etc.||
 ||icmp (i.e. ping)||yes||no||ping a host and assert a response time, etc.||
 ||cmd||yes||no||run a command and assert an exit status, stdout match||
+||disk-usage||yes||yes||checks that free space in a dataset doesn't drop below a threshold||
 
 "Requires Agent" means that a probe of this type needs an amon-agent running
 in the customer vm/zone to run the probe. "machine-up" is the exception here,
@@ -1722,6 +1723,42 @@ TODO: consider longer multiline scripts. Using same 'cmd' field or 'script'?
         "config": {
             "cmd": "test ! $(df -k /opt | tail -1 | awk '{print $5}' | cut -d% -f1) -gt 90"
         }
+    }'
+
+
+## Probe: disk-usage
+
+Regularly checks the free space left in a dataset, and alarms when a threshold
+is passed.  This probe type requires an amon-agent running inside the target VM
+(i.e. the VM with the UUID of the "agent" field).
+
+### Config
+
+||**Parameter**||**Required?**||**Default**||**Description**||
+||path||Required||-||the dataset path to check||
+||threshold||Optional||20%||alarm after free space in dataset drops below this amount||
+||interval||Optional||3600||interval in seconds to check the specified dataset||
+
+`interval` cannot be lower than 300 (five minutes). It's recommended you leave it at least
+at 3600 (one hour) since checks can sometimes be expensive. `threshold` can either be a
+percentage (e.g. '10%'), or an absolute number in MiB (e.g. '2000M').
+
+### Example
+
+Check zones/f89c347a-e65a-4953-b7dd-6d1857e9bc60/data every six hours, and alarm if free
+space drops below 10GiB.
+
+
+    sdc-amon /pub/admin/probes -iX POST --data '
+    {
+      "data dataset running low",
+      "type": "disk-usage",
+      "agent": "f89c347a-e65a-4953-b7dd-6d1857e9bc60",
+      "config": {
+        "path": "zones/f89c347a-e65a-4953-b7dd-6d1857e9bc60/data",
+        "threshold": "10240M",
+        "interval": 21600
+      }
     }'
 
 
