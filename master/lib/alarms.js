@@ -118,7 +118,7 @@ function faultFromEvent(event) {
         agentAlias: event.agentAlias
         // Explicitly excluding: event.relay
       }
-    }
+    };
   } else {
     throw TypeError(format(
       'cannot create fault string: unknown event type: "%s"', event.type));
@@ -185,7 +185,7 @@ function createAlarm(app, userUuid, probeUuid, probeGroupUuid, callback) {
       timeOpened: alarm.timeOpened,
       timeClosed: alarm.timeClosed,
       timeLastEvent: alarm.timeLastEvent
-    }
+    };
     if (alarm.probe) rdata.probe = alarm.probe;
     if (alarm.probeGroup) rdata.probeGroup = alarm.probeGroup;
     redisClient.multi()
@@ -244,10 +244,10 @@ function Alarm(data, log) {
   if (data.faults) {
     Object.keys(data.faults).forEach(function (fid) {
       try {
-        h[fid] = JSON.parse(data.faults[fid])
+        h[fid] = JSON.parse(data.faults[fid]);
       } catch (e) {
         self.log.warn({faultStr: data.faults[fid], faultId: fid},
-          'error parsing fault data from redis (ignoring it)')
+          'error parsing fault data from redis (ignoring it)');
       }
     });
   }
@@ -258,10 +258,10 @@ function Alarm(data, log) {
   if (data.maintFaults) {
     Object.keys(data.maintFaults).forEach(function (fid) {
       try {
-        h[fid] = JSON.parse(data.maintFaults[fid])
+        h[fid] = JSON.parse(data.maintFaults[fid]);
       } catch (e) {
         self.log.warn({faultStr: data.maintFaults[fid], faultId: fid},
-          'error parsing maintenance fault data from redis (ignoring it)')
+          'error parsing maintenance fault data from redis (ignoring it)');
       }
     });
   }
@@ -400,7 +400,7 @@ Alarm.prototype.serializePublic = function serializePublic() {
     timeLastEvent: this.timeLastEvent,
     faults: this.faults,
     maintFaults: this.maintFaults,
-    numEvents: this.numEvents,
+    numEvents: this.numEvents
   };
 };
 
@@ -503,7 +503,7 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
   assert.func(callback, 'callback');
 
   var self = this;
-  var userUuid = options.userUuid;
+  // var userUuid = options.userUuid;
   var event = options.event;
   var log = this.log.child({event_uuid: event.uuid, alarm_id: this.id,
     user: this.user}, true);

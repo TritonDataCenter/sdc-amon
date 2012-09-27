@@ -200,6 +200,7 @@ ProbeType.validateMatchConfig = function (mconfig, errName) {
   if (mconfig.flags !== undefined) {
     try {
       var dummy = new RegExp('', mconfig.flags);
+      assert.ok(dummy); // solely to silence lint
     } catch (e) {
       assert.equal(e.name, 'SyntaxError', e);
       throw new TypeError(format('"%s.flags" (%s) is invalid',
@@ -264,9 +265,9 @@ function Matcher(mconfig) {
 Matcher.prototype.test = function (s) {
   assert.string(s, 's');
   if (this.invert) {
-    return !this._regexp.test(s)
+    return !this._regexp.test(s);
   } else {
-    return this._regexp.test(s)
+    return this._regexp.test(s);
   }
 };
 
@@ -305,14 +306,14 @@ Matcher.prototype.matches = function (s) {
 
 Matcher.prototype.toString = function () {
   if (!this._toStringCache) {
-    var s = this._regexp.toString()
+    var s = this._regexp.toString();
     if (this.invert) {
       s += ' (inverted)';
     }
     this._toStringCache = s;
   }
   return this._toStringCache;
-}
+};
 
 //util.inherits(Matcher, RegExp);
 

@@ -148,7 +148,7 @@ Email.prototype.notify = function (options, callback) {
         // Being defensive here: The machine UUID from the event should
         // match that on the probe unless (a) the probe was recently
         // updated or (b) the agent is sending bogus events.
-        details.push('machine=' + probe.machine)
+        details.push('machine=' + probe.machine);
       } else {
         var alias = (event.machine === event.agent ? event.agentAlias : null);
         if (event.machine === event.relay) {

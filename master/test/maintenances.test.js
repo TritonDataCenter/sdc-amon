@@ -105,12 +105,13 @@ test('raw maintenance window creation', function (t) {
     [{id: 1.5}, 'integer'],
     [{start: 'now'}, 'timestamp'],
     [{end: '1d'}, 'timestamp'],
-    [{machines: uuid()}, 'exactly one'],
+    [{machines: uuid()}, 'exactly one']
   ];
   errData.forEach(function (errDatum) {
     var data = objMerge(base, errDatum[0]);
     try {
       var maint = new Maintenance(data, log);
+      t.ok(maint); // solely to silence lint
     } catch (err) {
       t.equal(err.name, 'TypeError', 'TypeError for bad Maintenance data');
       t.ok(err.toString().indexOf(errDatum[1]) !== -1,

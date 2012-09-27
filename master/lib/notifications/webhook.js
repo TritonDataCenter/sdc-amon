@@ -64,7 +64,7 @@ Webhook.prototype.notify = function (options, callback) {
     'email notify');
 
   var url = urlParse(address);
-  var options = {
+  var reqOptions = {
     path: url.path,
     host: url.hostname,
     headers: {},
@@ -76,10 +76,10 @@ Webhook.prototype.notify = function (options, callback) {
 
   if (url.protocol === 'http:') {
     http = require('http');
-    options.port = options.port || 80;
+    reqOptions.port = reqOptions.port || 80;
   } else if (url.protocol === 'https:') {
     http = require('https');
-    options.port = options.port || 443;
+    reqOptions.port = reqOptions.port || 443;
   } else {
     return callback(
       new Error(format('Unsupported protocol: %s', url.protocol))
@@ -96,9 +96,9 @@ Webhook.prototype.notify = function (options, callback) {
 
   var serialized = JSON.stringify(body);
 
-  options.headers['content-length'] = serialized.length;
+  reqOptions.headers['content-length'] = serialized.length;
 
-  var req = http.request(options, function (res) {
+  var req = http.request(reqOptions, function (res) {
     callback();
   });
 

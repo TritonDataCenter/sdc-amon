@@ -845,7 +845,7 @@ App.prototype.handleMaintenanceEnd = function (maintenance, callback) {
   // "faults"... and notify as appropriate.
 
   callback();
-}
+};
 
 
 /**
@@ -1121,7 +1121,7 @@ App.prototype.notifyContact = function (options, callback) {
   var plugin = this.notificationPlugins[options.contact.notificationType];
   if (!plugin) {
     var msg = format('notification plugin "%s" not found',
-                     contact.notificationType);
+                     options.contact.notificationType);
     log.error(msg);
     return callback(new Error(msg));
   }

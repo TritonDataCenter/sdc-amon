@@ -11,6 +11,7 @@
 
 var os = require('os');
 var assert = require('assert');
+var format = require('util').format;
 
 var restify = require('restify');
 
@@ -102,7 +103,7 @@ AdminApp.prototype.listen = function (callback) {
   for (var i = 0; i < loIfaces.length; i++) {
     if (loIfaces[i].family === 'IPv4') {
       address = loIfaces[i].address;
-      assert(loIfaces[i].internal)
+      assert(loIfaces[i].internal);
       break;
     }
   }
@@ -125,10 +126,10 @@ function apiRelayAdminGetState(req, res, next) {
       upstreamAgentProbesMD5: za.upstreamAgentProbesMD5,
       downstreamAgentProbesMD5: za.downstreamAgentProbesMD5,
       downstreamAgentProbes: za.downstreamAgentProbes
-    }
+    };
   });
 
-  snapshot = {
+  var snapshot = {
     zoneApps: zoneAppsData
   };
   res.send(snapshot);

@@ -72,7 +72,7 @@ LogScanProbe.validateConfig = function (config) {
 
 LogScanProbe.prototype.validateConfig = function (config) {
   return LogScanProbe.validateConfig(config);
-}
+};
 
 
 LogScanProbe.prototype._getPath = function (callback) {
@@ -101,7 +101,7 @@ LogScanProbe.prototype._getPath = function (callback) {
   } else {
     callback(new Error("cannot get LogScanProbe path"));
   }
-}
+};
 
 
 /**
@@ -122,7 +122,7 @@ LogScanProbe.prototype._getMessage = function () {
     this._messageCache = msg;
   }
   return this._messageCache;
-}
+};
 
 
 /**
@@ -134,7 +134,7 @@ LogScanProbe.prototype._getMessage = function () {
  */
 LogScanProbe.prototype._matchChunk = function (chunk) {
   return this.matcher.matches(chunk.toString());
-}
+};
 
 
 /**
@@ -147,7 +147,7 @@ LogScanProbe.prototype.start = function (callback) {
   var GET_PATH_RETRY = 5 * 60 * 1000; // Every 5 minutes.
 
   function getPathAndStart(cb) {
-    log.info('get path')
+    log.info('get path');
     self._getPath(function (err, path) {
       if (err) {
         log.info(err, 'could not get path to scan, recheck in %dms',
@@ -155,7 +155,7 @@ LogScanProbe.prototype.start = function (callback) {
         self.pathRetrier = setTimeout(getPathAndStart, GET_PATH_RETRY);
         return;
       }
-      log.info({path: path}, 'got path')
+      log.info({path: path}, 'got path');
 
       self.timer = setInterval(function () {
         if (!self._running)
@@ -172,7 +172,7 @@ LogScanProbe.prototype.start = function (callback) {
         }
 
         //log.debug('chunk: %s', JSON.stringify(chunk.toString()));
-        var matches = self._matchChunk(chunk)
+        var matches = self._matchChunk(chunk);
         if (matches) {
           if (log.trace()) {
             log.trace({chunk: chunk.toString(), threshold: self.threshold,

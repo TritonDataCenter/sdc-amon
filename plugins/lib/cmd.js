@@ -56,7 +56,7 @@ function CmdProbe(options) {
     env: this.config.env || null,
     timeout: this.timeout * SECONDS,
     // No messing around. When the command times out, we want it *stopped*.
-    killSignal: 'SIGKILL',
+    killSignal: 'SIGKILL'
   };
   this._count = 0;
   this._running = false;
@@ -147,7 +147,7 @@ CmdProbe.prototype.runCmd = function runCmd() {
     log.error({err: execErr, cmd: this.cmd, _cmdOptions: this._cmdOptions},
       "error executing command");
     self.runnerTimeout = setTimeout(
-      function () { self.runCmd() },
+      function () { self.runCmd(); },
       self.interval * SECONDS);
   }
 };
@@ -169,7 +169,7 @@ CmdProbe.prototype.start = function (callback) {
 
   self._running = true;
 
-  process.nextTick(function () { self.runCmd() });
+  process.nextTick(function () { self.runCmd(); });
   if (callback && (callback instanceof Function)) {
     return callback();
   }

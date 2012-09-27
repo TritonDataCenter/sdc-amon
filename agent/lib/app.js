@@ -10,7 +10,7 @@ var util = require('util'),
   format = util.format;
 
 var amonCommon = require('amon-common'),
-  RelayClient = amonCommon.RelayClient
+  RelayClient = amonCommon.RelayClient;
 var plugins = require('amon-plugins');
 var ZoneEventWatcher = require('./zoneeventwatcher');
 

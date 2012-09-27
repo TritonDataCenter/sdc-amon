@@ -53,7 +53,7 @@ function BunyanLogScanProbe(options) {
       : bunyan.resolveLevel(this.config.fields[k]));
     this._quickOutMatcher = this.matcherFromMatchConfig({
       pattern: format('"%s":%j', k, v),
-      type: 'substring',
+      type: 'substring'
     });
   }
 
@@ -94,7 +94,7 @@ BunyanLogScanProbe.validateConfig = function (config) {
   }
   if (config.fields && config.fields.level) {
     try {
-      bunyan.resolveLevel(config.fields.level)
+      bunyan.resolveLevel(config.fields.level);
     } catch (e) {
       throw new TypeError(
         'config.fields.level is an invalid Bunyan log level: ' + e);
@@ -105,7 +105,7 @@ BunyanLogScanProbe.validateConfig = function (config) {
 
 BunyanLogScanProbe.prototype.validateConfig = function (config) {
   return BunyanLogScanProbe.validateConfig(config);
-}
+};
 
 
 /**
@@ -123,14 +123,14 @@ BunyanLogScanProbe.prototype._getMessage = function () {
         conds.push(format("%s=%s", this.config.match.field,
           this.matcher.toString()));
       } else {
-        conds.push(this.matcher.toString())
+        conds.push(this.matcher.toString());
       }
     }
 
     if (this.config.fields) {
       Object.keys(this.config.fields).forEach(function (f) {
         conds.push(format('%s=%s', f, self.config.fields[f]));
-      })
+      });
     }
     conds = (conds.length ? format(' (%s)', conds.join(', ')) : '');
 
@@ -144,7 +144,7 @@ BunyanLogScanProbe.prototype._getMessage = function () {
     this._messageCache = msg;
   }
   return this._messageCache;
-}
+};
 
 
 /**
@@ -221,7 +221,7 @@ BunyanLogScanProbe.prototype._matchChunk = function (chunk) {
     matches.push({match: record});
   }
   return (matches.length ? matches : null);
-}
+};
 
 BunyanLogScanProbe.prototype.stop = function (callback) {
   this._running = false;

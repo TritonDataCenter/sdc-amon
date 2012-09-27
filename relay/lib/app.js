@@ -8,7 +8,7 @@ var Pipe = process.binding('pipe_wrap').Pipe;
 var crypto = require('crypto');
 var format = require('util').format;
 var child_process = require('child_process'),
-  exec = child_process.exec;
+  exec = child_process.exec,
   execFile = child_process.execFile;
 
 var restify = require('restify');

@@ -13,7 +13,7 @@ function objCopy(obj) {
     copy[k] = obj[k];
   });
   return copy;
-};
+}
 
 
 /**
@@ -30,7 +30,7 @@ function compareProbes(a, b) {
     return 1;
   else
     return 0;
-};
+}
 
 
 /**

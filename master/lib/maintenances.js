@@ -112,6 +112,8 @@ function dateFromEnd(end) {
       case 'd':
         t += num * 24 * 60 * 60 * 1000;
         break;
+      default:
+	break;
     }
     d = new Date(t);
   } else {
@@ -250,7 +252,7 @@ function deleteMaintenance(app, maintenance, callback) {
   var log = app.log;
   log.info({maint: maintenance}, "deleteMaintenance");
 
-  var multi = app.getRedisClient().multi()
+  app.getRedisClient().multi()
     .srem('maintenances:' + maintenance.user, maintenance.id)
     .zrem('maintenancesByEnd', maintenance._key)
     .del(maintenance._key)
@@ -311,7 +313,7 @@ function listMaintenances(app, userUuid, log, callback) {
   var redisClient = app.getRedisClient();
   redisClient.smembers(setKey, function (setErr, maintenanceIds) {
     if (setErr) {
-      return next(setErr);
+      return callback(setErr);
     }
     log.debug({maintenanceIds: maintenanceIds},
       'get maintenance window data for each key (%d ids)',
@@ -327,7 +329,7 @@ function listMaintenances(app, userUuid, log, callback) {
 
       var filtered = [];
       for (var i = 0; i < maintenances.length; i++) {
-        a = maintenances[i];
+        var a = maintenances[i];
         if (maintenances[i] != null) {
           // Maintenance.get returns a null maintenance for invalid data.
           filtered.push(a);
@@ -391,7 +393,7 @@ function Maintenance(data, log) {
 
 Maintenance.key = function key(userUuid, id) {
   return ['maintenance', userUuid, id].join(':');
-}
+};
 
 
 /**
@@ -756,7 +758,7 @@ function scheduleNextMaintenanceExpiry(app) {
               'expire maintenance');
             deleteMaintenance(app, maintenance, function (delErr) {
               if (delErr) {
-                log.error({err: delErr, maintenaceRepr: maintenaceRepr},
+                log.error({err: delErr, maintenaceRepr: maintenanceRepr},
                   'error deleting maintenance in expiryTimeout');
               }
               scheduleNextMaintenanceExpiry(app);
@@ -794,7 +796,7 @@ function scheduleNextMaintenanceExpiry(app) {
  *    does not return all relevant maintenance windows.
  */
 function isEventInMaintenance(options, callback) {
-  if (!options) throw new TypeError('"options" is required')
+  if (!options) throw new TypeError('"options" is required');
   if (!options.app) throw new TypeError('"options.app" is required');
   if (!options.event) throw new TypeError('"options.event" is required');
   if (!callback) throw new TypeError('"callback" is required');
@@ -867,5 +869,5 @@ module.exports = {
   scheduleNextMaintenanceExpiry: scheduleNextMaintenanceExpiry,
   isEventInMaintenance: isEventInMaintenance,
 
-  mountApi: mountApi,
+  mountApi: mountApi
 };

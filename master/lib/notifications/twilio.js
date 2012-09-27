@@ -113,7 +113,7 @@ Twilio.prototype.notify = function (options, callback) {
     '&Called=' + querystring.escape(address) +
     '&Method=GET&Url=' + querystring.escape(self.url);
 
-  var options = {
+  var reqOptions = {
     method: 'POST',
     headers: {
       'Accept': 'application/json',
@@ -130,8 +130,8 @@ Twilio.prototype.notify = function (options, callback) {
   /*jsl:ignore*/
   operation.try(function (currentAttempt) {
     /*jsl:end*/
-    log.debug({twilioReq: options}, 'twilio request');
-    var req = https.request(options, function (res) {
+    log.debug({twilioReq: reqOptions}, 'twilio request');
+    var req = https.request(reqOptions, function (res) {
       if (res.statusCode >= 500) {
         log.warn({res: res}, 'twilio failure response (code %d), calling retry',
           res.statusCode);
