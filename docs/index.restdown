@@ -1471,7 +1471,7 @@ Some aggregated data on the probe types:
 ||http||yes||no||hit an HTTP(S) endpoint and assert a status, body match, response time, etc.||
 ||icmp (i.e. ping)||yes||no||ping a host and assert a response time, etc.||
 ||cmd||yes||no||run a command and assert an exit status, stdout match||
-||disk-usage||yes||yes||checks that free space in a dataset doesn't drop below a threshold||
+||disk-usage||yes||yes||checks that free space on a mountpoint doesn't drop below a threshold||
 
 "Requires Agent" means that a probe of this type needs an amon-agent running
 in the customer vm/zone to run the probe. "machine-up" is the exception here,
@@ -1728,14 +1728,14 @@ TODO: consider longer multiline scripts. Using same 'cmd' field or 'script'?
 
 ## Probe: disk-usage
 
-Regularly checks the free space left in a dataset, and alarms when a threshold
+Regularly checks the free space left on a mountpoint, and alarms when a threshold
 is passed.  This probe type requires an amon-agent running inside the target VM
 (i.e. the VM with the UUID of the "agent" field).
 
 ### Config
 
 ||**Parameter**||**Required?**||**Default**||**Description**||
-||path||Required||-||the dataset path to check||
+||path||Required||-||the mountpoint path to check||
 ||threshold||Optional||20%||alarm after free space in dataset drops below this amount||
 ||interval||Optional||3600||interval in seconds to check the specified dataset||
 
@@ -1745,8 +1745,7 @@ percentage (e.g. '10%'), or an absolute number in MiB (e.g. '2000M').
 
 ### Example
 
-Check zones/f89c347a-e65a-4953-b7dd-6d1857e9bc60/data every six hours, and alarm if free
-space drops below 10GiB.
+Check / every six hours, and alarm if free space drops below 10GiB.
 
 
     sdc-amon /pub/admin/probes -iX POST --data '
@@ -1755,7 +1754,7 @@ space drops below 10GiB.
       "type": "disk-usage",
       "agent": "f89c347a-e65a-4953-b7dd-6d1857e9bc60",
       "config": {
-        "path": "zones/f89c347a-e65a-4953-b7dd-6d1857e9bc60/data",
+        "path": "/",
         "threshold": "10240M",
         "interval": 21600
       }

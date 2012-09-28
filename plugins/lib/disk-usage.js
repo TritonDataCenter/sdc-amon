@@ -72,33 +72,31 @@ DiskUsageProbe.prototype.validateConfig = DiskUsageProbe.validateConfig;
 DiskUsageProbe.prototype.checkThreshold = function () {
   var self = this;
 
-  self.log.trace('check dataset usage');
-  execFile('/usr/sbin/zfs',
-           ['list', '-H', '-p', '-o', 'refer,avail', self.path],
+  self.log.trace('check mountpoint usage');
+  execFile('/usr/bin/df', ['-k', self.path],
            function (err, stdout, stderr) {
     if (err || stderr) {
-      self.log.error('error checking dataset size: ' + (err || stderr));
+      self.log.error('error checking size: ' + (err || stderr));
       return;
     }
 
-    var res = stdout.match(/(\d+)\s+(\d+)/);
+    var res = stdout.match(/(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%/);
     if (!res) {
       self.log.error('error matching sizes on stdout: ' + stdout);
       return;
     }
 
-    var used = res[1] / 1024 / 1024; // convert bytes to MB
-    var free = res[2] / 1024 / 1024; // convert bytes to MB
-    
+    var mbAvail = res[3] / 1024; // convert KiB to MiB
+    var percentUsed = res[4];
+
     if (self.percent) {
       var thresholdSymbol = '%';
-      var freeRatio = free / (used + free);
-      var errorActive = freeRatio * 100 < self.threshold;
+      var errorActive = (100 - percentUsed) < self.threshold;
     } else {
       thresholdSymbol = 'M';
-      errorActive = free < self.threshold;  
+      errorActive = mbAvail < self.threshold;
     }
-     
+
     var msg = 'Remaining space on ' + self.path + ' has dropped below ' +
               self.threshold + thresholdSymbol;
 
