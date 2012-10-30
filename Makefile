@@ -68,34 +68,32 @@ all: common plugins agent testbuild relay master dev
 #
 # The main amon components
 #
-# Note: Use 'npm install' before 'npm update' to attempt to avoid problem with
-# git dependency for ldapjs. See <https://github.com/isaacs/npm/issues/2374>.
 
 .PHONY: common
 common: | $(NPM_EXEC)
-	(cd common && $(NPM) install && $(NPM) update && $(NPM) link)
+	(cd common && $(NPM) install && $(NPM) link)
 
 .PHONY: plugins
 plugins: | $(NPM_EXEC)
-	(cd plugins && $(NPM) install && $(NPM) update && $(NPM) link)
+	(cd plugins && $(NPM) install && $(NPM) link)
 
 .PHONY: agent
 agent: common plugins | $(NPM_EXEC)
-	(cd agent && $(NPM) link amon-common amon-plugins && $(NPM) install && $(NPM) update)
+	(cd agent && $(NPM) link amon-common amon-plugins && $(NPM) install)
 
 .PHONY: relay
 relay: common plugins testbuild | $(NPM_EXEC)
-	(cd relay && $(NPM) link amon-common amon-plugins && $(NPM) install && $(NPM) update)
+	(cd relay && $(NPM) link amon-common amon-plugins && $(NPM) install)
 
 .PHONY: master
 master: common plugins | $(NPM_EXEC)
-	(cd master && $(NPM) link amon-common amon-plugins && $(NPM) install && $(NPM) update)
+	(cd master && $(NPM) link amon-common amon-plugins && $(NPM) install)
 
 # 'testbuild' is the name for building in the 'test' dir. Want 'make test'
 # to actually *run* the tests.
 .PHONY: testbuild
 testbuild: | $(NPM_EXEC)
-	(cd test && $(NPM) install && $(NPM) update)
+	(cd test && $(NPM) install)
 
 # "dev" is the name for the top-level dev package
 .PHONY: dev
