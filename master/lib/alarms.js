@@ -301,6 +301,10 @@ Alarm.get = function get(app, userUuid, id, callback) {
         return callback(err);
       }
       var alarmObj = replies[0];
+      if (!alarmObj) {
+        return callback(new restify.ResourceNotFoundError(
+          'alarm %d not found', id));
+      }
       alarmObj.faults = replies[1];
       alarmObj.maintFaults = replies[2];
       var alarm = null;
