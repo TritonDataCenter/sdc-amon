@@ -493,7 +493,7 @@ Alarm.prototype._updateMaintFaults = function _updateMaintFaults() {
  *    was a problem saving updated alarm/event info to redis. Note that
  *    notifying (if deemed necessary) is attempted even if updating redis
  *    fails and a failure to notify does not result in an `err` here
- *    (though might result in a separate alarm for the monitor owner).
+ *    (though might result in a separate alarm for the probe owner).
  */
 Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
   assert.object(app, 'app');
@@ -698,12 +698,13 @@ Alarm.prototype.unsuppress = function (app, callback) {
 
 
 /**
- * Notify all contacts configured for this monitor about an event on this
- * alarm.
+ * Notify all contacts configured for this probe/probegroup about an event on
+ * this alarm.
  *
  * @param app {App}
  * @param options {Object}
- *    - @param user {Object} User, as from `App.userFromId()`, owning the monitor.
+ *    - @param user {Object} User, as from `App.userFromId()`, owning the
+ *          probe or probe group.
  *    - @param event {Object}
  *    - @param probe {Object} Optional.
  *    - @param probeGroup {Object} Optional.
@@ -848,7 +849,7 @@ function apiListAlarms(req, res, next) {
       'invalid "state": "%s" (must be one of "%s")', state,
       validStates.join('", "')));
   }
-  var monitor = req.query.monitor;
+  var probeGroup = req.query.probeGroup;
 
   var redisClient = req._app.getRedisClient();
 
@@ -886,12 +887,12 @@ function apiListAlarms(req, res, next) {
       }
       alarms = filtered;
 
-      if (monitor) {
-        log.debug('filter alarms for monitor="%s"', monitor);
+      if (probeGroup) {
+        log.debug('filter alarms for probeGroup="%s"', probeGroup);
         filtered = [];
         for (i = 0; i < alarms.length; i++) {
           a = alarms[i];
-          if (a.monitor === monitor) {
+          if (a.probeGroup === probeGroup) {
             filtered.push(a);
           }
         }

@@ -681,7 +681,7 @@ automatically expunged (currently a week after being closed).
 ||**Field**||**Type**||**Description**||
 ||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
 ||state||String||One of "recent" (open and recently closed alarms, this is the default), "open", "closed" and "all".||
-||monitor||String||Only return alarms associated with this monitor.||
+||probeGroup||UUID||Only return alarms associated with this probe group.||
 
 ### Errors
 
