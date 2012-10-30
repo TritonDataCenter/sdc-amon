@@ -341,6 +341,9 @@ function createAmontestzone(next) {
         networks: externalNetworkUuid
       },
       function (err2, jobInfo) {
+        if (err2) {
+          return next(err2);
+        }
         amontestzone = jobInfo.vm_uuid; // intentionally global
         log('# amontestzone uuid: %s', amontestzone);
         common.waitForVmapiJob({

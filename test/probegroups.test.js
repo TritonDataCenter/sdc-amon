@@ -458,6 +458,18 @@ test('got NO notification for fault while in maint', function (t) {
 
 
 
+//---- test maintenance window expiry handling
+// This is to cover scenario 4. from maintenances.test.js:
+//
+//  4. Set maint window on amontestzone. Shut it down. Assert get alarm, no
+//     notification. Let maint window expire. Assert get notification.
+//     Restart amontestzone: assert alarm clears and get notification.
+//
+// because this test is faster to run (no waiting for amontestzone rebooting).
+//
+// TODO: START HERE
+
+
 //---- clean up
 
 test('delete mead maintenance window', function (t) {

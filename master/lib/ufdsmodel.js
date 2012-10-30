@@ -26,8 +26,6 @@ var uuid = require('node-uuid');
 var ldap = require('ldapjs');
 var restify = require('restify');
 
-var objCopy = require('amon-common').utils.objCopy;
-
 
 
 //---- generic list/create/get/delete model helpers
@@ -346,9 +344,11 @@ function requestCreate(req, res, next, Model) {
   Object.keys(req.params).forEach(function (k) {
     data[k] = req.params[k];
   });
-  Object.keys(req.body).forEach(function (k) {
-    data[k] = req.body[k];
-  });
+  if (req.body) {
+    Object.keys(req.body).forEach(function (k) {
+      data[k] = req.body[k];
+    });
+  }
   data.user = req._user.uuid;
   data.uuid = uuid();
 

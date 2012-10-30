@@ -3,33 +3,34 @@
  *
  * Test maintenance windows. Scenarios/steps:
  *
- * - Ulrich creates a 'maintprobe' probe with the 'testWebhook' contact
- *   (setup in prep.js at http://localhost:8000/) in 'amontestzone' zone of
- *   type 'machine-up'.
- * - Maintenance window basics tests:
+ * Setup: Ulrich creates a 'maintprobe' probe with the 'testWebhook' contact
+ * (setup in prep.js at http://localhost:8000/) in 'amontestzone' zone of
+ * type 'machine-up'.
+ *
+ * 0. Maintenance window basics tests:
  *    - create maint windows with all the creation options (values of start
  *      and end) and assert creation.
  *    - test all the maint endpoints on these
  *    - delete all maint windows
- * - Shutdown amontestzone: assert get alarm and notification.
- *   Restart amontestzone: assert get notification and alarm clears.
- * - Set maint window. Shutdown amontestzone: assert get alarm, no
- *   notification.
- *   Restart amontestzone: assert alarm clears, no notification.
- *   Delete maint window.
- * - Shutdown amontestzone (get alarm, notification). Set maint window
- *   on it. Restart amontestzone: assert alarm clears and get notification.
- *   Delete maint window.
- * - Set maint window on amontestzone. Shut it down. Assert get alarm, no
- *   notification. Let maint window expire. Assert get notification.
- *   Restart amontestzone: assert alarm clears and get notification.
- * - (Similar to previous, but manually delete maint window instead of
- *   expiry.)
- * - Set maint window on amontestzone. Shut it down. Assert get alarm, no
- *   notification. Set a *second* maint window also covering the machine.
- *   Let first maint window expire. Assert do NOT get notification.
- *   Restart amontestzone: assert alarm clears and get notification.
- *   Delete the second maint window.
+ * 1. Shutdown amontestzone: assert get alarm and notification.
+ *    Restart amontestzone: assert get notification and alarm clears.
+ * 2. Set maint window. Shutdown amontestzone: assert get alarm, no
+ *    notification.
+ *    Restart amontestzone: assert alarm clears, no notification.
+ *    Delete maint window.
+ * 3. Shutdown amontestzone (get alarm, notification). Set maint window
+ *    on it. Restart amontestzone: assert alarm clears and get notification.
+ *    Delete maint window.
+ * 4. Set maint window on amontestzone. Shut it down. Assert get alarm, no
+ *    notification. Let maint window expire. Assert get notification.
+ *    Restart amontestzone: assert alarm clears and get notification.
+ * 5. (Similar to previous, but manually delete maint window instead of
+ *    expiry.)
+ * 6. Set maint window on amontestzone. Shut it down. Assert get alarm, no
+ *    notification. Set a *second* maint window also covering the machine.
+ *    Let first maint window expire. Assert do NOT get notification.
+ *    Restart amontestzone: assert alarm clears and get notification.
+ *    Delete the second maint window.
  *
  * TODO: maintenances2.test.js that tests cases with two probes on separate
  * machines with maint windows on both or just one.
@@ -152,7 +153,7 @@ test('setup: ensure no current alarms', function (t) {
 
 
 /*
- * - Maintenance window basics tests:
+ * 0. Maintenance window basics tests:
  *    - create maint windows with all the creation options (values of start
  *      and end) and assert creation.
  *    - test all the maint endpoints on these
@@ -244,8 +245,8 @@ test('maint basics: no maintenance windows', function (t) {
 
 
 /*
- * - Shutdown amontestzone: assert get alarm and notification.
- *   Restart amontestzone: assert get notification and alarm clears.
+ * 1. Shutdown amontestzone: assert get alarm and notification.
+ *    Restart amontestzone: assert get notification and alarm clears.
  */
 
 var maint1AlarmId;
@@ -382,10 +383,10 @@ test('maint 1: wait until restarted zone has settled', function (t) {
 
 
 /*
- * - Set maint window. Shutdown amontestzone: assert get alarm, no
- *   notification.
- *   Restart amontestzone: assert alarm clears, no notification.
- *   Delete maint window.
+ * 2. Set maint window. Shutdown amontestzone: assert get alarm, no
+ *    notification.
+ *    Restart amontestzone: assert alarm clears, no notification.
+ *    Delete maint window.
  */
 
 var maint2 = {
@@ -541,36 +542,36 @@ test('maint 2: wait until restarted zone has settled', function (t) {
 
 
 /*
- * - Shutdown amontestzone (get alarm, notification). Set maint window
- *   on it. Restart amontestzone: assert alarm clears and get notification.
- *   Delete maint window.
+ * 3. Shutdown amontestzone (get alarm, notification). Set maint window
+ *    on it. Restart amontestzone: assert alarm clears and get notification.
+ *    Delete maint window.
  */
-//TODO
+// TODO
 
 
 /*
- * - Set maint window on amontestzone. Shut it down. Assert get alarm, no
- *   notification. Let maint window expire. Assert get notification.
- *   Restart amontestzone: assert alarm clears and get notification.
+ * 4. Set maint window on amontestzone. Shut it down. Assert get alarm, no
+ *    notification. Let maint window expire. Assert get notification.
+ *    Restart amontestzone: assert alarm clears and get notification.
  */
-//XXX TODO
+// TODO
 
 
 /*
- * - (Similar to previous, but manually delete maint window instead of
- *   expiry.)
+ * 5. (Similar to previous, but manually delete maint window instead of
+ *    expiry.)
  */
-//XXX TODO
+// TODO
 
 
 /*
- * - Set maint window on amontestzone. Shut it down. Assert get alarm, no
- *   notification. Set a *second* maint window also covering the machine.
- *   Let first maint window expire. Assert do NOT get notification.
- *   Restart amontestzone: assert alarm clears and get notification.
- *   Delete the second maint window.
+ * 6. Set maint window on amontestzone. Shut it down. Assert get alarm, no
+ *    notification. Set a *second* maint window also covering the machine.
+ *    Let first maint window expire. Assert do NOT get notification.
+ *    Restart amontestzone: assert alarm clears and get notification.
+ *    Delete the second maint window.
  */
-//TODO
+// TODO
 
 
 

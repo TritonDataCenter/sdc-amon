@@ -5,7 +5,7 @@
   "author": "Joyent (joyent.com)",
   "private": true,
   "devDependencies": {
-    "sdc-clients": "git+ssh://git@git.joyent.com:node-sdc-clients.git#6a1b4a818356d1848a484dc3c979f3a588950753",
+    "sdc-clients": "git+ssh://git@git.joyent.com:node-sdc-clients.git#8916b79",
     "amon-common": "1.0.0",
 
     "bunyan": "0.14.5",

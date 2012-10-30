@@ -58,6 +58,7 @@ In no particular order, other things to look at in Amon.
 - removing old alarms after a week
 - how to monitor percentiles? E.g. prio1 alarm if 90th percentile
   response time is >200ms or something?
+- bitrot: node_redis v0.8 (does this fix some of the problems we worked around?)
 - Relay needs to have guards for run away agents. One case is an infinite
   loop: a probe watching for "ERROR" in amon logs, where sending the
   event results in an "ERROR". Handle this with relay per-agent throttling
