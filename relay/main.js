@@ -442,6 +442,10 @@ function updateAgentAliases() {
       var bits = line.split(/\s+/);
       var uuid = bits[0];
       var alias = bits[1] || null;
+      if (alias === '-') {
+        // '-' is how 'vmadm list' says 'the alias is empty'.
+        alias = null;
+      }
       var app = zoneApps[uuid];
       if (app && app.agentAlias !== alias) {
         log.info("updateAgentAliases for agent '%s': '%s' -> '%s'",
