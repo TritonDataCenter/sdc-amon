@@ -27,8 +27,10 @@ function subfile () {
 
 
 subfile "$DIR/../smf/manifests/amon-relay.xml.in" "$SMFDIR/amon-relay.xml"
+subfile "$DIR/../smf/manifests/amon-zoneevents.xml.in" "$SMFDIR/amon-zoneevents.xml"
 
 svccfg import $SMFDIR/amon-relay.xml
+svccfg import $SMFDIR/amon-zoneevents.xml
 
 # Gracefully restart the agent if it is online.
 SL_STATUS=`svcs -H amon-relay | awk '{ print $1 }'`
