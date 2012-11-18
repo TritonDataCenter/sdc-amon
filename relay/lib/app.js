@@ -27,7 +27,16 @@ var agentprobes = require('./agentprobes');
 var events = require('./events');
 var utils = require('./utils');
 
-
+/*
+ * We are creating many restify servers (one for each zone); we don't want
+ * or need DTrace probes for these, so we disable them by passing in an
+ * object that stubs out the DTrace operations.
+ */
+var disabled = {
+  addProbe: function addProbe() {},
+  enable: function enable() {},
+  fire: function fire() {}
+};
 
 //---- internal support stuff
 
@@ -147,7 +156,8 @@ function App(options) {
   // Server setup.
   var server = this.server = restify.createServer({
     name: 'Amon Relay/' + Constants.ApiVersion,
-    log: log
+    log: log,
+    dtrace: disabled
   });
   server.use(restify.queryParser({mapParams: false}));
   server.use(restify.bodyParser({mapParams: false}));
