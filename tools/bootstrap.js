@@ -286,6 +286,7 @@ function getExternalNetworkUuid(next) {
 }
 
 
+//XXX Still necessary?
 function unreserveHeadnodeForProvisioning(next) {
   var cmd = format('ssh %s /opt/smartdc/bin/sdc-cnapi /servers/%s -X POST -F reserved=false',
     headnodeAlias, headnodeUuid);
@@ -333,11 +334,12 @@ function createAmondevzone(next) {
     var userScriptPath = path.join(__dirname, 'amondevzone.user-script');
     vmapiClient.createVm({
         owner_uuid: bob.uuid,
-        dataset_uuid: smartosDatasetUuid,
+        image_uuid: smartosDatasetUuid,
         brand: 'joyent',
         ram: '128',
         alias: 'amondevzone',
         networks: [{uuid: externalNetworkUuid}],
+        server_uuid: headnodeUuid,
         customer_metadata: {
           'user-script': fs.readFileSync(userScriptPath, 'utf8')
         }
@@ -345,8 +347,9 @@ function createAmondevzone(next) {
       function (err2, createInfo) {
         // TODO: Better would be to get `job_uuid` and wait on completion
         // of the job (when vmapiClient.getJob exists).
-        log('# Waiting up to ~2min for new zone %s to start up.',
-            (createInfo ? createInfo.vm_uuid : '(error)'));
+        log('# Waiting up to ~2min for new zone %s (job %s) to start up.',
+            (createInfo ? createInfo.vm_uuid : '(error)'),
+            (createInfo ? createInfo.job_uuid : '(error)'));
         if (err2) {
           return next(err2);
         }
@@ -389,6 +392,7 @@ function createAmondevzone(next) {
 }
 
 
+//XXX Still necessary?
 function rereserveHeadnodeForProvisioning(next) {
   if (needToRereserve) {
     var cmd = format('ssh %s /opt/smartdc/bin/sdc-cnapi /servers/%s -X POST -F reserved=true',
