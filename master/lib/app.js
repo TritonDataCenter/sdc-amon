@@ -531,6 +531,9 @@ App.prototype.ufdsSearch = function ufdsSearch(base, opts, callback) {
       return callback(new restify.ServiceUnavailableError(
         'service unavailable'));
     }
+    if (!client) {
+      log.warn('ufdsPool.acquire returned no client! (See MON-203)', client);
+    }
 
     log.trace({filter: opts.filter}, 'ldap search');
     client.search(base, opts, function (sErr, result) {
@@ -580,6 +583,9 @@ App.prototype.ufdsAdd = function ufdsAdd(dn, data, callback) {
       return callback(new restify.ServiceUnavailableError(
         'service unavailable'));
     }
+    if (!client) {
+      log.warn('ufdsPool.acquire returned no client! (See MON-203)', client);
+    }
     client.add(dn, data, function (addErr) {
       pool.release(client);
       if (addErr) {
@@ -621,6 +627,9 @@ App.prototype.ufdsDelete = function ufdsDelete(dn, callback) {
       log.warn(poolErr, 'UFDS pool error');
       return callback(new restify.ServiceUnavailableError(
         'service unavailable'));
+    }
+    if (!client) {
+      log.warn('ufdsPool.acquire returned no client! (See MON-203)', client);
     }
     client.del(dn, function (delErr) {
       pool.release(client);
@@ -917,6 +926,9 @@ App.prototype.processEvent = function (event, callback) {
         });
       }
     ], function (err) {
+      if (err) {
+        return callback(err);
+      }
       self.getOrCreateAlarm(info, function (getOrCreateErr, alarm) {
         if (getOrCreateErr) {
           callback(getOrCreateErr);
