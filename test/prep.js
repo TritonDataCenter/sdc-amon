@@ -291,26 +291,6 @@ function getExternalNetworkUuid(next) {
 }
 
 
-var needToRereserve = false;
-function unreserveHeadnodeForProvisioning(next) {
-  var cmd1 = format('sdc-cnapi /servers/%s | json reserved', headnodeUuid);
-  exec(cmd1, function (err, stdout, stderr) {
-    if (err) {
-      next(err);
-    } else if (stdout.trim() === "true") {
-      needToRereserve = true;
-      var cmd2 = format('sdc-cnapi /servers/%s -X POST -F reserved=false',
-        headnodeUuid);
-      exec(cmd2, function (err2, stdout2, stderr2) {
-        next(err2);
-      });
-    } else {
-      next();
-    }
-  });
-}
-
-
 function createAmontestzone(next) {
   var vmapiClient = new VMAPI({
     url: process.env.VMAPI_URL
@@ -381,20 +361,6 @@ function ensureAmontestzoneIsRunning(next) {
 }
 
 
-function rereserveHeadnodeForProvisioning(next) {
-  if (needToRereserve) {
-    var cmd = format('sdc-cnapi /servers/%s -X POST -F reserved=true',
-      headnodeUuid);
-    exec(cmd, function (err, stdout, stderr) {
-      next(err);
-    });
-  } else {
-    next();
-  }
-}
-
-
-
 function getAmonZoneUuid(next) {
   log('# Get Amon zone UUID.');
 
@@ -451,11 +417,8 @@ async.series([
     getHeadnodeUuid,
     getSmartosDatasetUuid,
     getExternalNetworkUuid,
-    unreserveHeadnodeForProvisioning,
     createAmontestzone,
     ensureAmontestzoneIsRunning,
-    // TODO: get rereserveHeadnodeForProvisioning() to run on createAmontestzone() failure
-    rereserveHeadnodeForProvisioning,
     getAmonZoneUuid,
     syncRelaysAndAgents,
     writePrepJson
