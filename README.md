@@ -4,7 +4,7 @@
 - Who: Trent Mick, Mark Cavage
 - API Docs: <https://mo.joyent.com/docs/amon>
 - Pitch: <https://hub.joyent.com/wiki/display/dev/Amon>
-- XMPP/Jabber: <monitoring@groupchat.joyent.com>
+- XMPP/Jabber: <mib@groupchat.joyent.com>
 - Tickets/bugs: <https://devhub.joyent.com/jira/browse/MON>
 - CI builds: <https://jenkins.joyent.us/job/amon>,
   <https://stuff.joyent.us/stuff/builds/amon/>
