@@ -47,7 +47,7 @@ var ufdsClient;
 var amontestzone; // the test zone to use
 var headnodeUuid;
 var amonZoneUuid;
-var smartosDatasetUuid;
+var smartosImageUuid;
 var externalNetworkUuid;
 var gzIp;
 
@@ -263,15 +263,15 @@ function getHeadnodeUuid(next) {
 
 function getSmartosDatasetUuid(next) {
   // No DSAPI in the DC yet, so hack it.
-  log('# Get "smartos" dataset UUID.');
+  log('# Get "smartos" image UUID.');
   exec('ls -1 /usbkey/datasets/smartos-*.dsmanifest | head -n1 '
           + '| xargs cat | json uuid',
        function (err, stdout, stderr) {
     if (err) {
       return next(err);
     }
-    smartosDatasetUuid = stdout.trim();
-    log('# "smartos" dataset UUID is "%s".', smartosDatasetUuid);
+    smartosImageUuid = stdout.trim();
+    log('# "smartos" dataset UUID is "%s".', smartosImageUuid);
     next();
   });
 }
@@ -313,7 +313,7 @@ function createAmontestzone(next) {
     log('# Create a test zone for ulrich.');
     vmapiClient.createVm({
         owner_uuid: ulrich.uuid,
-        dataset_uuid: smartosDatasetUuid,
+        image_uuid: smartosImageUuid,
         server_uuid: headnodeUuid,
         brand: 'joyent',
         ram: '128',
