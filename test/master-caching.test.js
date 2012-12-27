@@ -63,14 +63,14 @@ test('HeadAgentProbes before any probes', function (t) {
     function (err, headers, res) {
       t.ifError(err);
       t.equal(res.headers['content-md5'], amontestzoneContentMd5);
-      var latency = Number(res.headers['x-response-time']);
+      var latency = Number(res.headers['response-time']);
 
       // Second time should be fast.
       masterClient.head('/agentprobes?agent=' + prep.amontestzone.uuid,
         function (err2, req2, res2) {
           t.ifError(err2);
           t.equal(res2.headers['content-md5'], amontestzoneContentMd5);
-          var latency2 = Number(res2.headers['x-response-time']);
+          var latency2 = Number(res2.headers['response-time']);
           t.ok(latency2 < 50, format('faster cached response: %sms -> %sms',
             latency, latency2));
           t.end();
@@ -90,13 +90,13 @@ test('probes: list empty', function (t) {
       t.ifError(err);
       t.ok(Array.isArray(obj));
       t.equal(obj.length, 0);
-      var latency = Number(res.headers['x-response-time']);
+      var latency = Number(res.headers['response-time']);
 
       // Second one from cache should be fast.
       masterClient.get(path, function (err2, req2, res2, obj2) {
           t.ifError(err2);
           t.equal(obj2.length, 0);
-          var latency2 = Number(res2.headers['x-response-time']);
+          var latency2 = Number(res2.headers['response-time']);
           t.ok(latency2 < 50, format('faster cached response: %sms -> %sms',
             latency, latency2));
           t.end();
@@ -137,13 +137,13 @@ test('probes: list empty', function (t) {
       t.ifError(err, 'GET ' + path);
       t.ok(Array.isArray(obj));
       t.equal(obj.length, 1);
-      var latency = Number(res.headers['x-response-time']);
+      var latency = Number(res.headers['response-time']);
 
       // Second one from cache should be fast.
       masterClient.get(path, function (err2, req2, res2, obj2) {
           t.ifError(err2);
           t.equal(obj2.length, obj.length);
-          var latency2 = Number(res2.headers['x-response-time']);
+          var latency2 = Number(res2.headers['response-time']);
           t.ok(latency2 < 50, format('faster cached response: %sms -> %sms',
             latency, latency2));
           t.end();
@@ -159,13 +159,13 @@ test('probes: get', function (t) {
   masterClient.get(path, function (err, req, res, obj) {
       t.ifError(err, 'GET ' + path);
       t.equal(obj.name, data.name);
-      var latency = Number(res.headers['x-response-time']);
+      var latency = Number(res.headers['response-time']);
 
       // Second one from cache should be fast.
       masterClient.get(path, function (err2, req2, res2, obj2) {
           t.ifError(err2, 'GET ' + path);
           t.equal(obj2.name, data.name);
-          var latency2 = Number(res2.headers['x-response-time']);
+          var latency2 = Number(res2.headers['response-time']);
           t.ok(latency2 < 50, format('faster cached response: %sms -> %sms',
             latency, latency2));
           t.end();
@@ -187,14 +187,14 @@ test('HeadAgentProbes changed after probe added',
       newAmontestzoneContentMd5 = res.headers['content-md5'];
       t.ok(newAmontestzoneContentMd5 !== amontestzoneContentMd5,
         'expect amontestzone Content-MD5 to have changed');
-      var latency = Number(res.headers['x-response-time']);
+      var latency = Number(res.headers['response-time']);
 
       // Second time should be fast.
       masterClient.head('/agentprobes?agent=' + prep.amontestzone.uuid,
         function (err2, req2, res2) {
           t.ifError(err2, '/agentprobes?agent=' + prep.amontestzone.uuid);
           t.equal(res2.headers['content-md5'], newAmontestzoneContentMd5);
-          var latency2 = Number(res2.headers['x-response-time']);
+          var latency2 = Number(res2.headers['response-time']);
           t.ok(latency2 < 50, format('faster cached response: %sms -> %sms',
             latency, latency2));
           t.end();
@@ -243,13 +243,13 @@ test('probes: list empty again', function (t) {
       t.ifError(err);
       t.ok(Array.isArray(obj));
       t.equal(obj.length, 0);
-      var latency = Number(res.headers['x-response-time']);
+      var latency = Number(res.headers['response-time']);
 
       // Second one from cache should be fast.
       masterClient.get(path, function (err2, req2, res2, obj2) {
           t.ifError(err2);
           t.equal(obj2.length, 0);
-          var latency2 = Number(res2.headers['x-response-time']);
+          var latency2 = Number(res2.headers['response-time']);
           t.ok(latency2 < 50, format('faster cached response: %sms -> %sms',
             latency, latency2));
           t.end();

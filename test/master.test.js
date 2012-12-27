@@ -164,14 +164,12 @@ test('ping', function (t) {
     t.equal(obj.ping, 'pong', 'responded with \'pong\'');
 
     var headers = res.headers;
-    t.ok(headers['access-control-allow-origin']);
-    t.ok(headers['access-control-allow-methods']);
     t.ok(headers.server);
     t.ok(headers.connection);
     t.ok(headers.date);
-    t.ok(headers['x-request-id']);
-    t.ok(headers['x-response-time']);
-    t.equal(headers.connection, 'Keep-Alive');
+    t.ok(headers['request-id']);
+    t.ok(headers['response-time']);
+    t.equal(headers.connection, 'keep-alive');
 
     t.end();
   });

@@ -139,7 +139,7 @@ test('get valhalla probe group', function (t) {
 });
 
 test('get all odin probe groups (should just be the one)', function (t) {
-  var path = '/pub/amontestoperatorodin/probegroups/';
+  var path = '/pub/amontestoperatorodin/probegroups';
   masterClient.get(path, function (err, req, res, obj) {
     t.ifError(err, 'GET ' + path);
     if (!err) {

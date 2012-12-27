@@ -18,6 +18,7 @@ var Cache = require('expiring-lru-cache');
 var redis = require('redis');
 var Pool = require('generic-pool').Pool;
 var async = require('async');
+var bunyan = require('bunyan');
 
 var amonCommon = require('amon-common'),
   Constants = amonCommon.Constants,
@@ -26,6 +27,7 @@ var Contact = require('./contact');
 var alarms = require('./alarms'),
   createAlarm = alarms.createAlarm,
   Alarm = alarms.Alarm;
+var audit = require('./audit');
 var maintenances = require('./maintenances');
 var probes = require('./probes'),
   Probe = probes.Probe;
@@ -254,13 +256,24 @@ function App(config, cnapiClient, vmapiClient, log) {
     })
   };
 
+  var serverName = 'Amon Master/' + Constants.ApiVersion;
   var server = this.server = restify.createServer({
-    name: 'Amon Master/' + Constants.ApiVersion,
+    name: serverName,
     log: log
   });
   server.use(restify.queryParser({mapParams: false}));
   server.use(restify.bodyParser({mapParams: false}));
-  server.on('after', restify.auditLogger({log: log, body: true}));
+  server.on('after', audit.auditLogger({
+    body: true,
+    log: bunyan.createLogger({
+      name: 'amon-master',
+      component: 'audit',
+      streams: [{
+        level: log.level(),  // use same level as general amon-master log
+        stream: process.stdout
+      }]
+    })
+  }));
   server.on('uncaughtException', function (req, res, route, err) {
     req.log.error(err);
     res.send(err);
@@ -269,10 +282,18 @@ function App(config, cnapiClient, vmapiClient, log) {
   function setup(req, res, next) {
     req._app = self;
 
+    res.on('header', function onHeader() {
+      var now = Date.now();
+      res.header('Date', new Date());
+      res.header('Server', serverName);
+      res.header('Request-Id', req.getId());
+      var t = now - req.time();
+      res.header('Response-Time', t);
+    });
+
     // Handle ':user' in route: add `req._user` or respond with
     // appropriate error.
     var userId = req.params.user;
-
     if (userId) {
       self.userFromId(userId, function (err, user) {
         if (err) {

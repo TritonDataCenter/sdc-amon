@@ -11,11 +11,12 @@ var fs = require('fs');
 var debug = console.warn;
 
 var nopt = require('nopt');
-var Logger = require('bunyan');
+var bunyan = require('bunyan');
 var restify = require('restify');
 var async = require('async');
 
-var amon_common = require('amon-common');
+var amon_common = require('amon-common'),
+    objCopy = amon_common.utils.objCopy;
 var Constants = amon_common.Constants;
 var createApp = require('./lib/app').createApp;
 var maintenances = require('./lib/maintenances');
@@ -29,21 +30,27 @@ var DEFAULT_CONFIG_PATH = './cfg/amon-master.json';
 var theConfig;
 var theApp;
 
-var log = new Logger({
+/**
+ * Amon-master logging:
+ * 1. General logging on stderr. By default at 'info' level, however typically
+ *    configured in SDC at 'debug' level. This is the `log` var created
+ *    here.
+ * 2. Audit logging on stdout. This is the server audit log created in
+ *    'app.js'.
+ */
+
+var _serializers = objCopy(restify.bunyan.serializers);
+_serializers.alarm = function (alarm) {
+  return (alarm.serializeDb && alarm.serializeDb() || alarm);
+};
+_serializers.maint = function (maint) {
+  return (maint.serializeDb && maint.serializeDb() || maint);
+}
+var log = bunyan.createLogger({
   name: 'amon-master',
   src: (process.platform === 'darwin'),
   //src: true,
-  serializers: {
-    err: Logger.stdSerializers.err,
-    req: Logger.stdSerializers.req,
-    res: restify.bunyan.serializers.response,
-    alarm: function (alarm) {
-      return (alarm.serializeDb && alarm.serializeDb() || alarm);
-    },
-    maint: function (maint) {
-      return (maint.serializeDb && maint.serializeDb() || maint);
-    }
-  }
+  serializers: _serializers
 });
 
 

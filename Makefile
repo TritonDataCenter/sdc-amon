@@ -44,9 +44,13 @@ include ./tools/mk/Makefile.smf.defs
 # Tools
 #
 ifeq ($(shell uname -s),SunOS)
-	TAR	?= gtar
+	TAR ?= gtar
+	MAKE = gmake
 else
-	TAR	?= tar
+	# Need to set MAKE to avoid 'gmake: command not found' due to
+	# <https://github.com/chrisa/node-dtrace-provider/commit/c4a9231>
+	MAKE = make
+	TAR ?= tar
 endif
 NODE_DEV := ./node_modules/.bin/node-dev
 TAP := ./node_modules/.bin/tap
@@ -87,7 +91,7 @@ relay: common plugins testbuild | $(NPM_EXEC)
 
 .PHONY: master
 master: common plugins | $(NPM_EXEC)
-	(cd master && $(NPM) link amon-common amon-plugins && $(NPM) install)
+	(cd master && $(NPM) link amon-common amon-plugins && MAKE=$(MAKE) $(NPM) install)
 
 # 'testbuild' is the name for building in the 'test' dir. Want 'make test'
 # to actually *run* the tests.

@@ -100,6 +100,13 @@ function listAgentProbes(req, res, next) {
       next(new restify.InternalError());
     } else {
       req.log.trace({probes: probes}, 'found probes');
+
+      var data = JSON.stringify(probes);
+      var hash = crypto.createHash('md5');
+      hash.update(data);
+      res.setHeader('Content-MD5', hash.digest('base64'));
+      res.setHeader('Content-Type', 'application/json');
+
       res.send(200, probes);
       next();
     }
@@ -128,8 +135,6 @@ function headAgentProbes(req, res, next) {
 
   var cacheContentMD5 = req._app.cacheGet('headAgentProbes', agent);
   if (cacheContentMD5) {
-    req.log.debug({contentMD5: cacheContentMD5},
-      'headAgentProbes respond (cached)');
     return respond(cacheContentMD5);
   }
 
@@ -144,7 +149,6 @@ function headAgentProbes(req, res, next) {
       hash.update(data);
       var contentMD5 = hash.digest('base64');
       req._app.cacheSet('headAgentProbes', agent, contentMD5);
-      req.log.debug({contentMD5: contentMD5}, 'headAgentProbes respond');
       respond(contentMD5);
     }
   });
