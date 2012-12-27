@@ -11,20 +11,25 @@ NODE=root@10.2.207.2
 SSH_OPTIONS="-q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 SSH="ssh $SSH_OPTIONS"
 
+extraOpts=
+if [[ $(uname -s) != "SunOS" ]]; then
+    extraOpts='--exclude "*.node"'
+fi
+
 rsync -av -e "$SSH" ${AGENT_DIR}/ \
     $NODE:/opt/smartdc/agents/lib/node_modules/amon-agent/ \
     --exclude deps/ \
-    --exclude "*.node" \
+    $extraOpts \
     --exclude amon-common \
     --exclude amon-plugins \
     --exclude tmp/
 rsync -av -e "$SSH" ${TOP}/common/ \
     $NODE:/opt/smartdc/agents/lib/node_modules/amon-agent/node_modules/amon-common/ \
-    --exclude "*.node" \
+    $extraOpts \
     --exclude tmp/
 rsync -av -e "$SSH" ${TOP}/plugins/ \
     $NODE:/opt/smartdc/agents/lib/node_modules/amon-agent/node_modules/amon-plugins/ \
-    --exclude "*.node" \
+    $extraOpts \
     --exclude tmp/
 
 ssh ${NODE} svcadm clear amon-agent

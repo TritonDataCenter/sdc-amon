@@ -18,9 +18,14 @@ if [[ -z "$AMON_ZONE" ]]; then
 fi
 echo "AMON_ZONE: $AMON_ZONE"
 
+extraOpts=
+if [[ $(uname -s) != "SunOS" ]]; then
+    extraOpts='--exclude "*.node"'
+fi
+
 rsync -av -e "$SSH" ${TOP}/master/ \
     $NODE:/zones/$AMON_ZONE/root/opt/smartdc/amon/ \
-    --exclude "*.node" \
+    $extraOpts \
     --exclude amon-common \
     --exclude amon-plugins \
     --exclude buffertools \

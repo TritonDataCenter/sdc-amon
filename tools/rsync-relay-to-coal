@@ -8,28 +8,35 @@ TOP=$(cd $(dirname $0)/../; pwd)
 RELAY_DIR=$TOP/relay
 COAL=root@10.99.99.7
 
+extraOpts=
+if [[ $(uname -s) != "SunOS" ]]; then
+    extraOpts='--exclude "*.node"'
+fi
+
 rsync -av ${RELAY_DIR}/ \
     $COAL:/opt/smartdc/agents/lib/node_modules/amon-relay/ \
     --exclude deps/ \
-    --exclude "*.node" \
+    $extraOpts \
     --exclude amon-common \
     --exclude amon-plugins \
     --exclude buffertools \
     --exclude zsock/ \
     --exclude zutil/ \
     --exclude tmp/
-# Restore buffertools.node that is always blown away the first time the
-# above is done.
-# TODO: same for dtrace_provider.node.
-ssh $NODE cp /opt/smartdc/agents/lib/node_modules/amon-relay/test/node_modules/ldapjs/node_modules/buffertools/build/Release/buffertools.node \
-    /opt/smartdc/agents/lib/node_modules/amon-relay/test/node_modules/sdc-clients/node_modules/ldapjs/node_modules/buffertools/build/Release/buffertools.node
+if [[ $(uname -s) != "SunOS" ]]; then
+    # Restore buffertools.node that is always blown away the first time the
+    # above is done.
+    # TODO: same for dtrace_provider.node.
+    ssh $NODE cp /opt/smartdc/agents/lib/node_modules/amon-relay/test/node_modules/ldapjs/node_modules/buffertools/build/Release/buffertools.node \
+        /opt/smartdc/agents/lib/node_modules/amon-relay/test/node_modules/sdc-clients/node_modules/ldapjs/node_modules/buffertools/build/Release/buffertools.node
+fi
 rsync -av ${TOP}/common/ \
     $COAL:/opt/smartdc/agents/lib/node_modules/amon-relay/node_modules/amon-common/ \
-    --exclude "*.node" \
+    $extraOpts \
     --exclude tmp/
 rsync -av ${TOP}/plugins/ \
     $COAL:/opt/smartdc/agents/lib/node_modules/amon-relay/node_modules/amon-plugins/ \
-    --exclude "*.node" \
+    $extraOpts \
     --exclude tmp/
 
 ssh ${COAL} svcadm clear amon-relay

@@ -15,17 +15,24 @@ if [[ -z "$AMON_ZONE" ]]; then
 fi
 echo "AMON_ZONE: $AMON_ZONE"
 
+extraOpts=
+if [[ $(uname -s) != "SunOS" ]]; then
+    extraOpts='--exclude "*.node"'
+fi
+
 rsync -av ${TOP}/master/ \
     $NODE:/zones/$AMON_ZONE/root/opt/smartdc/amon/ \
-    --exclude "*.node" \
+    $extraOpts \
     --exclude amon-common \
     --exclude amon-plugins \
     --exclude tmp/
-# Restore buffertools.node that is always blown away the first time the
-# above is done.
-# TODO: same for dtrace_provider.node.
-ssh $NODE cp /zones/$AMON_ZONE/root/opt/smartdc/amon/node_modules/ldapjs/node_modules/buffertools/build/Release/buffertools.node \
-    /zones/$AMON_ZONE/root/opt/smartdc/amon/node_modules/sdc-clients/node_modules/ldapjs/node_modules/buffertools/build/Release/buffertools.node
+if [[ $(uname -s) != "SunOS" ]]; then
+    # Restore buffertools.node that is always blown away the first time the
+    # above is done.
+    # TODO: same for dtrace_provider.node.
+    ssh $NODE cp /zones/$AMON_ZONE/root/opt/smartdc/amon/node_modules/ldapjs/node_modules/buffertools/build/Release/buffertools.node \
+        /zones/$AMON_ZONE/root/opt/smartdc/amon/node_modules/sdc-clients/node_modules/ldapjs/node_modules/buffertools/build/Release/buffertools.node
+fi
 rsync -av ${TOP}/common/ \
     $NODE:/zones/$AMON_ZONE/root/opt/smartdc/amon/node_modules/amon-common/ \
     --exclude "*.node" \

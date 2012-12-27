@@ -11,9 +11,14 @@ NODE=root@10.2.106.7
 SSH_OPTIONS="-q -i $HOME/.ssh/automation.id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 SSH="ssh $SSH_OPTIONS"
 
+extraOpts=
+if [[ $(uname -s) != "SunOS" ]]; then
+    extraOpts='--exclude "*.node"'
+fi
+
 rsync -av -e "$SSH" ${TOP}/test/ \
     $NODE:/opt/smartdc/agents/lib/node_modules/amon-relay/test/ \
-    --exclude "*.node" \
+    $extraOpts \
     --exclude "*.log" \
     --exclude "config.json" \
     --exclude "prep.json" \

@@ -11,10 +11,15 @@ NODE=root@10.2.106.7
 SSH_OPTIONS="-q -i $HOME/.ssh/automation.id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 SSH="ssh $SSH_OPTIONS"
 
+extraOpts=
+if [[ $(uname -s) != "SunOS" ]]; then
+    extraOpts='--exclude "*.node"'
+fi
+
 rsync -av -e "$SSH" ${RELAY_DIR}/ \
     $NODE:/opt/smartdc/agents/lib/node_modules/amon-relay/ \
     --exclude deps/ \
-    --exclude "*.node" \
+    $extraOpts \
     --exclude amon-common \
     --exclude amon-plugins \
     --exclude buffertools \
@@ -27,11 +32,11 @@ rsync -av -e "$SSH" ${TOP}/common/ \
     --exclude tmp/
 rsync -av -e "$SSH" ${TOP}/plugins/ \
     $NODE:/opt/smartdc/agents/lib/node_modules/amon-relay/node_modules/amon-plugins/ \
-    --exclude "*.node" \
+    $extraOpts \
     --exclude tmp/
 rsync -av -e "$SSH" ${TOP}/test/ \
     $NODE:/opt/smartdc/agents/lib/node_modules/amon-relay/test/ \
-    --exclude "*.node" \
+    $extraOpts \
     --exclude "*.log" \
     --exclude "config.json" \
     --exclude "prep.json" \

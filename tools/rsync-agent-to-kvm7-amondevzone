@@ -19,20 +19,25 @@ if [[ -z "$AMONDEVZONE" ]]; then
 fi
 echo "AMONDEVZONE: $AMONDEVZONE"
 
+extraOpts=
+if [[ $(uname -s) != "SunOS" ]]; then
+    extraOpts='--exclude "*.node"'
+fi
+
 rsync -av -e "$SSH" ${AGENT_DIR}/ \
     $NODE:/zones/$AMONDEVZONE/root/opt/amon-agent/ \
     --exclude deps/ \
-    --exclude "*.node" \
+    $extraOpts \
     --exclude amon-common \
     --exclude amon-plugins \
     --exclude tmp/
 rsync -av -e "$SSH" ${TOP}/common/ \
     $NODE:/zones/$AMONDEVZONE/root/opt/amon-agent/node_modules/amon-common/ \
-    --exclude "*.node" \
+    $extraOpts \
     --exclude tmp/
 rsync -av -e "$SSH" ${TOP}/plugins/ \
     $NODE:/zones/$AMONDEVZONE/root/opt/amon-agent/node_modules/amon-plugins/ \
-    --exclude "*.node" \
+    $extraOpts \
     --exclude tmp/
 
 ssh ${NODE} svcadm -z $AMONDEVZONE clear amon-agent
