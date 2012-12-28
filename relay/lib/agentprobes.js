@@ -23,7 +23,7 @@ function headAgentProbes(req, res, next) {
       req.log.error(err);
       res.send(new restify.InternalError());
     }
-    res.header('Content-MD5', md5);
+    res.setHeader('Content-MD5', md5);
     res.send();
     return next();
   });
@@ -31,11 +31,12 @@ function headAgentProbes(req, res, next) {
 
 function listAgentProbes(req, res, next) {
   req.log.trace({params: req.params}, 'ListAgentProbes');
-  req._app.getDownstreamAgentProbes(function (err, agentProbes) {
+  req._app.getDownstreamAgentProbes(function (err, agentProbes, md5) {
     if (err) {
       req.log.error(err);
       res.send(new restify.InternalError());
     }
+    res.setHeader('Content-MD5', md5);
     res.send(agentProbes);
     return next();
   });

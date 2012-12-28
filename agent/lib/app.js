@@ -436,7 +436,7 @@ App.prototype.getProbeData = function getProbeData(force, callback) {
 
     self.relayClient.agentProbes(function (probeErr, probeData, probeDataMD5) {
       if (probeErr || !probeData || !probeDataMD5) {
-        log.warn(err, 'error getting agent probes (continuing with cache)');
+        log.warn(probeErr, 'error getting agent probes (continuing with cache)');
         return callback(probeErr, self.probeDataCache);
       }
       log.trace({probeData: probeData}, 'getProbeData: retrieved agent probes');

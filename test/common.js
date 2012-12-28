@@ -6,7 +6,7 @@
 
 var fs = require('fs');
 var path = require('path');
-var Logger = require('bunyan');
+var bunyan = require('bunyan');
 var restify = require('restify');
 var async = require('async');
 var child_process = require('child_process'),
@@ -108,7 +108,7 @@ function waitForVmapiJob(options, callback) {
 function createAmonMasterClient(slug) {
   ensureLogDir();
 
-  var log = new Logger({
+  var log = bunyan.createLogger({
     name: 'masterClient',
     src: true,
     streams: [
@@ -117,11 +117,7 @@ function createAmonMasterClient(slug) {
         level: 'trace'
       }
     ],
-    serializers: {
-      err: Logger.stdSerializers.err,
-      req: Logger.stdSerializers.req,
-      res: restify.bunyan.serializers.response
-    }
+    serializers: restify.bunyan.serializers
   });
   //XXX Change to use sdc-clients' Amon client.
   return restify.createJsonClient({
@@ -225,7 +221,7 @@ function vmStop(options, callback) {
   var uuid = options.uuid;
 
   var vmapiClient = new VMAPI({
-    //log: new Logger({name: 'vmStop', level: 'trace', uuid: uuid}),
+    //log: bunyan.createLogger({name: 'vmStop', level: 'trace', uuid: uuid}),
     url: process.env.VMAPI_URL,
     // Tuned to spread 3 attempts over about a minute.
     // See formula at <https://github.com/tim-kos/node-retry>.

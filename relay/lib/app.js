@@ -11,6 +11,7 @@ var child_process = require('child_process'),
   exec = child_process.exec,
   execFile = child_process.execFile;
 
+var assert = require('assert-plus');
 var restify = require('restify');
 var zsock = require('zsock');
 var zutil;
@@ -435,15 +436,10 @@ App.prototype.getDownstreamAgentProbesMD5 = function (callback) {
     return callback(null, self.downstreamAgentProbesMD5);
   }
 
-  self.getDownstreamAgentProbes(function (err, agentProbes) {
+  self.getDownstreamAgentProbes(function (err, agentProbes, md5) {
     if (err) {
       return callback(err);
     }
-    var data = JSON.stringify(agentProbes);
-    var hash = crypto.createHash('md5');
-    hash.update(data);
-    var md5 = self.downstreamAgentProbesMD5 = hash.digest('base64');
-    self.log.trace({md5: md5}, 'getDownstreamAgentProbesMD5');
     callback(null, md5);
   });
 };
@@ -452,14 +448,17 @@ App.prototype.getDownstreamAgentProbesMD5 = function (callback) {
 /**
  * Gather agent probes for downstream (i.e. for the agent).
  *
- * @param callback (Function) `function (err, agentProbes)`
+ * @param callback (Function) `function (err, agentProbes, md5)`
  */
 App.prototype.getDownstreamAgentProbes = function (callback) {
   var self = this;
   if (self.downstreamAgentProbes) {
-    self.log.trace({agentProbes: self.downstreamAgentProbes},
+    assert.ok(self.downstreamAgentProbesMD5, 'downstreamAgentProbesMD5');
+    self.log.trace({agentProbes: self.downstreamAgentProbes,
+      md5: self.downstreamAgentProbesMD5},
       'getDownstreamAgentProbes (cached)');
-    return callback(null, self.downstreamAgentProbes);
+    return callback(null, self.downstreamAgentProbes,
+      this.downstreamAgentProbesMD5);
   }
 
   var log = self.log;
@@ -506,8 +505,15 @@ App.prototype.getDownstreamAgentProbes = function (callback) {
       } else {
         agentProbes.sort(compareProbes);  // Stable order for Content-MD5.
         self.downstreamAgentProbes = agentProbes;
-        self.log.trace({agentProbes: agentProbes}, 'getDownstreamAgentProbes');
-        callback(err, agentProbes);
+
+        var data = JSON.stringify(agentProbes);
+        var hash = crypto.createHash('md5');
+        hash.update(data);
+        var md5 = self.downstreamAgentProbesMD5 = hash.digest('base64');
+
+        log.trace({agentProbes: agentProbes, md5: md5},
+            'getDownstreamAgentProbes');
+        callback(err, agentProbes, md5);
       }
     }
   );

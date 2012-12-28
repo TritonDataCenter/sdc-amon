@@ -18,7 +18,7 @@ var child_process = require('child_process'),
   execFile = child_process.execFile;
 var format = require('util').format;
 
-var Logger = require('bunyan');
+var bunyan = require('bunyan');
 var restify = require('restify');
 var async = require('async');
 var nopt = require('nopt');
@@ -51,14 +51,10 @@ var config;         // set in `main()`
 var zoneApps = {};  // Mapping <zonename> -> <Relay app>.
 var masterClient;   // Client to Relay API on Amon master.
 
-var log = new Logger({
+var log = bunyan.createLogger({
   name: 'amon-relay',
   src: (process.platform === 'darwin'),
-  serializers: {
-    err: Logger.stdSerializers.err,
-    req: Logger.stdSerializers.req,
-    res: restify.bunyan.serializers.response
-  }
+  serializers: restify.bunyan.serializers
 });
 
 

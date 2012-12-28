@@ -14,7 +14,7 @@ var fs = require('fs');
 var path = require('path');
 
 var nopt = require('nopt');
-var Logger = require('bunyan');
+var bunyan = require('bunyan');
 var restify = require('restify');
 
 var App = require('./lib/app');
@@ -29,14 +29,10 @@ var DEFAULT_DATA_DIR = '/var/db/amon-agent';
 
 var config; // Agent configuration settings. Set in `main()`.
 
-var log = new Logger({
+var log = bunyan.createLogger({
   name: 'amon-agent',
   src: (process.platform === 'darwin'),
-  serializers: {
-    err: Logger.stdSerializers.err,
-    req: Logger.stdSerializers.req,
-    res: restify.bunyan.serializers.response
-  }
+  serializers: restify.bunyan.serializers
 });
 
 

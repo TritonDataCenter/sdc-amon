@@ -8,8 +8,8 @@
     "amon-common": "1.0.0",
     "amon-plugins": "1.0.0",
 
-    "bunyan": "0.15.0",
-    "restify": "1.4.4",
+    "bunyan": "0.16.8",
+    "restify": "git://github.com/mcavage/node-restify.git#198dcbb",
     "nopt": "1.0.10",
     "zutil": "0.2.1"
   },

@@ -10,11 +10,10 @@ AGENT_DIR=$TOP/agent
 NODE=root@10.2.207.2
 SSH_OPTIONS="-q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 SSH="ssh $SSH_OPTIONS"
-JSON3=$TOP/test/node_modules/.bin/json3
 
 if [[ -z "$AMONDEVZONE" ]]; then
     AMONDEVZONE=$(ssh $NODE "/opt/smartdc/bin/sdc-vmapi /vms" 2>/dev/null \
-        | $JSON3 -H -c 'alias == "amondevzone"' \
+        | json -H -c 'alias == "amondevzone"' \
             -c 'this.state === "running"' 0.uuid)
 fi
 echo "AMONDEVZONE: $AMONDEVZONE"
