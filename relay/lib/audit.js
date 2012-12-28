@@ -1,7 +1,7 @@
 /*
  * Copyright 2012 Joyent, Inc.  All rights reserved.
  *
- * Audit logger for amon-master.
+ * Audit logger for amon-relay.
  */
 
 var assert = require('assert-plus');
@@ -41,8 +41,7 @@ function auditLogger(options) {
                     headers: req.headers,
                     httpVersion: req.httpVersion,
                     version: req.version,
-                    body: options.body === true ? req.body : undefined,
-                    user: req._user ? req._user.uuid : undefined
+                    body: options.body === true ? req.body : undefined
                 });
             },
             res: function auditResponseSerializer(res) {
@@ -70,17 +69,12 @@ function auditLogger(options) {
             latency = Date.now() - req.time();
 
         var obj = {
-            remoteAddress: req.connection.remoteAddress,
-            remotePort: req.connection.remotePort,
             req_id: req.getId(),
             req: req,
             res: res,
             err: err,
             latency: latency
         };
-        // TODO: Talk to Mark about having this route be the route *object*.
-        // Also *why* is the route name lowercased? Uniqueness? Sucks
-        // that the case is changed.
         log.info(obj, '%shandled: %d', (route ? route + ' ' : ''),
             res.statusCode);
         return (true);

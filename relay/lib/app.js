@@ -19,11 +19,13 @@ if (process.platform === 'sunos'
     || process.platform === 'solaris' /* node#3944 */) {
   zutil = require('zutil');
 }
+var bunyan = require('bunyan');
 var async = require('async');
 
 var amonCommon = require('amon-common'),
   Constants = amonCommon.Constants,
   compareProbes = amonCommon.compareProbes;
+var audit = require('./audit');
 var agentprobes = require('./agentprobes');
 var events = require('./events');
 var utils = require('./utils');
@@ -165,7 +167,18 @@ function App(options) {
   });
   server.use(restify.queryParser({mapParams: false}));
   server.use(restify.bodyParser({mapParams: false}));
-  server.on('after', restify.auditLogger({log: log, body: true}));
+  server.on('after', audit.auditLogger({
+    body: true,
+    log: bunyan.createLogger({
+      name: 'amon-master',
+      component: 'audit',
+      streams: [{
+        level: log.level(),  // use same level as general amon-master log
+        stream: process.stdout
+      }],
+      agent: self.agent
+    })
+  }));
   function setup(req, res, next) {
     req._agent = self.agent;
     req._agentAlias = self.agentAlias;

@@ -51,6 +51,14 @@ var config;         // set in `main()`
 var zoneApps = {};  // Mapping <zonename> -> <Relay app>.
 var masterClient;   // Client to Relay API on Amon master.
 
+/**
+ * Amon-relay logging:
+ * 1. General logging on stderr. By default at 'info' level, however typically
+ *    configured in SDC at 'debug' level. This is the `log` var created
+ *    here.
+ * 2. Audit logging on stdout. This is the server audit log created in
+ *    'app.js'.
+ */
 var log = bunyan.createLogger({
   name: 'amon-relay',
   src: (process.platform === 'darwin'),
@@ -499,7 +507,7 @@ function updateAgentProbes(next) {
 
     //XXX Update the following to bulk query against master.
     var applog = app.log;
-    applog.debug('updateAgentProbes for zone "%s"', zonename);
+    applog.trace('updateAgentProbes for zone "%s"', zonename);
     return masterClient.agentProbesMD5(app.agent, function (err, masterMD5) {
       if (err) {
         applog.warn('Error getting master agent probes MD5: %s', err);
@@ -522,19 +530,21 @@ function updateAgentProbes(next) {
           return nextOne();
         }
         applog.trace({agentProbes: agentProbes},
-          'Retrieved agent probes from master');
+            'got agentProbes from master');
 
         return app.writeAgentProbes(agentProbes, masterMD5,
                                     function (writeErr, isVmHostChange) {
           if (writeErr) {
-            applog.error(writeErr, 'unable to save new agent probes');
+            applog.error({err: writeErr, agentProbes: agentProbes},
+                'unable to save new agent probes');
           } else {
             if (isVmHostChange) {
               zoneApps['global'].cacheInvalidateDownstream();
             }
-            applog.info({isVmHostChange: isVmHostChange},
-              'Successfully updated agent probes from master '
-              + '(md5: %s -> %s).', currMD5 || '(none)', masterMD5);
+            applog.info({isVmHostChange: isVmHostChange, 
+                         agentProbes: agentProbes},
+              'updated agent probes from master (md5: %s -> %s)',
+              currMD5 || '(none)', masterMD5);
           }
           return nextOne();
         });
@@ -543,7 +553,7 @@ function updateAgentProbes(next) {
   }
 
   var zonenames = Object.keys(zoneApps);
-  log.info('Checking for agent probe updates (%d zones).', zonenames.length);
+  log.trace('checking for agent probe updates (%d zones)', zonenames.length);
   async.forEachSeries(zonenames, updateForOneZone, function (err) {
     return (next && next());
   });

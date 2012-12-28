@@ -38,7 +38,6 @@ var theApp;
  * 2. Audit logging on stdout. This is the server audit log created in
  *    'app.js'.
  */
-
 var _serializers = objCopy(restify.bunyan.serializers);
 _serializers.alarm = function (alarm) {
   return (alarm.serializeDb && alarm.serializeDb() || alarm);

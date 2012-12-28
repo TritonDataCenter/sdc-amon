@@ -13,7 +13,7 @@
     "node-uuid": "1.4.0",
     "http-signature": "0.9.9",
     "tap": "0.3.3",
-    "ldapjs": "0.5.4"
+    "ldapjs": "0.5.7"
   },
   "engines": {
     "node": ">=0.6"
