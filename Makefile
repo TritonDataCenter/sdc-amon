@@ -75,7 +75,7 @@ all: common plugins agent testbuild relay master dev
 
 .PHONY: common
 common: | $(NPM_EXEC)
-	(cd common && $(NPM) install && $(NPM) link)
+	(cd common && MAKE=$(MAKE) $(NPM) install && $(NPM) link)
 
 .PHONY: plugins
 plugins: | $(NPM_EXEC)
@@ -83,11 +83,11 @@ plugins: | $(NPM_EXEC)
 
 .PHONY: agent
 agent: common plugins | $(NPM_EXEC)
-	(cd agent && $(NPM) link amon-common amon-plugins && $(NPM) install)
+	(cd agent && $(NPM) link amon-common amon-plugins && MAKE=$(MAKE) $(NPM) install)
 
 .PHONY: relay
 relay: common plugins testbuild | $(NPM_EXEC)
-	(cd relay && $(NPM) link amon-common amon-plugins && $(NPM) install)
+	(cd relay && $(NPM) link amon-common amon-plugins && MAKE=$(MAKE) $(NPM) install)
 
 .PHONY: master
 master: common plugins | $(NPM_EXEC)
