@@ -342,7 +342,7 @@ Probe.prototype.authorizeWrite = function (app, callback) {
       app.vmapiClient.getVm({uuid: machineUuid, owner_uuid: self.user},
                            function (vmErr, vm) {
         if (vmErr) {
-          if (vmErr.httpCode === 404) {
+          if (vmErr.statusCode === 404) {
             // 3. Operator setting 'runInVmHost' probe on virtual machine.
             var conditions3 = [
               isRunInVmHostOrErr,

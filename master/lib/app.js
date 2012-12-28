@@ -739,7 +739,7 @@ App.prototype.userFromId = function (userId, callback) {
   };
   this.ufdsSearch('ou=users, o=smartdc', searchOpts, function (sErr, users) {
     if (sErr) {
-      if (sErr.httpCode === 503) {
+      if (sErr.statusCode === 503) {
         return callback(sErr);  // don't cache 503
       } else {
         return cacheAndCallback(sErr);

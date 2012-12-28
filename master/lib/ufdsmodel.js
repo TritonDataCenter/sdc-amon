@@ -79,7 +79,7 @@ function modelList(app, Model, parentDn, log, callback) {
     Model.name, parentDn);
   app.ufdsSearch(parentDn, opts, function (err, rawItems) {
     if (err) {
-      if (err.httpCode === 503) {
+      if (err.statusCode === 503) {
         return callback(err);  // don't cache 503
       } else {
         return cacheAndCallback(err);
@@ -250,7 +250,7 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
   var opts = {scope: 'base'};
   app.ufdsSearch(dn, opts, function (err, entries) {
     if (err) {
-      if (err.httpCode === 503) {
+      if (err.statusCode === 503) {
         return callback(err);  // don't cache 503
       } else if (err instanceof ldap.NoSuchObjectError) {
         return cacheAndCallback(new restify.ResourceNotFoundError('not found'));

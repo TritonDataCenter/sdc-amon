@@ -9,6 +9,7 @@ var async = require('async');
 var uuid = require('node-uuid');
 
 var common = require('./common');
+var bunyan = require('bunyan');
 
 
 
@@ -265,9 +266,11 @@ test('probes: create with bogus contact', function (t) {
   var data = FIXTURES.ulrich['bogusprobe'];
   masterClient.post('/pub/amontestuserulrich/probes', data,
     function (err, req, res, obj) {
+      t.ok(res && res.headers['request-id'],
+        'req_id: ' + (res && res.headers['request-id']));
       t.ok(err);
       t.equal(err.statusCode, 422, 'expect 422');
-      t.equal(err.code, 'ValidationFailed');
+      t.equal(err.restCode, 'ValidationFailed');
       t.ok(err.message.indexOf('contact') !== -1,
         'err.message has "contact": '+err.message);
       t.end();
@@ -280,6 +283,8 @@ test('probes: list', function (t) {
   expectedProbeNames.sort();
   masterClient.get('/pub/amontestuserulrich/probes',
                    function (err, req, res, obj) {
+    t.ok(res && res.headers['request-id'],
+      'req_id: ' + (res && res.headers['request-id']));
     t.ifError(err, 'GET /pub/amontestuserulrich/probes');
     t.ok(Array.isArray(obj), 'listProbes response is an array');
     t.deepEqual(obj.map(function (p) { return p.name; }).sort(),
@@ -313,7 +318,7 @@ test('probes: get 404', function (t) {
   masterClient.get('/pub/amontestuserulrich/probes/' + bogusUuid,
                    function (err, req, res, obj) {
     t.equal(err.statusCode, 404, 'should get 404');
-    t.equal(err.code, 'ResourceNotFound', 'should get rest code for 404');
+    t.equal(err.restCode, 'ResourceNotFound', 'should get rest code for 404');
     t.end();
   });
 });
@@ -350,9 +355,11 @@ test('probes: create without owning zone', function (t) {
     var data = probes[probeName];
     masterClient.post('/pub/amontestuserulrich/probes', data,
       function (err, req, res, obj) {
+        t.ok(res && res.headers['request-id'],
+          'req_id: ' + (res && res.headers['request-id']));
         t.ok(err);
         t.equal(err.statusCode, 409);
-        t.equal(err.code, 'InvalidArgument');
+        t.equal(err.restCode, 'InvalidArgument');
         nextProbe();
       }
     );
@@ -367,7 +374,7 @@ test('probes: create for physical machine without being op', function (t) {
     function (err, req, res, obj) {
       t.ok(err);
       t.equal(err.statusCode, 409);
-      t.equal(err.code, 'InvalidArgument');
+      t.equal(err.restCode, 'InvalidArgument');
       t.ok(/operator/.test(err.message),
            '\'operator\' should be in err message');
       t.end();
@@ -381,7 +388,7 @@ test('probes: create GZ probe on bogus machine for odin', function (t) {
   masterClient.post(path, data, function (err, req, res, obj) {
     t.ok(err, path);
     t.equal(err.statusCode, 409, '409 http response');
-    t.equal(err.code, 'InvalidArgument', 'error code in ' + res.body);
+    t.equal(err.restCode, 'InvalidArgument', 'error code in ' + res.body);
     t.ok(err.message.indexOf('machine') !== -1,
       format('"machine" in err message: "%s"', err.message));
     t.ok(err.message.toLowerCase().indexOf('invalid') !== -1);
