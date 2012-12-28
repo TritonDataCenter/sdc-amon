@@ -273,7 +273,7 @@ App.prototype.updateProbes = function updateProbes(force) {
 
       switch (action) {
       case 'add':
-        log.debug({probeUuid: uuid, probeData: probeDataFromUuid[uuid]},
+        log.info({probeUuid: uuid, probeData: probeDataFromUuid[uuid]},
           'update probes: create probe');
         self.createProbe(uuid, probeDataFromUuid[uuid], function (err, probe) {
           if (err) {
@@ -294,7 +294,7 @@ App.prototype.updateProbes = function updateProbes(force) {
           var probe = self.probeFromUuid[uuid];
           var isProbeError = (probe instanceof ProbeError);
 
-          log.debug({
+          log.info({
             probeUuid: uuid,
             isProbeError: isProbeError,
             probeData: probe.json
@@ -316,7 +316,7 @@ App.prototype.updateProbes = function updateProbes(force) {
           var probe = self.probeFromUuid[uuid];
           var isProbeError = (probe instanceof ProbeError);
           var data = probeDataFromUuid[uuid];
-          log.debug({probeUuid: uuid, oldProbeData: probe.json,
+          log.info({probeUuid: uuid, oldProbeData: probe.json,
               isProbeError: isProbeError, newProbeData: data},
               'update probes: update probe');
           if (!isProbeError) {
@@ -343,7 +343,14 @@ App.prototype.updateProbes = function updateProbes(force) {
       }
     }
     asyncForEach(todos, handleProbeTodo, function (err) {
-      log.info({changes: stats, numProbes: probeData.length}, 'updated probes');
+      if (log.info()) {
+        var sum = Object.keys(stats).reduce(
+          function (prev, curr) { return prev + stats[curr]; }, 0);
+        if (sum) {
+          log.info({stats: stats, numProbes: probeData.length, 
+            probeData: probeData}, 'updated probes');
+        }
+      }
       self.onProbesUpdated();
     });
   });
