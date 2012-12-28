@@ -1,15 +1,14 @@
 #!/bin/bash
 #
-# Rsync the master in this working copy to the install on the QA
-# "nightly" staging setup (i.e. the small DC setup from last
-# night's build of SDC master).
+# Rsync the master in this working copy to the install on the bh1-stage2
+# staging headnode GZ.
 #
 
-#set -x
+#set -o xtrace
+set -o errexit
+
 TOP=$(cd $(dirname $0)/../; pwd)
-NODE=root@10.2.106.7
-SSH_OPTIONS="-q -i $HOME/.ssh/automation.id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-SSH="ssh $SSH_OPTIONS"
+NODE=root@10.2.109.20
 
 if [[ -z "$AMON_ZONE" ]]; then
     AMON_ZONE=$(ssh $NODE "/opt/smartdc/bin/sdc-vmapi /vms" 2>/dev/null \
@@ -20,24 +19,23 @@ echo "AMON_ZONE: $AMON_ZONE"
 
 extraOpts=
 if [[ $(uname -s) != "SunOS" ]]; then
-    extraOpts='--exclude "*.node"'
+    extraOpts="--exclude *.node"
 fi
 
-rsync -av -e "$SSH" ${TOP}/master/ \
+rsync -av ${TOP}/master/ \
     $NODE:/zones/$AMON_ZONE/root/opt/smartdc/amon/ \
     $extraOpts \
     --exclude amon-common \
     --exclude amon-plugins \
-    --exclude buffertools \
     --exclude tmp/
-rsync -av -e "$SSH" ${TOP}/common/ \
+rsync -av ${TOP}/common/ \
     $NODE:/zones/$AMON_ZONE/root/opt/smartdc/amon/node_modules/amon-common/ \
     --exclude "*.node" \
     --exclude tmp/
-rsync -av -e "$SSH" ${TOP}/plugins/ \
+rsync -av ${TOP}/plugins/ \
     $NODE:/zones/$AMON_ZONE/root/opt/smartdc/amon/node_modules/amon-plugins/ \
     --exclude "*.node" \
     --exclude tmp/
 
-$SSH ${NODE} svcadm -z ${AMON_ZONE} clear amon-master
-$SSH ${NODE} svcadm -z ${AMON_ZONE} restart amon-master
+ssh ${NODE} svcadm -z ${AMON_ZONE} clear amon-master || true
+ssh ${NODE} svcadm -z ${AMON_ZONE} restart amon-master

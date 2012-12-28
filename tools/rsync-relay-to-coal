@@ -3,14 +3,16 @@
 # Rsync the relay in this working copy to the install on the COAL headnode GZ.
 #
 
-#set -x
+#set -o xtrace
+set -o errexit
+
 TOP=$(cd $(dirname $0)/../; pwd)
 RELAY_DIR=$TOP/relay
 COAL=root@10.99.99.7
 
 extraOpts=
 if [[ $(uname -s) != "SunOS" ]]; then
-    extraOpts='--exclude "*.node"'
+    extraOpts="--exclude *.node"
 fi
 
 rsync -av ${RELAY_DIR}/ \
@@ -39,5 +41,5 @@ rsync -av ${TOP}/plugins/ \
     $extraOpts \
     --exclude tmp/
 
-ssh ${COAL} svcadm clear amon-relay
+ssh ${COAL} svcadm clear amon-relay || true
 ssh ${COAL} svcadm restart amon-relay

@@ -3,14 +3,16 @@
 # Rsync the relay in this working copy to the install on the bh1-kvm7 GZ.
 #
 
-#set -x
+#set -o xtrace
+set -o errexit
+
 TOP=$(cd $(dirname $0)/../; pwd)
 RELAY_DIR=$TOP/relay
 NODE=root@10.2.207.2
 
 extraOpts=
 if [[ $(uname -s) != "SunOS" ]]; then
-    extraOpts='--exclude "*.node"'
+    extraOpts="--exclude *.node"
 fi
 
 rsync -av ${RELAY_DIR}/ \
@@ -46,5 +48,5 @@ rsync -av ${TOP}/test/ \
     --exclude "prep.json" \
     --exclude tmp/
 
-ssh ${NODE} svcadm clear amon-relay
+ssh ${NODE} svcadm clear amon-relay || true
 ssh ${NODE} svcadm restart amon-relay

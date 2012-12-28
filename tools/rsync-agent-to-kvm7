@@ -4,7 +4,9 @@
 # headnode GZ.
 #
 
-#set -x
+#set -o xtrace
+set -o errexit
+
 TOP=$(cd $(dirname $0)/../; pwd)
 AGENT_DIR=$TOP/agent
 NODE=root@10.2.207.2
@@ -13,7 +15,7 @@ SSH="ssh $SSH_OPTIONS"
 
 extraOpts=
 if [[ $(uname -s) != "SunOS" ]]; then
-    extraOpts='--exclude "*.node"'
+    extraOpts="--exclude *.node"
 fi
 
 rsync -av -e "$SSH" ${AGENT_DIR}/ \
@@ -32,5 +34,5 @@ rsync -av -e "$SSH" ${TOP}/plugins/ \
     $extraOpts \
     --exclude tmp/
 
-ssh ${NODE} svcadm clear amon-agent
+ssh ${NODE} svcadm clear amon-agent || true
 ssh ${NODE} svcadm restart amon-agent

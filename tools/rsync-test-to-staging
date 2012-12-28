@@ -10,7 +10,7 @@ set -o errexit
 
 TOP=$(cd $(dirname $0)/../; pwd)
 RELAY_DIR=$TOP/relay
-NODE=root@10.99.99.7
+NODE=root@10.2.109.20
 
 extraOpts=
 if [[ $(uname -s) != "SunOS" ]]; then
