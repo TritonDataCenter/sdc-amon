@@ -266,10 +266,10 @@ test('probes: create with bogus contact', function (t) {
   masterClient.post('/pub/amontestuserulrich/probes', data,
     function (err, req, res, obj) {
       t.ok(err);
-      t.equal(err.httpCode, 409, 'expect 409');
-      t.equal(err.code, 'InvalidArgument');
-      t.ok(err.message.indexOf('smokesignal') !== -1,
-        'err.message has "smokesignal": '+err.message);
+      t.equal(err.statusCode, 422, 'expect 422');
+      t.equal(err.code, 'ValidationFailed');
+      t.ok(err.message.indexOf('contact') !== -1,
+        'err.message has "contact": '+err.message);
       t.end();
     }
   );
@@ -312,7 +312,7 @@ test('probes: get 404', function (t) {
   var bogusUuid = uuid();
   masterClient.get('/pub/amontestuserulrich/probes/' + bogusUuid,
                    function (err, req, res, obj) {
-    t.equal(err.httpCode, 404, 'should get 404');
+    t.equal(err.statusCode, 404, 'should get 404');
     t.equal(err.code, 'ResourceNotFound', 'should get rest code for 404');
     t.end();
   });
@@ -351,7 +351,7 @@ test('probes: create without owning zone', function (t) {
     masterClient.post('/pub/amontestuserulrich/probes', data,
       function (err, req, res, obj) {
         t.ok(err);
-        t.equal(err.httpCode, 409);
+        t.equal(err.statusCode, 409);
         t.equal(err.code, 'InvalidArgument');
         nextProbe();
       }
@@ -366,7 +366,7 @@ test('probes: create for physical machine without being op', function (t) {
   masterClient.post('/pub/amontestuserulrich/probes', data,
     function (err, req, res, obj) {
       t.ok(err);
-      t.equal(err.httpCode, 409);
+      t.equal(err.statusCode, 409);
       t.equal(err.code, 'InvalidArgument');
       t.ok(/operator/.test(err.message),
            '\'operator\' should be in err message');
@@ -380,7 +380,7 @@ test('probes: create GZ probe on bogus machine for odin', function (t) {
   var path = '/pub/amontestoperatorodin/probes';
   masterClient.post(path, data, function (err, req, res, obj) {
     t.ok(err, path);
-    t.equal(err.httpCode, 409, '409 http response');
+    t.equal(err.statusCode, 409, '409 http response');
     t.equal(err.code, 'InvalidArgument', 'error code in ' + res.body);
     t.ok(err.message.indexOf('machine') !== -1,
       format('"machine" in err message: "%s"', err.message));

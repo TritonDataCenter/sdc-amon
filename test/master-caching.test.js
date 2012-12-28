@@ -263,7 +263,7 @@ test('probes: get a probe now removed', function (t) {
   var path = '/pub/amontestuserulrich/probes/' + gWhistlelogProbeUuid;
   masterClient.get(path, function (err, req, res, obj) {
     t.ok(err, 'GET ' + path);
-    t.equal(err.httpCode, 404);
+    t.equal(err.statusCode, 404);
     t.equal(err.restCode, 'ResourceNotFound');
     t.end();
   });

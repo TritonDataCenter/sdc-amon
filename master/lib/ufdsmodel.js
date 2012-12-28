@@ -350,6 +350,7 @@ function requestCreate(req, res, next, Model) {
     });
   }
   data.user = req._user.uuid;
+  // TODO: remove this once the models are generating the uuid. Probe is.
   data.uuid = uuid();
 
   modelCreate(req._app, Model, data, req.log, function (err, item) {

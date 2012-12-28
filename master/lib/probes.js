@@ -21,6 +21,7 @@ var utils = require('amon-common').utils,
 var plugins = require('amon-plugins');
 var Contact = require('./contact');
 var ProbeGroup = require('./probegroups').ProbeGroup;
+var errors = require('./errors');
 
 
 
@@ -109,7 +110,7 @@ function Probe(app, raw) {
 
 
 /**
- * Create a new Probe (with validation).
+ * Create a new Probe from request data.
  *
  * @param app {App}
  * @param data {Object} The probe data.
@@ -120,45 +121,7 @@ Probe.create = function createProbe(app, data, callback) {
   assert.object(data, 'data');
   assert.func(callback, 'callback');
 
-  // Basic validation.
-  // TODO: not sure assert-plus is right here. It is for pre-conditions,
-  // not for API data validation. With NO_DEBUG (or whatever the envvar),
-  // all validation will be broken.
-  try {
-    assert.string(data.user, 'data.user');
-    assert.ok(UUID_RE.test(data.user),
-      format('invalid probe data: "user" is not a valid UUID: %j', data));
-    assert.string(data.type, 'data.type');
-    assert.optionalString(data.agent, 'data.agent');
-    if (data.agent) {
-      assert.ok(UUID_RE.test(data.agent),
-        format('invalid probe data: "agent" is not a valid UUID: %j', data));
-    }
-    assert.optionalString(data.machine, 'data.machine');
-    if (data.machine) {
-      assert.ok(UUID_RE.test(data.machine),
-        format('invalid probe data: "machine" is not a valid UUID: %j', data));
-    }
-    assert.optionalBool(data.skipauthz, 'data.skipauthz');
-    assert.optionalString(data.name, 'data.name');
-    if (data.name) {
-      assert.ok(data.name.length < 512,
-        format('probe name is too long (max 512 characters): "%s"', data.name));
-    }
-    // Use `optionalArrayOfString` once node-assert-plus#2 is fixed.
-    if (data.contacts) {
-      assert.arrayOfString(data.contacts, 'data.contacts');
-    }
-    assert.optionalObject(data.config, 'data.config');
-    assert.optionalString(data.group, 'data.group');
-    if (data.group) {
-      assert.ok(UUID_RE.test(data.group),
-        format('invalid probe data: "group" is not a valid UUID: %j', data));
-    }
-    assert.optionalBool(data.disabled, 'data.disabled');
-  } catch (aErr) {
-    return callback(aErr);
-  }
+  var data = objCopy(data);
 
   // Validate group.
   function getGroup(groupUuid, cb) {
@@ -185,6 +148,27 @@ Probe.create = function createProbe(app, data, callback) {
     if (data.config) raw.config = JSON.stringify(data.config);
     if (data.machine) raw.machine = data.machine;
     if (data.group) raw.group = data.group;
+    delete data.user;
+    delete data.type;
+    delete data.agent;
+    delete data.disabled;
+    delete data.name;
+    delete data.contacts;
+    delete data.config;
+    delete data.machine;
+    delete data.group;
+    delete data.uuid;  // spurious uuid added in `ufdsmodel.requestCreate`.
+
+    var skipauthz = data.skipauthz;
+    delete data.skipauthz;
+
+    // Error on extra spurious fields.
+    var extraFields = Object.keys(data);
+    if (extraFields.length > 0) {
+      return callback(new errors.InvalidParameterError(
+        format('invalid extra parameters: "%s"', extraFields.join('", "')),
+        extraFields.map(function (f) { return {field:f,code:'Invalid'} })));
+    }
 
     var probe = null;
     try {
@@ -196,11 +180,11 @@ Probe.create = function createProbe(app, data, callback) {
     // 'skipauthz' in the probe data is a request to skip authorization
     // for PUTting this probe. It exists to facilitate the setting of
     // probes by core SDC zones during initial headnode setup, when all
-    // facilities (specificall VMAPI) for authZ might not be up yet.
+    // facilities (specifically VMAPI) for authZ might not be up yet.
     // Note: This request is **only honoured for the admin user** (the
     // only user for which probes should be added during headnode setup).
-    probe._skipauthz = (data.skipauthz
-      ? data.user === app.config.adminUuid : false);
+    probe._skipauthz = (skipauthz
+      ? raw.user === app.config.adminUuid : false);
 
     callback(null, probe);
   });
@@ -426,65 +410,120 @@ Probe.get = function get(app, user, uuid, callback) {
  *    normalize field values.
  * @throws {restify Error} if the raw data is invalid.
  */
-Probe.validate = function validate(app, raw) {
-  var ProbeType = plugins[raw.type];
-  if (!ProbeType) {
-    throw new restify.InvalidArgumentError(
-      format('probe type is invalid: "%s"', raw.type));
+Probe.validate = function validateProbe(app, raw) {
+  var errs = []; // validation errors
+
+  //---- internal ufds fields
+  // objectclass
+  if (!raw.objectclass) {
+    throw new errors.InternalError('no "objectclass" field on raw image data');
+  } else if (raw.objectclass !== Probe.objectclass) {
+    throw new errors.InternalError(
+        'invalid "objectclass" field on raw image data: "%s"',
+        raw.objectclass);
   }
 
+  //---- external spec fields
+  // type
+  var ProbeType;
+  if (!raw.type) {
+    errs.push({field: 'type', code: 'MissingParameter'});
+  } else {
+    var ProbeType = plugins[raw.type];
+    if (!ProbeType) {
+      errs.push({
+        field: 'type',
+        code: 'Invalid',
+        message: format('valid probe types are: "%s"',
+                        Object.keys(plugins).join('", "'))
+      });
+    }
+  }
+
+  // agent & machine
   // 'agent' can be implied from 'machine', and vice versa for 'runLocally'
   // probe types.
-  if (ProbeType.runLocally) {
+  if (ProbeType && ProbeType.runLocally) {
     if (!raw.agent && !raw.machine) {
-      throw new restify.MissingParameterError(format(
-        'one of "agent" or "machine" fields is required for a "%s" probe',
-        raw.type));
+      errs.push({
+        field: 'agent',
+        code: 'MissingParameter',
+        message: format(
+          'one of "agent" or "machine" fields is required for a "%s" probe',
+          raw.type)
+      });
     } else if (!raw.agent) {
       raw.agent = raw.machine;
     } else if (!raw.machine) {
       raw.machine = raw.agent;
     } else if (raw.agent !== raw.machine) {
-      throw new restify.InvalidArgumentError(format(
-        'invalid "agent" and "machine": they must be the same for '
-        + 'a "%s" probe (agent=%s, machine=%s)',
-        raw.type, raw.agent, raw.machine));
+      errs.push({
+        field: 'agent',
+        code: 'Invalid',
+        message: format(
+          'invalid "agent" and "machine": they must be the same for '
+          + 'a "%s" probe (agent=%s, machine=%s)',
+          raw.type, raw.agent, raw.machine)
+      });
     }
+  } else if (!raw.agent) {
+    errs.push({
+      field: 'agent',
+      code: 'MissingParameter'
+    });
   }
-
-  // Other required fields.
-  ['type'].forEach(function (field) {
-    if (!raw[field]) {
-      throw new restify.MissingParameterError(
-        format('\'%s\' is a required parameter for a probe', field));
-    }
-  });
-
-  if (!UUID_RE.test(raw.agent)) {
-    throw new restify.InvalidArgumentError(
-      format('invalid probe agent UUID: \'%s\'', raw.agent));
+  if (raw.agent && !UUID_RE.test(raw.agent)) {
+    errs.push({field: 'agent', code: 'Invalid', message: 'not a UUID'});
   }
   if (raw.machine && !UUID_RE.test(raw.machine)) {
-    throw new restify.InvalidArgumentError(
-      format('invalid probe machine UUID: \'%s\'', raw.machine));
+    errs.push({field: 'machine', code: 'Invalid', message: 'not a UUID'});
   }
 
+  // uuid
+  if (!raw.uuid) {
+    errs.push({field: 'uuid', code: 'MissingParameter'});
+  } else if (!UUID_RE.test(raw.uuid)) {
+    errs.push({field: 'uuid', code: 'Invalid', message: 'not a UUID'});
+  }
+
+  // user
+  if (!raw.user) {
+    errs.push({field: 'user', code: 'MissingParameter'});
+  } else if (!UUID_RE.test(raw.user)) {
+    errs.push({field: 'user', code: 'Invalid', message: 'not a UUID'});
+  }
+
+  // group
   if (raw.group && !UUID_RE.test(raw.group)) {
-    throw new restify.InvalidArgumentError(
-      format('invalid probe group UUID: \'%s\'', raw.group));
+    errs.push({field: 'group', code: 'Invalid', message: 'not a UUID'});
   }
 
+  // name
   if (raw.name && raw.name.length > 512) {
-    throw new restify.InvalidArgumentError(
-      format('probe name is too long (max 512 characters): \'%s\'', raw.name));
+    errs.push({
+      field: 'name',
+      code: 'Invalid',
+      message: 'image name is too long (max 512 characters)'
+    });
   }
 
+  // contact (really an array of contact URNs)
   if (raw.contact) {
     if (!(raw.contact instanceof Array)) {
       raw.contact = [raw.contact];
     }
     raw.contact.forEach(function (c) {
-      Contact.parseUrn(app, c);
+      try {
+        Contact.parseUrn(app, c);
+      } catch (cErr) {
+        if (cErr.name !== 'InvalidParameterError')
+          throw cErr;
+        errs.push({
+          field: 'contact',
+          code: 'Invalid',
+          message: cErr.message
+        });
+      }
     });
   }
 
@@ -493,22 +532,52 @@ Probe.validate = function validate(app, raw) {
     var config;
     try {
       config = JSON.parse(raw.config);
-    } catch (err) {
-      throw new restify.InvalidArgumentError(
-        format('probe config, %s, is invalid: %s', raw.config, err));
+    } catch (parseErr) {
+      errs.push({
+        field: 'config',
+        code: 'Invalid',
+        message: format('probe config, "%s", is not valid JSON: %s',
+                        raw.config, parseErr)
+      });
     }
-    try {
-      ProbeType.validateConfig(config);
-    } catch (err) {
-      throw new restify.InvalidArgumentError(
-        format('probe config, %s, is invalid: "%s"', raw.config, err.message));
+    if (ProbeType && config) {
+      try {
+        // Currently, at least, `validateConfig` will raise `TypeError`s
+        ProbeType.validateConfig(config);
+      } catch (valErr) {
+        errs.push({
+          field: 'config',
+          code: 'Invalid',
+          message: format('probe config, "%s", is invalid: %s',
+                          raw.config, valErr)
+        });
+      }
     }
   }
 
-  if (ProbeType.runInVmHost) {
+  // disabled
+  if (raw.disabled === undefined) {
+    errs.push({field: 'disabled', code: 'MissingParameter'});
+  } else {
+    var disabled = boolFromString(raw.disabled);
+    if (typeof (disabled) !== 'boolean') {
+      errs.push({
+        field: 'disabled',
+        code: 'Invalid'
+      });
+    }
+  }
+
+  // runInVmHost
+  if (ProbeType && ProbeType.runInVmHost) {
     raw.runInVmHost = true;
   }
 
+  if (errs.length) {
+    var fields = errs.map(function (e) { return e.field });
+    throw new errors.ValidationFailedError(
+      "invalid probe data: " + fields.join(', '), errs);
+  }
   return raw;
 };
 

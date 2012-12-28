@@ -35,6 +35,7 @@ var probegroups = require('./probegroups'),
   ProbeGroup = probegroups.ProbeGroup;
 var agentprobes = require('./agentprobes');
 var events = require('./events');
+var errors = require('./errors');
 
 
 
@@ -1093,8 +1094,8 @@ App.prototype.chooseRelatedAlarm = function (candidateAlarms,
  * particular plugin for handling the notification. E.g. both 'email'
  * and 'secondaryEmail' will map to the "email" notification type.
  *
- * @throws {restify.RestError} if the no appropriate notification plugin could
- *    be determined.
+ * @throws {errors.InvalidParameterError} if the no appropriate notification
+ *    plugin could be determined.
  */
 App.prototype.notificationTypeFromMedium = function (medium) {
   var log = this.log;
@@ -1109,8 +1110,9 @@ App.prototype.notificationTypeFromMedium = function (medium) {
   }
   log.warn('Could not determine an appropriate notification plugin '
     + 'for "%s" medium.', medium);
-  throw new restify.InvalidArgumentError(
-    format('Invalid or unsupported contact medium "%s".', medium));
+  throw new errors.InvalidParameterError(
+    format('Invalid or unsupported contact medium "%s".', medium),
+    [{field: 'medium', code: 'Invalid'}]);
 };
 
 

@@ -12,6 +12,8 @@ var child_process = require('child_process'),
 var util = require('util'),
   format = util.format;
 
+var assert = require('assert-plus');
+
 var ProbeType = require('./probe');
 
 
@@ -71,8 +73,7 @@ CmdProbe.prototype.type = 'cmd';
 
 
 CmdProbe.validateConfig = function validateConfig(config) {
-  if (!config)
-    throw new TypeError('"config" is required');
+  assert.object(config, 'config');
   if (config.stdoutMatch)
     ProbeType.validateMatchConfig(config.stdoutMatch, 'config.stdoutMatch');
   if (config.stderrMatch)

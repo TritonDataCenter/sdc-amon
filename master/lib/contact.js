@@ -34,11 +34,8 @@
  * o=smartdc" node in UFDS.
  */
 
-var assert = require('assert');
 var format = require('util').format;
-var debug = console.warn;
-
-var restify = require('restify');
+var errors = require('./errors');
 
 
 
@@ -69,7 +66,7 @@ function Contact(scope, medium, notificationType, address) {
  * Parse a Contact URN. See module comment for URN spec. This is effectively
  * a contact URN validator as well.
  *
- * @throws {restify.RestError} if the given URN is invalid.
+ * @throws {errors.InvalidParameterError} if the given URN is invalid.
  */
 Contact.parseUrn = function (app, urn) {
   // For now just: '<medium>' or 'my:<medium>'. When/if UFDS user mgmt is
@@ -82,8 +79,9 @@ Contact.parseUrn = function (app, urn) {
     medium = urn;
   }
   if (medium.indexOf(':') !== -1) {
-    throw new restify.InvalidArgumentError(
-      format('invalid contact: ":" in medium "%s"', medium));
+    throw new errors.InvalidParameterError(
+      format('invalid contact: ":" in medium "%s"', medium),
+      [{field: 'urn', code: 'Invalid'}]);
   }
   return {
     scope: scope,
