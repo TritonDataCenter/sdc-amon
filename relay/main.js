@@ -510,8 +510,13 @@ function updateAgentProbes(next) {
     applog.trace('updateAgentProbes for zone "%s"', zonename);
     return masterClient.agentProbesMD5(app.agent, function (err, masterMD5) {
       if (err) {
-        applog.warn('Error getting master agent probes MD5: %s', err);
-        return nextOne();
+        applog.warn(err, 'error getting master agent probes MD5');
+        if (err.errno === 'ECONNREFUSED') {
+            // Don't bother with subsequent ones if master is just down.
+            return nextOne(err);
+        } else {
+            return nextOne();
+        }
       }
       var currMD5 = app.upstreamAgentProbesMD5;
       applog.trace('Agent probes md5: "%s" (from master) vs "%s" (curr)',
@@ -554,7 +559,7 @@ function updateAgentProbes(next) {
 
   var zonenames = Object.keys(zoneApps);
   log.trace('checking for agent probe updates (%d zones)', zonenames.length);
-  async.forEachSeries(zonenames, updateForOneZone, function (err) {
+  async.forEachSeries(zonenames, updateForOneZone, function (zonesErr) {
     return (next && next());
   });
 }
