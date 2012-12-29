@@ -528,8 +528,8 @@ Probe.validate = function validateProbe(app, raw) {
   }
 
   // Validate the probe-type-specific config.
+  var config = null;
   if (raw.config) {
-    var config;
     try {
       config = JSON.parse(raw.config);
     } catch (parseErr) {
@@ -540,18 +540,18 @@ Probe.validate = function validateProbe(app, raw) {
                         raw.config, parseErr)
       });
     }
-    if (ProbeType && config) {
-      try {
-        // Currently, at least, `validateConfig` will raise `TypeError`s
-        ProbeType.validateConfig(config);
-      } catch (valErr) {
-        errs.push({
-          field: 'config',
-          code: 'Invalid',
-          message: format('probe config, "%s", is invalid: %s',
-                          raw.config, valErr)
-        });
-      }
+  }
+  if (ProbeType) {
+    try {
+      // Currently `validateConfig` will raise `TypeError`s
+      ProbeType.validateConfig(config);
+    } catch (valErr) {
+      errs.push({
+        field: 'config',
+        code: 'Invalid',
+        message: format('probe config, "%s", is invalid: %s',
+                        raw.config || "(none)", valErr)
+      });
     }
   }
 
