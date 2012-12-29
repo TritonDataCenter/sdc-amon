@@ -97,7 +97,7 @@ master: common plugins | $(NPM_EXEC)
 # to actually *run* the tests.
 .PHONY: testbuild
 testbuild: | $(NPM_EXEC)
-	(cd test && $(NPM) install)
+	(cd test && MAKE=$(MAKE) $(NPM) install)
 
 # "dev" is the name for the top-level dev package
 .PHONY: dev
