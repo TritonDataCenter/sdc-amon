@@ -78,9 +78,6 @@ function auditLogger(options) {
             err: err,
             latency: latency
         };
-        // TODO: Talk to Mark about having this route be the route *object*.
-        // Also *why* is the route name lowercased? Uniqueness? Sucks
-        // that the case is changed.
         log.info(obj, '%shandled: %d', (route ? route + ' ' : ''),
             res.statusCode);
         return (true);
