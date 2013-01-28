@@ -1,9 +1,0 @@
-{
-  "login": "sulkybob",
-  "uuid": "11111111-1111-1111-1111-111111111111",
-  "userpassword": "123123",
-  "email": "nobody+sulkybob@joyent.com",
-  "cn": "Sulky",
-  "sn": "Bob",
-  "objectclass": "sdcPerson"
-}
