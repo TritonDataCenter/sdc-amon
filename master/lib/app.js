@@ -19,6 +19,7 @@ var redis = require('redis');
 var Pool = require('generic-pool').Pool;
 var async = require('async');
 var bunyan = require('bunyan');
+var once = require('once');
 
 var amonCommon = require('amon-common'),
   Constants = amonCommon.Constants,
@@ -155,6 +156,7 @@ function App(config, cnapiClient, vmapiClient, log) {
     reapIntervalMillis: 5000,
     create: function createUfdsClient(callback) {
       // TODO: should change to sdc-clients.UFDS at some point.
+      var callback = once(callback);
       var client = ldap.createClient({
         url: config.ufds.url,
         connectTimeout: 2 * 1000,  // 2 seconds (fail fast)
@@ -548,13 +550,14 @@ App.prototype.ufdsSearch = function ufdsSearch(base, opts, callback) {
   var log = this.log;
   var pool = this.ufdsPool;
   pool.acquire(function (poolErr, client) {
-    if (poolErr) {
-      log.warn(poolErr, 'UFDS pool error');
+    if (poolErr || !client) {
+      if (poolErr) {
+        log.warn(poolErr, 'UFDS pool error');
+      } else {
+        log.warn('ufdsPool.acquire returned no client! (See MON-203)', client);
+      }
       return callback(new restify.ServiceUnavailableError(
         'service unavailable'));
-    }
-    if (!client) {
-      log.warn('ufdsPool.acquire returned no client! (See MON-203)', client);
     }
 
     log.trace({filter: opts.filter}, 'ldap search');

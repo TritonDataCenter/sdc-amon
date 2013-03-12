@@ -9,6 +9,7 @@
     "amon-common": "1.0.0",
     "amon-plugins": "1.0.0",
 
+    "once": "1.1.1",
     "async": "0.1.22",
     "bunyan": "0.16.8",
     "restify": "git://github.com/mcavage/node-restify.git#198dcbb",
