@@ -20,6 +20,7 @@ working on IMGAPI et al.
 - [now] demo with ops people and feedback
 - [kevin] adminui integration
 - [risk-high] agent release process for running in customer zones
+- update the docs (badly out of date)
 - MON-28: sdc backup/restore/upgrade for Amon
 - MON-24: sdc-healthcheck
 - MON-150: contacts refactor
@@ -162,7 +163,7 @@ In no particular order, other things to look at in Amon.
 - probe types: http://circonus.com/why-us/features/monitoring
 - compare to http://www.rackspace.com/blog/cloud-monitoring-early-access-program-opens-its-doors/
   http://docs.rackspace.com/cm/api/v1.0/cm-devguide/content/index.html
-- revive twilio notification backend as "sms"
+- revive twilio notification backend as "sms", see <https://npmjs.org/package/telenode>
 - more probe types: run cmd, http check, zone list, ping, disk free, disk
   iops, cpu, mem, ps (aka "top")
     - http://blog.nodeping.com/2012/03/28/ssl-certificate-check/
@@ -182,6 +183,7 @@ In no particular order, other things to look at in Amon.
     - http://www.opennms.org/ (modcloth using this I think)
     - circonus.com
     - newrelic
+    - https://github.com/nodejitsu/godot
 
 
 # notes: redis

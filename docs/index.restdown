@@ -494,14 +494,14 @@ Create a probe.
 ### Inputs
 
 ||**Field**||**Required?**||**Type**||**Description**||
-||user (URL)||-||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||type||String||required||One of the supported [probe types](#probe-types).||
-||config||Object||see [Probe Types](#probe-types)||Extra configuration information for the probe, if required. This is specific to the [probe type](#probe-types). Most probe types require some config information.||
-||agent||String||required||The UUID of the agent that will run this probe. An agent uses the UUID of the VM (`zonename` in a zone, ??? in a virtual machine) or node (`sysinfo | json UUID`) on which it is running as its UUID.||
-||machine||String||optional||The UUID of the VM or node being monitored, if applicable. For some probe types (those that must run locally), "machine" is the same value as the "agent". An example where "machine" is not applicable might be an HTTP check against a hostname that handled by multiple webheads behind a load balancer.||
-||contacts||Array||optional||Set of contact names for this probe. If the probe is a member of a group then the group's contacts take precedence.||
-||group||UUID||optional||UUID of a probe group to which to add this probe.||
-||skipauthz||Boolean||optional||**Internal.** This is an admin-only option to skip PUT authorization. It is accepted only for the special system admin user. It exists to facilitate bootstrapping probe creation during SDC headnode setup when all services required for authZ may not yet be online.||
+||user||required (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
+||type||required||String||One of the supported [probe types](#probe-types).||
+||config||see [Probe Types](#probe-types)||Object||Extra configuration information for the probe, if required. This is specific to the [probe type](#probe-types). Most probe types require some config information.||
+||agent||required||String||The UUID of the agent that will run this probe. An agent uses the UUID of the VM (`zonename` in a zone, ??? in a virtual machine) or node (`sysinfo | json UUID`) on which it is running as its UUID.||
+||machine||optional||String||The UUID of the VM or node being monitored, if applicable. For some probe types (those that must run locally), "machine" is the same value as the "agent". An example where "machine" is not applicable might be an HTTP check against a hostname that handled by multiple webheads behind a load balancer.||
+||contacts||optional||Array||Set of contact names for this probe. If the probe is a member of a group then the group's contacts take precedence.||
+||group||optional||UUID||UUID of a probe group to which to add this probe.||
+||skipauthz||optional||Boolean||**Internal.** This is an admin-only option to skip PUT authorization. It is accepted only for the special system admin user. It exists to facilitate bootstrapping probe creation during SDC headnode setup when all services required for authZ may not yet be online.||
 
 ### Returns
 
@@ -2361,3 +2361,65 @@ TODO: sdc-healthcheck, sdc-webinfo
 ||amon-master||in each "amon" zone||[Bunyan](https://github.com/trentm/node-bunyan)||`` sdc-login amon; tail -f `svcs -L amon-master` | bunyan ``||
 ||amon-relay||in each GZ||[Bunyan](https://github.com/trentm/node-bunyan)||`` tail -f `svcs -L amon-relay` | bunyan ``||
 ||amon-agent||in each GZ and in some zones||[Bunyan](https://github.com/trentm/node-bunyan)||`` tail -f `svcs -L amon-agent` | bunyan ``||
+
+
+## Ops Examples
+
+Some possibly helpful commands for working with the amon.
+
+- At the time of this writing, manta-beta's amon doesn't have the changes
+  to reduce noise in the amon-master log. Run this in the amon zone to
+  filter that out:
+
+        tail -f `svcs -L amon-master` | bunyan -c '!this.req || this.req.method !== "HEAD"' -c 'this.msg !== "headAgentProbes respond"'
+
+- Adding a canary probe to the headnode GZ to test that sending emails is
+  working:
+
+        sdc-amon /pub/trent.mick/probes -X POST -d@- <<EOP
+        {
+          "name": "canary-test",
+          "type": "log-scan",
+          "agent": "$(sysinfo | json UUID)",
+          "contacts": ["email"],
+          "config": {
+            "path": "/var/tmp/trent-canary.log",
+            "match": {
+              "pattern": "chirp"
+            }
+          }
+        }
+        EOP
+
+  Wait until that propagates to the amon-agent:
+
+        cat /var/db/amon-agent/probeData.json | json -c "this.name=='canary-test'"
+
+  You might have to close a currently open alarm to get a notification email
+  sent for a newly triggered "chirp":
+
+        sdc-amon /pub/trent.mick/alarms
+        sdc-amon /pub/trent.mick/alarms/ID?action=close -X POST
+
+  Trigger an alarm:
+
+        touch /var/tmp/trent-canary.log
+        echo chirp >>/var/tmp/trent-canary.log
+
+- Checking that outgoing mail is working:
+
+        sdc-login amon
+        postqueue -p
+
+  And possibly flush the queue if having fixed an issue:
+
+        postqueue -f
+
+- Show all recent alarms. This isn't nice output, but a start and digging
+  into what has alarmed recently, with a readable timestamp.
+
+        $ sdc-amon /alarms | json -H -e 'this.time = (new Date(this.timeLastEvent)).toString()' -a -- timeLastEvent user id time | sort -n | tail
+        ...
+        1363107930479 6232d723-4ba8-4fc9-93c5-5d3270e0d74a 622 Tue Mar 12 2013 17:05:30 GMT+0000 (UTC)
+        1363108178337 6232d723-4ba8-4fc9-93c5-5d3270e0d74a 623 Tue Mar 12 2013 17:09:38 GMT+0000 (UTC)
+        1363108179851 6232d723-4ba8-4fc9-93c5-5d3270e0d74a 624 Tue Mar 12 2013 17:09:39 GMT+0000 (UTC)
