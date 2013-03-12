@@ -104,9 +104,17 @@ Email.prototype.notify = function (options, callback) {
    *     same person.
    */
   var to = address;
-  var contactName;
   if (address.indexOf('<') === -1 && (user.cn || user.sn)) {
-    contactName = (user.cn + ' ' + user.sn).trim();
+    //TODO: handle multiple cn's or sn's. Currently you get a comma-separated.
+    var contactName = '';
+    if (user.cn) {
+      contactName += (Array.isArray(user.cn) ? user.cn.join(' ') : user.cn);
+    }
+    if (user.sn) {
+      contactName += ' ' + (
+        Array.isArray(user.sn) ? user.sn.join(' ') : user.sn);
+    }
+    contactName = contactName.trim();
     to = format('%s <%s>', JSON.stringify(contactName), address);
   }
 
