@@ -186,7 +186,8 @@ function App(config, cnapiClient, vmapiClient, log) {
     },
     log: function (msg, level) {
       var fn = {
-        //'verbose': ufdsPoolLog.trace,  // disable this for prod, little wordy
+        // Enable verbose for MON-214 testing. TODO:XXX remove this
+        'verbose': ufdsPoolLog.trace,  // disable this for prod, little wordy
         'info': ufdsPoolLog.trace,
         'warn': ufdsPoolLog.warn,
         'error': ufdsPoolLog.error
