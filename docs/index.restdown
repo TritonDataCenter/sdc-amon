@@ -2373,10 +2373,10 @@ Some possibly helpful commands for working with the amon.
 
         tail -f `svcs -L amon-master` | bunyan -c '!this.req || this.req.method !== "HEAD"' -c 'this.msg !== "headAgentProbes respond"'
 
-- Adding a canary probe to the headnode GZ to test that sending emails is
-  working:
+- Adding a canary probe (or two) to the headnode GZ to test that sending
+  emails is working:
 
-        sdc-amon /pub/trent.mick/probes -X POST -d@- <<EOP
+        sdc-amon /pub/admin/probes -X POST -d@- <<EOP
         {
           "name": "canary-test",
           "type": "log-scan",
@@ -2390,16 +2390,30 @@ Some possibly helpful commands for working with the amon.
           }
         }
         EOP
+        sdc-amon /pub/admin/probes -X POST -d@- <<EOP
+        {
+          "name": "canary-bunyan-test",
+          "type": "bunyan-log-scan",
+          "agent": "$(sysinfo | json UUID)",
+          "contacts": ["email"],
+          "config": {
+            "path": "/var/tmp/trent-canary-bunyan.log",
+            "match": {
+              "pattern": "chirp"
+            }
+          }
+        }
+        EOP
 
   Wait until that propagates to the amon-agent:
 
-        cat /var/db/amon-agent/probeData.json | json -c "this.name=='canary-test'"
+        cat /var/db/amon-agent/probeData.json | json -c '~this.name.indexOf("canary")'
 
   You might have to close a currently open alarm to get a notification email
   sent for a newly triggered "chirp":
 
-        sdc-amon /pub/trent.mick/alarms
-        sdc-amon /pub/trent.mick/alarms/ID?action=close -X POST
+        sdc-amon /pub/trent/alarms
+        sdc-amon /pub/trent/alarms/ID?action=close -X POST
 
   Trigger an alarm:
 
