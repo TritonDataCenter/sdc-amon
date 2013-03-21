@@ -329,7 +329,7 @@ Probe.prototype.authorizeWrite = function (app, callback) {
         }
         if (!isOperator) {
           callback(new restify.InvalidArgumentError(format(
-            'Must be operator put a probe on a physical machine (%s): '
+            'Must be an operator to put a probe on a physical machine (%s): '
             + 'user \'%s\' is not an operator.', machineUuid, self.user)));
         } else {
           log.info('probe PUT authorized: probe for physical machine '
