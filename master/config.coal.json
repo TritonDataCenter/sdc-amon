@@ -1,8 +1,8 @@
 {
   "ufds": {
     "url": "ldaps://10.88.88.50:636",
-    "rootDn": "cn=root",
-    "password": "secret",
+    "bindDN": "cn=root",
+    "bindPassword": "secret",
     "caching": true
   },
   "cnapi": {

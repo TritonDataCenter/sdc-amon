@@ -1775,8 +1775,8 @@ whole userCache object.
 ||logLevel||String or Number||info||A bunyan log level. Note that the '-v' CLI option can also set the log level. If '-v' is used, then this config var is ignored.||
 ||adminUuid||UUID||-||The UUID of the admin user in this cloud. This is the 'ufds_admin_uuid' SDC config.||
 ||ufds.url||String||-||LDAP URL to connect to UFDS.||
-||ufds.rootDn||String||-||UFDS root dn.||
-||ufds.password||String||-||UFDS root dn password.||
+||ufds.bindDN||String||-||UFDS user DN with which to bind.||
+||ufds.bindPassword||String||-||UFDS password for 'bindDN'.||
 ||ufds.caching||Boolean||true||Should UFDS caching should be enabled?||
 ||cnapi.url||String||-||CNAPI client url.||
 ||vmapi.url||String||-||VMAPI client url.||
