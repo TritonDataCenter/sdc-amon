@@ -26,6 +26,8 @@ var uuid = require('node-uuid');
 var ldap = require('ldapjs');
 var restify = require('restify');
 
+var errors = require('./errors');
+
 
 
 //---- generic list/create/get/delete model helpers
@@ -247,36 +249,27 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
     callback(err, item);
   }
 
-  var opts = {scope: 'base'};
-  app.ufdsSearch(dn, opts, function (err, entries) {
+  app.ufdsGet(dn, function (err, entry) {
     if (err) {
-      if (err.statusCode === 503) {
+      if (err.restCode === 'ServiceUnavailable') {
         return callback(err);  // don't cache 503
-      } else if (err instanceof ldap.NoSuchObjectError) {
-        return cacheAndCallback(new restify.ResourceNotFoundError('not found'));
       } else {
         return cacheAndCallback(err);
       }
     }
-    if (entries.length === 1) {
-      var entry = entries[0];
-      try {
-        var item = new Model(app, entry);
-      } catch (err2) {
-        if (err2 instanceof restify.RestError) {
-          log.warn('Ignoring invalid %s (dn=\'%s\'): %s', Model.name,
-            entry.dn, err2);
-        } else {
-          log.error(err2, 'Unknown error with %s entry:', Model.name,
-            entry);
-        }
-        return callback(new restify.InternalError('invalid entry'));
+
+    try {
+      var item = new Model(app, entry);
+    } catch (err2) {
+      if (err2 instanceof restify.RestError) {
+        log.warn('ignoring invalid %s (dn=\'%s\'): %s', Model.name,
+          entry.dn, err2);
+      } else {
+        log.error(err2, 'unknown error with %s entry:', Model.name, entry);
       }
-      return cacheAndCallback(null, item);
-    } else {
-      log.error({entries: entries, dn: dn}, 'multiple hits in UFDS for one dn');
-      return callback(new restify.InternalError('conflicting entries'));
+      return callback(new errors.InternalError(err2, 'invalid entry'));
     }
+    return cacheAndCallback(null, item);
   });
 }
 

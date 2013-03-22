@@ -48,10 +48,19 @@ function auditLogger(options) {
             res: function auditResponseSerializer(res) {
                 if (!res)
                     return (false);
+                var body;
+                if (options.body === true) {
+                    if (res._body instanceof HttpError) {
+                        body = res._body.body;
+                    } else {
+                        body = res._body;
+                    }
+                }
                 return ({
                     statusCode: res.statusCode,
                     headers: res._headers,
-                    body: options.body === true ? res._body : undefined
+                    trailer: res._trailer || false,
+                    body: body
                 });
             }
         }

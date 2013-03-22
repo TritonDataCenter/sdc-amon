@@ -54,12 +54,12 @@
 var format = require('util').format;
 
 var assert = require('assert-plus');
-var restify = require('restify');
 var async = require('async');
 
 var utils = require('amon-common').utils,
   objCopy = utils.objCopy,
   boolFromString = utils.boolFromString;
+var errors = require('./errors');
 
 
 
@@ -542,7 +542,7 @@ function apiListMaintenanceWindows(req, res, next) {
   listMaintenances(req._app, userUuid, log, function (listErr, maintenances) {
     if (listErr) {
       log.error(listErr);
-      return next(new restify.InternalError(
+      return next(new errors.InternalError(
         'unexpected error getting maintenances for user ' + userUuid));
     }
     var serialized = [];
@@ -569,10 +569,10 @@ function apiCreateMaintenanceWindow(req, res, next) {
   createMaintenance(options, function (createErr, maintenance) {
     if (createErr) {
       if (createErr.name === 'TypeError') {
-        return next(new restify.InvalidArgumentError(createErr.toString()));
+        // TODO change to `errors.InvalidParameterError`.
+        return next(new errors.InvalidArgumentError(createErr.toString()));
       } else {
-        log.error(createErr);
-        return next(new restify.InternalError(
+        return next(createErr, new errors.InternalError(
           'unexpected error creating maintenance'));
       }
     }
@@ -596,7 +596,7 @@ function reqGetMaintenanceWindow(req, res, next) {
   var userUuid = req._user.uuid;
   var id = Number(req.params.maintenance);
   if (!isPositiveInteger(id)) {
-    return next(new restify.InvalidArgumentError(
+    return next(new errors.InvalidArgumentError(
       'invalid "maintenance" id: %j (must be an integer greater than 0)',
       req.params.maintenance));
   }
@@ -604,8 +604,7 @@ function reqGetMaintenanceWindow(req, res, next) {
   log.debug({userUuid: userUuid, maintenanceId: id}, 'get maintenance window');
   Maintenance.get(req._app, userUuid, id, function (getErr, maintenance) {
     if (getErr) {
-      log.error(getErr);
-      return next(new restify.InternalError(
+      return next(new errors.InternalError(getErr,
         'error getting maintenance window data'));
     } else if (maintenance) {
       req._maintenance = maintenance;
@@ -620,10 +619,10 @@ function reqGetMaintenanceWindow(req, res, next) {
         }
         currId = Number(currId) || 0;
         if (id <= currId) {
-          return next(new restify.GoneError(
+          return next(new errors.GoneError(
             format('maintenance window %d was previously deleted', id)));
         } else {
-          return next(new restify.ResourceNotFoundError(
+          return next(new errors.ResourceNotFoundError(
             'maintenance window %d not found', id));
         }
       });
@@ -651,8 +650,7 @@ function apiGetMaintenanceWindow(req, res, next) {
 function apiDeleteMaintenanceWindow(req, res, next) {
   deleteMaintenance(req._app, req._maintenance, function (err) {
     if (err) {
-      req.log.error(err);
-      return next(new restify.InternalError(
+      return next(new errors.InternalError(err,
         'error deleting maintenance window'));
     }
     res.send(204);

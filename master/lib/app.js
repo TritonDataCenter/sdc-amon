@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Joyent, Inc.  All rights reserved.
+ * Copyright 2013 Joyent, Inc.  All rights reserved.
  *
  * The Amon Master app. It defines the master API endpoints.
  */
@@ -13,10 +13,10 @@ var ldap = require('ldapjs');
 var restify = require('restify');
 var sdcClients = require('sdc-clients'),
   CNAPI = sdcClients.CNAPI,
-  VMAPI = sdcClients.VMAPI;
+  VMAPI = sdcClients.VMAPI,
+  UFDS = sdcClients.UFDS;
 var Cache = require('expiring-lru-cache');
 var redis = require('redis');
-var Pool = require('generic-pool').Pool;
 var async = require('async');
 var bunyan = require('bunyan');
 var once = require('once');
@@ -141,60 +141,13 @@ function App(config, cnapiClient, vmapiClient, log) {
   if (!cnapiClient) throw TypeError('cnapiClient is required');
   if (!vmapiClient) throw TypeError('vmapiClient is required');
 
+  this.log = log;
   this.config = config;
-  this._ufdsCaching = (config.ufds.caching === undefined
-    ? true : config.ufds.caching);
   this.cnapiClient = cnapiClient;
   this.vmapiClient = vmapiClient;
-  this.log = log;
-
-  var ufdsPoolLog = log.child({'ufdsPool': true}, true);
-  this.ufdsPool = Pool({
-    name: 'ufds',
-    max: 10,
-    idleTimeoutMillis : 30000,
-    reapIntervalMillis: 5000,
-    create: function createUfdsClient(callback) {
-      // TODO: should change to sdc-clients.UFDS at some point.
-      var callback = once(callback);
-      var client = ldap.createClient({
-        url: config.ufds.url,
-        connectTimeout: 2 * 1000,  // 2 seconds (fail fast)
-        log: ufdsPoolLog
-      });
-      function onFail(failErr) {
-        callback(failErr);
-      }
-      client.once('error', onFail);
-      client.once('connectTimeout', onFail);
-      client.on('connect', function () {
-        client.removeListener('error', onFail);
-        client.removeListener('connectTimeout', onFail);
-        ufdsPoolLog.debug({rootDn: config.ufds.rootDn}, 'bind to UFDS');
-        client.bind(config.ufds.rootDn, config.ufds.password, function (bErr) {
-          if (bErr) {
-            return callback(bErr);
-          }
-          return callback(null, client);
-        });
-      });
-    },
-    destroy: function destroyUfdsClient(client) {
-      client.unbind(function () {
-        log.debug('unbound from UFDS');
-      });
-    },
-    log: function (msg, level) {
-      var fn = {
-        // Enable verbose for MON-214 testing. TODO:XXX remove this
-        'verbose': ufdsPoolLog.trace,  // disable this for prod, little wordy
-        'info': ufdsPoolLog.trace,
-        'warn': ufdsPoolLog.warn,
-        'error': ufdsPoolLog.error
-      }[level];
-      if (fn) fn.call(ufdsPoolLog, msg);
-    }
-  });
+  this._ufdsCaching = (config.ufds.caching === undefined
+    ? true : config.ufds.caching);
+  this._getUfdsClient(config.ufds);
 
   this.notificationPlugins = {};
   if (config.notificationPlugins) {
@@ -321,7 +274,7 @@ function App(config, cnapiClient, vmapiClient, log) {
   // Debugging/dev/testing endpoints.
   server.get({path: '/ping', name: 'Ping'}, ping);
   server.get({path: '/pub/:user', name: 'GetUser'}, apiGetUser);
-  // XXX Kang-ify (https://github.com/davepacheco/kang)
+  // TODO Kang-ify (https://github.com/davepacheco/kang)
   server.get({path: '/state', name: 'GetState'}, function (req, res, next) {
     res.send(self.getStateSnapshot());
     next();
@@ -353,6 +306,50 @@ function App(config, cnapiClient, vmapiClient, log) {
   agentprobes.mountApi(server);
   events.mountApi(server);
 }
+
+
+/**
+ * Poll UFDS to get a bound client. This sets `this.ufdsClient` as a
+ * side-effect. It returns right away.
+ */
+App.prototype._getUfdsClient = function _getUfdsClient(ufdsConfig) {
+  var self = this;
+  var attempts = 1;
+  var timeout = null;
+
+  var config = objCopy(ufdsConfig);
+  // TODO: remove obsolete support for 'rootDn' and 'password'
+  if (!config.bindDN) config.bindDN = config.rootDn;
+  if (!config.bindPassword) config.bindPassword = config.password;
+  config.log = self.log.child({'ufdsClient': true}, true);
+  config.cache = false;  // for now at least, no caching in the client
+
+  function initUfdsRetry() {
+    self.log.debug('getting UFDS client: attempt %d', attempts);
+
+    var ufdsClient = new UFDS(config);
+    ufdsClient.once('error', function (err) {
+      if (timeout) {
+        clearTimeout(timeout);
+        timeout = null;
+      }
+
+      self.log.error(err,
+        'error getting bound UFDS client (attempt: %d): retrying',
+        attempts);
+      attempts++;
+      timeout = setTimeout(initUfdsRetry, 10000);
+    });
+
+    ufdsClient.once('ready', function () {
+      self.log.info('UFDS client ready');
+      self.ufdsClient = ufdsClient;
+    });
+  }
+
+  initUfdsRetry();
+};
+
 
 
 /**
@@ -541,6 +538,44 @@ App.prototype.getStateSnapshot = function () {
 
 
 /**
+ * UFDS get
+ *
+ * @param dn {String}
+ * @param callback {Function} `function (err, items)`
+ */
+App.prototype.ufdsGet = function ufdsGet(dn, callback) {
+  var self = this;
+  var log = this.log;
+
+  if (!self.ufdsClient) {
+    return callback(new errors.ServiceUnavailableError(
+      'service unavailable (ufds)'));
+  }
+
+  log.trace({dn: dn}, 'ufdsGet');
+  self.ufdsClient.search(dn, {scope: 'base'}, function (err, items) {
+    if (err) {
+      if (err.restCode === 'ResourceNotFound') {
+        callback(new errors.ResourceNotFoundError('not found'));
+      } else {
+        // 503: presuming this is a "can't connect to UFDS" error.
+        callback(new errors.ServiceUnavailableError(err,
+            'service unavailable'));
+      }
+      return;
+    }
+
+    if (items.length !== 1) {
+      log.error({items: items, dn: dn}, 'multiple hits in UFDS for one dn');
+      return callback(new errors.InternalError(
+        format('conflicting items for image "%s"', uuid)));
+    }
+    callback(null, items[0]);
+  });
+};
+
+
+/**
  * UFDS search
  *
  * @param base {String}
@@ -548,48 +583,22 @@ App.prototype.getStateSnapshot = function () {
  * @param callback {Function} `function (err, items)`
  */
 App.prototype.ufdsSearch = function ufdsSearch(base, opts, callback) {
+  var self = this;
   var log = this.log;
-  var pool = this.ufdsPool;
-  pool.acquire(function (poolErr, client) {
-    if (poolErr || !client) {
-      if (poolErr) {
-        log.warn(poolErr, 'UFDS pool error');
-      } else {
-        log.warn('ufdsPool.acquire returned no client! (See MON-203)', client);
-      }
-      return callback(new restify.ServiceUnavailableError(
+
+  if (!self.ufdsClient) {
+    return callback(new errors.ServiceUnavailableError(
+      'service unavailable (ufds)'));
+  }
+
+  log.trace({filter: opts.filter}, 'ldap search');
+  self.ufdsClient.search(base, opts, function (sErr, items) {
+    if (sErr) {
+      // 503: presuming this is a "can't connect to UFDS" error.
+      return callback(new errors.ServiceUnavailableError(sErr,
         'service unavailable'));
     }
-
-    log.trace({filter: opts.filter}, 'ldap search');
-    client.search(base, opts, function (sErr, result) {
-      if (sErr) {
-        pool.release(client);
-        log.warn(sErr, 'UFDS search error');
-        // 503: presuming this is a "can't connect to UFDS" error.
-        return callback(new restify.ServiceUnavailableError(
-          'service unavailable'));
-      }
-
-      var items = [];
-      result.on('searchEntry', function (entry) {
-        items.push(entry.object);
-      });
-
-      result.on('error', function (err) {
-        pool.release(client);
-        return callback(err);  // XXX xlate err
-      });
-
-      result.on('end', function (res) {
-        pool.release(client);
-        if (res.status !== 0) {
-          return callback(new restify.InternalError(
-            'non-zero status from LDAP search: ' + res));
-        }
-        callback(null, items);
-      });
-    });
+    callback(null, items);
   });
 };
 
@@ -601,41 +610,32 @@ App.prototype.ufdsSearch = function ufdsSearch(base, opts, callback) {
  * @param callback {Function} `function (err)`
  */
 App.prototype.ufdsAdd = function ufdsAdd(dn, data, callback) {
+  var self = this;
   var log = this.log;
-  var pool = this.ufdsPool;
-  pool.acquire(function (poolErr, client) {
-    if (poolErr) {
-      log.warn(poolErr, 'UFDS pool error');
-      return callback(new restify.ServiceUnavailableError(
-        'service unavailable'));
-    }
-    if (!client) {
-      log.warn('ufdsPool.acquire returned no client! (See MON-203)', client);
-    }
-    client.add(dn, data, function (addErr) {
-      pool.release(client);
-      if (addErr) {
-        if (addErr instanceof ldap.EntryAlreadyExistsError) {
-          return callback(new restify.InternalError(
-            'XXX DN "'+dn+'" already exists. Can\'t nicely update '
-            + '(with LDAP modify/replace) until '
-            + '<https://github.com/mcavage/node-ldapjs/issues/31> is fixed.'));
-          //XXX Also not sure if there is another bug in node-ldapjs if
-          //    "objectclass" is specified in here. Guessing it is same bug.
-          //var change = new ldap.Change({
-          //  operation: 'replace',
-          //  modification: item.raw
-          //});
-          //client.modify(dn, change, function (err) {
-          //  if (err) console.warn("client.modify err: %s", err)
-          //  client.unbind(function (err) {});
-          //});
-          //XXX Does replace work if have children?
-        }
-        return callback(addErr); //XXX xlate error
+
+  if (!self.ufdsClient) {
+    return callback(new errors.ServiceUnavailableError(
+      'service unavailable (ufds)'));
+  }
+
+  self.ufdsClient.add(dn, data, function (addErr) {
+    if (addErr) {
+      if (addErr instanceof ldap.EntryAlreadyExistsError) {
+        return callback(new errors.InternalError(addErr,
+          'DN "'+dn+'" already exists.'));
+        // TODO: modify support (does replace work if have children?)
+        //var change = new ldap.Change({
+        //  operation: 'replace',
+        //  modification: item.raw
+        //});
+        //client.modify(dn, change, function (err) {
+        //  if (err) console.warn("client.modify err: %s", err)
+        //  client.unbind(function (err) {});
+        //});
       }
-      callback();
-    });
+      return callback(new errors.InternalError(addErr, 'error saving'));
+    }
+    callback();
   });
 };
 
@@ -646,30 +646,24 @@ App.prototype.ufdsAdd = function ufdsAdd(dn, data, callback) {
  * @param callback {Function} `function (err)`
  */
 App.prototype.ufdsDelete = function ufdsDelete(dn, callback) {
+  var self = this;
   var log = this.log;
-  var pool = this.ufdsPool;
-  pool.acquire(function (poolErr, client) {
-    if (poolErr) {
-      log.warn(poolErr, 'UFDS pool error');
-      return callback(new restify.ServiceUnavailableError(
-        'service unavailable'));
-    }
-    if (!client) {
-      log.warn('ufdsPool.acquire returned no client! (See MON-203)', client);
-    }
-    client.del(dn, function (delErr) {
-      pool.release(client);
-      if (delErr) {
-        if (delErr instanceof ldap.NoSuchObjectError) {
-          callback(new restify.ResourceNotFoundError());
-        } else {
-          log.error(delErr, 'Error deleting "%s" from UFDS', dn);
-          callback(new restify.InternalError());
-        }
+
+  if (!self.ufdsClient) {
+    return callback(new errors.ServiceUnavailableError(
+      'service unavailable (ufds)'));
+  }
+
+  self.ufdsClient.del(dn, function (delErr) {
+    if (delErr) {
+      if (err.restCode === 'ResourceNotFound') {
+        callback(new errors.ResourceNotFoundError('not found'));
       } else {
-        callback();
+        callback(new errors.InternalError(delErr, 'could not delete item'));
       }
-    });
+    } else {
+      callback();
+    }
   });
 };
 
@@ -796,13 +790,7 @@ App.prototype.isOperator = function (userUuid, callback) {
   var self = this;
   var base = 'cn=operators, ou=groups, o=smartdc';
   var searchOpts = {
-    // TODO: Must use EqualityFilter until
-    // <https://github.com/mcavage/node-ldapjs/issues/50> is fixed.
-    //filter: format('(uniquemember=uuid=%s, ou=users, o=smartdc)', userUuid),
-    filter: new ldap.filters.EqualityFilter({
-      attribute: 'uniquemember',
-      value: format('uuid=%s, ou=users, o=smartdc', userUuid)
-    }),
+    filter: format('(uniquemember=uuid=%s, ou=users, o=smartdc)', userUuid),
     scope: 'base',
     attributes: ['dn']
   };

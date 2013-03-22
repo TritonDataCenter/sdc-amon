@@ -5,29 +5,30 @@
   "author": "Joyent (joyent.com)",
   "private": true,
   "dependencies": {
-    "sdc-clients": "git+ssh://git@git.joyent.com:node-sdc-clients.git#49afb7e",
     "amon-common": "1.0.0",
     "amon-plugins": "1.0.0",
 
+    "sdc-clients": "git+ssh://git@git.joyent.com:node-sdc-clients.git#fe76c2f",
+    "restify": "git+ssh://git@github.com:trentm/node-restify.git#7535bb3",
     "once": "1.1.1",
     "async": "0.1.22",
-    "bunyan": "0.16.8",
-    "restify": "git://github.com/mcavage/node-restify.git#198dcbb",
+    "bunyan": "0.20.0",
     "node-uuid": "1.4.0",
-    "nopt": "1.0.10",
+    "nopt": "2.1.1",
     "retry": "0.6.0",
-    "nodemailer": "0.3.37",
+    "nodemailer": "0.3.44",
     "ldapjs": "0.5.7",
     "expiring-lru-cache": "2.1.0",
     "redis": "0.8.2",
-    "generic-pool": "2.0.2",
-    "tap": "0.3.3",
     "assert-plus": "0.1.2"
+  },
+  "devDependencies": {
+    "tap": "0.4.0"
   },
   "scripts": {
     "start": "node ./main.js"
   },
   "engines": {
-    "node": ">=0.6"
+    "node": ">=0.8"
   }
 }

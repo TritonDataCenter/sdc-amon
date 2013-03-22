@@ -6,10 +6,10 @@
   "author": "Joyent (joyent.com)",
   "main": "lib/index.js",
   "dependencies": {
-    "restify": "git://github.com/mcavage/node-restify.git#198dcbb",
+    "restify": "git+ssh://git@github.com:trentm/node-restify.git#7535bb3",
     "node-uuid": "1.4.0"
   },
   "engines": {
-    "node": ">=0.6"
+    "node": ">=0.8"
   }
 }

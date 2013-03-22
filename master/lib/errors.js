@@ -90,11 +90,11 @@ module.exports = {
 
     // Core restify RestError and HttpError classes used by amon-master.
     InternalError: restify.InternalError,
-    //TODO
-    //ResourceNotFoundError: restify.ResourceNotFoundError,
-    //InvalidHeaderError: restify.InvalidHeaderError,
-    //ServiceUnavailableError: restify.ServiceUnavailableError,
-    //UnauthorizedError: restify.UnauthorizedError,
-    //BadRequestError: restify.BadRequestError,
-
+    // TODO: all InvalidArgumentError -> InvalidParameterError
+    InvalidArgumentError: restify.InvalidArgumentError,
+    // TODO: all MissingParameterError -> InvalidParameterError
+    MissingParameterError: restify.MissingParameterError,
+    ServiceUnavailableError: restify.ServiceUnavailableError,
+    ResourceNotFoundError: restify.ResourceNotFoundError,
+    GoneError: restify.GoneError
 };

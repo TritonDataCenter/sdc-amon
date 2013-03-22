@@ -24,7 +24,7 @@ CLEAN_FILES += agent/node_modules relay/node_modules \
 
 # The prebuilt sdcnode version we want. See
 # "tools/mk/Makefile.node_prebuilt.targ" for details.
-NODE_PREBUILT_VERSION=v0.8.14
+NODE_PREBUILT_VERSION=v0.8.22
 NODE_PREBUILT_TAG=gz
 
 
@@ -54,7 +54,6 @@ else
 endif
 NODE_DEV := ./node_modules/.bin/node-dev
 TAP := ./node_modules/.bin/tap
-JSHINT := node_modules/.bin/jshint
 JSSTYLE_FLAGS := -f tools/jsstyle.conf
 
 # Need to get our tools/bin on PATH to get our 'python'
@@ -212,16 +211,6 @@ dumpvar:
 		exit 1; \
 	fi
 	@echo "$(VAR) is '$($(VAR))'"
-
-#XXX Add to check:: target as check-jshint
-.PHONY: jshint
-jshint:
-	$(JSHINT) common/lib \
-		plugins/lib plugins/test \
-		master/main.js master/lib master/test \
-		relay/main.js relay/lib \
-		agent/main.js agent/lib \
-		test
 
 .PHONY: test
 test:

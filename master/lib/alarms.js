@@ -52,12 +52,12 @@
 
 var format = require('util').format;
 
-var restify = require('restify');
 var async = require('async');
 var assert = require('assert-plus');
 
 var Contact = require('./contact');
 var maintenances = require('./maintenances');
+var errors = require('./errors');
 
 
 
@@ -302,7 +302,7 @@ Alarm.get = function get(app, userUuid, id, callback) {
       }
       var alarmObj = replies[0];
       if (!alarmObj) {
-        return callback(new restify.ResourceNotFoundError(
+        return callback(new errors.ResourceNotFoundError(
           'alarm %d not found', id));
       }
       alarmObj.faults = replies[1];
@@ -843,13 +843,13 @@ function apiListAlarms(req, res, next) {
 
   if (!req._user) {
     return next(
-      new restify.InternalError('ListAlarms: no user set on request'));
+      new errors.InternalError('ListAlarms: no user set on request'));
   }
   var userUuid = req._user.uuid;
   var state = req.query.state || 'recent';
   var validStates = ['recent', 'open', 'closed', 'all'];
   if (validStates.indexOf(state) === -1) {
-    return next(new restify.InvalidArgumentError(
+    return next(new errors.InvalidArgumentError(
       'invalid "state": "%s" (must be one of "%s")', state,
       validStates.join('", "')));
   }
@@ -953,7 +953,7 @@ function reqGetAlarm(req, res, next) {
   var userUuid = req._user.uuid;
   var alarmId = Number(req.params.alarm);
   if (isNaN(alarmId) || alarmId !== Math.floor(alarmId) || alarmId <= 0) {
-    return next(new restify.InvalidArgumentError(
+    return next(new errors.InvalidArgumentError(
       'invalid "alarm" id: %j (must be an integer greater than 0)',
       req.params.alarm));
   }
@@ -975,10 +975,10 @@ function reqGetAlarm(req, res, next) {
         }
         currId = Number(currId) || 0;
         if (alarmId <= currId) {
-          return next(new restify.GoneError(
+          return next(new errors.GoneError(
             format('alarm %d has been expunged', alarmId)));
         } else {
-          return next(new restify.ResourceNotFoundError(
+          return next(new errors.ResourceNotFoundError(
             'alarm %d not found', alarmId));
         }
       });
@@ -1115,9 +1115,9 @@ function mountApi(server) {
     apiUnsuppressAlarmNotifications,
     function invalidAction(req, res, next) {
       if (req.query.action)
-        return next(new restify.InvalidArgumentError(
+        return next(new errors.InvalidArgumentError(
           '"%s" is not a valid action', req.query.action));
-      return next(new restify.MissingParameterError('"action" is required'));
+      return next(new errors.MissingParameterError('"action" is required'));
     });
   server.del({path: '/pub/:user/alarms/:alarm', name: 'DeleteAlarm'},
     reqGetAlarm,  // add `req.alarm` for the subsequent handlers
