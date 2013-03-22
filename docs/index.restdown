@@ -2383,7 +2383,7 @@ Some possibly helpful commands for working with the amon.
           "agent": "$(sysinfo | json UUID)",
           "contacts": ["email"],
           "config": {
-            "path": "/var/tmp/trent-canary.log",
+            "path": "/var/tmp/canary.log",
             "match": {
               "pattern": "chirp"
             }
@@ -2397,7 +2397,7 @@ Some possibly helpful commands for working with the amon.
           "agent": "$(sysinfo | json UUID)",
           "contacts": ["email"],
           "config": {
-            "path": "/var/tmp/trent-canary-bunyan.log",
+            "path": "/var/tmp/canary-bunyan.log",
             "match": {
               "pattern": "chirp"
             }
@@ -2412,13 +2412,13 @@ Some possibly helpful commands for working with the amon.
   You might have to close a currently open alarm to get a notification email
   sent for a newly triggered "chirp":
 
-        sdc-amon /pub/trent/alarms
-        sdc-amon /pub/trent/alarms/ID?action=close -X POST
+        sdc-amon /pub/admin/alarms
+        sdc-amon /pub/admin/alarms/ID?action=close -X POST
 
   Trigger an alarm:
 
-        touch /var/tmp/trent-canary.log
-        echo chirp >>/var/tmp/trent-canary.log
+        touch /var/tmp/canary.log
+        echo chirp >>/var/tmp/canary.log
 
 - Checking that outgoing mail is working:
 
