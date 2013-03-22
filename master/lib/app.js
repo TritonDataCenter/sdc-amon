@@ -318,9 +318,6 @@ App.prototype._getUfdsClient = function _getUfdsClient(ufdsConfig) {
   var timeout = null;
 
   var config = objCopy(ufdsConfig);
-  // TODO: remove obsolete support for 'rootDn' and 'password'
-  if (!config.bindDN) config.bindDN = config.rootDn;
-  if (!config.bindPassword) config.bindPassword = config.password;
   config.log = self.log.child({'ufdsClient': true}, true);
   config.cache = false;  // for now at least, no caching in the client
 
