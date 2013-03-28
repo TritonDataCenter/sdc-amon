@@ -331,10 +331,10 @@ App.prototype.start = function (callback) {
     });
   }
 
-  function unlinkIfExists(path, next) {
-    fs.exists(path, function (exists) {
+  function unlinkIfExists(p, next) {
+    fs.exists(p, function (exists) {
       if (exists)
-        fs.unlink(path, next);
+        fs.unlink(p, next);
       else
         next();
     });

@@ -565,7 +565,7 @@ App.prototype.ufdsGet = function ufdsGet(dn, callback) {
     if (items.length !== 1) {
       log.error({items: items, dn: dn}, 'multiple hits in UFDS for one dn');
       return callback(new errors.InternalError(
-        format('conflicting items for image "%s"', uuid)));
+        'conflicting items in database'));
     }
     callback(null, items[0]);
   });
@@ -608,7 +608,6 @@ App.prototype.ufdsSearch = function ufdsSearch(base, opts, callback) {
  */
 App.prototype.ufdsAdd = function ufdsAdd(dn, data, callback) {
   var self = this;
-  var log = this.log;
 
   if (!self.ufdsClient) {
     return callback(new errors.ServiceUnavailableError(
@@ -644,7 +643,6 @@ App.prototype.ufdsAdd = function ufdsAdd(dn, data, callback) {
  */
 App.prototype.ufdsDelete = function ufdsDelete(dn, callback) {
   var self = this;
-  var log = this.log;
 
   if (!self.ufdsClient) {
     return callback(new errors.ServiceUnavailableError(
@@ -653,7 +651,7 @@ App.prototype.ufdsDelete = function ufdsDelete(dn, callback) {
 
   self.ufdsClient.del(dn, function (delErr) {
     if (delErr) {
-      if (err.restCode === 'ResourceNotFound') {
+      if (delErr.restCode === 'ResourceNotFound') {
         callback(new errors.ResourceNotFoundError('not found'));
       } else {
         callback(new errors.InternalError(delErr, 'could not delete item'));

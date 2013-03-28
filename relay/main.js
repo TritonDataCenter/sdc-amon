@@ -438,6 +438,7 @@ function updateAgentAliases() {
         "could not get aliases from vmadm");
       return;
     }
+    var app, alias;
     var lines = stdout.split('\n');
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i];
@@ -445,12 +446,12 @@ function updateAgentAliases() {
         continue;
       var bits = line.split(/\s+/);
       var uuid = bits[0];
-      var alias = bits[1] || null;
+      alias = bits[1] || null;
       if (alias === '-') {
         // '-' is how 'vmadm list' says 'the alias is empty'.
         alias = null;
       }
-      var app = zoneApps[uuid];
+      app = zoneApps[uuid];
       if (app && app.agentAlias !== alias) {
         log.info("updateAgentAliases for agent '%s': '%s' -> '%s'",
           uuid, app.agentAlias, alias);
@@ -459,14 +460,14 @@ function updateAgentAliases() {
     }
 
     // Update for GZ in case hostname has changed.
-    execFile('/usr/bin/hostname', [], function (err, stdout, stderr) {
-      if (err || stderr) {
-        log.error({err: err, stdout: stdout, stderr: stderr},
+    execFile('/usr/bin/hostname', [], function (hErr, hStdout, hStderr) {
+      if (hErr || hStderr) {
+        log.error({err: hErr, stdout: hStdout, stderr: hStderr},
           "could not get hostname");
         return;
       }
-      var app = zoneApps['global'];
-      var alias = stdout.trim();
+      app = zoneApps['global'];
+      alias = hStdout.trim();
       if (app && app.agentAlias !== alias) {
         log.info("updateAgentAliases for agent 'global': '%s' -> '%s'",
           app.agentAlias, alias);
@@ -546,7 +547,7 @@ function updateAgentProbes(next) {
             if (isVmHostChange) {
               zoneApps['global'].cacheInvalidateDownstream();
             }
-            applog.info({isVmHostChange: isVmHostChange, 
+            applog.info({isVmHostChange: isVmHostChange,
                          agentProbes: agentProbes},
               'updated agent probes from master (md5: %s -> %s)',
               currMD5 || '(none)', masterMD5);

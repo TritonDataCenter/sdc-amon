@@ -12,7 +12,7 @@ var assert = require('assert-plus');
 var ldap = require('ldapjs');
 var restify = require('restify');
 var async = require('async');
-var uuid = require('node-uuid');
+var genUuid = require('node-uuid');
 
 var ufdsmodel = require('./ufdsmodel');
 var utils = require('amon-common').utils,
@@ -113,15 +113,15 @@ function Probe(app, raw) {
  * Create a new Probe from request data.
  *
  * @param app {App}
- * @param data {Object} The probe data.
+ * @param data_ {Object} The probe data.
  * @param callback {Function} `function (err, probe)`.
  */
-Probe.create = function createProbe(app, data, callback) {
+Probe.create = function createProbe(app, data_, callback) {
   assert.object(app, 'app');
-  assert.object(data, 'data');
+  assert.object(data_, 'data');
   assert.func(callback, 'callback');
 
-  var data = objCopy(data);
+  var data = objCopy(data_);
 
   // Validate group.
   function getGroup(groupUuid, cb) {
@@ -134,7 +134,7 @@ Probe.create = function createProbe(app, data, callback) {
       return callback(gErr);
 
     // Put together the raw data.
-    var newUuid = uuid();
+    var newUuid = genUuid();
     var raw = {
       user: data.user,
       uuid: newUuid,
@@ -167,7 +167,7 @@ Probe.create = function createProbe(app, data, callback) {
     if (extraFields.length > 0) {
       return callback(new errors.InvalidParameterError(
         format('invalid extra parameters: "%s"', extraFields.join('", "')),
-        extraFields.map(function (f) { return {field:f,code:'Invalid'} })));
+        extraFields.map(function (f) { return {field:f,code:'Invalid'}; })));
     }
 
     var probe = null;
@@ -429,7 +429,7 @@ Probe.validate = function validateProbe(app, raw) {
   if (!raw.type) {
     errs.push({field: 'type', code: 'MissingParameter'});
   } else {
-    var ProbeType = plugins[raw.type];
+    ProbeType = plugins[raw.type];
     if (!ProbeType) {
       errs.push({
         field: 'type',
@@ -574,7 +574,7 @@ Probe.validate = function validateProbe(app, raw) {
   }
 
   if (errs.length) {
-    var fields = errs.map(function (e) { return e.field });
+    var fields = errs.map(function (e) { return e.field; });
     throw new errors.ValidationFailedError(
       "invalid probe data: " + fields.join(', '), errs);
   }

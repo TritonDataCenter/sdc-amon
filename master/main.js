@@ -44,7 +44,7 @@ _serializers.alarm = function (alarm) {
 };
 _serializers.maint = function (maint) {
   return (maint.serializeDb && maint.serializeDb() || maint);
-}
+};
 var log = bunyan.createLogger({
   name: 'amon-master',
   src: (process.platform === 'darwin'),
@@ -98,8 +98,8 @@ function loadConfig(configPath) {
     }
     log.info('Loading additional config from "%s".', configPath);
     var extraConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-    for (var name in extraConfig) {
-      config[name] = extraConfig[name];
+    for (var eName in extraConfig) {
+      config[eName] = extraConfig[eName];
     }
   } else {
     config.configPath = null;

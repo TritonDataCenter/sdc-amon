@@ -301,8 +301,8 @@ function listMaintenances(app, userUuid, log, callback) {
   if (!callback) throw new TypeError('"callback" is required');
 
   function maintenanceObjFromId(id, cb) {
-    var key = format('maintenance:%s:%s', userUuid, id);
-    redisClient.hgetall(key, cb);
+    var maintKey = format('maintenance:%s:%s', userUuid, id);
+    redisClient.hgetall(maintKey, cb);
   }
   function maintenanceFromId(id, cb) {
     Maintenance.get(app, userUuid, id, cb);
@@ -441,10 +441,10 @@ Maintenance.get = function get(app, userUuid, id, callback) {
           id: data.id,
           _key: Maintenance.key(data.user, data.id)
         };
-        deleteMaintenance(app, fakeMaint, function (err) {
-          if (err)
-            log.error(err, "could not delete invalid maintenance");
-          callback(err, null);
+        deleteMaintenance(app, fakeMaint, function (delErr) {
+          if (delErr)
+            log.error(delErr, "could not delete invalid maintenance");
+          callback(delErr, null);
         });
       } else {
         callback(null, maintenance);
@@ -505,8 +505,8 @@ function apiListAllMaintenanceWindows(req, res, next) {
     }
     log.debug('get maintenance window data for each key (%d keys)',
       keys.length);
-    function maintenanceFromKey(key, cb) {
-      var bits = key.split(':');
+    function maintenanceFromKey(maintKey, cb) {
+      var bits = maintKey.split(':');
       Maintenance.get(req._app, bits[1], bits[2], cb);
     }
     async.map(keys, maintenanceFromKey, function (getErr, maintenances) {

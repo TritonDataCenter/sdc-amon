@@ -6,6 +6,7 @@
 
 var assert = require('assert-plus');
 var bunyan = require('bunyan');
+var HttpError = require('restify').HttpError;
 
 
 
