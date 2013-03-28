@@ -66,7 +66,8 @@ Email.prototype.sanitizeAddress = function (address) {
  *
  * @param options {Object} with:
  *    - @param alarm {alarms.Alarm}
- *    - @param user {Object} User, as from `App.userFromId()`, owning this probe.
+ *    - @param user {Object} User, as from `App.userFromId()`, owning
+ *        this probe.
  *    - @param event {Object} The probe event object.
  *    - @param contact {Contact} The contact to notify. A contact is relative
  *        to a user. See 'contact.js' for details. Note that when groups are
@@ -95,7 +96,8 @@ Email.prototype.notify = function (options, callback) {
   log.info({address: address, user: user.uuid, alarm: alarm.id},
     'email notify');
 
-  /* To.
+  /**
+   * To.
    *
    * Add name to the email address if have it.
    * XXX While we don't have UFDS *groups* the `address` and `user`
@@ -147,6 +149,7 @@ Email.prototype.notify = function (options, callback) {
   if (probe) {
     details.push('probe=' + (probe.name || probe.uuid));
     if (probe.machine) {
+      /* JSSTYLED */
       //XXX:BUG [Alarm: probe=amondevzone, vm=0336331c-81fb-4247-a016-9f533ffb917e, type=machine-up] bob#1 in bh1-kvm7
       //    This was a clear, but did NOT have "CLOSED". Also no vm alias
       //    (amondevzone).
@@ -178,16 +181,15 @@ Email.prototype.notify = function (options, callback) {
     this.datacenterName);
 
   // Body.
-  /* XXX:TODO Template this:
-
-  {{message}}
-
-  Alarm:      {{alarmId}} {{if alarmUrl}}({{alarmUrl}}){{endif}}
-  Time:       {{time}}
-  Probe:      {{probeName}}
-  Machine:    {{machineDesc}}
-  Datacenter: {{dcName}}
-  */
+  // XXX:TODO Template this:
+  //
+  // {{message}}
+  //
+  // Alarm:      {{alarmId}} {{if alarmUrl}}({{alarmUrl}}){{endif}}
+  // Time:       {{time}}
+  // Probe:      {{probeName}}
+  // Machine:    {{machineDesc}}
+  // Datacenter: {{dcName}}
   var message = (event.data && event.data.message
     ? event.data.message + '\n\n' : '');
   var body = format('%s\n\n'

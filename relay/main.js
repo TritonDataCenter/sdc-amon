@@ -23,8 +23,8 @@ var restify = require('restify');
 var async = require('async');
 var nopt = require('nopt');
 var zutil;
-if (process.platform === 'sunos'
-    || process.platform === 'solaris' /* node#3944 */) {
+if (process.platform === 'sunos' ||
+    process.platform === 'solaris' /* node#3944 */) {
   zutil = require('zutil');
 }
 
@@ -142,8 +142,8 @@ function getMasterUrl(poll, callback) {
         for (var i = 0; i < vms.length; i++) {
           var vm = vms[i];
           // Limitation: just using first one. Will need to change for H/A.
-          if (vm.tags && vm.tags.smartdc_role === 'amon'
-              && vm.state === 'running') {
+          if (vm.tags && vm.tags.smartdc_role === 'amon' &&
+              vm.state === 'running') {
             var amonIp = vm.nics && vm.nics[0] && vm.nics[0].ip;
             if (!amonIp) {
               log.error({amonZone: vm}, 'No Amon zone IP');
@@ -180,12 +180,12 @@ function ensureDataDir(next) {
 /**
  * Get list of all zones (including non-running zones).
  *
- * `zutil.listZones()` does not include down zones. It includes "running"
- * zones and sometimes zones that are currently "shutting_down" -- though
+ * `zutil.listZones()` does not include down zones. It includes 'running'
+ * zones and sometimes zones that are currently 'shutting_down' -- though
  * I'm not sure of the exact details of the latter.
  *
- * @param callback {Function} `function (err, zonenames)` where "err" is
- *    an Error instance or null and "zonenames" is a list of
+ * @param callback {Function} `function (err, zonenames)` where 'err' is
+ *    an Error instance or null and 'zonenames' is a list of
  *    `{name: ZONENAME}` objects.
  */
 function listAllZones(callback) {
@@ -325,7 +325,7 @@ function startZoneEventWatcher(next) {
  * @param next (Function) `function (err)`
  *  Hack: If this is set, then this is the first call to this function
  *  during Relay initialization. Else, this is being called in the
- *  "self-heal" `setInterval`.
+ *  'self-heal' `setInterval`.
  */
 function updateZoneApps(next) {
   var isSelfHeal = (next === undefined);
@@ -425,17 +425,17 @@ function startUpdateZoneAppsInterval(next) {
 
 
 /**
- * Update "agentAlias" attribute on the zoneApps.
+ * Update 'agentAlias' attribute on the zoneApps.
  *
  * This is async, but no-one watches for its completion.
  */
 function updateAgentAliases() {
-  log.info("updateAgentAliases: start");
+  log.info('updateAgentAliases: start');
   execFile('/usr/sbin/vmadm', ['list', '-H', '-o', 'uuid,alias'],
                   function (err, stdout, stderr) {
     if (err || stderr) {
       log.error({err: err, stdout: stdout, stderr: stderr},
-        "could not get aliases from vmadm");
+        'could not get aliases from vmadm');
       return;
     }
     var app, alias;
@@ -453,7 +453,7 @@ function updateAgentAliases() {
       }
       app = zoneApps[uuid];
       if (app && app.agentAlias !== alias) {
-        log.info("updateAgentAliases for agent '%s': '%s' -> '%s'",
+        log.info('updateAgentAliases for agent "%s": "%s" -> "%s"',
           uuid, app.agentAlias, alias);
         app.agentAlias = alias;
       }
@@ -463,17 +463,17 @@ function updateAgentAliases() {
     execFile('/usr/bin/hostname', [], function (hErr, hStdout, hStderr) {
       if (hErr || hStderr) {
         log.error({err: hErr, stdout: hStdout, stderr: hStderr},
-          "could not get hostname");
+          'could not get hostname');
         return;
       }
       app = zoneApps['global'];
       alias = hStdout.trim();
       if (app && app.agentAlias !== alias) {
-        log.info("updateAgentAliases for agent 'global': '%s' -> '%s'",
+        log.info('updateAgentAliases for agent "global": "%s" -> "%s"',
           app.agentAlias, alias);
         app.agentAlias = alias;
       }
-      log.info("updateAgentAliases: done");
+      log.info('updateAgentAliases: done');
     });
   });
 }
@@ -482,7 +482,7 @@ function updateAgentAliases() {
 /**
  * Infrequent updating of cached VM aliases for `zoneApps`.
  *
- * An amon-relay adds the "machineAlias" (a vm alias or server hostname)
+ * An amon-relay adds the 'machineAlias' (a vm alias or server hostname)
  * to events. A vm alias or server hostname is generally static, but *can*
  * be updated. This is only used for display updates, so a long cache is
  * fine.

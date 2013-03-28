@@ -120,38 +120,38 @@ test('email: sanitize empty', function (t) {
 //TODO: real test smtp server if reasonable
 test('email: notify', function (t) {
   var alarm = {
-    "user": "a3040770-c93b-6b41-90e9-48d3142263cf",
-    "id": 1,
-    "monitor": "gz",
-    "closed": false,
-    "suppressed": false,
-    "timeOpened": 1343070741494,
-    "timeClosed": null,
-    "timeLastEvent": 1343070741324,
-    "faults": [
+    'user': 'a3040770-c93b-6b41-90e9-48d3142263cf',
+    'id': 1,
+    'monitor': 'gz',
+    'closed': false,
+    'suppressed': false,
+    'timeOpened': 1343070741494,
+    'timeClosed': null,
+    'timeLastEvent': 1343070741324,
+    'faults': [
       {
-        "type": "probe",
-        "probe": "smartlogin"
+        'type': 'probe',
+        'probe': 'smartlogin'
       }
     ],
-    "maintenanceFaults": []
+    'maintenanceFaults': []
   };
   var user = {
-    "login": "otto",
-    "email": "trent.mick+amontestemail@joyent.com",
-    "id": "a3040770-c93b-6b41-90e9-48d3142263cf",
-    "firstName": "Trent",
-    "lastName": "the Test Case"
+    'login': 'otto',
+    'email': 'trent.mick+amontestemail@joyent.com',
+    'id': 'a3040770-c93b-6b41-90e9-48d3142263cf',
+    'firstName': 'Trent',
+    'lastName': 'the Test Case'
   };
   var contact = new Contact('my', 'email', 'email',
     'trentm+amonemailtest@gmail.com');
   var event = {
-    "v": 1,
-    "type": "probe",
-    "user": user.id,
+    'v': 1,
+    'type': 'probe',
+    'user': user.id,
     time: Date.now(),
     agent: uuid(),
-    agentAlias: "tehagent",
+    agentAlias: 'tehagent',
     relay: uuid(),
     data: {
       message: 'This is a test from amon master test/notifications.test.js.'

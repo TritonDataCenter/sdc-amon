@@ -164,7 +164,7 @@ ProbeGroup.prototype.serialize = function serialize() {
   var data = {
     uuid: this.uuid,
     user: this.user,
-    contacts: (typeof(this.contacts) === 'string' ? [this.contacts]
+    contacts: (typeof (this.contacts) === 'string' ? [this.contacts]
       : this.contacts),
     disabled: this.disabled || false
   };

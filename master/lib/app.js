@@ -225,10 +225,10 @@ function App(config, cnapiClient, vmapiClient, log) {
     log: bunyan.createLogger({
       name: 'amon-master',
       component: 'audit',
-      streams: [{
+      streams: [ {
         level: log.level(),  // use same level as general amon-master log
         stream: process.stdout
-      }]
+      } ]
     })
   }));
   server.on('uncaughtException', function (req, res, route, err) {
@@ -1099,7 +1099,7 @@ App.prototype.notificationTypeFromMedium = function (medium) {
     + 'for "%s" medium.', medium);
   throw new errors.InvalidParameterError(
     format('Invalid or unsupported contact medium "%s".', medium),
-    [{field: 'medium', code: 'Invalid'}]);
+    [ {field: 'medium', code: 'Invalid'} ]);
 };
 
 
@@ -1127,7 +1127,8 @@ App.prototype.alarmConfig = function (userId, msg, callback) {
  *
  * @param options {Object} with:
  *    - @param alarm {alarms.Alarm}
- *    - @param user {Object} User, as from `App.userFromId()`, owning this probe.
+ *    - @param user {Object} User, as from `App.userFromId()`, owning
+ *        this probe.
  *    - @param event {Object} The probe event object.
  *    - @param contact {Contact} The contact to notify. A contact is relative
  *        to a user. See 'contact.js' for details. Note that when groups are

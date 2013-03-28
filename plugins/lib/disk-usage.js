@@ -32,10 +32,10 @@ var MIN_CHECK_INTERVAL = 15 * 60; // in seconds
 function DiskUsageProbe(options) {
   ProbeType.call(this, options);
   this.validateConfig(this.config);
- 
+
   this.path = this.config.path;
   this.interval = this.config.interval || DEFAULT_CHECK_INTERVAL;
- 
+
   var threshold = this.config.threshold || DEFAULT_THRESHOLD;
   this.threshold = threshold.slice(0, -1);
   this.percent = threshold.slice(-1) === '%';
@@ -54,7 +54,7 @@ DiskUsageProbe.validateConfig = function (config) {
   if (!config.path)
     throw new TypeError('"config.path" is required');
 
-  if (typeof(config.path) != 'string')
+  if (typeof (config.path) != 'string')
     throw new TypeError('"config.path" has an invalid format');
 
   if (config.interval && isNaN(+config.interval))
@@ -129,4 +129,3 @@ DiskUsageProbe.prototype.stop = function (callback) {
 
 
 module.exports = DiskUsageProbe;
-

@@ -439,26 +439,26 @@ var gUlrichHiMomAlarmId = null;
 test('relay api: AddEvents', function (t) {
   var message = 'hi mom!';
   var event = {
-    "v": 1,
-    "type": "probe",
-    "user": ulrich.uuid,
-    "probeUuid": gUlrichWatchtestzoneProbeUuid,
-    "clear": false,
-    "data": {
-      "message": message,
-      "value": null,
-      "details": {
-        "machine": prep.amontestzone.uuid
+    'v': 1,
+    'type': 'probe',
+    'user': ulrich.uuid,
+    'probeUuid': gUlrichWatchtestzoneProbeUuid,
+    'clear': false,
+    'data': {
+      'message': message,
+      'value': null,
+      'details': {
+        'machine': prep.amontestzone.uuid
       }
     },
-    "machine": prep.amontestzone.uuid,
+    'machine': prep.amontestzone.uuid,
 
     // Added by relay:
-    "uuid": uuid(),
-    "time": Date.now(),
-    "agent": prep.amontestzone.uuid,
-    "agentAlias": "headnode",
-    "relay": prep.headnodeUuid
+    'uuid': uuid(),
+    'time': Date.now(),
+    'agent': prep.amontestzone.uuid,
+    'agentAlias': 'headnode',
+    'relay': prep.headnodeUuid
   };
 
   var nBefore = webhooks.length;

@@ -5,7 +5,7 @@
  *
  * Relevant reading:
  * - API: https://mo.joyent.com/docs/amon/master/#master-api-maintenance-windows
- * - Design discussions with "maintenance" in the title:
+ * - Design discussions with 'maintenance' in the title:
  *   https://mo.joyent.com/docs/amon/master/design.html
  *
  * Maintenance windows are stored in redis. They have the following fields:
@@ -14,7 +14,7 @@
  * - user {String} User UUID.
  * - id {Integer} The maint window id for this user. Unique for a user, i.e.
  *    the (user, id) 2-tuple is the unique id for a maintenance window.
- *    This is set on `createMaintenance()`. See "Maintenance Window Id" below.
+ *    This is set on `createMaintenance()`. See 'Maintenance Window Id' below.
  * - start {Integer} Timestamp (milliseconds since epoch) when the maint
  *    window starts.
  * - end {Integer} Timestamp (milliseconds since epoch) when the maint
@@ -75,11 +75,11 @@ var MAX_REAPER_FREQ = 100;  // 100ms is max frequency of maint expiry reaping
 //---- internal support routines
 
 /**
- * Convert a given maintenance window "start" value to a Date instance.
+ * Convert a given maintenance window 'start' value to a Date instance.
  */
 function dateFromStart(start) {
   var d;
-  if (start === "now") {
+  if (start === 'now') {
     d = new Date();
   } else {
     d = new Date(start);
@@ -92,7 +92,7 @@ function dateFromStart(start) {
 
 
 /**
- * Convert a given maintenance window "end" value to a Date instance.
+ * Convert a given maintenance window 'end' value to a Date instance.
  */
 var endPattern = /^([1-9]\d*)([mhd])$/;
 function dateFromEnd(end) {
@@ -143,9 +143,9 @@ function isPositiveInteger(s) {
  * @param options {Object} including:
  *    - app {App} Required.
  *    - userUuid {String} Required. The user UUID to which this maint belongs.
- *    - start {String|Integer} Required. Timestamp, date string, or "now".
- *    - end {String|Integer} Required. Timestamp, date string, or "N[mhd]"
- *      (minute, hour, day), e.g. "1h" is one hour from now.
+ *    - start {String|Integer} Required. Timestamp, date string, or 'now'.
+ *    - end {String|Integer} Required. Timestamp, date string, or 'N[mhd]'
+ *      (minute, hour, day), e.g. '1h' is one hour from now.
  *    - notes {String} Optional [*].
  *    - all {Boolean} Optional [*].
  *    - probes {Array} Optional [*]. Array of probe UUIDs.
@@ -207,37 +207,39 @@ function createMaintenance(options, callback) {
   log.info(data, 'createMaintenance');
 
   var redisClient = options.app.getRedisClient();
-  return redisClient.hincrby('maintenanceIds', userUuid, 1, function (idErr, id) {
-    if (idErr) {
-      return callback(idErr);
+  return redisClient.hincrby('maintenanceIds', userUuid, 1,
+    function (idErr, id) {
+      if (idErr) {
+        return callback(idErr);
+      }
+      log.trace({id: id, user: userUuid}, 'new maintenance id');
+      data.id = id;
+      try {
+        var maintenance = new Maintenance(data, log);
+      } catch (invalidErr) {
+        return callback(invalidErr);
+      }
+      redisClient.multi()
+        .sadd('maintenances:' + userUuid, maintenance.id)
+        .zadd('maintenancesByEnd', maintenance.end, maintenance._key)
+        .hmset(maintenance._key, maintenance.serializeDb())
+        .exec(function (err, replies) {
+          if (err) {
+            log.error(err, 'error saving maintenance to redis');
+            return callback(err);
+          }
+          scheduleNextMaintenanceExpiry(options.app); // may need to reschedule
+          callback(null, maintenance);
+        });
     }
-    log.trace({id: id, user: userUuid}, 'new maintenance id');
-    data.id = id;
-    try {
-      var maintenance = new Maintenance(data, log);
-    } catch (invalidErr) {
-      return callback(invalidErr);
-    }
-    redisClient.multi()
-      .sadd('maintenances:' + userUuid, maintenance.id)
-      .zadd('maintenancesByEnd', maintenance.end, maintenance._key)
-      .hmset(maintenance._key, maintenance.serializeDb())
-      .exec(function (err, replies) {
-        if (err) {
-          log.error(err, 'error saving maintenance to redis');
-          return callback(err);
-        }
-        scheduleNextMaintenanceExpiry(options.app); // may need to reschedule
-        callback(null, maintenance);
-      });
-  });
+  );
 }
 
 
 /**
  * Delete the given maintenance.
  *
- * Note that this is also callable with a "fake maintenance" to allow
+ * Note that this is also callable with a 'fake maintenance' to allow
  * removal of invalid maintenances. A fake maint is an object with just
  * these fields: user, id, _key.
  *
@@ -246,11 +248,14 @@ function createMaintenance(options, callback) {
  * @param callback {Function} `function (err)`
  */
 function deleteMaintenance(app, maintenance, callback) {
-  if (!app) throw new TypeError('"app" is required');
-  if (!maintenance) throw new TypeError('"maintenance" is required');
-  if (!callback) throw new TypeError('"callback" is required');
+  if (!app)
+    throw new TypeError('"app" is required');
+  if (!maintenance)
+    throw new TypeError('"maintenance" is required');
+  if (!callback)
+    throw new TypeError('"callback" is required');
   var log = app.log;
-  log.info({maint: maintenance}, "deleteMaintenance");
+  log.info({maint: maintenance}, 'deleteMaintenance');
 
   app.getRedisClient().multi()
     .srem('maintenances:' + maintenance.user, maintenance.id)
@@ -295,10 +300,14 @@ function deleteMaintenance(app, maintenance, callback) {
  * TODO:XXX cache this. Called frequent for `isEventInMaintenance` usage.
  */
 function listMaintenances(app, userUuid, log, callback) {
-  if (!app) throw new TypeError('"app" is required');
-  if (!userUuid) throw new TypeError('"userUuid" is required');
-  if (!log) throw new TypeError('"log" is required');
-  if (!callback) throw new TypeError('"callback" is required');
+  if (!app)
+    throw new TypeError('"app" is required');
+  if (!userUuid)
+    throw new TypeError('"userUuid" is required');
+  if (!log)
+    throw new TypeError('"log" is required');
+  if (!callback)
+    throw new TypeError('"callback" is required');
 
   function maintenanceObjFromId(id, cb) {
     var maintKey = format('maintenance:%s:%s', userUuid, id);
@@ -354,7 +363,8 @@ function listMaintenances(app, userUuid, log, callback) {
  * @throws {TypeError} if the data is invalid.
  */
 function Maintenance(data, log) {
-  if (!data) throw new TypeError('"data" (object) is required');
+  if (!data)
+    throw new TypeError('"data" (object) is required');
   if (!data.id || !isPositiveInteger(data.id))
     throw TypeError('"data.id" (integer) is required');
   if (!data.user || !UUID_RE.test(data.user))
@@ -374,7 +384,8 @@ function Maintenance(data, log) {
       'must be specified', data.all, data.probes, data.probeGroups,
       data.machines));
   }
-  if (!log) throw new TypeError('"log" (Bunyan Logger) is required');
+  if (!log)
+    throw new TypeError('"log" (Bunyan Logger) is required');
 
   this.v = MAINTENANCE_MODEL_VERSION;
   this.user = data.user;
@@ -408,10 +419,14 @@ Maintenance.key = function key(userUuid, id) {
  *    (i.e. can't be handled by the constructor).
  */
 Maintenance.get = function get(app, userUuid, id, callback) {
-  if (!app) throw new TypeError('"app" is required');
-  if (!userUuid) throw new TypeError('"userUuid" (UUID) is required');
-  if (!id) throw new TypeError('"id" (Integer) is required');
-  if (!callback) throw new TypeError('"callback" (Function) is required');
+  if (!app)
+    throw new TypeError('"app" is required');
+  if (!userUuid)
+    throw new TypeError('"userUuid" (UUID) is required');
+  if (!id)
+    throw new TypeError('"id" (Integer) is required');
+  if (!callback)
+    throw new TypeError('"callback" (Function) is required');
 
   var log = app.log;
   var maintenanceKey = ['maintenance', userUuid, id].join(':');
@@ -443,7 +458,7 @@ Maintenance.get = function get(app, userUuid, id, callback) {
         };
         deleteMaintenance(app, fakeMaint, function (delErr) {
           if (delErr)
-            log.error(delErr, "could not delete invalid maintenance");
+            log.error(delErr, 'could not delete invalid maintenance');
           callback(delErr, null);
         });
       } else {
@@ -794,10 +809,14 @@ function scheduleNextMaintenanceExpiry(app) {
  *    does not return all relevant maintenance windows.
  */
 function isEventInMaintenance(options, callback) {
-  if (!options) throw new TypeError('"options" is required');
-  if (!options.app) throw new TypeError('"options.app" is required');
-  if (!options.event) throw new TypeError('"options.event" is required');
-  if (!callback) throw new TypeError('"callback" is required');
+  if (!options)
+    throw new TypeError('"options" is required');
+  if (!options.app)
+    throw new TypeError('"options.app" is required');
+  if (!options.event)
+    throw new TypeError('"options.event" is required');
+  if (!callback)
+    throw new TypeError('"callback" is required');
   var event = options.event;
   var log = options.log || options.app.log;
 

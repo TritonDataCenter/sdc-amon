@@ -15,8 +15,8 @@ var assert = require('assert-plus');
 var restify = require('restify');
 var zsock = require('zsock');
 var zutil;
-if (process.platform === 'sunos'
-    || process.platform === 'solaris' /* node#3944 */) {
+if (process.platform === 'sunos' ||
+    process.platform === 'solaris' /* node#3944 */) {
   zutil = require('zutil');
 }
 var bunyan = require('bunyan');
@@ -172,10 +172,10 @@ function App(options) {
     log: bunyan.createLogger({
       name: 'amon-master',
       component: 'audit',
-      streams: [{
+      streams: [ {
         level: log.level(),  // use same level as general amon-master log
         stream: process.stdout
-      }],
+      } ],
       agent: self.agent
     })
   }));

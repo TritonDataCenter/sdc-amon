@@ -422,7 +422,8 @@ test('got an alarm for valhalla while in maint', function (t) {
         log('# Check if have an alarm (sentinel=%d).', sentinel);
         var path = '/pub/amontestoperatorodin/alarms';
         masterClient.get(path, function (err, req, res, obj) {
-          if (err) return next(err);
+          if (err)
+            return next(err);
           alarms = obj;
           next();
         });
@@ -441,7 +442,8 @@ test('got an alarm for valhalla while in maint', function (t) {
         t.equal(ALARM.maintFaults.length, 1, 'one maintenance fault');
         if (ALARM.maintFaults.length) {
           t.equal(ALARM.maintFaults[0].type, 'probe', 'it is a probe fault');
-          t.equal(ALARM.maintFaults[0].probe, VALKYRIE1.uuid, 'probe is valkyrie1');
+          t.equal(ALARM.maintFaults[0].probe, VALKYRIE1.uuid,
+            'probe is valkyrie1');
         }
         t.equal(ALARM.closed, false, 'alarm.closed');
       }

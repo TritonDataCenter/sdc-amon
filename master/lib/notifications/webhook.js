@@ -34,7 +34,8 @@ Webhook.prototype.acceptsMedium = function (medium) {
  *
  * @param options {Object} with:
  *    - @param alarm {alarms.Alarm}
- *    - @param user {Object} User, as from `App.userFromId()`, owning this probe.
+ *    - @param user {Object} User, as from `App.userFromId()`, owning
+ *        this probe.
  *    - @param event {Object} The probe event object.
  *    - @param contact {Contact} The contact to notify. A contact is relative
  *        to a user. See 'contact.js' for details. Note that when groups are

@@ -5,7 +5,7 @@
  *
  * Relevant reading:
  * - API: https://mo.joyent.com/docs/amon/master/#master-api-alarms
- * - Design discussions with "alarm" in the title:
+ * - Design discussions with 'alarm' in the title:
  *   https://mo.joyent.com/docs/amon/master/design.html
  *
  *
@@ -15,7 +15,7 @@
  * - user {String} User UUID.
  * - id {Integer} The alarm id for this user. Unique for a user, i.e. the
  *    (user, id) 2-tuple is the unique id for an alarm. This is set on
- *    `createAlarm()`. See "Alarm Id" below.
+ *    `createAlarm()`. See 'Alarm Id' below.
  * - probe {UUID} probe UUID which the alarm is associated, if any.
  * - probeGroup {UUID} probe group UUID which the alarm is associated, if any.
  * - timeOpened {Integer} Time (milliseconds since epoch) when first alarmed.
@@ -217,11 +217,14 @@ function createAlarm(app, userUuid, probeUuid, probeGroupUuid, callback) {
  * @throws {TypeError} if the data is invalid.
  */
 function Alarm(data, log) {
-  if (!data) throw new TypeError('"data" (object) is required');
-  if (!data.id) throw new TypeError('"data.id" (integer) is required');
+  if (!data)
+    throw new TypeError('"data" (object) is required');
+  if (!data.id)
+    throw new TypeError('"data.id" (integer) is required');
   if (!data.user || !UUID_RE.test(data.user))
     throw new TypeError('"data.user" (UUID) is required');
-  if (!log) throw new TypeError('"log" (Bunyan Logger) is required');
+  if (!log)
+    throw new TypeError('"log" (Bunyan Logger) is required');
 
   var self = this;
   this.v = ALARM_MODEL_VERSION;
@@ -281,10 +284,14 @@ function Alarm(data, log) {
  *    constructor).
  */
 Alarm.get = function get(app, userUuid, id, callback) {
-  if (!app) throw new TypeError('"app" is required');
-  if (!userUuid) throw new TypeError('"userUuid" (UUID) is required');
-  if (!id) throw new TypeError('"id" (Integer) is required');
-  if (!callback) throw new TypeError('"callback" (Function) is required');
+  if (!app)
+    throw new TypeError('"app" is required');
+  if (!userUuid)
+    throw new TypeError('"userUuid" (UUID) is required');
+  if (!id)
+    throw new TypeError('"id" (Integer) is required');
+  if (!callback)
+    throw new TypeError('"callback" (Function) is required');
 
   var log = app.log;
   var alarmKey = ['alarm', userUuid, id].join(':');
@@ -333,12 +340,16 @@ Alarm.get = function get(app, userUuid, id, callback) {
  * @param callback {Function} `function (err, alarms)`
  */
 Alarm.filter = function filter(app, options, callback) {
-  if (!app) throw new TypeError('"app" (object) is required');
-  if (!options) throw new TypeError('"options" (object) is required');
-  if (!options.user) throw new TypeError('"options.user" (UUID) is required');
+  if (!app)
+    throw new TypeError('"app" (object) is required');
+  if (!options)
+    throw new TypeError('"options" (object) is required');
+  if (!options.user)
+    throw new TypeError('"options.user" (UUID) is required');
   if (options.closed !== undefined && typeof (options.closed) !== 'boolean')
     throw new TypeError('"options.closed" is not a boolean');
-  if (!callback) throw new TypeError('"callback" (object) is required');
+  if (!callback)
+    throw new TypeError('"callback" (object) is required');
 
   var log = app.log;
 
@@ -617,13 +628,13 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
       var reason = null;
       if (!stats) {
         shouldNotify = true;
-        reason = "unknown";
+        reason = 'unknown';
       } else if (stats.numFaultsAfter > stats.numFaultsBefore) {
         shouldNotify = true;
-        reason = "fault";
+        reason = 'fault';
       } else if (stats.numFaultsAfter < stats.numFaultsBefore) {
         shouldNotify = true;
-        reason = "clear";
+        reason = 'clear';
       }
       log.info({shouldNotify: shouldNotify, reason: reason}, 'should notify?');
       if (shouldNotify) {
@@ -659,7 +670,7 @@ Alarm.prototype.close = function close(app, callback) {
 /**
  * Re-open an alarm.
  *
- * Note: This is to support "undo" of an accidental `close`. It does NOT
+ * Note: This is to support 'undo' of an accidental `close`. It does NOT
  * reset `timeOpened`.
  *
  * @param app {App}
@@ -748,7 +759,7 @@ Alarm.prototype.notify = function notify(app, options, callback) {
       log.warn({contactUrn: contactUrn, event: event.uuid, user: user.uuid,
         probe: options.probe && options.probe.uuid,
         probeGroup: options.probeGroup && options.probeGroup.uuid},
-        "no contact address");
+        'no contact address');
       //var msg = 'XXX'; // TODO
       //app.alarmConfig(monitor.user, msg, function (err) {
       //  if (err) {
@@ -779,7 +790,7 @@ Alarm.prototype.notify = function notify(app, options, callback) {
     log.warn({event: event.uuid, user: user.uuid,
       probe: options.probe && options.probe.uuid,
       probeGroup: options.probeGroup && options.probeGroup.uuid},
-      "no contacts for notification");
+      'no contacts for notification');
     callback();
   } else {
     async.forEach(contacts, getAndNotifyContact, function (err) {
@@ -1105,7 +1116,7 @@ function mountApi(server) {
   server.get({path: '/pub/:user/alarms/:alarm', name: 'GetAlarm'},
     reqGetAlarm,
     apiGetAlarm);
-  // These update handlers all check "should I run?" based on
+  // These update handlers all check 'should I run?' based on
   // `req.query.action` and if they should the chain stops.
   server.post({path: '/pub/:user/alarms/:alarm', name: 'UpdateAlarm'},
     reqGetAlarm,  // add `req.alarm` for the subsequent handlers

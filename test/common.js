@@ -44,10 +44,12 @@ function ensureLogDir() {
  * @param callback {Function} `function (err)`.
  */
 function waitForVmapiJob(options, callback) {
-  if (!options) throw TypeError('"options" is required');
+  if (!options)
+    throw TypeError('"options" is required');
   if (!options.vmapiClient)
     throw TypeError('"options.vmapiClient" is required');
-  if (!options.jobInfo) throw TypeError('"options.jobInfo" is required');
+  if (!options.jobInfo)
+    throw TypeError('"options.jobInfo" is required');
   var vmapiClient = options.vmapiClient;
   var jobInfo = options.jobInfo;
   var timeout = options.timeout || 30000;  /* default 30s timeout */
@@ -144,7 +146,7 @@ function createAmonMasterClient(slug) {
  * @param agents {Array} This is an array of agent identifiers. An
  *    agent id is the UUID of its zone. However we also require the
  *    UUID of the agent's compute node (so we don't have to look it up in
- *    VMAPI everytime). So an "agent" here is:
+ *    VMAPI everytime). So an 'agent' here is:
  *        [<compute-node-uuid>, <agent-uuid>]
  *    where `<agent-uuid>` is null for a GZ amon-agent.
  * @param callback {Function} `function (err)`
@@ -152,7 +154,7 @@ function createAmonMasterClient(slug) {
 function syncRelaysAndAgents(relays, agents, callback) {
   function syncRelay(relay, next) {
     // Call the RelayAdminSyncProbes endpoint on that relay.
-    console.log("# Sync relay %s.", relay);
+    console.log('# Sync relay %s.', relay);
     var cmd = format('sdc-oneachnode -n %s ' +
       '"curl -sS localhost:4307/state?action=syncprobes -X POST"', relay);
     exec(cmd, function (err, stdout, stderr) {
@@ -170,7 +172,7 @@ function syncRelaysAndAgents(relays, agents, callback) {
     // it still doesn't reliably wait for the agent to finish its update,
     // and it doesn't work for kvm VMs.
     // Warning: sleep HACK.
-    console.log("# Sync agent %s.", agent);
+    console.log('# Sync agent %s.', agent);
     var cmd;
     if (!agent[1]) {
       cmd = format('sdc-oneachnode -n %s ' +
@@ -216,8 +218,10 @@ function syncRelaysAndAgents(relays, agents, callback) {
  * @param callback {Function} `function (err)`.
  */
 function vmStop(options, callback) {
-  if (!options) throw new TypeError('"options" is required');
-  if (!options.uuid) throw new TypeError('"options.uuid" is required');
+  if (!options)
+    throw new TypeError('"options" is required');
+  if (!options.uuid)
+    throw new TypeError('"options.uuid" is required');
   var uuid = options.uuid;
 
   var vmapiClient = new VMAPI({
@@ -257,8 +261,10 @@ function vmStop(options, callback) {
  * @param callback {Function} `function (err)`.
  */
 function vmStart(options, callback) {
-  if (!options) throw new TypeError('"options" is required');
-  if (!options.uuid) throw new TypeError('"options.uuid" is required');
+  if (!options)
+    throw new TypeError('"options" is required');
+  if (!options.uuid)
+    throw new TypeError('"options.uuid" is required');
   var uuid = options.uuid;
 
   var vmapiClient = new VMAPI({
@@ -297,8 +303,10 @@ function vmStart(options, callback) {
  * @param callback {Function} `function (err)`.
  */
 function vmReboot(options, callback) {
-  if (!options) throw new TypeError('"options" is required');
-  if (!options.uuid) throw new TypeError('"options.uuid" is required');
+  if (!options)
+    throw new TypeError('"options" is required');
+  if (!options.uuid)
+    throw new TypeError('"options.uuid" is required');
   var uuid = options.uuid;
 
   var vmapiClient = new VMAPI({

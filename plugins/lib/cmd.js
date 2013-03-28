@@ -123,7 +123,8 @@ CmdProbe.prototype.runCmd = function runCmd() {
       } else {
         log.debug(cmdSummary, 'cmd fail (%s)', reason);
         if (++self._count >= self.threshold) {
-          log.info({count: self._count, threshold: self.threshold}, 'cmd event');
+          log.info({count: self._count, threshold: self.threshold},
+            'cmd event');
           var msg = null;
           if (reason === 'timeout')
             msg = format('Command timed out (took longer than %ds)',
@@ -146,7 +147,7 @@ CmdProbe.prototype.runCmd = function runCmd() {
     });
   } catch (execErr) {
     log.error({err: execErr, cmd: this.cmd, _cmdOptions: this._cmdOptions},
-      "error executing command");
+      'error executing command');
     self.runnerTimeout = setTimeout(
       function () { self.runCmd(); },
       self.interval * SECONDS);

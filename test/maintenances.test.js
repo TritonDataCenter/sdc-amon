@@ -254,7 +254,7 @@ var maint1AlarmId;
 test('maint 1: stop amontestzone', {timeout: 60000}, function (t) {
   notifications = []; // reset
   common.vmStop({uuid: prep.amontestzone.uuid, timeout: 40000}, function (err) {
-    t.ifError(err, "stopped amontestzone");
+    t.ifError(err, 'stopped amontestzone');
     t.end();
   });
 });
@@ -312,10 +312,12 @@ test('maint 1: got alarm on zone stop', function (t) {
 
 test('maint 1: start amontestzone', {timeout: 60000}, function (t) {
   notifications = [];
-  common.vmStart({uuid: prep.amontestzone.uuid, timeout: 40000}, function (err) {
-    t.ifError(err, "starting amontestzone");
-    t.end();
-  });
+  common.vmStart({uuid: prep.amontestzone.uuid, timeout: 40000},
+    function (err) {
+      t.ifError(err, 'starting amontestzone');
+      t.end();
+    }
+  );
 });
 
 test('maint 1: notification and alarm closed', function (t) {
@@ -366,16 +368,18 @@ test('maint 1: clean up', function (t) {
 });
 
 test('maint 1: wait until restarted zone has settled', function (t) {
-  // HACK: The right answer here (I think) is to wait for "milestone/multi-user"
+  /* BEGIN JSSTYLED */
+  // HACK: The right answer here (I think) is to wait for 'milestone/multi-user'
   // to be online in the amontestzone... and for the amon-relay to have
   // re-created the zsock into that zone, i.e. this output in the amon-relay
   // log:
-  //      [2012-07-17T18:37:49.479Z] DEBUG: amon-relay/6076 on headnode: check if zone "1a4d0111-3279-4d99-b4c9-aaa5e6d2c2e3" SMF "milestone/multi-user" is online (agent=1a4d0111-3279-4d99-b4c9-aaa5e6d2c2e3)
-  //      [2012-07-17T18:37:49.525Z] DEBUG: amon-relay/6076 on headnode: Opened zsock to zone "1a4d0111-3279-4d99-b4c9-aaa5e6d2c2e3" on FD 26 (agent=1a4d0111-3279-4d99-b4c9-aaa5e6d2c2e3)
+  //      [2012-07-17T18:37:49.479Z] DEBUG: amon-relay/6076 on headnode: check if zone '1a4d0111-3279-4d99-b4c9-aaa5e6d2c2e3' SMF 'milestone/multi-user' is online (agent=1a4d0111-3279-4d99-b4c9-aaa5e6d2c2e3)
+  //      [2012-07-17T18:37:49.525Z] DEBUG: amon-relay/6076 on headnode: Opened zsock to zone '1a4d0111-3279-4d99-b4c9-aaa5e6d2c2e3' on FD 26 (agent=1a4d0111-3279-4d99-b4c9-aaa5e6d2c2e3)
   //      [2012-07-17T18:37:49.631Z]  INFO: amon-relay/6076 on headnode: Amon-relay started (agent=1a4d0111-3279-4d99-b4c9-aaa5e6d2c2e3)
   // However, I'm taking the quick way out right now and sleeping for 10s.
+  /* END JSSTYLED */
   setTimeout(function () {
-    t.ok(true, "slept for 10s to let amontestzone settle (hack)");
+    t.ok(true, 'slept for 10s to let amontestzone settle (hack)');
     t.end();
   }, 10000);
 });
@@ -421,7 +425,7 @@ test('maint 2: create maint window', function (t) {
 test('maint 2: stop amontestzone', {timeout: 60000}, function (t) {
   notifications = []; // reset
   common.vmStop({uuid: prep.amontestzone.uuid, timeout: 60000}, function (err) {
-    t.ifError(err, "stopped amontestzone");
+    t.ifError(err, 'stopped amontestzone');
     t.end();
   });
 });
@@ -442,7 +446,8 @@ test('maint 2: got alarm on zone stop', function (t) {
       setTimeout(function () {
         log('# Check if have an alarm (sentinel=%d).', sentinel);
         masterClient.get(ALARMSURL, function (err, req, res, obj) {
-          if (err) return next(err);
+          if (err)
+            return next(err);
           alarms = obj;
           next();
         });
@@ -470,15 +475,17 @@ test('maint 2: got alarm on zone stop', function (t) {
 });
 
 test('maint 2: got NO notification on zone stop', function (t) {
-  t.equal(notifications.length, 0, "notification count is 0");
+  t.equal(notifications.length, 0, 'notification count is 0');
   t.end();
 });
 
 test('maint 2: start amontestzone', {timeout: 60000}, function (t) {
-  common.vmStart({uuid: prep.amontestzone.uuid, timeout: 60000}, function (err) {
-    t.ifError(err, "starting amontestzone");
-    t.end();
-  });
+  common.vmStart({uuid: prep.amontestzone.uuid, timeout: 60000},
+    function (err) {
+      t.ifError(err, 'starting amontestzone');
+      t.end();
+    }
+  );
 });
 
 test('maint 2: alarm clears on zone stop', function (t) {
@@ -499,7 +506,8 @@ test('maint 2: alarm clears on zone stop', function (t) {
           maint2AlarmId, sentinel);
         var url = ALARMSURL + '/' + maint2AlarmId;
         masterClient.get(url, function (err, req, res, obj) {
-          if (err) return next(err);
+          if (err)
+            return next(err);
           alarm = obj;
           next();
         });
@@ -513,7 +521,7 @@ test('maint 2: alarm clears on zone stop', function (t) {
 });
 
 test('maint 2: got NO notification on zone start', function (t) {
-  t.equal(notifications.length, 0, "notification count is 0");
+  t.equal(notifications.length, 0, 'notification count is 0');
   t.end();
 });
 
@@ -535,7 +543,7 @@ test('maint 2: clean up', function (t) {
 test('maint 2: wait until restarted zone has settled', function (t) {
   // HACK: See HACK discussion above.
   setTimeout(function () {
-    t.ok(true, "slept for 10s to let amontestzone settle (hack)");
+    t.ok(true, 'slept for 10s to let amontestzone settle (hack)');
     t.end();
   }, 10000);
 });

@@ -14,9 +14,6 @@ JS_FILES = $(shell ls master/*.js relay/*.js agent/*.js) \
 JSL_CONF_NODE    = tools/jsl.node.conf
 JSL_FILES_NODE   = $(JS_FILES)
 JSSTYLE_FILES    = $(JS_FILES)
-SMF_MANIFESTS_IN = agent/smf/manifests/amon-agent.xml.in \
-	relay/smf/manifests/amon-relay.xml.in \
-	master/smf/amon-relay.smf.in
 CLEAN_FILES += agent/node_modules relay/node_modules \
 	master/node_modules common/node_modules plugins/node_modules \
 	./node_modules test/node_modules build/amon-*.tgz \

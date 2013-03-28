@@ -303,7 +303,7 @@ function createAmontestzone(next) {
       return next(err);
     }
     for (var i = 0; i < zones.length; i++) {
-      if (zones[i].state === "running" || zones[i].state === "stopped") {
+      if (zones[i].state === 'running' || zones[i].state === 'stopped') {
         amontestzone = zones[i]; // intentionally global
         log('# Ulrich already has an "amontestzone" zone (%s).',
           amontestzone.uuid);
@@ -331,9 +331,11 @@ function createAmontestzone(next) {
             jobInfo: jobInfo,
             timeout: 2 * 60 * 1000 /* 2 minutes */
           }, function (err3) {
-            if (err3) return next(err3);
+            if (err3)
+              return next(err3);
             vmapiClient.getVm({uuid: jobInfo.vm_uuid}, function (err4, zone) {
-              if (err4) return next(err4);
+              if (err4)
+                return next(err4);
               amontestzone = zone;
               next();
             });

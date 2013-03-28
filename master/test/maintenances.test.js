@@ -36,8 +36,8 @@ var log = new Logger({
 /**
  * From http://stackoverflow.com/a/8618383/122384
  */
-function arrayEqual(a,b) {
-  return !!a && !!b && !(a<b || b<a);
+function arrayEqual(a, b) {
+  return !!a && !!b && !(a < b || b < a);
 }
 
 
@@ -98,14 +98,14 @@ test('raw maintenance window creation', function (t) {
     all: true
   };
   var errData = [
-    [{all: false}, 'exactly one'],
-    [{user: 'bogus'}, 'UUID'],
-    [{id: -1}, 'integer'],
-    [{id: 0}, 'integer'],
-    [{id: 1.5}, 'integer'],
-    [{start: 'now'}, 'timestamp'],
-    [{end: '1d'}, 'timestamp'],
-    [{machines: uuid()}, 'exactly one']
+    [ {all: false}, 'exactly one' ],
+    [ {user: 'bogus'}, 'UUID' ],
+    [ {id: -1}, 'integer' ],
+    [ {id: 0}, 'integer' ],
+    [ {id: 1.5}, 'integer' ],
+    [ {start: 'now'}, 'timestamp' ],
+    [ {end: '1d'}, 'timestamp' ],
+    [ {machines: uuid()}, 'exactly one' ]
   ];
   errData.forEach(function (errDatum) {
     var eData = objMerge(base, errDatum[0]);

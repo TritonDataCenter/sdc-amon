@@ -81,7 +81,7 @@ Contact.parseUrn = function (app, urn) {
   if (medium.indexOf(':') !== -1) {
     throw new errors.InvalidParameterError(
       format('invalid contact: ":" in medium "%s"', medium),
-      [{field: 'urn', code: 'Invalid'}]);
+      [ {field: 'urn', code: 'Invalid'} ]);
   }
   return {
     scope: scope,

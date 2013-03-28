@@ -120,7 +120,7 @@ BunyanLogScanProbe.prototype._getMessage = function () {
     var conds = [];
     if (this.matcher) {
       if (this.config.match.field) {
-        conds.push(format("%s=%s", this.config.match.field,
+        conds.push(format('%s=%s', this.config.match.field,
           this.matcher.toString()));
       } else {
         conds.push(this.matcher.toString());

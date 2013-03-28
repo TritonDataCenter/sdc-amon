@@ -347,7 +347,7 @@ App.prototype.updateProbes = function updateProbes(force) {
         var sum = Object.keys(stats).reduce(
           function (prev, curr) { return prev + stats[curr]; }, 0);
         if (sum) {
-          log.info({stats: stats, numProbes: probeData.length, 
+          log.info({stats: stats, numProbes: probeData.length,
             probeData: probeData}, 'updated probes');
         }
       }
@@ -443,7 +443,8 @@ App.prototype.getProbeData = function getProbeData(force, callback) {
 
     self.relayClient.agentProbes(function (probeErr, probeData, probeDataMD5) {
       if (probeErr || !probeData || !probeDataMD5) {
-        log.warn(probeErr, 'error getting agent probes (continuing with cache)');
+        log.warn(probeErr,
+          'error getting agent probes (continuing with cache)');
         return callback(probeErr, self.probeDataCache);
       }
       log.trace({probeData: probeData}, 'getProbeData: retrieved agent probes');

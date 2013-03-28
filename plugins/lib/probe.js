@@ -190,7 +190,7 @@ ProbeType.validateMatchConfig = function (mconfig, errName) {
     throw new TypeError(format('"%s" is required', errName));
   if (!mconfig.pattern)
     throw new TypeError(format('"%s.pattern" is required', errName));
-  else if (typeof(mconfig.pattern) !== 'string') {
+  else if (typeof (mconfig.pattern) !== 'string') {
     throw new TypeError(format('"%s.type" (%s) is invalid, must be a string',
       errName, mconfig.pattern));
   }
@@ -214,12 +214,12 @@ ProbeType.validateMatchConfig = function (mconfig, errName) {
     }
   }
   if (mconfig.matchWord !== undefined &&
-      typeof(mconfig.matchWord) !== 'boolean') {
+      typeof (mconfig.matchWord) !== 'boolean') {
     throw new TypeError(format(
       '"%s.matchWord" (%s) is invalid, must be a boolean',
       errName, mconfig.matchWord));
   }
-  if (mconfig.invert !== undefined && typeof(mconfig.invert) !== 'boolean') {
+  if (mconfig.invert !== undefined && typeof (mconfig.invert) !== 'boolean') {
     throw new TypeError(format(
       '"%s.invert" (%s) is invalid, must be a boolean',
       errName, mconfig.invert));
@@ -246,6 +246,7 @@ function Matcher(mconfig) {
   if (this.type === 'substring') {
     // Escape. From XRegExp:
     // https://github.com/slevithan/xregexp/blob/master/src/xregexp.js#L608-621
+    /* JSSTYLED */
     this._pattern = this.pattern.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
   } else {
     this._pattern = this.pattern;
@@ -284,6 +285,7 @@ Matcher.prototype.matches = function (s) {
   var CONTEXT = 20;  // Num chars before and after to include in context.
 
   // Make a new regex with 'g' to allow finding successive matches.
+  /* JSSTYLED */
   // https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/RegExp/exec
   var regexp = new RegExp(this._pattern, this.flags + 'g');
 

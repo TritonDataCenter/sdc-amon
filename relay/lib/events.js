@@ -1,7 +1,7 @@
 /**
  * Copyright 2011 Joyent, Inc.  All rights reserved.
  *
- * Controller for relay "POST /events" endpoint.
+ * Controller for relay 'POST /events' endpoint.
  */
 
 var uuid = require('node-uuid');
@@ -26,7 +26,7 @@ function addEvents(req, res, next) {
 
     if (req._owner && event.user !== req._owner) {
       req.log.info({event: event},
-        "drop event with invalid user: event.user (%s) !== owner (%s)",
+        'drop event with invalid user: event.user (%s) !== owner (%s)',
         event.user, req._owner);
       continue;
     }

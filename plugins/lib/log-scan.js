@@ -99,7 +99,7 @@ LogScanProbe.prototype._getPath = function (callback) {
       }
     );
   } else {
-    callback(new Error("cannot get LogScanProbe path"));
+    callback(new Error('cannot get LogScanProbe path'));
   }
 };
 
@@ -180,8 +180,8 @@ LogScanProbe.prototype.start = function (callback) {
           }
           // TODO: collect matches from previous counts under threshold
           if (++self._count >= self.threshold) {
-            log.info({matches: matches, count: self._count, threshold: self.threshold},
-              'log-scan event');
+            log.info({matches: matches, count: self._count,
+              threshold: self.threshold}, 'log-scan event');
             self.emitEvent(self._getMessage(), self._count, {matches: matches});
           }
         }

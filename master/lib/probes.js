@@ -33,7 +33,7 @@ var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 
 //---- Probe model
-// Interface is as required by "ufdsmodel.js".
+// Interface is as required by 'ufdsmodel.js'.
 
 /**
  * Create a Probe object from raw DB (i.e. UFDS) data. External usage should
@@ -167,7 +167,7 @@ Probe.create = function createProbe(app, data_, callback) {
     if (extraFields.length > 0) {
       return callback(new errors.InvalidParameterError(
         format('invalid extra parameters: "%s"', extraFields.join('", "')),
-        extraFields.map(function (f) { return {field:f,code:'Invalid'}; })));
+        extraFields.map(function (f) { return {field:f, code:'Invalid'}; })));
     }
 
     var probe = null;
@@ -214,7 +214,7 @@ Probe.parentDnFromRequest = function (req) {
 /**
  * Return the API view of this Probe's data.
  *
- * @param priv {Boolean} Default false. Set to true to include "private"
+ * @param priv {Boolean} Default false. Set to true to include 'private'
  *    data. Private here means data that should be visible to Amon's
  *    inner workings (e.g. the relays and agents), but not to the external
  *    /pub/... APIs.
@@ -230,7 +230,7 @@ Probe.prototype.serialize = function serialize(priv) {
   };
   if (this.name) data.name = this.name;
   if (this.contacts) {
-    data.contacts = (typeof(this.contacts) === 'string' ? [this.contacts]
+    data.contacts = (typeof (this.contacts) === 'string' ? [this.contacts]
       : this.contacts);
   }
   if (this.config) data.config = this.config;
@@ -246,7 +246,7 @@ Probe.prototype.serialize = function serialize(priv) {
  * Authorize that this Probe can be added/updated.
  *
  * One of the following must be true:
- * 0. "skipauthz==true" must have been requested for this probe *and* the
+ * 0. 'skipauthz==true' must have been requested for this probe *and* the
  *    probe owner is the core admin user.
  * 1. The probe targets an existing physical machine (i.e. compute node,
  *    phyical server, box, the GZ) and the user is an operator.
@@ -267,7 +267,7 @@ Probe.prototype.authorizeWrite = function (app, callback) {
   var log = app.log;
   var machineUuid = this.agent;
 
-  // Early out if skipping authZ. See discussion on "skipauthz" above.
+  // Early out if skipping authZ. See discussion on 'skipauthz' above.
   if (this._skipauthz) {
     log.info('probe PUT authorized: skipauthz is true');
     return callback();
@@ -282,7 +282,7 @@ Probe.prototype.authorizeWrite = function (app, callback) {
   }
 
   function isExistingVmOrErr(next) {
-    // Empty "user" uuid string is the sdc-clients hack to not scope to a user.
+    // Empty 'user' uuid string is the sdc-clients hack to not scope to a user.
     app.vmapiClient.getVm({uuid: self.machine}, function (err, vm) {
       if (err && err.code !== 'ResourceNotFound') {
         log.error(err, 'unexpected error getting vm');
@@ -351,7 +351,7 @@ Probe.prototype.authorizeWrite = function (app, callback) {
             ];
             async.series(conditions3, function (not3) {
               if (not3) {
-                // Not "3.", return error for "2."
+                // Not '3.', return error for '2.'
                 callback(new restify.InvalidArgumentError(format(
                   'Invalid agent: machine \'%s\' does not exist or is not '
                   + 'owned by user \'%s\'.', machineUuid, self.user)));
@@ -550,7 +550,7 @@ Probe.validate = function validateProbe(app, raw) {
         field: 'config',
         code: 'Invalid',
         message: format('probe config, "%s", is invalid: %s',
-                        raw.config || "(none)", valErr)
+                        raw.config || '(none)', valErr)
       });
     }
   }
@@ -576,7 +576,7 @@ Probe.validate = function validateProbe(app, raw) {
   if (errs.length) {
     var fields = errs.map(function (e) { return e.field; });
     throw new errors.ValidationFailedError(
-      "invalid probe data: " + fields.join(', '), errs);
+      'invalid probe data: ' + fields.join(', '), errs);
   }
   return raw;
 };
