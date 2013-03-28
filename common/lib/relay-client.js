@@ -33,38 +33,38 @@ var RestCodes = restify.RestCodes;
  *      log {Bunyan Logger instance}
  */
 function RelayClient(options) {
-  if (!options) throw new TypeError('options is required');
-  if (!options.url) throw new TypeError('options.url (string) is required');
-  if (!options.log)
-    throw new TypeError('options.log (Bunyan Logger) is required');
-  this.log = options.log;
+    if (!options) throw new TypeError('options is required');
+    if (!options.url) throw new TypeError('options.url (string) is required');
+    if (!options.log)
+        throw new TypeError('options.log (Bunyan Logger) is required');
+    this.log = options.log;
 
-  var parsed = url.parse(options.url);
-  this._baseRequestOpts = {
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
+    var parsed = url.parse(options.url);
+    this._baseRequestOpts = {
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+    };
+    if (parsed.hostname && parsed.protocol) {
+        this._baseRequestOpts.host = parsed.hostname;
+        this._baseRequestOpts.port = parsed.port;
+        switch (parsed.protocol) {
+        case 'http:':
+            this._requestMode = 'http';
+            break;
+        case 'https:':
+            this._requestMode = 'https';
+            break;
+        default:
+            throw new TypeError(format('invalid relay API protocol: \'%s\'',
+                parsed.protocol));
+        }
+    } else {
+        assert.equal(options.url, parsed.pathname);
+        this._baseRequestOpts.socketPath = parsed.pathname;
+        this._requestMode = 'http';
     }
-  };
-  if (parsed.hostname && parsed.protocol) {
-    this._baseRequestOpts.host = parsed.hostname;
-    this._baseRequestOpts.port = parsed.port;
-    switch (parsed.protocol) {
-    case 'http:':
-      this._requestMode = 'http';
-      break;
-    case 'https:':
-      this._requestMode = 'https';
-      break;
-    default:
-      throw new TypeError(format('invalid relay API protocol: \'%s\'',
-        parsed.protocol));
-    }
-  } else {
-    assert.equal(options.url, parsed.pathname);
-    this._baseRequestOpts.socketPath = parsed.pathname;
-    this._requestMode = 'http';
-  }
 }
 
 
@@ -83,27 +83,27 @@ function RelayClient(options) {
  * @param callback {Function} `function (err, md5)`.
  */
 RelayClient.prototype.agentProbesMD5 = function (agent, callback) {
-  if (!callback && typeof (agent) === 'function') {
-    callback = agent;
-    agent = null;
-  }
-  if (!callback) throw TypeError('callback (function) is required');
-  var self = this;
+    if (!callback && typeof (agent) === 'function') {
+        callback = agent;
+        agent = null;
+    }
+    if (!callback) throw TypeError('callback (function) is required');
+    var self = this;
 
-  var path = '/agentprobes';
-  if (agent) {
-    path += '?agent=' + agent;
-  }
-  this._request('HEAD', path, function (err, res) {
-    if (err) {
-      return callback(err);
+    var path = '/agentprobes';
+    if (agent) {
+        path += '?agent=' + agent;
     }
-    if (res.statusCode !== 200) {
-      self.log.warn('Bad status code for checksum: %d', res.statusCode);
-      return callback(new Error('HttpError: ' + res.statusCode));
-    }
-    return callback(null, res.headers['content-md5']);
-  }).end();
+    this._request('HEAD', path, function (err, res) {
+        if (err) {
+            return callback(err);
+        }
+        if (res.statusCode !== 200) {
+            self.log.warn('Bad status code for checksum: %d', res.statusCode);
+            return callback(new Error('HttpError: ' + res.statusCode));
+        }
+        return callback(null, res.headers['content-md5']);
+    }).end();
 };
 
 
@@ -122,27 +122,27 @@ RelayClient.prototype.agentProbesMD5 = function (agent, callback) {
  * @param callback {Function} `function (err, md5)`.
  */
 RelayClient.prototype.agentProbes = function (agent, callback) {
-  if (!callback && typeof (agent) === 'function') {
-    callback = agent;
-    agent = null;
-  }
-  if (!callback) throw TypeError('callback (function) is required');
-  var self = this;
+    if (!callback && typeof (agent) === 'function') {
+        callback = agent;
+        agent = null;
+    }
+    if (!callback) throw TypeError('callback (function) is required');
+    var self = this;
 
-  var path = '/agentprobes';
-  if (agent) {
-    path += '?agent=' + agent;
-  }
-  this._request('GET', path, function (err, res) {
-    if (err) {
-      return callback(err);
+    var path = '/agentprobes';
+    if (agent) {
+        path += '?agent=' + agent;
     }
-    if (res.statusCode !== 200) {
-      self.log.warn('Bad status code for checksum: %d', res.statusCode);
-      return callback(new Error('HttpError: ' + res.statusCode));
-    }
-    return callback(null, res.params, res.headers['content-md5']);
-  }).end();
+    this._request('GET', path, function (err, res) {
+        if (err) {
+            return callback(err);
+        }
+        if (res.statusCode !== 200) {
+            self.log.warn('Bad status code for checksum: %d', res.statusCode);
+            return callback(new Error('HttpError: ' + res.statusCode));
+        }
+        return callback(null, res.params, res.headers['content-md5']);
+    }).end();
 };
 
 
@@ -158,25 +158,25 @@ RelayClient.prototype.agentProbes = function (agent, callback) {
  *    "err" is undefined on success, a restify error instance on failure.
  */
 RelayClient.prototype.sendEvents = function (events, callback) {
-  var self = this;
+    var self = this;
 
-  function onComplete(err, res) {
-    if (err) {
-      self.log.warn(err, 'RelayClient.sendEvents: HTTP error');
-      return callback(new restify.InternalError());
+    function onComplete(err, res) {
+        if (err) {
+            self.log.warn(err, 'RelayClient.sendEvents: HTTP error');
+            return callback(new restify.InternalError());
+        }
+        if (res.statusCode !== 202 /* Accepted */) {
+            self.log.warn({res: res, body: res.body},
+                'invalid response for RelayClient.sendEvents');
+            return callback(new restify.InternalError());
+        } else {
+            return callback();
+        }
     }
-    if (res.statusCode !== 202 /* Accepted */) {
-      self.log.warn({res: res, body: res.body},
-        'invalid response for RelayClient.sendEvents');
-      return callback(new restify.InternalError());
-    } else {
-      return callback();
-    }
-  }
 
-  var req = this._request('POST', '/events', onComplete);
-  req.write(JSON.stringify(events));
-  req.end();
+    var req = this._request('POST', '/events', onComplete);
+    req.write(JSON.stringify(events));
+    req.end();
 };
 
 
@@ -189,55 +189,56 @@ RelayClient.prototype.sendEvents = function (events, callback) {
  *    `function (err, response)`.
  */
 RelayClient.prototype._request = function (method, path, callback) {
-  var self = this;
+    var self = this;
 
-  var options = {};
-  Object.keys(this._baseRequestOpts).forEach(function (k) {
-    options[k] = self._baseRequestOpts[k];
-  });
-  options.method = method;
-  options.path = path;
-
-  var onResponse = function (res) {
-    var chunks = [];
-    res.setEncoding('utf8');
-    res.on('data', function (chunk) {
-      self.log.trace('RelayClient request chunk=%s', chunk);
-      chunks.push(chunk);
+    var options = {};
+    Object.keys(this._baseRequestOpts).forEach(function (k) {
+        options[k] = self._baseRequestOpts[k];
     });
-    res.on('end', function () {
-      res.body = chunks.join('');
-      if (res.body.length > 0 &&
-          res.headers['content-type'] === 'application/json') {
-        try {
-          res.params = JSON.parse(res.body);
-        } catch (e) {
-          return callback(e);
-        }
-      }
-      self.log.trace({res: res}, 'RelayClient response');
-      return callback(null, res);
+    options.method = method;
+    options.path = path;
+
+    var onResponse = function (res) {
+        var chunks = [];
+        res.setEncoding('utf8');
+        res.on('data', function (chunk) {
+            self.log.trace('RelayClient request chunk=%s', chunk);
+            chunks.push(chunk);
+        });
+        res.on('end', function () {
+            res.body = chunks.join('');
+            if (res.body.length > 0 &&
+                    res.headers['content-type'] === 'application/json') {
+                try {
+                    res.params = JSON.parse(res.body);
+                } catch (e) {
+                    return callback(e);
+                }
+            }
+            self.log.trace({res: res}, 'RelayClient response');
+            return callback(null, res);
+        });
+    };
+
+    this.log.trace({options: options}, 'RelayClient request');
+    var req;
+    switch (this._requestMode) {
+    case 'http':
+        req = http.request(options, onResponse);
+        break;
+    case 'https':
+        req = https.request(options, onResponse);
+        break;
+    default:
+        throw new Error(format('unknown request mode: \'%s\'',
+            this._requestMode));
+    }
+
+    req.on('error', function (err) {
+        self.log.warn('error requesting \'%s %s\': %s', method, path, err);
+        return callback(err);
     });
-  };
-
-  this.log.trace({options: options}, 'RelayClient request');
-  var req;
-  switch (this._requestMode) {
-  case 'http':
-    req = http.request(options, onResponse);
-    break;
-  case 'https':
-    req = https.request(options, onResponse);
-    break;
-  default:
-    throw new Error(format('unknown request mode: \'%s\'', this._requestMode));
-  }
-
-  req.on('error', function (err) {
-    self.log.warn('error requesting \'%s %s\': %s', method, path, err);
-    return callback(err);
-  });
-  return req;
+    return req;
 };
 
 

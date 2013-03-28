@@ -83,13 +83,13 @@
  * Some probes allow the user to provide a pattern to match against log
  * output or command output or whatever. That handling should be common.
  * Relevant probes should use the functionality here (see all *Match* methods
- * on the ProbeType class). The config field name should be "match" or, if there
- * are multiple match fields, then something like "fooMatch". See log-scan.js
- * for example usage.
+ * on the ProbeType class). The config field name should be "match" or,
+ * if there are multiple match fields, then something like "fooMatch". See
+ * log-scan.js for example usage.
  */
 
 var util = require('util'),
-  format = util.format;
+    format = util.format;
 var assert = require('assert-plus');
 
 var AMON_EVENT_VERSION = 1;
@@ -107,26 +107,26 @@ var AMON_EVENT_VERSION = 1;
  *    - `log` {Bunyan Logger}
  */
 function ProbeType(options) {
-  process.EventEmitter.call(this);
+    process.EventEmitter.call(this);
 
-  if (!options) throw new TypeError('"options" is required');
-  if (!options.uuid) throw new TypeError('"options.uuid" is required');
-  if (!options.data) throw new TypeError('"options.data" is required');
-  if (!options.log) throw new TypeError('"options.log" is required');
+    if (!options) throw new TypeError('"options" is required');
+    if (!options.uuid) throw new TypeError('"options.uuid" is required');
+    if (!options.data) throw new TypeError('"options.data" is required');
+    if (!options.log) throw new TypeError('"options.log" is required');
 
-  this.uuid = options.uuid;
-  this.json = JSON.stringify(options.data);
-  this.log = options.log.child({probeUuid: this.uuid,
-    probeName: options.data.name, probeType: this.type}, true);
+    this.uuid = options.uuid;
+    this.json = JSON.stringify(options.data);
+    this.log = options.log.child({probeUuid: this.uuid,
+        probeName: options.data.name, probeType: this.type}, true);
 
-  var data = options.data;
-  this._user = data.user;
-  this._probeUuid = data.uuid;
-  if (data.machine) {
-    this._machine = data.machine;
-  }
+    var data = options.data;
+    this._user = data.user;
+    this._probeUuid = data.uuid;
+    if (data.machine) {
+        this._machine = data.machine;
+    }
 
-  this.config = data.config;
+    this.config = data.config;
 }
 util.inherits(ProbeType, process.EventEmitter);
 
@@ -146,29 +146,29 @@ ProbeType.runLocally = false;
  * @param clear {Boolean} `true` if this is a clear event.
  */
 ProbeType.prototype.emitEvent = function (message, value, details, clear) {
-  if (!message) throw new TypeError('"message" is required');
-  if (value === undefined) throw new TypeError('"value" is required');
-  if (details === undefined) throw new TypeError('"details" is required');
-  if (clear === undefined) clear = false;
-  if (typeof (clear) !== 'boolean') {
-    throw new TypeError('"clear" must be boolean');
-  }
-  var event = {
-    v: AMON_EVENT_VERSION,
-    type: 'probe',
-    user: this._user,
-    probeUuid: this._probeUuid,
-    clear: clear,
-    data: {
-      message: message,
-      value: value,
-      details: details
+    if (!message) throw new TypeError('"message" is required');
+    if (value === undefined) throw new TypeError('"value" is required');
+    if (details === undefined) throw new TypeError('"details" is required');
+    if (clear === undefined) clear = false;
+    if (typeof (clear) !== 'boolean') {
+        throw new TypeError('"clear" must be boolean');
     }
-  };
-  if (this._machine) {
-    event.machine = this._machine;
-  }
-  this.emit('event', event);
+    var event = {
+        v: AMON_EVENT_VERSION,
+        type: 'probe',
+        user: this._user,
+        probeUuid: this._probeUuid,
+        clear: clear,
+        data: {
+            message: message,
+            value: value,
+            details: details
+        }
+    };
+    if (this._machine) {
+        event.machine = this._machine;
+    }
+    this.emit('event', event);
 };
 
 
@@ -186,44 +186,49 @@ var MATCH_TYPES = {regex: true, substring: true};
  * @throws {TypeError} if the object is invalid.
  */
 ProbeType.validateMatchConfig = function (mconfig, errName) {
-  if (!mconfig)
-    throw new TypeError(format('"%s" is required', errName));
-  if (!mconfig.pattern)
-    throw new TypeError(format('"%s.pattern" is required', errName));
-  else if (typeof (mconfig.pattern) !== 'string') {
-    throw new TypeError(format('"%s.type" (%s) is invalid, must be a string',
-      errName, mconfig.pattern));
-  }
-  if (mconfig.type && !MATCH_TYPES[mconfig.type])
-    throw new TypeError(format('"%s.type" (%s) is invalid, must be one of: %s',
-      errName, mconfig.type, Object.keys(MATCH_TYPES).join(', ')));
-  if (mconfig.flags !== undefined) {
-    try {
-      var dummy = new RegExp('', mconfig.flags);
-      assert.ok(dummy); // solely to silence lint
-    } catch (e) {
-      assert.equal(e.name, 'SyntaxError', e);
-      throw new TypeError(format('"%s.flags" (%s) is invalid',
-        errName, mconfig.flags));
+    if (!mconfig)
+        throw new TypeError(format('"%s" is required', errName));
+    if (!mconfig.pattern)
+        throw new TypeError(format('"%s.pattern" is required', errName));
+    else if (typeof (mconfig.pattern) !== 'string') {
+        throw new TypeError(format(
+            '"%s.type" (%s) is invalid, must be a string',
+            errName, mconfig.pattern));
     }
-    // 'g' in a JS RegExp can mess us up (changes successive match behaviour).
-    if (mconfig.flags.indexOf('g') !== -1) {
-      throw new TypeError(format(
-        '"%s.flags" (%s) is invalid, cannot use "g" flag',
-        errName, mconfig.flags));
+    if (mconfig.type && !MATCH_TYPES[mconfig.type])
+        throw new TypeError(format(
+            '"%s.type" (%s) is invalid, must be one of: %s',
+            errName, mconfig.type, Object.keys(MATCH_TYPES).join(', ')));
+    if (mconfig.flags !== undefined) {
+        try {
+            var dummy = new RegExp('', mconfig.flags);
+            assert.ok(dummy); // solely to silence lint
+        } catch (e) {
+            assert.equal(e.name, 'SyntaxError', e);
+            throw new TypeError(format('"%s.flags" (%s) is invalid',
+                errName, mconfig.flags));
+        }
+        // 'g' in a JS RegExp can mess us up (changes successive match
+        // behaviour).
+        if (mconfig.flags.indexOf('g') !== -1) {
+            throw new TypeError(format(
+                '"%s.flags" (%s) is invalid, cannot use "g" flag',
+                errName, mconfig.flags));
+        }
     }
-  }
-  if (mconfig.matchWord !== undefined &&
-      typeof (mconfig.matchWord) !== 'boolean') {
-    throw new TypeError(format(
-      '"%s.matchWord" (%s) is invalid, must be a boolean',
-      errName, mconfig.matchWord));
-  }
-  if (mconfig.invert !== undefined && typeof (mconfig.invert) !== 'boolean') {
-    throw new TypeError(format(
-      '"%s.invert" (%s) is invalid, must be a boolean',
-      errName, mconfig.invert));
-  }
+    if (mconfig.matchWord !== undefined &&
+            typeof (mconfig.matchWord) !== 'boolean') {
+        throw new TypeError(format(
+            '"%s.matchWord" (%s) is invalid, must be a boolean',
+            errName, mconfig.matchWord));
+    }
+    if (mconfig.invert !== undefined &&
+        typeof (mconfig.invert) !== 'boolean')
+    {
+        throw new TypeError(format(
+            '"%s.invert" (%s) is invalid, must be a boolean',
+            errName, mconfig.invert));
+    }
 };
 
 
@@ -231,45 +236,46 @@ ProbeType.validateMatchConfig = function (mconfig, errName) {
  * Return a 'matcher' object for the given match config.
  */
 ProbeType.prototype.matcherFromMatchConfig = function (mconfig) {
-  return new Matcher(mconfig);
+    return new Matcher(mconfig);
 };
 
 
 function Matcher(mconfig) {
-  this.pattern = mconfig.pattern;
-  this.flags = mconfig.flags || '';
-  this.type = mconfig.type || 'regex';
-  this.matchWord = mconfig.matchWord || false;
-  this.invert = mconfig.invert || false;
+    this.pattern = mconfig.pattern;
+    this.flags = mconfig.flags || '';
+    this.type = mconfig.type || 'regex';
+    this.matchWord = mconfig.matchWord || false;
+    this.invert = mconfig.invert || false;
 
-  this._pattern = this.pattern;
-  if (this.type === 'substring') {
-    // Escape. From XRegExp:
-    // https://github.com/slevithan/xregexp/blob/master/src/xregexp.js#L608-621
-    /* JSSTYLED */
-    this._pattern = this.pattern.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
-  } else {
     this._pattern = this.pattern;
-  }
-  if (this.matchWord) {
-    // We *would* do this:
-    //    this._pattern = '(?<!\\w)' + this.pattern + '(?!\\w)'
-    // However, JS RegExp doesn't support lookbehind assertions. Boo. Suppose
-    // there is XRegExp if we want. If/when we switch to a regex engine that
-    // supports that, then switch. Until then:
-    this._pattern = '\\b' + this._pattern + '\\b';
-  }
-  this._regexp = new RegExp(this._pattern, this.flags);
+    if (this.type === 'substring') {
+        /* BEGIN JSSTYLED */
+        // Escape. From XRegExp:
+        // https://github.com/slevithan/xregexp/blob/master/src/xregexp.js#L608-621
+        this._pattern = this.pattern.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+        /* END JSSTYLED */
+    } else {
+        this._pattern = this.pattern;
+    }
+    if (this.matchWord) {
+        // We *would* do this:
+        //    this._pattern = '(?<!\\w)' + this.pattern + '(?!\\w)'
+        // However, JS RegExp doesn't support lookbehind assertions. Boo.
+        // Suppose there is XRegExp if we want. If/when we switch to a
+        // regex engine that supports that, then switch. Until then:
+        this._pattern = '\\b' + this._pattern + '\\b';
+    }
+    this._regexp = new RegExp(this._pattern, this.flags);
 }
 
 
 Matcher.prototype.test = function (s) {
-  assert.string(s, 's');
-  if (this.invert) {
-    return !this._regexp.test(s);
-  } else {
-    return this._regexp.test(s);
-  }
+    assert.string(s, 's');
+    if (this.invert) {
+        return !this._regexp.test(s);
+    } else {
+        return this._regexp.test(s);
+    }
 };
 
 
@@ -280,41 +286,41 @@ Matcher.prototype.test = function (s) {
  * @returns {Array} An array of matches, or null if no matches.
  */
 Matcher.prototype.matches = function (s) {
-  assert.string(s, 's');
+    assert.string(s, 's');
 
-  var CONTEXT = 20;  // Num chars before and after to include in context.
+    var CONTEXT = 20;  // Num chars before and after to include in context.
 
-  // Make a new regex with 'g' to allow finding successive matches.
-  /* JSSTYLED */
-  // https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/RegExp/exec
-  var regexp = new RegExp(this._pattern, this.flags + 'g');
+    // Make a new regex with 'g' to allow finding successive matches.
+    /* JSSTYLED */
+    // https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/RegExp/exec
+    var regexp = new RegExp(this._pattern, this.flags + 'g');
 
-  var matches = [];
-  var m = null;
-  var start, end, cstart, cend;
-  while ((m = regexp.exec(s)) !== null) {
-    start = m.index;
-    end = m.index + m[0].length;
-    cstart = Math.max(0, start - CONTEXT);
-    cend = Math.min(end + CONTEXT, s.length - 1);
-    matches.push({
-      match: m[0].toString(),   // TODO: .toString() necessary here?
-      context: s.slice(cstart, cend)
-    });
-  }
-  return (matches.length ? matches : null);
+    var matches = [];
+    var m = null;
+    var start, end, cstart, cend;
+    while ((m = regexp.exec(s)) !== null) {
+        start = m.index;
+        end = m.index + m[0].length;
+        cstart = Math.max(0, start - CONTEXT);
+        cend = Math.min(end + CONTEXT, s.length - 1);
+        matches.push({
+            match: m[0].toString(),   // TODO: .toString() necessary here?
+            context: s.slice(cstart, cend)
+        });
+    }
+    return (matches.length ? matches : null);
 };
 
 
 Matcher.prototype.toString = function () {
-  if (!this._toStringCache) {
-    var s = this._regexp.toString();
-    if (this.invert) {
-      s += ' (inverted)';
+    if (!this._toStringCache) {
+        var s = this._regexp.toString();
+        if (this.invert) {
+            s += ' (inverted)';
+        }
+        this._toStringCache = s;
     }
-    this._toStringCache = s;
-  }
-  return this._toStringCache;
+    return this._toStringCache;
 };
 
 //util.inherits(Matcher, RegExp);

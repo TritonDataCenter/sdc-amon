@@ -19,19 +19,19 @@ var restify = require('restify');
  * From Isaac's rimraf.js.
  */
 function asyncForEach(list, fn, cb) {
-  if (!list.length) cb();
-  var c = list.length
-    , errState = null;
-  list.forEach(function (item, i, lst) {
-    fn(item, function (er) {
-      if (errState)
-        return true;
-      if (er)
-        return cb(errState = er);
-      if (-- c === 0)
-        return cb();
+    if (!list.length) cb();
+    var c = list.length
+        , errState = null;
+    list.forEach(function (item, i, lst) {
+        fn(item, function (er) {
+            if (errState)
+                return true;
+            if (er)
+                return cb(errState = er);
+            if (-- c === 0)
+                return cb();
+        });
     });
-  });
 }
 /* jsl:end */
 /* END JSSTYLED */
@@ -49,38 +49,38 @@ function asyncForEach(list, fn, cb) {
  *    event fields. That is lame.
  */
 function addEvents(req, res, next) {
-  var events;
-  if (Array.isArray(req.body)) {
-    events = req.body;
-  } else {
-    events = [req.body];
-  }
-  req.log.info({events: events}, 'addEvents');
-
-  // Collect errors so first failure doesn't abort the others.
-  var errs = [];
-  function validateAndProcess(event, cb) {
-    //XXX event validation would go here
-
-    req._app.processEvent(event, function (err) {
-      if (err) {
-        errs.push(err);
-      }
-      cb();
-    });
-  }
-
-  asyncForEach(events, validateAndProcess, function (err) {
-    if (errs.length > 0) {
-      for (var i = 0; i < errs.length; i++) {
-        req.log.warn(errs[i], 'error adding event');
-      }
-      next(new restify.InternalError(errs.join(', ')));
+    var events;
+    if (Array.isArray(req.body)) {
+        events = req.body;
     } else {
-      res.send(202 /* Accepted */);
-      next();
+        events = [req.body];
     }
-  });
+    req.log.info({events: events}, 'addEvents');
+
+    // Collect errors so first failure doesn't abort the others.
+    var errs = [];
+    function validateAndProcess(event, cb) {
+        //XXX event validation would go here
+
+        req._app.processEvent(event, function (err) {
+            if (err) {
+                errs.push(err);
+            }
+            cb();
+        });
+    }
+
+    asyncForEach(events, validateAndProcess, function (err) {
+        if (errs.length > 0) {
+            for (var i = 0; i < errs.length; i++) {
+                req.log.warn(errs[i], 'error adding event');
+            }
+            next(new restify.InternalError(errs.join(', ')));
+        } else {
+            res.send(202 /* Accepted */);
+            next();
+        }
+    });
 }
 
 
@@ -92,10 +92,10 @@ function addEvents(req, res, next) {
  * @param server {restify.Server}
  */
 function mountApi(server) {
-  server.post({path: '/events', name: 'AddEvents'}, addEvents);
+    server.post({path: '/events', name: 'AddEvents'}, addEvents);
 }
 
 
 module.exports = {
-  mountApi: mountApi
+    mountApi: mountApi
 };

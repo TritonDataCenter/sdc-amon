@@ -8,10 +8,10 @@
 var events = require('events');
 var fs = require('fs');
 var child_process = require('child_process'),
-  spawn = child_process.spawn,
-  execFile = child_process.execFile;
+    spawn = child_process.spawn,
+    execFile = child_process.execFile;
 var util = require('util'),
-  format = util.format;
+    format = util.format;
 
 var ProbeType = require('./probe');
 
@@ -35,20 +35,20 @@ var SECONDS = 1000;
  *    - `log` {Bunyan Logger}
  */
 function LogScanProbe(options) {
-  ProbeType.call(this, options);
-  this.validateConfig(this.config);
+    ProbeType.call(this, options);
+    this.validateConfig(this.config);
 
-  // One of `path` or `smfServiceName` is defined.
-  this.path = this.config.path;
-  this.smfServiceName = this.config.smfServiceName;
-  if (this.config.match)
-    this.matcher = this.matcherFromMatchConfig(this.config.match);
+    // One of `path` or `smfServiceName` is defined.
+    this.path = this.config.path;
+    this.smfServiceName = this.config.smfServiceName;
+    if (this.config.match)
+        this.matcher = this.matcherFromMatchConfig(this.config.match);
 
-  this.threshold = this.config.threshold || 1;
-  this.period = this.config.period || 60;
+    this.threshold = this.config.threshold || 1;
+    this.period = this.config.period || 60;
 
-  this._count = 0;
-  this._running = false;
+    this._count = 0;
+    this._running = false;
 }
 util.inherits(LogScanProbe, ProbeType);
 
@@ -61,46 +61,46 @@ LogScanProbe.prototype.type = 'log-scan';
 
 
 LogScanProbe.validateConfig = function (config) {
-  if (!config)
-    throw new TypeError('"config" is required');
-  if (!config.path && !config.smfServiceName)
-    throw new TypeError(
-      'either "config.path" or "config.smfServiceName" is required');
-  ProbeType.validateMatchConfig(config.match, 'config.match');
+    if (!config)
+        throw new TypeError('"config" is required');
+    if (!config.path && !config.smfServiceName)
+        throw new TypeError(
+            'either "config.path" or "config.smfServiceName" is required');
+    ProbeType.validateMatchConfig(config.match, 'config.match');
 };
 
 
 LogScanProbe.prototype.validateConfig = function (config) {
-  return LogScanProbe.validateConfig(config);
+    return LogScanProbe.validateConfig(config);
 };
 
 
 LogScanProbe.prototype._getPath = function (callback) {
-  var self = this;
-  if (this._pathCache) {
-    return callback(null, this._pathCache);
-  }
-  if (this.path) {
-    this._pathCache = this.path;
-    callback(null, this._pathCache);
-  } else if (this.smfServiceName) {
-    execFile('/usr/bin/svcs', ['-L', this.smfServiceName],
-      function (sErr, stdout, stderr) {
-        if (sErr) {
-          callback(sErr); //XXX wrap error
-        } else if (stderr) {
-          callback(new Error(format(
-            'error getting SMF service path: `svcs -L %s`: %s',
-            self.smfServiceName, stderr)));
-        } else {
-          self._pathCache = stdout.trim();
-          callback(null, self._pathCache);
-        }
-      }
-    );
-  } else {
-    callback(new Error('cannot get LogScanProbe path'));
-  }
+    var self = this;
+    if (this._pathCache) {
+        return callback(null, this._pathCache);
+    }
+    if (this.path) {
+        this._pathCache = this.path;
+        callback(null, this._pathCache);
+    } else if (this.smfServiceName) {
+        execFile('/usr/bin/svcs', ['-L', this.smfServiceName],
+            function (sErr, stdout, stderr) {
+                if (sErr) {
+                    callback(sErr); //XXX wrap error
+                } else if (stderr) {
+                    callback(new Error(format(
+                        'error getting SMF service path: `svcs -L %s`: %s',
+                        self.smfServiceName, stderr)));
+                } else {
+                    self._pathCache = stdout.trim();
+                    callback(null, self._pathCache);
+                }
+            }
+        );
+    } else {
+        callback(new Error('cannot get LogScanProbe path'));
+    }
 };
 
 
@@ -111,17 +111,17 @@ LogScanProbe.prototype._getPath = function (callback) {
  * this method is only ever called after `_getPath()` success.
  */
 LogScanProbe.prototype._getMessage = function () {
-  if (! this._messageCache) {
-    var msg;
-    if (this.threshold > 1) {
-      msg = format('Log "%s" matched %s >=%d times in %d seconds.',
-        this._pathCache, this.matcher, this.threshold, this.period);
-    } else {
-      msg = format('Log "%s" matched %s.', this._pathCache, this.matcher);
+    if (! this._messageCache) {
+        var msg;
+        if (this.threshold > 1) {
+            msg = format('Log "%s" matched %s >=%d times in %d seconds.',
+                this._pathCache, this.matcher, this.threshold, this.period);
+        } else {
+            msg = format('Log "%s" matched %s.', this._pathCache, this.matcher);
+        }
+        this._messageCache = msg;
     }
-    this._messageCache = msg;
-  }
-  return this._messageCache;
+    return this._messageCache;
 };
 
 
@@ -133,7 +133,7 @@ LogScanProbe.prototype._getMessage = function () {
  *
  */
 LogScanProbe.prototype._matchChunk = function (chunk) {
-  return this.matcher.matches(chunk.toString());
+    return this.matcher.matches(chunk.toString());
 };
 
 
@@ -141,77 +141,80 @@ LogScanProbe.prototype._matchChunk = function (chunk) {
  * TODO: get callers to watch for `err` response.
  */
 LogScanProbe.prototype.start = function (callback) {
-  var self = this;
-  var log = this.log;
+    var self = this;
+    var log = this.log;
 
-  var GET_PATH_RETRY = 5 * 60 * 1000; // Every 5 minutes.
+    var GET_PATH_RETRY = 5 * 60 * 1000; // Every 5 minutes.
 
-  function getPathAndStart(cb) {
-    log.info('get path');
-    self._getPath(function (err, path) {
-      if (err) {
-        log.info(err, 'could not get path to scan, recheck in %dms',
-          GET_PATH_RETRY);
-        self.pathRetrier = setTimeout(getPathAndStart, GET_PATH_RETRY);
-        return;
-      }
-      log.info({path: path}, 'got path');
+    function getPathAndStart(cb) {
+        log.info('get path');
+        self._getPath(function (err, path) {
+            if (err) {
+                log.info(err, 'could not get path to scan, recheck in %dms',
+                    GET_PATH_RETRY);
+                self.pathRetrier = setTimeout(getPathAndStart, GET_PATH_RETRY);
+                return;
+            }
+            log.info({path: path}, 'got path');
 
-      self.timer = setInterval(function () {
-        if (!self._running)
-          return;
-        log.trace('clear log-scan counter');
-        self._count = 0;
-      }, self.period * SECONDS);
+            self.timer = setInterval(function () {
+                if (!self._running)
+                    return;
+                log.trace('clear log-scan counter');
+                self._count = 0;
+            }, self.period * SECONDS);
 
-      self._running = true;
-      self.tail = spawn('/usr/bin/tail', ['-1cF', path]);
-      self.tail.stdout.on('data', function (chunk) {
-        if (!self._running) {
-          return;
-        }
+            self._running = true;
+            self.tail = spawn('/usr/bin/tail', ['-1cF', path]);
+            self.tail.stdout.on('data', function (chunk) {
+                if (!self._running) {
+                    return;
+                }
 
-        //log.debug('chunk: %s', JSON.stringify(chunk.toString()));
-        var matches = self._matchChunk(chunk);
-        if (matches) {
-          if (log.trace()) {
-            log.trace({chunk: chunk.toString(), threshold: self.threshold,
-              count: self._count, matches: matches}, 'log-scan match hit');
-          }
-          // TODO: collect matches from previous counts under threshold
-          if (++self._count >= self.threshold) {
-            log.info({matches: matches, count: self._count,
-              threshold: self.threshold}, 'log-scan event');
-            self.emitEvent(self._getMessage(), self._count, {matches: matches});
-          }
-        }
-      });
+                //log.debug('chunk: %s', JSON.stringify(chunk.toString()));
+                var matches = self._matchChunk(chunk);
+                if (matches) {
+                    if (log.trace()) {
+                        log.trace({chunk: chunk.toString(),
+                            threshold: self.threshold,
+                            count: self._count, matches: matches},
+                            'log-scan match hit');
+                    }
+                    // TODO: collect matches from prev counts under threshold
+                    if (++self._count >= self.threshold) {
+                        log.info({matches: matches, count: self._count,
+                            threshold: self.threshold}, 'log-scan event');
+                        self.emitEvent(self._getMessage(), self._count,
+                            {matches: matches});
+                    }
+                }
+            });
 
-      self.tail.on('exit', function (code) {
-        if (!self._running)
-          return;
-        log.fatal('log-scan: tail exited (code=%d)', code);
-        clearInterval(self.timer);
-      });
-    });
-  }
+            self.tail.on('exit', function (code) {
+                if (!self._running)
+                    return;
+                log.fatal('log-scan: tail exited (code=%d)', code);
+                clearInterval(self.timer);
+            });
+        });
+    }
 
-  process.nextTick(getPathAndStart);
-  if (callback && (callback instanceof Function)) {
-    return callback();
-  }
+    process.nextTick(getPathAndStart);
+    if (callback && (callback instanceof Function)) {
+        return callback();
+    }
 };
 
 LogScanProbe.prototype.stop = function (callback) {
-  this._running = false;
-  if (this.pathRetrier)
-    clearTimeout(this.pathRetrier);
-  if (this.timer)
-    clearInterval(this.timer);
-  if (this.tail)
-    this.tail.kill();
-  if (callback && (callback instanceof Function))
-    return callback();
+    this._running = false;
+    if (this.pathRetrier)
+        clearTimeout(this.pathRetrier);
+    if (this.timer)
+        clearInterval(this.timer);
+    if (this.tail)
+        this.tail.kill();
+    if (callback && (callback instanceof Function))
+        return callback();
 };
 
 

@@ -6,11 +6,11 @@
  */
 
 module.exports = {
-  'log-scan': require('./log-scan'),
-  'bunyan-log-scan': require('./bunyan-log-scan'),
-  'machine-up': require('./machine-up'),
-  'http': require('./http'),
-  'icmp': require('./icmp'),
-  'cmd': require('./cmd'),
-  'disk-usage': require('./disk-usage')
+    'log-scan': require('./log-scan'),
+    'bunyan-log-scan': require('./bunyan-log-scan'),
+    'machine-up': require('./machine-up'),
+    'http': require('./http'),
+    'icmp': require('./icmp'),
+    'cmd': require('./cmd'),
+    'disk-usage': require('./disk-usage')
 };

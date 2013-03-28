@@ -55,10 +55,10 @@ var errors = require('./errors');
  * @param address {String} The UFDS sdcPerson field *value*.
  */
 function Contact(scope, medium, notificationType, address) {
-  this.scope = scope;
-  this.medium = medium;
-  this.notificationType = notificationType;
-  this.address = address;
+    this.scope = scope;
+    this.medium = medium;
+    this.notificationType = notificationType;
+    this.address = address;
 }
 
 
@@ -69,25 +69,25 @@ function Contact(scope, medium, notificationType, address) {
  * @throws {errors.InvalidParameterError} if the given URN is invalid.
  */
 Contact.parseUrn = function (app, urn) {
-  // For now just: '<medium>' or 'my:<medium>'. When/if UFDS user mgmt is
-  // added, then this will grow.
-  var scope = 'my';
-  var medium;
-  if (urn.slice(0, 3) === 'my:') {
-    medium = urn.slice(3);
-  } else {
-    medium = urn;
-  }
-  if (medium.indexOf(':') !== -1) {
-    throw new errors.InvalidParameterError(
-      format('invalid contact: ":" in medium "%s"', medium),
-      [ {field: 'urn', code: 'Invalid'} ]);
-  }
-  return {
-    scope: scope,
-    medium: medium,
-    notificationType: app.notificationTypeFromMedium(medium)
-  };
+    // For now just: '<medium>' or 'my:<medium>'. When/if UFDS user mgmt is
+    // added, then this will grow.
+    var scope = 'my';
+    var medium;
+    if (urn.slice(0, 3) === 'my:') {
+        medium = urn.slice(3);
+    } else {
+        medium = urn;
+    }
+    if (medium.indexOf(':') !== -1) {
+        throw new errors.InvalidParameterError(
+            format('invalid contact: ":" in medium "%s"', medium),
+            [ {field: 'urn', code: 'Invalid'} ]);
+    }
+    return {
+        scope: scope,
+        medium: medium,
+        notificationType: app.notificationTypeFromMedium(medium)
+    };
 };
 
 
@@ -105,12 +105,12 @@ Contact.parseUrn = function (app, urn) {
  * @param urn {String} The contact URN.
  */
 Contact.create = function (app, user, urn) {
-  var bits = Contact.parseUrn(app, urn);
-  // Need to lowercase the 'medium' because UFDS/LDAP lowercases all
-  // sdcPerson field names.
-  var address = user[bits.medium.toLowerCase()];
-  return new Contact(bits.scope, bits.medium, bits.notificationType,
-    address);
+    var bits = Contact.parseUrn(app, urn);
+    // Need to lowercase the 'medium' because UFDS/LDAP lowercases all
+    // sdcPerson field names.
+    var address = user[bits.medium.toLowerCase()];
+    return new Contact(bits.scope, bits.medium, bits.notificationType,
+        address);
 };
 
 

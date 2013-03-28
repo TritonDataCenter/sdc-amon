@@ -8,9 +8,9 @@
 var events = require('events');
 var fs = require('fs');
 var child_process = require('child_process'),
-  exec = child_process.exec;
+    exec = child_process.exec;
 var util = require('util'),
-  format = util.format;
+    format = util.format;
 
 var assert = require('assert-plus');
 
@@ -36,32 +36,34 @@ var SECONDS = 1000;
  *    - `log` {Bunyan Logger}
  */
 function CmdProbe(options) {
-  ProbeType.call(this, options);
-  CmdProbe.validateConfig(this.config);
+    ProbeType.call(this, options);
+    CmdProbe.validateConfig(this.config);
 
-  this.cmd = this.config.cmd;
-  this.ignoreExitStatus = this.config.ignoreExitStatus || false;
-  this.timeout = this.config.timeout || 5;
-  this.interval = this.config.interval || 90;
-  this.period = this.config.period || 180;
-  this.threshold = this.config.threshold || 1;
-  if (this.config.stdoutMatch) {
-    this.stdoutMatcher = this.matcherFromMatchConfig(this.config.stdoutMatch);
-  }
-  if (this.config.stderrMatch) {
-    this.stderrMatcher = this.matcherFromMatchConfig(this.config.stderrMatch);
-  }
+    this.cmd = this.config.cmd;
+    this.ignoreExitStatus = this.config.ignoreExitStatus || false;
+    this.timeout = this.config.timeout || 5;
+    this.interval = this.config.interval || 90;
+    this.period = this.config.period || 180;
+    this.threshold = this.config.threshold || 1;
+    if (this.config.stdoutMatch) {
+        this.stdoutMatcher = this.matcherFromMatchConfig(
+            this.config.stdoutMatch);
+    }
+    if (this.config.stderrMatch) {
+        this.stderrMatcher = this.matcherFromMatchConfig(
+            this.config.stderrMatch);
+    }
 
-  this._cmdOptions = {
-    encoding: this.config.encoding || 'utf8',
-    cwd: this.config.cwd || null,
-    env: this.config.env || null,
-    timeout: this.timeout * SECONDS,
-    // No messing around. When the command times out, we want it *stopped*.
-    killSignal: 'SIGKILL'
-  };
-  this._count = 0;
-  this._running = false;
+    this._cmdOptions = {
+        encoding: this.config.encoding || 'utf8',
+        cwd: this.config.cwd || null,
+        env: this.config.env || null,
+        timeout: this.timeout * SECONDS,
+        // No messing around. When the command times out, we want it *stopped*.
+        killSignal: 'SIGKILL'
+    };
+    this._count = 0;
+    this._running = false;
 }
 util.inherits(CmdProbe, ProbeType);
 
@@ -73,85 +75,90 @@ CmdProbe.prototype.type = 'cmd';
 
 
 CmdProbe.validateConfig = function validateConfig(config) {
-  assert.object(config, 'config');
-  if (config.stdoutMatch)
-    ProbeType.validateMatchConfig(config.stdoutMatch, 'config.stdoutMatch');
-  if (config.stderrMatch)
-    ProbeType.validateMatchConfig(config.stderrMatch, 'config.stderrMatch');
+    assert.object(config, 'config');
+    if (config.stdoutMatch)
+        ProbeType.validateMatchConfig(config.stdoutMatch, 'config.stdoutMatch');
+    if (config.stderrMatch)
+        ProbeType.validateMatchConfig(config.stderrMatch, 'config.stderrMatch');
 
-  //TODO: enforce some reasonable ranges on threshold, period, timeout, interval
+    //TODO: enforce reasonable ranges on threshold, period, timeout, interval
 };
 
 
 CmdProbe.prototype.runCmd = function runCmd() {
-  var self = this;
-  var log = this.log;
+    var self = this;
+    var log = this.log;
 
-  try {
-    exec(this.cmd, this._cmdOptions, function (cmdErr, stdout, stderr) {
-      var cmdSummary;
-      if (log.debug()) {
-        cmdSummary = {
-          cmd: self.cmd,
-          exitStatus: (cmdErr ? cmdErr.code : 0),
-          signal: (cmdErr ? cmdErr.signal : undefined),
-          stdout: clip(stdout, 1024),
-          stderr: clip(stderr, 1024)
-        };
-      }
-      var fail = false, reason;
-      if (!self.ignoreExitStatus && cmdErr) {
-        fail = true;
-        if (cmdErr.signal === 9 /* SIGKILL */) {
-          // We are *assuming* that this means it was a timeout.
-          // TODO: see if there is a more explicit indicator.
-          reason = 'timeout';
-        } else {
-          reason = 'exitStatus';
-        }
-      }
-      if (!fail && self.stdoutMatcher && self.stdoutMatcher.test(stdout)) {
-        fail = true;
-        reason = 'stdout';
-      }
-      if (!fail && self.stderrMatcher && self.stderrMatcher.test(stderr)) {
-        fail = true;
-        reason = 'stderr';
-      }
-      if (!fail) {
-        log.trace(cmdSummary, 'cmd pass');
-      } else {
-        log.debug(cmdSummary, 'cmd fail (%s)', reason);
-        if (++self._count >= self.threshold) {
-          log.info({count: self._count, threshold: self.threshold},
-            'cmd event');
-          var msg = null;
-          if (reason === 'timeout')
-            msg = format('Command timed out (took longer than %ds)',
-              self.timeout);
-          else if (reason === 'exitStatus')
-            msg = format('Command failed (exit status: %d).', cmdErr.code);
-          else if (reason === 'stdout')
-            msg = format('Command failed (stdout matched %s).',
-              self.stdoutMatcher);
-          else if (reason === 'stderr')
-            msg = format('Command failed (stderr matched %s).',
-              self.stderrMatcher);
-          self.emitEvent(msg, self._count, cmdSummary);
-        }
-      }
+    try {
+        exec(this.cmd, this._cmdOptions, function (cmdErr, stdout, stderr) {
+            var cmdSummary;
+            if (log.debug()) {
+                cmdSummary = {
+                    cmd: self.cmd,
+                    exitStatus: (cmdErr ? cmdErr.code : 0),
+                    signal: (cmdErr ? cmdErr.signal : undefined),
+                    stdout: clip(stdout, 1024),
+                    stderr: clip(stderr, 1024)
+                };
+            }
+            var fail = false, reason;
+            if (!self.ignoreExitStatus && cmdErr) {
+                fail = true;
+                if (cmdErr.signal === 9 /* SIGKILL */) {
+                    // We are *assuming* that this means it was a timeout.
+                    // TODO: see if there is a more explicit indicator.
+                    reason = 'timeout';
+                } else {
+                    reason = 'exitStatus';
+                }
+            }
+            if (!fail && self.stdoutMatcher &&
+                self.stdoutMatcher.test(stdout))
+            {
+                fail = true;
+                reason = 'stdout';
+            }
+            if (!fail && self.stderrMatcher &&
+                self.stderrMatcher.test(stderr))
+            {
+                fail = true;
+                reason = 'stderr';
+            }
+            if (!fail) {
+                log.trace(cmdSummary, 'cmd pass');
+            } else {
+                log.debug(cmdSummary, 'cmd fail (%s)', reason);
+                if (++self._count >= self.threshold) {
+                    log.info({count: self._count, threshold: self.threshold},
+                        'cmd event');
+                    var msg = null;
+                    if (reason === 'timeout')
+                        msg = format('Command timed out (took longer than %ds)',
+                            self.timeout);
+                    else if (reason === 'exitStatus')
+                        msg = format('Command failed (exit status: %d).',
+                            cmdErr.code);
+                    else if (reason === 'stdout')
+                        msg = format('Command failed (stdout matched %s).',
+                            self.stdoutMatcher);
+                    else if (reason === 'stderr')
+                        msg = format('Command failed (stderr matched %s).',
+                            self.stderrMatcher);
+                    self.emitEvent(msg, self._count, cmdSummary);
+                }
+            }
 
-      self.runnerTimeout = setTimeout(
-        function () { self.runCmd(); },
-        self.interval * SECONDS);
-    });
-  } catch (execErr) {
-    log.error({err: execErr, cmd: this.cmd, _cmdOptions: this._cmdOptions},
-      'error executing command');
-    self.runnerTimeout = setTimeout(
-      function () { self.runCmd(); },
-      self.interval * SECONDS);
-  }
+            self.runnerTimeout = setTimeout(
+                function () { self.runCmd(); },
+                self.interval * SECONDS);
+        });
+    } catch (execErr) {
+        log.error({err: execErr, cmd: this.cmd, _cmdOptions: this._cmdOptions},
+            'error executing command');
+        self.runnerTimeout = setTimeout(
+            function () { self.runCmd(); },
+            self.interval * SECONDS);
+    }
 };
 
 
@@ -159,32 +166,32 @@ CmdProbe.prototype.runCmd = function runCmd() {
  * TODO: get callers to watch for `err` response.
  */
 CmdProbe.prototype.start = function (callback) {
-  var self = this;
-  var log = this.log;
+    var self = this;
+    var log = this.log;
 
-  self.timer = setInterval(function () {
-    if (!self._running)
-      return;
-    log.trace('clear counter');
-    self._count = 0;
-  }, self.period * SECONDS);
+    self.timer = setInterval(function () {
+        if (!self._running)
+            return;
+        log.trace('clear counter');
+        self._count = 0;
+    }, self.period * SECONDS);
 
-  self._running = true;
+    self._running = true;
 
-  process.nextTick(function () { self.runCmd(); });
-  if (callback && (callback instanceof Function)) {
-    return callback();
-  }
+    process.nextTick(function () { self.runCmd(); });
+    if (callback && (callback instanceof Function)) {
+        return callback();
+    }
 };
 
 CmdProbe.prototype.stop = function (callback) {
-  this._running = false;
-  if (this.timer)
-    clearInterval(this.timer);
-  if (this.runnerTimeout)
-    clearTimeout(this.runnerTimeout);
-  if (callback && (callback instanceof Function))
-    return callback();
+    this._running = false;
+    if (this.timer)
+        clearInterval(this.timer);
+    if (this.runnerTimeout)
+        clearTimeout(this.runnerTimeout);
+    if (callback && (callback instanceof Function))
+        return callback();
 };
 
 
@@ -192,15 +199,15 @@ CmdProbe.prototype.stop = function (callback) {
 //---- internal support stuff
 
 function clip(s, length, ellipsis) {
-  if (ellipsis === undefined) ellipsis = true;
-  if (s.length > length) {
-    if (ellipsis) {
-      s = s.slice(0, length - 3) + '...';
-    } else {
-      s = s.slice(0, length);
+    if (ellipsis === undefined) ellipsis = true;
+    if (s.length > length) {
+        if (ellipsis) {
+            s = s.slice(0, length - 3) + '...';
+        } else {
+            s = s.slice(0, length);
+        }
     }
-  }
-  return s;
+    return s;
 }
 
 

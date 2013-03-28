@@ -8,11 +8,11 @@ var format = require('util').format;
 
 
 function objCopy(obj) {
-  var copy = {};
-  Object.keys(obj).forEach(function (k) {
-    copy[k] = obj[k];
-  });
-  return copy;
+    var copy = {};
+    Object.keys(obj).forEach(function (k) {
+        copy[k] = obj[k];
+    });
+    return copy;
 }
 
 
@@ -22,14 +22,14 @@ function objCopy(obj) {
  * for use with `Array.sort()`.
  */
 function compareProbes(a, b) {
-  var aId = a.uuid;
-  var bId = b.uuid;
-  if (aId < bId)
-    return -1;
-  else if (aId > bId)
-    return 1;
-  else
-    return 0;
+    var aId = a.uuid;
+    var bId = b.uuid;
+    if (aId < bId)
+        return -1;
+    else if (aId > bId)
+        return 1;
+    else
+        return 0;
 }
 
 
@@ -43,18 +43,18 @@ function compareProbes(a, b) {
  *    raised TypeError.
  */
 function boolFromString(value, default_, errName) {
-  if (value === undefined) {
-    return default_;
-  } else if (value === 'false') {
-    return false;
-  } else if (value === 'true') {
-    return true;
-  } else if (typeof (value) === 'boolean') {
-    return value;
-  } else {
-    throw new TypeError(
-      format('invalid value for "%s": %j', errName, value));
-  }
+    if (value === undefined) {
+        return default_;
+    } else if (value === 'false') {
+        return false;
+    } else if (value === 'true') {
+        return true;
+    } else if (typeof (value) === 'boolean') {
+        return value;
+    } else {
+        throw new TypeError(
+            format('invalid value for "%s": %j', errName, value));
+    }
 }
 
 
@@ -62,7 +62,7 @@ function boolFromString(value, default_, errName) {
 //---- exports
 
 module.exports = {
-  objCopy: objCopy,
-  compareProbes: compareProbes,
-  boolFromString: boolFromString
+    objCopy: objCopy,
+    compareProbes: compareProbes,
+    boolFromString: boolFromString
 };

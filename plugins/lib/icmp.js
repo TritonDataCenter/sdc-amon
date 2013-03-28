@@ -41,20 +41,20 @@ module.exports = IcmpProbe;
  *    - `log` {Bunyan Logger}
  */
 function IcmpProbe(options) {
-  ProbeType.call(this, options);
+    ProbeType.call(this, options);
 
-  IcmpProbe.validateConfig(this.config);
+    IcmpProbe.validateConfig(this.config);
 
-  this.host = this.config.host;
+    this.host = this.config.host;
 
-  this.interval = this.config.interval || 90; // how often to execute the probe
-  this.threshold = this.config.threshold || 1; // default: alert immediately
-  this.period = this.config.period || (5 * 60);
+    this.interval = this.config.interval || 90; // how often to exec the probe
+    this.threshold = this.config.threshold || 1; // default: alert immediately
+    this.period = this.config.period || (5 * 60);
 
-  this.npackets = this.config.npackets || 5; // Number of icmp packets to send
-  this.dataSize = this.config.dataSize || 56; // size of packet
+    this.npackets = this.config.npackets || 5; // num of icmp packets to send
+    this.dataSize = this.config.dataSize || 56; // size of packet
 
-  this._count = 0;
+    this._count = 0;
 }
 
 util.inherits(IcmpProbe, ProbeType);
@@ -62,114 +62,114 @@ util.inherits(IcmpProbe, ProbeType);
 IcmpProbe.prototype.type = 'icmp';
 
 IcmpProbe.validateConfig = function (config) {
-  if (! config)
-    throw new TypeError('config is required');
+    if (! config)
+        throw new TypeError('config is required');
 
-  if (! config.host) {
-    throw new TypeError('config.host is required');
-  }
+    if (! config.host) {
+        throw new TypeError('config.host is required');
+    }
 
-  if (config.npackets && typeof (config.npackets) !== 'number')
-    throw new TypeError('config.npackets must be a number (when provided)');
+    if (config.npackets && typeof (config.npackets) !== 'number')
+        throw new TypeError('config.npackets must be a number (when provided)');
 };
 
 IcmpProbe.prototype.doPing = function () {
-  var log = this.log;
-  var self = this;
-  var ping = spawn(
-    '/usr/sbin/ping', ['-s', this.host, this.dataSize, this.npackets]);
+    var log = this.log;
+    var self = this;
+    var ping = spawn(
+        '/usr/sbin/ping', ['-s', this.host, this.dataSize, this.npackets]);
 
-  var out = '';
-  ping.stdout.on('data', function (data) {
-    out += data;
-  });
+    var out = '';
+    ping.stdout.on('data', function (data) {
+        out += data;
+    });
 
-  var err = '';
-  ping.stderr.on('data', function (data) {
-    err += data;
-  });
+    var err = '';
+    ping.stderr.on('data', function (data) {
+        err += data;
+    });
 
-  ping.on('exit', function (code) {
-    log.trace({stdout: out, stderr: err}, 'ping output');
-    if (code !== 0) {
-      log.error('ping errored out (code=%d)', code);
-    }
+    ping.on('exit', function (code) {
+        log.trace({stdout: out, stderr: err}, 'ping output');
+        if (code !== 0) {
+            log.error('ping errored out (code=%d)', code);
+        }
 
-    var metrics = self._parseMetrics(out);
-    log.info({metrics: metrics}, 'ping results');
+        var metrics = self._parseMetrics(out);
+        log.info({metrics: metrics}, 'ping results');
 
-    if (metrics['packet loss'] > 0 || code !== 0) {
-      var msg = format('ICMP ping was not successful or exhibited packet loss');
-      if (++self._count >= self.threshold) {
-        self.emitEvent(msg, self._count, {
-          metrics: metrics,
-          stodut: out,
-          stderr: err
-        });
-      }
-    }
-  });
+        if (metrics['packet loss'] > 0 || code !== 0) {
+            var msg = 'ICMP ping was not successful or exhibited packet loss';
+            if (++self._count >= self.threshold) {
+                self.emitEvent(msg, self._count, {
+                    metrics: metrics,
+                    stodut: out,
+                    stderr: err
+                });
+            }
+        }
+    });
 
 };
 
 IcmpProbe.prototype.start = function (callback) {
-  this.periodTimer = setInterval(
-    this.resetCounter.bind(this),
-    this.period * SECONDS);
+    this.periodTimer = setInterval(
+        this.resetCounter.bind(this),
+        this.period * SECONDS);
 
-  this.intervalTimer = setInterval(
-    this.doPing.bind(this),
-    this.interval * SECONDS);
+    this.intervalTimer = setInterval(
+        this.doPing.bind(this),
+        this.interval * SECONDS);
 
-  if (callback && (typeof (callback) === 'function')) {
-    return callback();
-  }
+    if (callback && (typeof (callback) === 'function')) {
+        return callback();
+    }
 };
 
 IcmpProbe.prototype.resetCounter = function () {
-  this._count = 0;
+    this._count = 0;
 };
 
 IcmpProbe.prototype.stop = function (callback) {
-  clearInterval(this.intervalTimer);
-  clearInterval(this.periodTimer);
+    clearInterval(this.intervalTimer);
+    clearInterval(this.periodTimer);
 
-  if (callback && (typeof (callback) === 'function')) {
-    return callback();
-  }
+    if (callback && (typeof (callback) === 'function')) {
+        return callback();
+    }
 };
 
 IcmpProbe.prototype._parseMetrics = function (data) {
-  var metrics = {};
+    var metrics = {};
 
-  data.split('\n').forEach(function (line) {
-    var m = null;
+    data.split('\n').forEach(function (line) {
+        var m = null;
 
-    line = _trim(line);
-    /* JSSTYLED */
-    m = line.match(/(\d+) packets transmitted, (\d+) packets received, (\d+)% packet loss/, 'gi');
-    if (m) {
-      metrics['transmitted'] = parseInt(m[1], 10);
-      metrics['received'] = parseInt(m[2], 10);
-      metrics['packet loss'] = parseFloat(m[3], 10);
-      return;
-    }
+        line = _trim(line);
+        /* JSSTYLED */
+        m = line.match(/(\d+) packets transmitted, (\d+) packets received, (\d+)% packet loss/, 'gi');
+        if (m) {
+            metrics['transmitted'] = parseInt(m[1], 10);
+            metrics['received'] = parseInt(m[2], 10);
+            metrics['packet loss'] = parseFloat(m[3], 10);
+            return;
+        }
 
-    m = line.match(/round-trip.* (\d+\.\d+)\/(\d+\.\d+)\/(\d+\.\d+)/);
-    if (m) {
-      metrics['min'] = parseFloat(m[1]);
-      metrics['avg'] = parseFloat(m[2]);
-      metrics['max'] = parseFloat(m[3]);
-      return;
-    }
-  });
+        m = line.match(/round-trip.* (\d+\.\d+)\/(\d+\.\d+)\/(\d+\.\d+)/);
+        if (m) {
+            metrics['min'] = parseFloat(m[1]);
+            metrics['avg'] = parseFloat(m[2]);
+            metrics['max'] = parseFloat(m[3]);
+            return;
+        }
+    });
 
-  return metrics;
+    return metrics;
 };
 
 function _trim(s) {
-  s = s.replace(/(^\s*)|(\s*$)/gi, '');
-  s = s.replace(/[ ]{2,}/gi, ' ');
-  s = s.replace(/\n /, '\n');
-  return s;
+    s = s.replace(/(^\s*)|(\s*$)/gi, '');
+    s = s.replace(/[ ]{2,}/gi, ' ');
+    s = s.replace(/\n /, '\n');
+    return s;
 }

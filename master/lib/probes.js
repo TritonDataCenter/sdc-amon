@@ -6,7 +6,7 @@
 
 var debug = console.warn;
 var events = require('events');
-var format = require('util').format;
+var _ = require('util').format;
 
 var assert = require('assert-plus');
 var ldap = require('ldapjs');
@@ -16,8 +16,8 @@ var genUuid = require('node-uuid');
 
 var ufdsmodel = require('./ufdsmodel');
 var utils = require('amon-common').utils,
-  objCopy = utils.objCopy,
-  boolFromString = utils.boolFromString;
+    objCopy = utils.objCopy,
+    boolFromString = utils.boolFromString;
 var plugins = require('amon-plugins');
 var Contact = require('./contact');
 var ProbeGroup = require('./probegroups').ProbeGroup;
@@ -49,63 +49,63 @@ var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
  * @throws {Error} if the given data is invalid.
  */
 function Probe(app, raw) {
-  assert.object(app, 'app');
-  assert.object(raw, 'raw');
-  assert.string(raw.uuid, 'raw.uuid');
-  assert.string(raw.objectclass, 'raw.objectclass');
-  if (raw.objectclass !== Probe.objectclass) {
-    assert.equal(raw.objectclass, Probe.objectclass,
-      format('invalid probe data: objectclass "%s" !== "%s"',
-      raw.objectclass, Probe.objectclass));
-  }
-
-  this.user = raw.user;
-  this.uuid = raw.uuid;
-  this.dn = Probe.dn(this.user, this.uuid);
-  if (raw.dn) {
-    assert.equal(raw.dn, this.dn,
-      format('invalid probe data: "dn" (%s) does not calculated "dn" (%s)',
-      raw.dn, this.dn));
-  }
-
-  var rawCopy = objCopy(raw);
-  delete rawCopy.dn;
-  delete rawCopy.controls;
-  this.raw = Probe.validate(app, rawCopy);
-
-  // TODO: consider dropping getters (we don't update live objs)
-  var self = this;
-  this.__defineGetter__('name', function () {
-    return self.raw.name;
-  });
-  this.__defineGetter__('type', function () {
-    return self.raw.type;
-  });
-  this.__defineGetter__('agent', function () {
-    return self.raw.agent;
-  });
-  this.__defineGetter__('machine', function () {
-    return self.raw.machine;
-  });
-  this.__defineGetter__('contacts', function () {
-    return self.raw.contact;
-  });
-  this.__defineGetter__('runInVmHost', function () {
-    return self.raw.runInVmHost;
-  });
-  this.__defineGetter__('config', function () {
-    if (!self.raw.config) {
-      return undefined;
+    assert.object(app, 'app');
+    assert.object(raw, 'raw');
+    assert.string(raw.uuid, 'raw.uuid');
+    assert.string(raw.objectclass, 'raw.objectclass');
+    if (raw.objectclass !== Probe.objectclass) {
+        assert.equal(raw.objectclass, Probe.objectclass,
+            _('invalid probe data: objectclass "%s" !== "%s"',
+            raw.objectclass, Probe.objectclass));
     }
-    if (self._config === undefined) {
-      self._config = JSON.parse(self.raw.config);
+
+    this.user = raw.user;
+    this.uuid = raw.uuid;
+    this.dn = Probe.dn(this.user, this.uuid);
+    if (raw.dn) {
+        assert.equal(raw.dn, this.dn,
+            _('invalid probe data: "dn" (%s) does not calculated "dn" (%s)',
+            raw.dn, this.dn));
     }
-    return self._config;
-  });
-  this.__defineGetter__('group', function () {
-    return self.raw.group;
-  });
-  this.disabled = boolFromString(this.raw.disabled, false, 'raw.disabled');
+
+    var rawCopy = objCopy(raw);
+    delete rawCopy.dn;
+    delete rawCopy.controls;
+    this.raw = Probe.validate(app, rawCopy);
+
+    // TODO: consider dropping getters (we don't update live objs)
+    var self = this;
+    this.__defineGetter__('name', function () {
+        return self.raw.name;
+    });
+    this.__defineGetter__('type', function () {
+        return self.raw.type;
+    });
+    this.__defineGetter__('agent', function () {
+        return self.raw.agent;
+    });
+    this.__defineGetter__('machine', function () {
+        return self.raw.machine;
+    });
+    this.__defineGetter__('contacts', function () {
+        return self.raw.contact;
+    });
+    this.__defineGetter__('runInVmHost', function () {
+        return self.raw.runInVmHost;
+    });
+    this.__defineGetter__('config', function () {
+        if (!self.raw.config) {
+            return undefined;
+        }
+        if (self._config === undefined) {
+            self._config = JSON.parse(self.raw.config);
+        }
+        return self._config;
+    });
+    this.__defineGetter__('group', function () {
+        return self.raw.group;
+    });
+    this.disabled = boolFromString(this.raw.disabled, false, 'raw.disabled');
 }
 
 
@@ -117,97 +117,99 @@ function Probe(app, raw) {
  * @param callback {Function} `function (err, probe)`.
  */
 Probe.create = function createProbe(app, data_, callback) {
-  assert.object(app, 'app');
-  assert.object(data_, 'data');
-  assert.func(callback, 'callback');
+    assert.object(app, 'app');
+    assert.object(data_, 'data');
+    assert.func(callback, 'callback');
 
-  var data = objCopy(data_);
+    var data = objCopy(data_);
 
-  // Validate group.
-  function getGroup(groupUuid, cb) {
-    if (!groupUuid)
-      return cb();
-    ProbeGroup.get(app, data.user, groupUuid, cb);
-  }
-  getGroup(data.group, function (gErr, group) {
-    if (gErr)
-      return callback(gErr);
-
-    // Put together the raw data.
-    var newUuid = genUuid();
-    var raw = {
-      user: data.user,
-      uuid: newUuid,
-      type: data.type,
-      agent: data.agent,
-      disabled: data.disabled || false,
-      objectclass: Probe.objectclass
-    };
-    if (data.name) raw.name = data.name;
-    if (data.contacts) raw.contact = data.contacts;  // singular intentional
-    if (data.config) raw.config = JSON.stringify(data.config);
-    if (data.machine) raw.machine = data.machine;
-    if (data.group) raw.group = data.group;
-    delete data.user;
-    delete data.type;
-    delete data.agent;
-    delete data.disabled;
-    delete data.name;
-    delete data.contacts;
-    delete data.config;
-    delete data.machine;
-    delete data.group;
-    delete data.uuid;  // spurious uuid added in `ufdsmodel.requestCreate`.
-
-    var skipauthz = data.skipauthz;
-    delete data.skipauthz;
-
-    // Error on extra spurious fields.
-    var extraFields = Object.keys(data);
-    if (extraFields.length > 0) {
-      return callback(new errors.InvalidParameterError(
-        format('invalid extra parameters: "%s"', extraFields.join('", "')),
-        extraFields.map(function (f) { return {field:f, code:'Invalid'}; })));
+    // Validate group.
+    function getGroup(groupUuid, cb) {
+        if (!groupUuid)
+            return cb();
+        ProbeGroup.get(app, data.user, groupUuid, cb);
     }
+    getGroup(data.group, function (gErr, group) {
+        if (gErr)
+            return callback(gErr);
 
-    var probe = null;
-    try {
-      probe = new Probe(app, raw);
-    } catch (cErr) {
-      return callback(cErr);
-    }
+        // Put together the raw data.
+        var newUuid = genUuid();
+        var raw = {
+            user: data.user,
+            uuid: newUuid,
+            type: data.type,
+            agent: data.agent,
+            disabled: data.disabled || false,
+            objectclass: Probe.objectclass
+        };
+        if (data.name) raw.name = data.name;
+        if (data.contacts) raw.contact = data.contacts;  // singular intentional
+        if (data.config) raw.config = JSON.stringify(data.config);
+        if (data.machine) raw.machine = data.machine;
+        if (data.group) raw.group = data.group;
+        delete data.user;
+        delete data.type;
+        delete data.agent;
+        delete data.disabled;
+        delete data.name;
+        delete data.contacts;
+        delete data.config;
+        delete data.machine;
+        delete data.group;
+        delete data.uuid;  // spurious uuid added in `ufdsmodel.requestCreate`.
 
-    // 'skipauthz' in the probe data is a request to skip authorization
-    // for PUTting this probe. It exists to facilitate the setting of
-    // probes by core SDC zones during initial headnode setup, when all
-    // facilities (specifically VMAPI) for authZ might not be up yet.
-    // Note: This request is **only honoured for the admin user** (the
-    // only user for which probes should be added during headnode setup).
-    probe._skipauthz = (skipauthz
-      ? raw.user === app.config.adminUuid : false);
+        var skipauthz = data.skipauthz;
+        delete data.skipauthz;
 
-    callback(null, probe);
-  });
+        // Error on extra spurious fields.
+        var extraFields = Object.keys(data);
+        if (extraFields.length > 0) {
+            return callback(new errors.InvalidParameterError(
+                _('invalid extra parameters: "%s"', extraFields.join('", "')),
+                extraFields.map(function (f) {
+                    return {field:f, code:'Invalid'};
+                })));
+        }
+
+        var probe = null;
+        try {
+            probe = new Probe(app, raw);
+        } catch (cErr) {
+            return callback(cErr);
+        }
+
+        // 'skipauthz' in the probe data is a request to skip authorization
+        // for PUTting this probe. It exists to facilitate the setting of
+        // probes by core SDC zones during initial headnode setup, when all
+        // facilities (specifically VMAPI) for authZ might not be up yet.
+        // Note: This request is **only honoured for the admin user** (the
+        // only user for which probes should be added during headnode setup).
+        probe._skipauthz = (skipauthz
+            ? raw.user === app.config.adminUuid : false);
+
+        callback(null, probe);
+    });
 };
 
 
 Probe.objectclass = 'amonprobe';
 
 Probe.dn = function (user, uuid) {
-  return format('amonprobe=%s, uuid=%s, ou=users, o=smartdc', uuid, user);
+    return _('amonprobe=%s, uuid=%s, ou=users, o=smartdc', uuid, user);
 };
 
 Probe.dnFromRequest = function (req) {
-  var uuid = req.params.uuid;
-  if (! UUID_RE.test(uuid)) {
-    throw new restify.InvalidArgumentError(
-      format('invalid probe UUID: "%s"', uuid));
-  }
-  return Probe.dn(req._user.uuid, uuid);
+    var uuid = req.params.uuid;
+    if (! UUID_RE.test(uuid)) {
+        throw new restify.InvalidArgumentError(
+            _('invalid probe UUID: "%s"', uuid));
+    }
+    return Probe.dn(req._user.uuid, uuid);
 };
 
 Probe.parentDnFromRequest = function (req) {
-  return req._user.dn;
+    return req._user.dn;
 };
 
 
@@ -220,25 +222,25 @@ Probe.parentDnFromRequest = function (req) {
  *    /pub/... APIs.
  */
 Probe.prototype.serialize = function serialize(priv) {
-  var data = {
-    uuid: this.uuid,
-    user: this.user,
-    type: this.type,
-    agent: this.agent,
-    group: this.group || null,
-    disabled: this.disabled || false
-  };
-  if (this.name) data.name = this.name;
-  if (this.contacts) {
-    data.contacts = (typeof (this.contacts) === 'string' ? [this.contacts]
-      : this.contacts);
-  }
-  if (this.config) data.config = this.config;
-  if (this.machine) data.machine = this.machine;
-  if (priv) {
-    if (this.runInVmHost) data.runInVmHost = this.runInVmHost;
-  }
-  return data;
+    var data = {
+        uuid: this.uuid,
+        user: this.user,
+        type: this.type,
+        agent: this.agent,
+        group: this.group || null,
+        disabled: this.disabled || false
+    };
+    if (this.name) data.name = this.name;
+    if (this.contacts) {
+        data.contacts = (typeof (this.contacts) === 'string' ? [this.contacts]
+            : this.contacts);
+    }
+    if (this.config) data.config = this.config;
+    if (this.machine) data.machine = this.machine;
+    if (priv) {
+        if (this.runInVmHost) data.runInVmHost = this.runInVmHost;
+    }
+    return data;
 };
 
 
@@ -263,122 +265,126 @@ Probe.prototype.serialize = function serialize(priv) {
  *    InternalError: some other error in authorizing
  */
 Probe.prototype.authorizeWrite = function (app, callback) {
-  var self = this;
-  var log = app.log;
-  var machineUuid = this.agent;
+    var self = this;
+    var log = app.log;
+    var machineUuid = this.agent;
 
-  // Early out if skipping authZ. See discussion on 'skipauthz' above.
-  if (this._skipauthz) {
-    log.info('probe PUT authorized: skipauthz is true');
-    return callback();
-  }
-
-  function isRunInVmHostOrErr(next) {
-    if (plugins[self.type].runInVmHost) {
-      next();
-    } else {
-      next('not runInVmHost: ' + self.type);
+    // Early out if skipping authZ. See discussion on 'skipauthz' above.
+    if (this._skipauthz) {
+        log.info('probe PUT authorized: skipauthz is true');
+        return callback();
     }
-  }
 
-  function isExistingVmOrErr(next) {
-    // Empty 'user' uuid string is the sdc-clients hack to not scope to a user.
-    app.vmapiClient.getVm({uuid: self.machine}, function (err, vm) {
-      if (err && err.code !== 'ResourceNotFound') {
-        log.error(err, 'unexpected error getting vm');
-      }
-      if (vm) {
-        next();
-      } else {
-        next('no such machine: ' + self.machine);
-      }
-    });
-  }
-
-  function userIsOperatorOrErr(next) {
-    app.isOperator(self.user, function (opErr, isOperator) {
-      if (opErr) {
-        log.error({err: opErr, probe: self.serialize()},
-          'unexpected error authorizing probe put');
-        next('err determining if operator');
-      } else if (isOperator) {
-        next();
-      } else {
-        next('not operator: ' + self.user);
-      }
-    });
-  }
-
-  // 1. Is this an existing physical machine?
-  app.serverExists(machineUuid, function (physErr, serverExists) {
-    if (physErr) {
-      log.error({err: physErr, probe: self.serialize()},
-        'unexpected error authorizing probe put');
-      callback(new restify.InternalError(
-        'Internal error authorizing probe put.'));
-      return;
-    }
-    if (serverExists) {
-      // 1. Must be operator to add probe for physical machine.
-      app.isOperator(self.user, function (opErr, isOperator) {
-        if (opErr) {
-          log.error({err: opErr, probe: self.serialize()},
-            'unexpected error authorizing probe put');
-          return callback(new restify.InternalError(
-            'Internal error authorizing probe put.'));
-        }
-        if (!isOperator) {
-          callback(new restify.InvalidArgumentError(format(
-            'Must be an operator to put a probe on a physical machine (%s): '
-            + 'user \'%s\' is not an operator.', machineUuid, self.user)));
+    function isRunInVmHostOrErr(next) {
+        if (plugins[self.type].runInVmHost) {
+            next();
         } else {
-          log.info('probe PUT authorized: probe for physical machine '
-            + 'and user is an operator');
-          callback(); // 1. PUT authorized
+            next('not runInVmHost: ' + self.type);
         }
-      });
-    } else {
-      // 2. A virtual machine owned by this user.
-      app.vmapiClient.getVm({uuid: machineUuid, owner_uuid: self.user},
-                           function (vmErr, vm) {
-        if (vmErr) {
-          if (vmErr.statusCode === 404) {
-            // 3. Operator setting 'runInVmHost' probe on virtual machine.
-            var conditions3 = [
-              isRunInVmHostOrErr,
-              isExistingVmOrErr,
-              userIsOperatorOrErr
-            ];
-            async.series(conditions3, function (not3) {
-              if (not3) {
-                // Not '3.', return error for '2.'
-                callback(new restify.InvalidArgumentError(format(
-                  'Invalid agent: machine \'%s\' does not exist or is not '
-                  + 'owned by user \'%s\'.', machineUuid, self.user)));
-              } else {
-                log.info('probe PUT authorized: probe for existing vm, '
-                  + 'runInVmHost, and user is an operator');
-                callback(); // 3. PUT authorized
-              }
-            });
-          } else {
-            log.error({err: vmErr, probe: self.serialize()},
-              'unexpected error authorizing probe put');
+    }
+
+    function isExistingVmOrErr(next) {
+        // Empty 'user' uuid string is the sdc-clients hack to not
+        // scope to a user.
+        app.vmapiClient.getVm({uuid: self.machine}, function (err, vm) {
+            if (err && err.code !== 'ResourceNotFound') {
+                log.error(err, 'unexpected error getting vm');
+            }
+            if (vm) {
+                next();
+            } else {
+                next('no such machine: ' + self.machine);
+            }
+        });
+    }
+
+    function userIsOperatorOrErr(next) {
+        app.isOperator(self.user, function (opErr, isOperator) {
+            if (opErr) {
+                log.error({err: opErr, probe: self.serialize()},
+                    'unexpected error authorizing probe put');
+                next('err determining if operator');
+            } else if (isOperator) {
+                next();
+            } else {
+                next('not operator: ' + self.user);
+            }
+        });
+    }
+
+    // 1. Is this an existing physical machine?
+    app.serverExists(machineUuid, function (physErr, serverExists) {
+        if (physErr) {
+            log.error({err: physErr, probe: self.serialize()},
+                'unexpected error authorizing probe put');
             callback(new restify.InternalError(
-              'Internal error authorizing probe put.'));
-          }
-        } else {
-          log.info('probe PUT authorized: probe for existing vm, '
-            + 'vm is owned by user');
-          callback(); // 2. PUT authorized
+                'Internal error authorizing probe put.'));
+            return;
         }
-      });
-    }
-  });
+        if (serverExists) {
+            // 1. Must be operator to add probe for physical machine.
+            app.isOperator(self.user, function (opErr, isOperator) {
+                if (opErr) {
+                    log.error({err: opErr, probe: self.serialize()},
+                        'unexpected error authorizing probe put');
+                    return callback(new restify.InternalError(
+                        'Internal error authorizing probe put.'));
+                }
+                if (!isOperator) {
+                    callback(new restify.InvalidArgumentError(_(
+                        'Must be an operator to put a probe on a physical '
+                        + 'machine (%s): user "%s"is not an operator.',
+                        machineUuid, self.user)));
+                } else {
+                    log.info('probe PUT authorized: probe for physical '
+                        + 'machine and user is an operator');
+                    callback(); // 1. PUT authorized
+                }
+            });
+        } else {
+            // 2. A virtual machine owned by this user.
+            app.vmapiClient.getVm({uuid: machineUuid, owner_uuid: self.user},
+                                                     function (vmErr, vm) {
+                if (vmErr) {
+                    if (vmErr.statusCode === 404) {
+                        // 3. Operator setting 'runInVmHost' probe on vm.
+                        var conditions3 = [
+                            isRunInVmHostOrErr,
+                            isExistingVmOrErr,
+                            userIsOperatorOrErr
+                        ];
+                        async.series(conditions3, function (not3) {
+                            if (not3) {
+                                // Not '3.', return error for '2.'
+                                callback(new restify.InvalidArgumentError(_(
+                                    'Invalid agent: machine "%s" does not '
+                                    + 'exist or is not owned by user "%s".',
+                                    machineUuid, self.user)));
+                            } else {
+                                log.info('probe PUT authorized: probe for '
+                                    + 'existing vm, runInVmHost, and user '
+                                    + 'is an operator');
+                                callback(); // 3. PUT authorized
+                            }
+                        });
+                    } else {
+                        log.error({err: vmErr, probe: self.serialize()},
+                            'unexpected error authorizing probe put');
+                        callback(new restify.InternalError(
+                            'Internal error authorizing probe put.'));
+                    }
+                } else {
+                    log.info('probe PUT authorized: probe for existing vm, '
+                        + 'vm is owned by user');
+                    callback(); // 2. PUT authorized
+                }
+            });
+        }
+    });
 };
 
 Probe.prototype.authorizeDelete = function (app, callback) {
-  throw new Error('XXX authorizeDelete NYI');
+    throw new Error('XXX authorizeDelete NYI');
 };
 
 
@@ -392,12 +398,12 @@ Probe.prototype.authorizeDelete = function (app, callback) {
  * @param callback {Function} `function (err, probe)`
  */
 Probe.get = function get(app, user, uuid, callback) {
-  if (! UUID_RE.test(user)) {
-    throw new restify.InvalidArgumentError(
-      format('invalid user UUID: "%s"', user));
-  }
-  var dn = Probe.dn(user, uuid);
-  ufdsmodel.modelGet(app, Probe, dn, app.log, callback);
+    if (! UUID_RE.test(user)) {
+        throw new restify.InvalidArgumentError(
+            _('invalid user UUID: "%s"', user));
+    }
+    var dn = Probe.dn(user, uuid);
+    ufdsmodel.modelGet(app, Probe, dn, app.log, callback);
 };
 
 
@@ -411,174 +417,174 @@ Probe.get = function get(app, user, uuid, callback) {
  * @throws {restify Error} if the raw data is invalid.
  */
 Probe.validate = function validateProbe(app, raw) {
-  var errs = []; // validation errors
+    var errs = []; // validation errors
 
-  //---- internal ufds fields
-  // objectclass
-  if (!raw.objectclass) {
-    throw new errors.InternalError('no "objectclass" field on raw image data');
-  } else if (raw.objectclass !== Probe.objectclass) {
-    throw new errors.InternalError(
-        'invalid "objectclass" field on raw image data: "%s"',
-        raw.objectclass);
-  }
-
-  //---- external spec fields
-  // type
-  var ProbeType;
-  if (!raw.type) {
-    errs.push({field: 'type', code: 'MissingParameter'});
-  } else {
-    ProbeType = plugins[raw.type];
-    if (!ProbeType) {
-      errs.push({
-        field: 'type',
-        code: 'Invalid',
-        message: format('valid probe types are: "%s"',
-                        Object.keys(plugins).join('", "'))
-      });
+    //---- internal ufds fields
+    // objectclass
+    if (!raw.objectclass) {
+        throw new errors.InternalError(
+            'no "objectclass" field on raw image data');
+    } else if (raw.objectclass !== Probe.objectclass) {
+        throw new errors.InternalError(
+                'invalid "objectclass" field on raw image data: "%s"',
+                raw.objectclass);
     }
-  }
 
-  // agent & machine
-  // 'agent' can be implied from 'machine', and vice versa for 'runLocally'
-  // probe types.
-  if (ProbeType && ProbeType.runLocally) {
-    if (!raw.agent && !raw.machine) {
-      errs.push({
-        field: 'agent',
-        code: 'MissingParameter',
-        message: format(
-          'one of "agent" or "machine" fields is required for a "%s" probe',
-          raw.type)
-      });
+    //---- external spec fields
+    // type
+    var ProbeType;
+    if (!raw.type) {
+        errs.push({field: 'type', code: 'MissingParameter'});
+    } else {
+        ProbeType = plugins[raw.type];
+        if (!ProbeType) {
+            errs.push({
+                field: 'type',
+                code: 'Invalid',
+                message: _('valid probe types are: "%s"',
+                    Object.keys(plugins).join('", "'))
+            });
+        }
+    }
+
+    // agent & machine
+    // 'agent' can be implied from 'machine', and vice versa for 'runLocally'
+    // probe types.
+    if (ProbeType && ProbeType.runLocally) {
+        if (!raw.agent && !raw.machine) {
+            errs.push({
+                field: 'agent',
+                code: 'MissingParameter',
+                message: _('one of "agent" or "machine" fields is '
+                    + 'required for a "%s" probe', raw.type)
+            });
+        } else if (!raw.agent) {
+            raw.agent = raw.machine;
+        } else if (!raw.machine) {
+            raw.machine = raw.agent;
+        } else if (raw.agent !== raw.machine) {
+            errs.push({
+                field: 'agent',
+                code: 'Invalid',
+                message: _(
+                    'invalid "agent" and "machine": they must be the same for '
+                    + 'a "%s" probe (agent=%s, machine=%s)',
+                    raw.type, raw.agent, raw.machine)
+            });
+        }
     } else if (!raw.agent) {
-      raw.agent = raw.machine;
-    } else if (!raw.machine) {
-      raw.machine = raw.agent;
-    } else if (raw.agent !== raw.machine) {
-      errs.push({
-        field: 'agent',
-        code: 'Invalid',
-        message: format(
-          'invalid "agent" and "machine": they must be the same for '
-          + 'a "%s" probe (agent=%s, machine=%s)',
-          raw.type, raw.agent, raw.machine)
-      });
-    }
-  } else if (!raw.agent) {
-    errs.push({
-      field: 'agent',
-      code: 'MissingParameter'
-    });
-  }
-  if (raw.agent && !UUID_RE.test(raw.agent)) {
-    errs.push({field: 'agent', code: 'Invalid', message: 'not a UUID'});
-  }
-  if (raw.machine && !UUID_RE.test(raw.machine)) {
-    errs.push({field: 'machine', code: 'Invalid', message: 'not a UUID'});
-  }
-
-  // uuid
-  if (!raw.uuid) {
-    errs.push({field: 'uuid', code: 'MissingParameter'});
-  } else if (!UUID_RE.test(raw.uuid)) {
-    errs.push({field: 'uuid', code: 'Invalid', message: 'not a UUID'});
-  }
-
-  // user
-  if (!raw.user) {
-    errs.push({field: 'user', code: 'MissingParameter'});
-  } else if (!UUID_RE.test(raw.user)) {
-    errs.push({field: 'user', code: 'Invalid', message: 'not a UUID'});
-  }
-
-  // group
-  if (raw.group && !UUID_RE.test(raw.group)) {
-    errs.push({field: 'group', code: 'Invalid', message: 'not a UUID'});
-  }
-
-  // name
-  if (raw.name && raw.name.length > 512) {
-    errs.push({
-      field: 'name',
-      code: 'Invalid',
-      message: 'image name is too long (max 512 characters)'
-    });
-  }
-
-  // contact (really an array of contact URNs)
-  if (raw.contact) {
-    if (!(raw.contact instanceof Array)) {
-      raw.contact = [raw.contact];
-    }
-    raw.contact.forEach(function (c) {
-      try {
-        Contact.parseUrn(app, c);
-      } catch (cErr) {
-        if (cErr.name !== 'InvalidParameterError')
-          throw cErr;
         errs.push({
-          field: 'contact',
-          code: 'Invalid',
-          message: cErr.message
+            field: 'agent',
+            code: 'MissingParameter'
         });
-      }
-    });
-  }
-
-  // Validate the probe-type-specific config.
-  var config = null;
-  if (raw.config) {
-    try {
-      config = JSON.parse(raw.config);
-    } catch (parseErr) {
-      errs.push({
-        field: 'config',
-        code: 'Invalid',
-        message: format('probe config, "%s", is not valid JSON: %s',
-                        raw.config, parseErr)
-      });
     }
-  }
-  if (ProbeType) {
-    try {
-      // Currently `validateConfig` will raise `TypeError`s
-      ProbeType.validateConfig(config);
-    } catch (valErr) {
-      errs.push({
-        field: 'config',
-        code: 'Invalid',
-        message: format('probe config, "%s", is invalid: %s',
-                        raw.config || '(none)', valErr)
-      });
+    if (raw.agent && !UUID_RE.test(raw.agent)) {
+        errs.push({field: 'agent', code: 'Invalid', message: 'not a UUID'});
     }
-  }
-
-  // disabled
-  if (raw.disabled === undefined) {
-    errs.push({field: 'disabled', code: 'MissingParameter'});
-  } else {
-    var disabled = boolFromString(raw.disabled);
-    if (typeof (disabled) !== 'boolean') {
-      errs.push({
-        field: 'disabled',
-        code: 'Invalid'
-      });
+    if (raw.machine && !UUID_RE.test(raw.machine)) {
+        errs.push({field: 'machine', code: 'Invalid', message: 'not a UUID'});
     }
-  }
 
-  // runInVmHost
-  if (ProbeType && ProbeType.runInVmHost) {
-    raw.runInVmHost = true;
-  }
+    // uuid
+    if (!raw.uuid) {
+        errs.push({field: 'uuid', code: 'MissingParameter'});
+    } else if (!UUID_RE.test(raw.uuid)) {
+        errs.push({field: 'uuid', code: 'Invalid', message: 'not a UUID'});
+    }
 
-  if (errs.length) {
-    var fields = errs.map(function (e) { return e.field; });
-    throw new errors.ValidationFailedError(
-      'invalid probe data: ' + fields.join(', '), errs);
-  }
-  return raw;
+    // user
+    if (!raw.user) {
+        errs.push({field: 'user', code: 'MissingParameter'});
+    } else if (!UUID_RE.test(raw.user)) {
+        errs.push({field: 'user', code: 'Invalid', message: 'not a UUID'});
+    }
+
+    // group
+    if (raw.group && !UUID_RE.test(raw.group)) {
+        errs.push({field: 'group', code: 'Invalid', message: 'not a UUID'});
+    }
+
+    // name
+    if (raw.name && raw.name.length > 512) {
+        errs.push({
+            field: 'name',
+            code: 'Invalid',
+            message: 'image name is too long (max 512 characters)'
+        });
+    }
+
+    // contact (really an array of contact URNs)
+    if (raw.contact) {
+        if (!(raw.contact instanceof Array)) {
+            raw.contact = [raw.contact];
+        }
+        raw.contact.forEach(function (c) {
+            try {
+                Contact.parseUrn(app, c);
+            } catch (cErr) {
+                if (cErr.name !== 'InvalidParameterError')
+                    throw cErr;
+                errs.push({
+                    field: 'contact',
+                    code: 'Invalid',
+                    message: cErr.message
+                });
+            }
+        });
+    }
+
+    // Validate the probe-type-specific config.
+    var config = null;
+    if (raw.config) {
+        try {
+            config = JSON.parse(raw.config);
+        } catch (parseErr) {
+            errs.push({
+                field: 'config',
+                code: 'Invalid',
+                message: _('probe config, "%s", is not valid JSON: %s',
+                    raw.config, parseErr)
+            });
+        }
+    }
+    if (ProbeType) {
+        try {
+            // Currently `validateConfig` will raise `TypeError`s
+            ProbeType.validateConfig(config);
+        } catch (valErr) {
+            errs.push({
+                field: 'config',
+                code: 'Invalid',
+                message: _('probe config, "%s", is invalid: %s',
+                    raw.config || '(none)', valErr)
+            });
+        }
+    }
+
+    // disabled
+    if (raw.disabled === undefined) {
+        errs.push({field: 'disabled', code: 'MissingParameter'});
+    } else {
+        var disabled = boolFromString(raw.disabled);
+        if (typeof (disabled) !== 'boolean') {
+            errs.push({
+                field: 'disabled',
+                code: 'Invalid'
+            });
+        }
+    }
+
+    // runInVmHost
+    if (ProbeType && ProbeType.runInVmHost) {
+        raw.runInVmHost = true;
+    }
+
+    if (errs.length) {
+        var fields = errs.map(function (e) { return e.field; });
+        throw new errors.ValidationFailedError(
+            'invalid probe data: ' + fields.join(', '), errs);
+    }
+    return raw;
 };
 
 
@@ -586,27 +592,27 @@ Probe.validate = function validateProbe(app, raw) {
 //---- API controllers
 
 function apiListProbes(req, res, next) {
-  return ufdsmodel.requestList(req, res, next, Probe);
+    return ufdsmodel.requestList(req, res, next, Probe);
 }
 
 function apiPostProbe(req, res, next) {
-  return ufdsmodel.requestPost(req, res, next, Probe);
+    return ufdsmodel.requestPost(req, res, next, Probe);
 }
 
 function apiCreateProbe(req, res, next) {
-  return ufdsmodel.requestCreate(req, res, next, Probe);
+    return ufdsmodel.requestCreate(req, res, next, Probe);
 }
 
 function apiPutProbe(req, res, next) {
-  return ufdsmodel.requestPut(req, res, next, Probe);
+    return ufdsmodel.requestPut(req, res, next, Probe);
 }
 
 function apiGetProbe(req, res, next) {
-  return ufdsmodel.requestGet(req, res, next, Probe);
+    return ufdsmodel.requestGet(req, res, next, Probe);
 }
 
 function apiDeleteProbe(req, res, next) {
-  return ufdsmodel.requestDelete(req, res, next, Probe);
+    return ufdsmodel.requestDelete(req, res, next, Probe);
 }
 
 
@@ -616,21 +622,21 @@ function apiDeleteProbe(req, res, next) {
  * @param server {restify.Server}
  */
 function mountApi(server) {
-  server.get(
-    {path: '/pub/:user/probes', name: 'ListProbes'},
-    apiListProbes);
-  server.post(
-    {path: '/pub/:user/probes', name: 'CreateProbe'},
-    apiCreateProbe);
-  server.put(
-    {path: '/pub/:user/probes/:uuid', name: 'PutProbe'},
-    apiPutProbe);
-  server.get(
-    {path: '/pub/:user/probes/:uuid', name: 'GetProbe'},
-    apiGetProbe);
-  server.del(
-    {path: '/pub/:user/probes/:uuid', name: 'DeleteProbe'},
-    apiDeleteProbe);
+    server.get(
+        {path: '/pub/:user/probes', name: 'ListProbes'},
+        apiListProbes);
+    server.post(
+        {path: '/pub/:user/probes', name: 'CreateProbe'},
+        apiCreateProbe);
+    server.put(
+        {path: '/pub/:user/probes/:uuid', name: 'PutProbe'},
+        apiPutProbe);
+    server.get(
+        {path: '/pub/:user/probes/:uuid', name: 'GetProbe'},
+        apiGetProbe);
+    server.del(
+        {path: '/pub/:user/probes/:uuid', name: 'DeleteProbe'},
+        apiDeleteProbe);
 }
 
 
@@ -638,6 +644,6 @@ function mountApi(server) {
 //---- exports
 
 module.exports = {
-  Probe: Probe,
-  mountApi: mountApi
+    Probe: Probe,
+    mountApi: mountApi
 };

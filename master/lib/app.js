@@ -12,9 +12,9 @@ var format = require('util').format;
 var ldap = require('ldapjs');
 var restify = require('restify');
 var sdcClients = require('sdc-clients'),
-  CNAPI = sdcClients.CNAPI,
-  VMAPI = sdcClients.VMAPI,
-  UFDS = sdcClients.UFDS;
+    CNAPI = sdcClients.CNAPI,
+    VMAPI = sdcClients.VMAPI,
+    UFDS = sdcClients.UFDS;
 var Cache = require('expiring-lru-cache');
 var redis = require('redis');
 var async = require('async');
@@ -22,18 +22,18 @@ var bunyan = require('bunyan');
 var once = require('once');
 
 var amonCommon = require('amon-common'),
-  Constants = amonCommon.Constants,
-  objCopy = amonCommon.utils.objCopy;
+    Constants = amonCommon.Constants,
+    objCopy = amonCommon.utils.objCopy;
 var Contact = require('./contact');
 var alarms = require('./alarms'),
-  createAlarm = alarms.createAlarm,
-  Alarm = alarms.Alarm;
+    createAlarm = alarms.createAlarm,
+    Alarm = alarms.Alarm;
 var audit = require('./audit');
 var maintenances = require('./maintenances');
 var probes = require('./probes'),
-  Probe = probes.Probe;
+    Probe = probes.Probe;
 var probegroups = require('./probegroups'),
-  ProbeGroup = probegroups.ProbeGroup;
+    ProbeGroup = probegroups.ProbeGroup;
 var agentprobes = require('./agentprobes');
 var events = require('./events');
 var errors = require('./errors');
@@ -57,36 +57,36 @@ var VALID_LOGIN_CHARS = /^[a-zA-Z][a-zA-Z0-9_\.@]+$/;
  * "GET /ping"
  */
 function ping(req, res, next) {
-  if (req.query.error !== undefined) {
-    var restCode = req.query.error || 'InternalError';
-    if (restCode.slice(-5) !== 'Error') {
-      restCode += 'Error';
+    if (req.query.error !== undefined) {
+        var restCode = req.query.error || 'InternalError';
+        if (restCode.slice(-5) !== 'Error') {
+            restCode += 'Error';
+        }
+        var err = new restify[restCode](req.params.message || 'pong');
+        next(err);
+    } else {
+        var data = {
+            ping: 'pong',
+            pid: process.pid  // used by test suite
+        };
+        req._app.getRedisClient().info(function (infoErr, info) {
+            if (infoErr) {
+                data.redisErr = infoErr;
+            } else {
+                data.redis = info.match(/^redis_version:(.*?)$/m)[1];
+            }
+            res.send(data);
+            next();
+        });
     }
-    var err = new restify[restCode](req.params.message || 'pong');
-    next(err);
-  } else {
-    var data = {
-      ping: 'pong',
-      pid: process.pid  // used by test suite
-    };
-    req._app.getRedisClient().info(function (infoErr, info) {
-      if (infoErr) {
-        data.redisErr = infoErr;
-      } else {
-        data.redis = info.match(/^redis_version:(.*?)$/m)[1];
-      }
-      res.send(data);
-      next();
-    });
-  }
 }
 
 function apiGetUser(req, res, next) {
-  var user = objCopy(req._user);
-  delete user.controls;
-  delete user.objectclass;
-  res.send(user);
-  return next();
+    var user = objCopy(req._user);
+    delete user.controls;
+    delete user.objectclass;
+    res.send(user);
+    return next();
 }
 
 
@@ -101,27 +101,27 @@ function apiGetUser(req, res, next) {
  * @param callback {Function} `function (err, app) {...}`.
  */
 function createApp(config, log, callback) {
-  if (!config) throw new TypeError('config (Object) required');
-  if (!config.cnapi) throw new TypeError('config.cnapi (Object) required');
-  if (!config.vmapi) throw new TypeError('config.vmapi (Object) required');
-  if (!config.redis) throw new TypeError('config.redis (Object) required');
-  if (!config.ufds) throw new TypeError('config.ufds (Object) required');
-  if (!log) throw new TypeError('log (Bunyan Logger) required');
-  if (!callback) throw new TypeError('callback (Function) required');
+    if (!config) throw new TypeError('config (Object) required');
+    if (!config.cnapi) throw new TypeError('config.cnapi (Object) required');
+    if (!config.vmapi) throw new TypeError('config.vmapi (Object) required');
+    if (!config.redis) throw new TypeError('config.redis (Object) required');
+    if (!config.ufds) throw new TypeError('config.ufds (Object) required');
+    if (!log) throw new TypeError('log (Bunyan Logger) required');
+    if (!callback) throw new TypeError('callback (Function) required');
 
-  var cnapiClient = new CNAPI({
-    url: config.cnapi.url
-  });
-  var vmapiClient = new VMAPI({
-    url: config.vmapi.url
-  });
+    var cnapiClient = new CNAPI({
+        url: config.cnapi.url
+    });
+    var vmapiClient = new VMAPI({
+        url: config.vmapi.url
+    });
 
-  try {
-    var app = new App(config, cnapiClient, vmapiClient, log);
-    return callback(null, app);
-  } catch (e) {
-    return callback(e);
-  }
+    try {
+        var app = new App(config, cnapiClient, vmapiClient, log);
+        return callback(null, app);
+    } catch (e) {
+        return callback(e);
+    }
 }
 
 
@@ -134,177 +134,178 @@ function createApp(config, log, callback) {
  * @param log {Bunyan Logger instance}
  */
 function App(config, cnapiClient, vmapiClient, log) {
-  var self = this;
-  if (!config) throw TypeError('config is required');
-  if (!config.port) throw TypeError('config.port is required');
-  if (!config.ufds) throw new TypeError('config.ufds (Object) required');
-  if (!cnapiClient) throw TypeError('cnapiClient is required');
-  if (!vmapiClient) throw TypeError('vmapiClient is required');
+    var self = this;
+    if (!config) throw TypeError('config is required');
+    if (!config.port) throw TypeError('config.port is required');
+    if (!config.ufds) throw new TypeError('config.ufds (Object) required');
+    if (!cnapiClient) throw TypeError('cnapiClient is required');
+    if (!vmapiClient) throw TypeError('vmapiClient is required');
 
-  this.log = log;
-  this.config = config;
-  this.cnapiClient = cnapiClient;
-  this.vmapiClient = vmapiClient;
-  this._ufdsCaching = (config.ufds.caching === undefined
-    ? true : config.ufds.caching);
-  this._getUfdsClient(config.ufds);
+    this.log = log;
+    this.config = config;
+    this.cnapiClient = cnapiClient;
+    this.vmapiClient = vmapiClient;
+    this._ufdsCaching = (config.ufds.caching === undefined
+        ? true : config.ufds.caching);
+    this._getUfdsClient(config.ufds);
 
-  this.notificationPlugins = {};
-  if (config.notificationPlugins) {
-    Object.keys(config.notificationPlugins || {}).forEach(function (name) {
-      var plugin = config.notificationPlugins[name];
-      log.info('Loading "%s" notification plugin.', name);
-      var NotificationType = require(plugin.path);
-      self.notificationPlugins[name] = new NotificationType(
-        log.child({notification_type: name}, true),
-        plugin.config,
-        config.datacenterName);
-    });
-  }
-
-  // Cache of login/uuid (aka username) -> full user record.
-  this.userCache = new Cache({
-    size: config.userCache.size,
-    expiry: config.userCache.expiry * 1000,
-    log: log,
-    name: 'user'
-  });
-  this.isOperatorCache = new Cache({size: 100, expiry: 300000,
-    log: log, name: 'isOperator'});
-  this.cnapiServersCache = new Cache({size: 100, expiry: 300000,
-    log: log, name: 'cnapiServers'});
-
-  // Caches for server response caching. This is centralized on the app
-  // because it allows the interdependant cache-invalidation to be
-  // centralized.
-  this._cacheFromScope = {
-    ProbeGroupGet: new Cache({
-      size:100,
-      expiry:300000,
-      log:log,
-      name:'ProbeGroupGet'
-    }),
-    ProbeGroupList: new Cache({
-      size:100,
-      expiry:300000,
-      log:log,
-      name:'ProbeGroupList'
-    }),
-    ProbeGet: new Cache({
-      size:100,
-      expiry:300000,
-      log:log,
-      name:'ProbeGet'
-    }),
-    ProbeList: new Cache({
-      size:100,
-      expiry:300000,
-      log:log,
-      name:'ProbeList'
-    }),
-    // This is unbounded in size because (a) the data stored is small and (b)
-    // we expect `headAgentProbes` calls for *all* machines (the key) regularly
-    // so an LRU-cache is pointless.
-    headAgentProbes: new Cache({
-      size:100,
-      expiry:300000,
-      log:log,
-      name:'headAgentProbes'
-    })
-  };
-
-  var serverName = 'Amon Master/' + Constants.ApiVersion;
-  var server = this.server = restify.createServer({
-    name: serverName,
-    log: log
-  });
-  server.use(restify.queryParser({mapParams: false}));
-  server.use(restify.bodyParser({mapParams: false}));
-  server.on('after', audit.auditLogger({
-    body: true,
-    log: bunyan.createLogger({
-      name: 'amon-master',
-      component: 'audit',
-      streams: [ {
-        level: log.level(),  // use same level as general amon-master log
-        stream: process.stdout
-      } ]
-    })
-  }));
-  server.on('uncaughtException', function (req, res, route, err) {
-    req.log.error(err);
-    res.send(err);
-  });
-
-  function setup(req, res, next) {
-    req._app = self;
-
-    res.on('header', function onHeader() {
-      var now = Date.now();
-      res.header('Date', new Date());
-      res.header('Server', serverName);
-      res.header('Request-Id', req.getId());
-      var t = now - req.time();
-      res.header('Response-Time', t);
-    });
-
-    // Handle ':user' in route: add `req._user` or respond with
-    // appropriate error.
-    var userId = req.params.user;
-    if (userId) {
-      self.userFromId(userId, function (err, user) {
-        if (err) {
-          //TODO: does this work with an LDAPError?
-          next(err);
-        } else if (! user) {
-          next(new restify.ResourceNotFoundError(
-            format('no such user: "%s"', userId)));
-        } else {
-          req._user = user;
-          next();
-        }
-      });
-    } else {
-      next();
+    this.notificationPlugins = {};
+    if (config.notificationPlugins) {
+        Object.keys(config.notificationPlugins || {}).forEach(function (name) {
+            var plugin = config.notificationPlugins[name];
+            log.info('Loading "%s" notification plugin.', name);
+            var NotificationType = require(plugin.path);
+            self.notificationPlugins[name] = new NotificationType(
+                log.child({notification_type: name}, true),
+                plugin.config,
+                config.datacenterName);
+        });
     }
-  }
 
-  server.use(setup);
+    // Cache of login/uuid (aka username) -> full user record.
+    this.userCache = new Cache({
+        size: config.userCache.size,
+        expiry: config.userCache.expiry * 1000,
+        log: log,
+        name: 'user'
+    });
+    this.isOperatorCache = new Cache({size: 100, expiry: 300000,
+        log: log, name: 'isOperator'});
+    this.cnapiServersCache = new Cache({size: 100, expiry: 300000,
+        log: log, name: 'cnapiServers'});
 
-  // Debugging/dev/testing endpoints.
-  server.get({path: '/ping', name: 'Ping'}, ping);
-  server.get({path: '/pub/:user', name: 'GetUser'}, apiGetUser);
-  // TODO Kang-ify (https://github.com/davepacheco/kang)
-  server.get({path: '/state', name: 'GetState'}, function (req, res, next) {
-    res.send(self.getStateSnapshot());
-    next();
-  });
-  server.post({path: '/state', name: 'UpdateState'},
-    function apiDropCaches(req, res, next) {
-      if (req.query.action !== 'dropcaches')
-        return next();
-      self.userCache.reset();
-      self.isOperatorCache.reset();
-      self.cnapiServersCache.reset();
-      Object.keys(self._cacheFromScope).forEach(function (scope) {
-        self._cacheFromScope[scope].reset();
-      });
-      res.send(202);
-      next(false);
-    },
-    function invalidAction(req, res, next) {
-      if (req.query.action)
-        return next(new restify.InvalidArgumentError(
-          '"%s" is not a valid action', req.query.action));
-      return next(new restify.MissingParameterError('"action" is required'));
+    // Caches for server response caching. This is centralized on the app
+    // because it allows the interdependant cache-invalidation to be
+    // centralized.
+    this._cacheFromScope = {
+        ProbeGroupGet: new Cache({
+            size:100,
+            expiry:300000,
+            log:log,
+            name:'ProbeGroupGet'
+        }),
+        ProbeGroupList: new Cache({
+            size:100,
+            expiry:300000,
+            log:log,
+            name:'ProbeGroupList'
+        }),
+        ProbeGet: new Cache({
+            size:100,
+            expiry:300000,
+            log:log,
+            name:'ProbeGet'
+        }),
+        ProbeList: new Cache({
+            size:100,
+            expiry:300000,
+            log:log,
+            name:'ProbeList'
+        }),
+        // This is unbounded in size because (a) the data stored is small and
+        // (b) we expect `headAgentProbes` calls for *all* machines (the key)
+        // regularly so an LRU-cache is pointless.
+        headAgentProbes: new Cache({
+            size:100,
+            expiry:300000,
+            log:log,
+            name:'headAgentProbes'
+        })
+    };
+
+    var serverName = 'Amon Master/' + Constants.ApiVersion;
+    var server = this.server = restify.createServer({
+        name: serverName,
+        log: log
+    });
+    server.use(restify.queryParser({mapParams: false}));
+    server.use(restify.bodyParser({mapParams: false}));
+    server.on('after', audit.auditLogger({
+        body: true,
+        log: bunyan.createLogger({
+            name: 'amon-master',
+            component: 'audit',
+            streams: [ {
+                level: log.level(),  // use same level as amon-master log
+                stream: process.stdout
+            } ]
+        })
+    }));
+    server.on('uncaughtException', function (req, res, route, err) {
+        req.log.error(err);
+        res.send(err);
     });
 
-  probegroups.mountApi(server);
-  probes.mountApi(server);
-  alarms.mountApi(server);
-  maintenances.mountApi(server);
-  agentprobes.mountApi(server);
-  events.mountApi(server);
+    function setup(req, res, next) {
+        req._app = self;
+
+        res.on('header', function onHeader() {
+            var now = Date.now();
+            res.header('Date', new Date());
+            res.header('Server', serverName);
+            res.header('Request-Id', req.getId());
+            var t = now - req.time();
+            res.header('Response-Time', t);
+        });
+
+        // Handle ':user' in route: add `req._user` or respond with
+        // appropriate error.
+        var userId = req.params.user;
+        if (userId) {
+            self.userFromId(userId, function (err, user) {
+                if (err) {
+                    //TODO: does this work with an LDAPError?
+                    next(err);
+                } else if (! user) {
+                    next(new restify.ResourceNotFoundError(
+                        format('no such user: "%s"', userId)));
+                } else {
+                    req._user = user;
+                    next();
+                }
+            });
+        } else {
+            next();
+        }
+    }
+
+    server.use(setup);
+
+    // Debugging/dev/testing endpoints.
+    server.get({path: '/ping', name: 'Ping'}, ping);
+    server.get({path: '/pub/:user', name: 'GetUser'}, apiGetUser);
+    // TODO Kang-ify (https://github.com/davepacheco/kang)
+    server.get({path: '/state', name: 'GetState'}, function (req, res, next) {
+        res.send(self.getStateSnapshot());
+        next();
+    });
+    server.post({path: '/state', name: 'UpdateState'},
+        function apiDropCaches(req, res, next) {
+            if (req.query.action !== 'dropcaches')
+                return next();
+            self.userCache.reset();
+            self.isOperatorCache.reset();
+            self.cnapiServersCache.reset();
+            Object.keys(self._cacheFromScope).forEach(function (scope) {
+                self._cacheFromScope[scope].reset();
+            });
+            res.send(202);
+            next(false);
+        },
+        function invalidAction(req, res, next) {
+            if (req.query.action)
+                return next(new restify.InvalidArgumentError(
+                    '"%s" is not a valid action', req.query.action));
+            return next(new restify.MissingParameterError(
+                '"action" is required'));
+        });
+
+    probegroups.mountApi(server);
+    probes.mountApi(server);
+    alarms.mountApi(server);
+    maintenances.mountApi(server);
+    agentprobes.mountApi(server);
+    events.mountApi(server);
 }
 
 
@@ -313,38 +314,38 @@ function App(config, cnapiClient, vmapiClient, log) {
  * side-effect. It returns right away.
  */
 App.prototype._getUfdsClient = function _getUfdsClient(ufdsConfig) {
-  var self = this;
-  var attempts = 1;
-  var timeout = null;
+    var self = this;
+    var attempts = 1;
+    var timeout = null;
 
-  var config = objCopy(ufdsConfig);
-  config.log = self.log.child({'ufdsClient': true}, true);
-  config.cache = false;  // for now at least, no caching in the client
+    var config = objCopy(ufdsConfig);
+    config.log = self.log.child({'ufdsClient': true}, true);
+    config.cache = false;  // for now at least, no caching in the client
 
-  function initUfdsRetry() {
-    self.log.debug('getting UFDS client: attempt %d', attempts);
+    function initUfdsRetry() {
+        self.log.debug('getting UFDS client: attempt %d', attempts);
 
-    var ufdsClient = new UFDS(config);
-    ufdsClient.once('error', function (err) {
-      if (timeout) {
-        clearTimeout(timeout);
-        timeout = null;
-      }
+        var ufdsClient = new UFDS(config);
+        ufdsClient.once('error', function (err) {
+            if (timeout) {
+                clearTimeout(timeout);
+                timeout = null;
+            }
 
-      self.log.error(err,
-        'error getting bound UFDS client (attempt: %d): retrying',
-        attempts);
-      attempts++;
-      timeout = setTimeout(initUfdsRetry, 10000);
-    });
+            self.log.error(err,
+                'error getting bound UFDS client (attempt: %d): retrying',
+                attempts);
+            attempts++;
+            timeout = setTimeout(initUfdsRetry, 10000);
+        });
 
-    ufdsClient.once('ready', function () {
-      self.log.info('UFDS client ready');
-      self.ufdsClient = ufdsClient;
-    });
-  }
+        ufdsClient.once('ready', function () {
+            self.log.info('UFDS client ready');
+            self.ufdsClient = ufdsClient;
+        });
+    }
 
-  initUfdsRetry();
+    initUfdsRetry();
 };
 
 
@@ -377,30 +378,30 @@ App.prototype._getUfdsClient = function _getUfdsClient(ufdsConfig) {
  * XXX Can node-pool help here?
  */
 App.prototype.getRedisClient = function getRedisClient() {
-  var self = this;
-  var log = self.log;
+    var self = this;
+    var log = self.log;
 
-  if (!this._redisClient) {
-    var client = this._redisClient = new redis.createClient(
-      this.config.redis.port || 6379,   // redis default port
-      this.config.redis.host || '127.0.0.1',
-      {max_attempts: 1});
+    if (!this._redisClient) {
+        var client = this._redisClient = new redis.createClient(
+            this.config.redis.port || 6379,   // redis default port
+            this.config.redis.host || '127.0.0.1',
+            {max_attempts: 1});
 
-    // Must handle 'error' event to avoid propagation to top-level where node
-    // will terminate.
-    client.on('error', function (err) {
-      log.info(err, 'redis client error');
-    });
+        // Must handle 'error' event to avoid propagation to top-level
+        // where node will terminate.
+        client.on('error', function (err) {
+            log.info(err, 'redis client error');
+        });
 
-    client.on('end', function () {
-      log.info('redis client end, recycling it');
-      client.end();
-      self._redisClient = null;
-    });
+        client.on('end', function () {
+            log.info('redis client end, recycling it');
+            client.end();
+            self._redisClient = null;
+        });
 
-    client.select(1); // Amon uses DB 1 in redis.
-  }
-  return this._redisClient;
+        client.select(1); // Amon uses DB 1 in redis.
+    }
+    return this._redisClient;
 };
 
 
@@ -408,11 +409,11 @@ App.prototype.getRedisClient = function getRedisClient() {
  * Quit the redis client (if we have one) gracefully.
  */
 App.prototype.quitRedisClient = function () {
-  if (this._redisClient) {
-    this._redisClient.quit();
-    this._redisClient = null;
-  }
-  return;
+    if (this._redisClient) {
+        this._redisClient.quit();
+        this._redisClient = null;
+    }
+    return;
 };
 
 
@@ -422,63 +423,63 @@ App.prototype.quitRedisClient = function () {
  * @param callback {Function} `function (err)`.
  */
 App.prototype.listen = function (callback) {
-  this.server.listen(this.config.port, '0.0.0.0', callback);
+    this.server.listen(this.config.port, '0.0.0.0', callback);
 };
 
 
 App.prototype.cacheGet = function (scope, key) {
-  if (! this._ufdsCaching) {
-    return null;
-  }
-  var hit = this._cacheFromScope[scope].get(key);
-  //this.log.trace('App.cacheGet scope="%s" key="%s": %s', scope, key,
-  //  (hit ? 'hit' : "miss"));
-  return hit;
+    if (! this._ufdsCaching) {
+        return null;
+    }
+    var hit = this._cacheFromScope[scope].get(key);
+    //this.log.trace('App.cacheGet scope="%s" key="%s": %s', scope, key,
+    //  (hit ? 'hit' : "miss"));
+    return hit;
 };
 
 
 App.prototype.cacheSet = function (scope, key, value) {
-  if (! this._ufdsCaching)
-    return;
-  //this.log.trace('App.cacheSet scope="%s" key="%s"', scope, key);
-  this._cacheFromScope[scope].set(key, value);
+    if (! this._ufdsCaching)
+        return;
+    //this.log.trace('App.cacheSet scope="%s" key="%s"', scope, key);
+    this._cacheFromScope[scope].set(key, value);
 };
 
 
 App.prototype.cacheDel = function (scope, key) {
-  if (! this._ufdsCaching)
-    return;
-  this._cacheFromScope[scope].del(key);
+    if (! this._ufdsCaching)
+        return;
+    this._cacheFromScope[scope].del(key);
 };
 
 /**
  * Invalidate caches as appropriate for the given DB object create/update.
  */
 App.prototype.cacheInvalidateWrite = function (modelName, item) {
-  if (! this._ufdsCaching)
-    return;
-  var log = this.log;
+    if (! this._ufdsCaching)
+        return;
+    var log = this.log;
 
-  var dn = item.dn;
-  assert.ok(dn);
-  log.trace('App.cacheInvalidateWrite modelName="%s" dn="%s" agent=%s',
-    modelName, dn, (modelName === 'Probe' ? item.agent : '(N/A)'));
+    var dn = item.dn;
+    assert.ok(dn);
+    log.trace('App.cacheInvalidateWrite modelName="%s" dn="%s" agent=%s',
+        modelName, dn, (modelName === 'Probe' ? item.agent : '(N/A)'));
 
-  // Reset the '${modelName}List' cache.
-  // Note: This could be improved by only invalidating the item for this
-  // specific user. We are being lazy for starters here.
-  var scope = modelName + 'List';
-  this._cacheFromScope[scope].reset();
+    // Reset the '${modelName}List' cache.
+    // Note: This could be improved by only invalidating the item for this
+    // specific user. We are being lazy for starters here.
+    var scope = modelName + 'List';
+    this._cacheFromScope[scope].reset();
 
-  // Delete the '${modelName}Get' cache item with this dn (possible because
-  // we cache error responses).
-  this._cacheFromScope[modelName + 'Get'].del(dn);
+    // Delete the '${modelName}Get' cache item with this dn (possible because
+    // we cache error responses).
+    this._cacheFromScope[modelName + 'Get'].del(dn);
 
-  // Furthermore, if this is a probe, then need to invalidate the
-  // `headAgentProbes` for this probe's agent.
-  if (modelName === 'Probe') {
-    this._cacheFromScope.headAgentProbes.del(item.agent);
-  }
+    // Furthermore, if this is a probe, then need to invalidate the
+    // `headAgentProbes` for this probe's agent.
+    if (modelName === 'Probe') {
+        this._cacheFromScope.headAgentProbes.del(item.agent);
+    }
 };
 
 
@@ -486,29 +487,29 @@ App.prototype.cacheInvalidateWrite = function (modelName, item) {
  * Invalidate caches as appropriate for the given DB object delete.
  */
 App.prototype.cacheInvalidateDelete = function (modelName, item) {
-  if (! this._ufdsCaching)
-    return;
-  var log = this.log;
+    if (! this._ufdsCaching)
+        return;
+    var log = this.log;
 
-  var dn = item.dn;
-  assert.ok(dn);
-  log.trace('App.cacheInvalidateDelete modelName="%s" dn="%s" agent=%s',
-    modelName, dn, (modelName === 'Probe' ? item.agent : '(N/A)'));
+    var dn = item.dn;
+    assert.ok(dn);
+    log.trace('App.cacheInvalidateDelete modelName="%s" dn="%s" agent=%s',
+        modelName, dn, (modelName === 'Probe' ? item.agent : '(N/A)'));
 
-  // Reset the '${modelName}List' cache.
-  // Note: This could be improved by only invalidating the item for this
-  // specific user. We are being lazy for starters here.
-  var scope = modelName + 'List';
-  this._cacheFromScope[scope].reset();
+    // Reset the '${modelName}List' cache.
+    // Note: This could be improved by only invalidating the item for this
+    // specific user. We are being lazy for starters here.
+    var scope = modelName + 'List';
+    this._cacheFromScope[scope].reset();
 
-  // Delete the '${modelName}Get' cache item with this dn.
-  this._cacheFromScope[modelName + 'Get'].del(dn);
+    // Delete the '${modelName}Get' cache item with this dn.
+    this._cacheFromScope[modelName + 'Get'].del(dn);
 
-  // Furthermore, if this is a probe, then need to invalidate the
-  // `headAgentProbes` for this probe's agent.
-  if (modelName === 'Probe') {
-    this._cacheFromScope.headAgentProbes.del(item.agent);
-  }
+    // Furthermore, if this is a probe, then need to invalidate the
+    // `headAgentProbes` for this probe's agent.
+    if (modelName === 'Probe') {
+        this._cacheFromScope.headAgentProbes.del(item.agent);
+    }
 };
 
 
@@ -516,21 +517,21 @@ App.prototype.cacheInvalidateDelete = function (modelName, item) {
  * Gather JSON repr of live state.
  */
 App.prototype.getStateSnapshot = function () {
-  var self = this;
-  var snapshot = {
-    cache: {
-      user: this.userCache.dump(),
-      isOperator: this.isOperatorCache.dump(),
-      cnapiServers: this.cnapiServersCache.dump()
-    },
-    log: { level: this.log.level() }
-  };
+    var self = this;
+    var snapshot = {
+        cache: {
+            user: this.userCache.dump(),
+            isOperator: this.isOperatorCache.dump(),
+            cnapiServers: this.cnapiServersCache.dump()
+        },
+        log: { level: this.log.level() }
+    };
 
-  Object.keys(this._cacheFromScope).forEach(function (scope) {
-    snapshot.cache[scope] = self._cacheFromScope[scope].dump();
-  });
+    Object.keys(this._cacheFromScope).forEach(function (scope) {
+        snapshot.cache[scope] = self._cacheFromScope[scope].dump();
+    });
 
-  return snapshot;
+    return snapshot;
 };
 
 
@@ -541,34 +542,35 @@ App.prototype.getStateSnapshot = function () {
  * @param callback {Function} `function (err, items)`
  */
 App.prototype.ufdsGet = function ufdsGet(dn, callback) {
-  var self = this;
-  var log = this.log;
+    var self = this;
+    var log = this.log;
 
-  if (!self.ufdsClient) {
-    return callback(new errors.ServiceUnavailableError(
-      'service unavailable (ufds)'));
-  }
-
-  log.trace({dn: dn}, 'ufdsGet');
-  self.ufdsClient.search(dn, {scope: 'base'}, function (err, items) {
-    if (err) {
-      if (err.restCode === 'ResourceNotFound') {
-        callback(new errors.ResourceNotFoundError('not found'));
-      } else {
-        // 503: presuming this is a "can't connect to UFDS" error.
-        callback(new errors.ServiceUnavailableError(err,
-            'service unavailable'));
-      }
-      return;
+    if (!self.ufdsClient) {
+        return callback(new errors.ServiceUnavailableError(
+            'service unavailable (ufds)'));
     }
 
-    if (items.length !== 1) {
-      log.error({items: items, dn: dn}, 'multiple hits in UFDS for one dn');
-      return callback(new errors.InternalError(
-        'conflicting items in database'));
-    }
-    callback(null, items[0]);
-  });
+    log.trace({dn: dn}, 'ufdsGet');
+    self.ufdsClient.search(dn, {scope: 'base'}, function (err, items) {
+        if (err) {
+            if (err.restCode === 'ResourceNotFound') {
+                callback(new errors.ResourceNotFoundError('not found'));
+            } else {
+                // 503: presuming this is a "can't connect to UFDS" error.
+                callback(new errors.ServiceUnavailableError(err,
+                        'service unavailable'));
+            }
+            return;
+        }
+
+        if (items.length !== 1) {
+            log.error({items: items, dn: dn},
+                'multiple hits in UFDS for one dn');
+            return callback(new errors.InternalError(
+                'conflicting items in database'));
+        }
+        callback(null, items[0]);
+    });
 };
 
 
@@ -580,23 +582,23 @@ App.prototype.ufdsGet = function ufdsGet(dn, callback) {
  * @param callback {Function} `function (err, items)`
  */
 App.prototype.ufdsSearch = function ufdsSearch(base, opts, callback) {
-  var self = this;
-  var log = this.log;
+    var self = this;
+    var log = this.log;
 
-  if (!self.ufdsClient) {
-    return callback(new errors.ServiceUnavailableError(
-      'service unavailable (ufds)'));
-  }
-
-  log.trace({filter: opts.filter}, 'ldap search');
-  self.ufdsClient.search(base, opts, function (sErr, items) {
-    if (sErr) {
-      // 503: presuming this is a "can't connect to UFDS" error.
-      return callback(new errors.ServiceUnavailableError(sErr,
-        'service unavailable'));
+    if (!self.ufdsClient) {
+        return callback(new errors.ServiceUnavailableError(
+            'service unavailable (ufds)'));
     }
-    callback(null, items);
-  });
+
+    log.trace({filter: opts.filter}, 'ldap search');
+    self.ufdsClient.search(base, opts, function (sErr, items) {
+        if (sErr) {
+            // 503: presuming this is a "can't connect to UFDS" error.
+            return callback(new errors.ServiceUnavailableError(sErr,
+                'service unavailable'));
+        }
+        callback(null, items);
+    });
 };
 
 /**
@@ -607,32 +609,32 @@ App.prototype.ufdsSearch = function ufdsSearch(base, opts, callback) {
  * @param callback {Function} `function (err)`
  */
 App.prototype.ufdsAdd = function ufdsAdd(dn, data, callback) {
-  var self = this;
+    var self = this;
 
-  if (!self.ufdsClient) {
-    return callback(new errors.ServiceUnavailableError(
-      'service unavailable (ufds)'));
-  }
-
-  self.ufdsClient.add(dn, data, function (addErr) {
-    if (addErr) {
-      if (addErr instanceof ldap.EntryAlreadyExistsError) {
-        return callback(new errors.InternalError(addErr,
-          'DN "'+dn+'" already exists.'));
-        // TODO: modify support (does replace work if have children?)
-        //var change = new ldap.Change({
-        //  operation: 'replace',
-        //  modification: item.raw
-        //});
-        //client.modify(dn, change, function (err) {
-        //  if (err) console.warn("client.modify err: %s", err)
-        //  client.unbind(function (err) {});
-        //});
-      }
-      return callback(new errors.InternalError(addErr, 'error saving'));
+    if (!self.ufdsClient) {
+        return callback(new errors.ServiceUnavailableError(
+            'service unavailable (ufds)'));
     }
-    callback();
-  });
+
+    self.ufdsClient.add(dn, data, function (addErr) {
+        if (addErr) {
+            if (addErr instanceof ldap.EntryAlreadyExistsError) {
+                return callback(new errors.InternalError(addErr,
+                    'DN "'+dn+'" already exists.'));
+                // TODO: modify support (does replace work if have children?)
+                //var change = new ldap.Change({
+                //  operation: 'replace',
+                //  modification: item.raw
+                //});
+                //client.modify(dn, change, function (err) {
+                //  if (err) console.warn("client.modify err: %s", err)
+                //  client.unbind(function (err) {});
+                //});
+            }
+            return callback(new errors.InternalError(addErr, 'error saving'));
+        }
+        callback();
+    });
 };
 
 /**
@@ -642,24 +644,25 @@ App.prototype.ufdsAdd = function ufdsAdd(dn, data, callback) {
  * @param callback {Function} `function (err)`
  */
 App.prototype.ufdsDelete = function ufdsDelete(dn, callback) {
-  var self = this;
+    var self = this;
 
-  if (!self.ufdsClient) {
-    return callback(new errors.ServiceUnavailableError(
-      'service unavailable (ufds)'));
-  }
-
-  self.ufdsClient.del(dn, function (delErr) {
-    if (delErr) {
-      if (delErr.restCode === 'ResourceNotFound') {
-        callback(new errors.ResourceNotFoundError('not found'));
-      } else {
-        callback(new errors.InternalError(delErr, 'could not delete item'));
-      }
-    } else {
-      callback();
+    if (!self.ufdsClient) {
+        return callback(new errors.ServiceUnavailableError(
+            'service unavailable (ufds)'));
     }
-  });
+
+    self.ufdsClient.del(dn, function (delErr) {
+        if (delErr) {
+            if (delErr.restCode === 'ResourceNotFound') {
+                callback(new errors.ResourceNotFoundError('not found'));
+            } else {
+                callback(new errors.InternalError(delErr,
+                    'could not delete item'));
+            }
+        } else {
+            callback();
+        }
+    });
 };
 
 
@@ -672,88 +675,88 @@ App.prototype.ufdsDelete = function ufdsDelete(dn, callback) {
  *    error, but no such user was found.
  */
 App.prototype.userFromId = function (userId, callback) {
-  var log = this.log;
+    var log = this.log;
 
-  // Validate args.
-  if (!userId) {
-    log.error('userFromId: "userId" is required');
-    callback(new restify.InternalError());
-    return;
-  }
-  if (!callback || typeof (callback) !== 'function') {
-    log.error('userFromId: "callback" must be a function: %s',
-      typeof (callback));
-    callback(new restify.InternalError());
-    return;
-  }
-
-  // Check cache. 'cached' is `{err: <error>, user: <user>}`.
-  var cached = this.userCache.get(userId);
-  if (cached) {
-    if (cached.err) {
-      callback(cached.err);
-      return;
+    // Validate args.
+    if (!userId) {
+        log.error('userFromId: "userId" is required');
+        callback(new restify.InternalError());
+        return;
     }
-    callback(null, cached.user);
-    return;
-  }
+    if (!callback || typeof (callback) !== 'function') {
+        log.error('userFromId: "callback" must be a function: %s',
+            typeof (callback));
+        callback(new restify.InternalError());
+        return;
+    }
 
-  // UUID or login?
-  var uuid = null, login = null;
-  if (UUID_REGEX.test(userId)) {
-    uuid = userId;
-  } else if (VALID_LOGIN_CHARS.test(login)) {
-    login = userId;
-  } else {
-    callback(new restify.InvalidArgumentError(
-      format('user id is not a valid UUID or login: "%s"', userId)));
-    return;
-  }
+    // Check cache. 'cached' is `{err: <error>, user: <user>}`.
+    var cached = this.userCache.get(userId);
+    if (cached) {
+        if (cached.err) {
+            callback(cached.err);
+            return;
+        }
+        callback(null, cached.user);
+        return;
+    }
 
-  var self = this;
-  function cacheAndCallback(err, user) {
-    var obj = {err: err, user: user};
-    if (user) {
-      // On success, cache for both the UUID and login.
-      self.userCache.set(user.uuid, obj);
-      self.userCache.set(user.login, obj);
+    // UUID or login?
+    var uuid = null, login = null;
+    if (UUID_REGEX.test(userId)) {
+        uuid = userId;
+    } else if (VALID_LOGIN_CHARS.test(login)) {
+        login = userId;
     } else {
-      self.userCache.set(userId, obj);
+        callback(new restify.InvalidArgumentError(
+            format('user id is not a valid UUID or login: "%s"', userId)));
+        return;
     }
-    callback(err, user);
-  }
 
-  // Look up the user, cache the result and return.
-  var searchOpts = {
-    filter: (uuid
-      ? '(&(uuid=' + uuid + ')(objectclass=sdcperson))'
-      : '(&(login=' + login + ')(objectclass=sdcperson))'),
-    scope: 'one'
-  };
-  this.ufdsSearch('ou=users, o=smartdc', searchOpts, function (sErr, users) {
-    if (sErr) {
-      if (sErr.statusCode === 503) {
-        return callback(sErr);  // don't cache 503
-      } else {
-        return cacheAndCallback(sErr);
-      }
+    var self = this;
+    function cacheAndCallback(err, user) {
+        var obj = {err: err, user: user};
+        if (user) {
+            // On success, cache for both the UUID and login.
+            self.userCache.set(user.uuid, obj);
+            self.userCache.set(user.login, obj);
+        } else {
+            self.userCache.set(userId, obj);
+        }
+        callback(err, user);
     }
-    switch (users.length) {
-    case 0:
-      cacheAndCallback(null, null);
-      break;
-    case 1:
-      cacheAndCallback(null, users[0]);
-      break;
-    default:
-      log.error({searchOpts: searchOpts, users: users},
-        'unexpected number of users (%d) matching user id "%s"',
-        users.length, userId);
-      cacheAndCallback(new restify.InternalError(
-        format('error determining user for "%s"', userId)));
-      break;
-    }
-  });
+
+    // Look up the user, cache the result and return.
+    var searchOpts = {
+        filter: (uuid
+            ? '(&(uuid=' + uuid + ')(objectclass=sdcperson))'
+            : '(&(login=' + login + ')(objectclass=sdcperson))'),
+        scope: 'one'
+    };
+    this.ufdsSearch('ou=users, o=smartdc', searchOpts, function (sErr, users) {
+        if (sErr) {
+            if (sErr.statusCode === 503) {
+                return callback(sErr);  // don't cache 503
+            } else {
+                return cacheAndCallback(sErr);
+            }
+        }
+        switch (users.length) {
+        case 0:
+            cacheAndCallback(null, null);
+            break;
+        case 1:
+            cacheAndCallback(null, users[0]);
+            break;
+        default:
+            log.error({searchOpts: searchOpts, users: users},
+                'unexpected number of users (%d) matching user id "%s"',
+                users.length, userId);
+            cacheAndCallback(new restify.InternalError(
+                format('error determining user for "%s"', userId)));
+            break;
+        }
+    });
 };
 
 
@@ -765,41 +768,43 @@ App.prototype.userFromId = function (userId, callback) {
  * @throws {TypeError} if invalid args are given.
  */
 App.prototype.isOperator = function (userUuid, callback) {
-  var log = this.log;
+    var log = this.log;
 
-  // Validate args.
-  if (typeof (userUuid) !== 'string')
-    throw new TypeError('userUuid (String) required');
-  if (!UUID_REGEX.test(userUuid))
-    throw new TypeError(format('userUuid is not a valid UUID: %s', userUuid));
-  if (typeof (callback) !== 'function')
-    throw new TypeError('callback (Function) required');
+    // Validate args.
+    if (typeof (userUuid) !== 'string')
+        throw new TypeError('userUuid (String) required');
+    if (!UUID_REGEX.test(userUuid))
+        throw new TypeError(format('userUuid is not a valid UUID: %s',
+            userUuid));
+    if (typeof (callback) !== 'function')
+        throw new TypeError('callback (Function) required');
 
-  // Check cache. 'cached' is `{isOperator: <isOperator>}`.
-  var cached = this.isOperatorCache.get(userUuid);
-  if (cached) {
-    return callback(null, cached.isOperator);
-  }
-
-  // Look up the user, cache the result and return.
-  var self = this;
-  var base = 'cn=operators, ou=groups, o=smartdc';
-  var searchOpts = {
-    filter: format('(uniquemember=uuid=%s, ou=users, o=smartdc)', userUuid),
-    scope: 'base',
-    attributes: ['dn']
-  };
-  log.trace('search if user is operator: search opts: %s',
-    JSON.stringify(searchOpts));
-  this.ufdsSearch(base, searchOpts, function (searchErr, entries) {
-    if (searchErr) {
-      return callback(searchErr);
+    // Check cache. 'cached' is `{isOperator: <isOperator>}`.
+    var cached = this.isOperatorCache.get(userUuid);
+    if (cached) {
+        return callback(null, cached.isOperator);
     }
-    var isOperator = (entries.length > 0);
-    self.isOperatorCache.set(userUuid, {isOperator: isOperator});
-    return callback(null, isOperator);
-  });
-  return true;
+
+    // Look up the user, cache the result and return.
+    var self = this;
+    var base = 'cn=operators, ou=groups, o=smartdc';
+    var searchOpts = {
+        filter: format('(uniquemember=uuid=%s, ou=users, o=smartdc)',
+            userUuid),
+        scope: 'base',
+        attributes: ['dn']
+    };
+    log.trace('search if user is operator: search opts: %s',
+        JSON.stringify(searchOpts));
+    this.ufdsSearch(base, searchOpts, function (searchErr, entries) {
+        if (searchErr) {
+            return callback(searchErr);
+        }
+        var isOperator = (entries.length > 0);
+        self.isOperatorCache.set(userUuid, {isOperator: isOperator});
+        return callback(null, isOperator);
+    });
+    return true;
 };
 
 /**
@@ -810,37 +815,37 @@ App.prototype.isOperator = function (userUuid, callback) {
  * @throws {TypeError} if invalid args are given.
  */
 App.prototype.serverExists = function (serverUuid, callback) {
-  var log = this.log;
+    var log = this.log;
 
-  // Validate args.
-  if (typeof (serverUuid) !== 'string')
-    throw new TypeError('serverUuid (String) required');
-  if (!UUID_REGEX.test(serverUuid))
-    throw new TypeError(format('serverUuid is not a valid UUID: %s',
-      serverUuid));
-  if (typeof (callback) !== 'function')
-    throw new TypeError('callback (Function) required');
+    // Validate args.
+    if (typeof (serverUuid) !== 'string')
+        throw new TypeError('serverUuid (String) required');
+    if (!UUID_REGEX.test(serverUuid))
+        throw new TypeError(format('serverUuid is not a valid UUID: %s',
+            serverUuid));
+    if (typeof (callback) !== 'function')
+        throw new TypeError('callback (Function) required');
 
-  // Check cache. 'cached' is `{server-uuid-1: true, ...}`.
-  var cached = this.cnapiServersCache.get('servers');
-  if (cached) {
-    return callback(null, (cached[serverUuid] !== undefined));
-  }
-
-  // Look up the user, cache the result and return.
-  var self = this;
-  return this.cnapiClient.listServers(function (err, servers) {
-    if (err) {
-      log.fatal(format('Failed to call cnapiClient.listServers (%s)', err));
-      return callback(err);
+    // Check cache. 'cached' is `{server-uuid-1: true, ...}`.
+    var cached = this.cnapiServersCache.get('servers');
+    if (cached) {
+        return callback(null, (cached[serverUuid] !== undefined));
     }
-    var serverMap = {};
-    for (var i = 0; i < servers.length; i++) {
-      serverMap[servers[i].uuid] = true;
-    }
-    self.cnapiServersCache.set('servers', serverMap);
-    return callback(null, (serverMap[serverUuid] !== undefined));
-  });
+
+    // Look up the user, cache the result and return.
+    var self = this;
+    return this.cnapiClient.listServers(function (err, servers) {
+        if (err) {
+            log.fatal('Failed to call cnapiClient.listServers (%s)', err);
+            return callback(err);
+        }
+        var serverMap = {};
+        for (var i = 0; i < servers.length; i++) {
+            serverMap[servers[i].uuid] = true;
+        }
+        self.cnapiServersCache.set('servers', serverMap);
+        return callback(null, (serverMap[serverUuid] !== undefined));
+    });
 };
 
 
@@ -852,17 +857,17 @@ App.prototype.serverExists = function (serverUuid, callback) {
  * @param callback {Function} `function (err)`
  */
 App.prototype.handleMaintenanceEnd = function (maintenance, callback) {
-  if (!maintenance) throw new TypeError('"maintenance" is required');
-  if (!callback) throw new TypeError('"callback" is required');
-  var log = this.log;
+    if (!maintenance) throw new TypeError('"maintenance" is required');
+    if (!callback) throw new TypeError('"callback" is required');
+    var log = this.log;
 
-  log.info({maintenance: maintenance.user + ':' + maintenance.id},
-    'TODO: handle maintenance end');
-  //XXX for each alarm for this user: if there are maint faults and aren't
-  // covered by any current maintenance windows, then moved them to
-  // "faults"... and notify as appropriate.
+    log.info({maintenance: maintenance.user + ':' + maintenance.id},
+        'TODO: handle maintenance end');
+    //XXX for each alarm for this user: if there are maint faults and aren't
+    // covered by any current maintenance windows, then moved them to
+    // "faults"... and notify as appropriate.
 
-  callback();
+    callback();
 };
 
 
@@ -878,80 +883,85 @@ App.prototype.handleMaintenanceEnd = function (maintenance, callback) {
  *   the owner of the probe/probegroup.
  */
 App.prototype.processEvent = function (event, callback) {
-  var self = this;
-  var log = this.log;
-  log.debug({event: event}, 'App.processEvent');
+    var self = this;
+    var log = this.log;
+    log.debug({event: event}, 'App.processEvent');
 
-  if (event.type === 'probe') {
-    /*jsl:pass*/
-  } else if (event.type === 'fake') {
-    /*jsl:pass*/
-  } else {
-    return callback(new restify.InternalError(
-      format('unknown event type: "%s"', event.type)));
-  }
-
-  // Gather available and necessary info for alarm creation and notification.
-  var info = {event: event};
-  async.series([
-      function getUser(next) {
-        self.userFromId(event.user, function (uErr, user) {
-          if (uErr) {
-            return next(uErr);
-          } else if (! user) {
-            return next(new restify.InvalidArgumentError(
-              format('no such user: "%s"', event.user)));
-          }
-          info.user = user;
-          next();
-        });
-      },
-      function getProbe(next) {
-        if (!event.probeUuid) {
-          return next();
-        }
-        Probe.get(self, event.user, event.probeUuid, function (pErr, probe) {
-          if (pErr)
-            return next(pErr);
-          info.userUuid = probe.user;
-          info.probe = probe;
-          next();
-        });
-      },
-      function getProbeGroup(next) {
-        if (!info.probe || !info.probe.group) {
-          return next();
-        }
-        var groupUuid = info.probe.group;
-        ProbeGroup.get(self, event.user, groupUuid, function (pgErr, group) {
-          // We don't fail if the group can't be found. Because we don't have
-          // UFDS transactions, it is possible (unlikely) to have stale
-          // probe group references. The alarm will then just be associated
-          // with the probe.
-          if (pgErr)
-            return next();
-          info.probeGroup = group;
-          next();
-        });
-      }
-    ], function (err) {
-      if (err) {
-        return callback(err);
-      }
-      self.getOrCreateAlarm(info, function (getOrCreateErr, alarm) {
-        if (getOrCreateErr) {
-          callback(getOrCreateErr);
-        } else if (alarm) {
-          info.alarm = alarm;
-          alarm.handleEvent(self, info, function (evtErr) {
-            callback(evtErr);
-          });
-        } else {
-          callback();
-        }
-      });
+    if (event.type === 'probe') {
+        /*jsl:pass*/
+    } else if (event.type === 'fake') {
+        /*jsl:pass*/
+    } else {
+        return callback(new restify.InternalError(
+            format('unknown event type: "%s"', event.type)));
     }
-  );
+
+    // Gather available and necessary info for alarm creation and notification.
+    var info = {event: event};
+    async.series([
+            function getUser(next) {
+                self.userFromId(event.user, function (uErr, user) {
+                    if (uErr) {
+                        return next(uErr);
+                    } else if (! user) {
+                        return next(new restify.InvalidArgumentError(
+                            format('no such user: "%s"', event.user)));
+                    }
+                    info.user = user;
+                    next();
+                });
+            },
+            function getProbe(next) {
+                if (!event.probeUuid) {
+                    return next();
+                }
+                Probe.get(self, event.user, event.probeUuid,
+                    function (pErr, probe) {
+                        if (pErr)
+                            return next(pErr);
+                        info.userUuid = probe.user;
+                        info.probe = probe;
+                        next();
+                    }
+                );
+            },
+            function getProbeGroup(next) {
+                if (!info.probe || !info.probe.group) {
+                    return next();
+                }
+                var groupUuid = info.probe.group;
+                ProbeGroup.get(self, event.user, groupUuid,
+                    function (pgErr, group) {
+                        // We don't fail if the group can't be found. Because
+                        // we don't have UFDS transactions, it is possible
+                        // (unlikely) to have stale probe group references.
+                        // The alarm will then just be associated with the
+                        // probe.
+                        if (pgErr)
+                            return next();
+                        info.probeGroup = group;
+                        next();
+                    }
+                );
+            }
+        ], function (err) {
+            if (err) {
+                return callback(err);
+            }
+            self.getOrCreateAlarm(info, function (getOrCreateErr, alarm) {
+                if (getOrCreateErr) {
+                    callback(getOrCreateErr);
+                } else if (alarm) {
+                    info.alarm = alarm;
+                    alarm.handleEvent(self, info, function (evtErr) {
+                        callback(evtErr);
+                    });
+                } else {
+                    callback();
+                }
+            });
+        }
+    );
 };
 
 
@@ -971,56 +981,57 @@ App.prototype.processEvent = function (event, callback) {
  *    is appropriate for this event).
  */
 App.prototype.getOrCreateAlarm = function (options, callback) {
-  var self = this;
-  var log = this.log;
-  var event = options.event;
-  var probe = options.probe;
+    var self = this;
+    var log = this.log;
+    var event = options.event;
+    var probe = options.probe;
 
-  // An alarm is associated with a probe group (if it has a `group` attribute)
-  // *or* a probe, or with neither if there is no probe involved.
-  var associatedProbe = null;
-  var associatedProbeGroup = null;
-  if (probe) {
-    if (probe.group) {
-      associatedProbeGroup = probe.group;
-    } else {
-      associatedProbe = probe.uuid;
-    }
-  }
-
-  // Get all open alarms for this user and probe/probe group.
-  log.debug('getOrCreateAlarm: get candidate related alarms');
-  Alarm.filter(
-    self,
-    {
-      user: event.user,
-      probe: associatedProbe,
-      probeGroup: associatedProbeGroup,
-      closed: false
-    },
-    function (err, candidateAlarms) {
-      if (err) {
-        return callback(err);
-      }
-      self.chooseRelatedAlarm(candidateAlarms, options,
-                              function (chooseErr, alarm) {
-        if (chooseErr) {
-          callback(chooseErr);
-        } else if (alarm) {
-          callback(null, alarm);
-        } else if (event.clear) {
-          // A clear event with no related open alarm should be dropped.
-          // Don't create an alarm for this.
-          log.info({event_uuid: event.uuid},
-            'not creating a new alarm for a clear event');
-          callback(null, null);
+    // An alarm is associated with a probe group (if it has a `group`
+    // attribute) *or* a probe, or with neither if there is no probe involved.
+    var associatedProbe = null;
+    var associatedProbeGroup = null;
+    if (probe) {
+        if (probe.group) {
+            associatedProbeGroup = probe.group;
         } else {
-          createAlarm(self, event.user, associatedProbe, associatedProbeGroup,
-            callback);
+            associatedProbe = probe.uuid;
         }
-      });
     }
-  );
+
+    // Get all open alarms for this user and probe/probe group.
+    log.debug('getOrCreateAlarm: get candidate related alarms');
+    Alarm.filter(
+        self,
+        {
+            user: event.user,
+            probe: associatedProbe,
+            probeGroup: associatedProbeGroup,
+            closed: false
+        },
+        function (err, candidateAlarms) {
+            if (err) {
+                return callback(err);
+            }
+            self.chooseRelatedAlarm(candidateAlarms, options,
+                function (chooseErr, alarm) {
+                    if (chooseErr) {
+                        callback(chooseErr);
+                    } else if (alarm) {
+                        callback(null, alarm);
+                    } else if (event.clear) {
+                        // A clear event with no related open alarm
+                        // should be dropped. Don't create an alarm for this.
+                        log.info({event_uuid: event.uuid},
+                            'not creating a new alarm for a clear event');
+                        callback(null, null);
+                    } else {
+                        createAlarm(self, event.user, associatedProbe,
+                            associatedProbeGroup, callback);
+                    }
+                }
+            );
+        }
+    );
 };
 
 
@@ -1045,29 +1056,28 @@ App.prototype.getOrCreateAlarm = function (options, callback) {
  * Eventually this algo can consider more vars.
  */
 App.prototype.chooseRelatedAlarm = function (candidateAlarms,
-                                             options,
-                                             callback) {
-  this.log.debug({event_uuid: options.event.uuid,
-    num_candidate_alarms: candidateAlarms.length}, 'chooseRelatedAlarm');
-  if (candidateAlarms.length === 0) {
-    return callback(null, null);
-  }
-  var ONE_HOUR = 60 * 60 * 1000;  // an hour in milliseconds
-  candidateAlarms.sort(
-    // Sort the latest 'timeLastEvent' first (alarms with no 'timeLastEvent'
-    // field sort to the end).
-    function (x, y) { return y.timeLastEvent - x.timeLastEvent; });
-  var a = candidateAlarms[0];
-  this.log.debug({alarm: a}, 'best candidate related alarm');
-  if (a.timeLastEvent &&
-      (options.event.clear ||
-       (options.event.time - a.timeLastEvent) < ONE_HOUR)) {
-    this.log.debug({alarmId: a.id}, 'related alarm');
-    callback(null, a);
-  } else {
-    this.log.debug('no related alarm');
-    callback(null, null);
-  }
+        options, callback) {
+    this.log.debug({event_uuid: options.event.uuid,
+        num_candidate_alarms: candidateAlarms.length}, 'chooseRelatedAlarm');
+    if (candidateAlarms.length === 0) {
+        return callback(null, null);
+    }
+    var ONE_HOUR = 60 * 60 * 1000;  // an hour in milliseconds
+    candidateAlarms.sort(
+        // Sort the latest 'timeLastEvent' first (alarms with no 'timeLastEvent'
+        // field sort to the end).
+        function (x, y) { return y.timeLastEvent - x.timeLastEvent; });
+    var a = candidateAlarms[0];
+    this.log.debug({alarm: a}, 'best candidate related alarm');
+    if (a.timeLastEvent &&
+            (options.event.clear ||
+             (options.event.time - a.timeLastEvent) < ONE_HOUR)) {
+        this.log.debug({alarmId: a.id}, 'related alarm');
+        callback(null, a);
+    } else {
+        this.log.debug('no related alarm');
+        callback(null, null);
+    }
 };
 
 
@@ -1085,21 +1095,21 @@ App.prototype.chooseRelatedAlarm = function (candidateAlarms,
  *    plugin could be determined.
  */
 App.prototype.notificationTypeFromMedium = function (medium) {
-  var log = this.log;
-  var self = this;
-  var types = Object.keys(this.notificationPlugins);
-  for (var i = 0; i < types.length; i++) {
-    var type = types[i];
-    var plugin = self.notificationPlugins[type];
-    if (plugin.acceptsMedium(medium)) {
-      return type;
+    var log = this.log;
+    var self = this;
+    var types = Object.keys(this.notificationPlugins);
+    for (var i = 0; i < types.length; i++) {
+        var type = types[i];
+        var plugin = self.notificationPlugins[type];
+        if (plugin.acceptsMedium(medium)) {
+            return type;
+        }
     }
-  }
-  log.warn('Could not determine an appropriate notification plugin '
-    + 'for "%s" medium.', medium);
-  throw new errors.InvalidParameterError(
-    format('Invalid or unsupported contact medium "%s".', medium),
-    [ {field: 'medium', code: 'Invalid'} ]);
+    log.warn('Could not determine an appropriate notification plugin '
+        + 'for "%s" medium.', medium);
+    throw new errors.InvalidParameterError(
+        format('Invalid or unsupported contact medium "%s".', medium),
+        [ {field: 'medium', code: 'Invalid'} ]);
 };
 
 
@@ -1116,9 +1126,9 @@ App.prototype.notificationTypeFromMedium = function (medium) {
  *    TODO: return alarm or alarm id.
  */
 App.prototype.alarmConfig = function (userId, msg, callback) {
-  var log = this.log;
-  log.error('TODO: implement App.alarmConfig');
-  callback();
+    var log = this.log;
+    log.error('TODO: implement App.alarmConfig');
+    callback();
 };
 
 
@@ -1140,15 +1150,15 @@ App.prototype.alarmConfig = function (userId, msg, callback) {
  * @param callback {Function} `function (err) {}`.
  */
 App.prototype.notifyContact = function (options, callback) {
-  var log = this.log;
-  var plugin = this.notificationPlugins[options.contact.notificationType];
-  if (!plugin) {
-    var msg = format('notification plugin "%s" not found',
-                     options.contact.notificationType);
-    log.error(msg);
-    return callback(new Error(msg));
-  }
-  plugin.notify(options, callback);
+    var log = this.log;
+    var plugin = this.notificationPlugins[options.contact.notificationType];
+    if (!plugin) {
+        var msg = format('notification plugin "%s" not found',
+                                         options.contact.notificationType);
+        log.error(msg);
+        return callback(new Error(msg));
+    }
+    plugin.notify(options, callback);
 };
 
 
@@ -1158,15 +1168,15 @@ App.prototype.notifyContact = function (options, callback) {
  * @param {Function} callback called when closed. Takes no arguments.
  */
 App.prototype.close = function (callback) {
-  var self = this;
-  this.server.on('close', function () {
-    self.quitRedisClient();
-    self.ufdsPool.drain(function () {
-      self.ufdsPool.destroyAllNow();
-      callback();
+    var self = this;
+    this.server.on('close', function () {
+        self.quitRedisClient();
+        self.ufdsPool.drain(function () {
+            self.ufdsPool.destroyAllNow();
+            callback();
+        });
     });
-  });
-  this.server.close();
+    this.server.close();
 };
 
 

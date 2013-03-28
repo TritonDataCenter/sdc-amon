@@ -16,8 +16,8 @@ var genUuid = require('node-uuid');
 
 var ufdsmodel = require('./ufdsmodel');
 var utils = require('amon-common').utils,
-  objCopy = utils.objCopy,
-  boolFromString = utils.boolFromString;
+    objCopy = utils.objCopy,
+    boolFromString = utils.boolFromString;
 var plugins = require('amon-plugins');
 var Contact = require('./contact');
 
@@ -46,39 +46,39 @@ var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
  * @throws {Error} if the given data is invalid.
  */
 function ProbeGroup(app, raw) {
-  assert.object(app, 'app');
-  assert.object(raw, 'raw');
-  assert.string(raw.user, 'raw.user');
-  assert.string(raw.uuid, 'raw.uuid');
-  assert.string(raw.objectclass, 'raw.objectclass');
-  if (raw.objectclass !== ProbeGroup.objectclass) {
-    assert.equal(raw.objectclass, ProbeGroup.objectclass,
-      format('invalid probe group data: objectclass "%s" !== "%s"',
-      raw.objectclass, ProbeGroup.objectclass));
-  }
+    assert.object(app, 'app');
+    assert.object(raw, 'raw');
+    assert.string(raw.user, 'raw.user');
+    assert.string(raw.uuid, 'raw.uuid');
+    assert.string(raw.objectclass, 'raw.objectclass');
+    if (raw.objectclass !== ProbeGroup.objectclass) {
+        assert.equal(raw.objectclass, ProbeGroup.objectclass,
+            format('invalid probe group data: objectclass "%s" !== "%s"',
+            raw.objectclass, ProbeGroup.objectclass));
+    }
 
-  this.user = raw.user;
-  this.uuid = raw.uuid;
-  this.dn = ProbeGroup.dn(this.user, this.uuid);
-  if (raw.dn) {
-    assert.equal(raw.dn, this.dn,
-      format('invalid probe group data: given "dn" (%s) does not '
-        + 'match built dn (%s)', raw.dn, this.dn));
-  }
+    this.user = raw.user;
+    this.uuid = raw.uuid;
+    this.dn = ProbeGroup.dn(this.user, this.uuid);
+    if (raw.dn) {
+        assert.equal(raw.dn, this.dn,
+            format('invalid probe group data: given "dn" (%s) does not '
+                + 'match built dn (%s)', raw.dn, this.dn));
+    }
 
-  var rawCopy = objCopy(raw);
-  delete rawCopy.dn;
-  delete rawCopy.controls;
-  this.raw = ProbeGroup.validate(app, rawCopy);
+    var rawCopy = objCopy(raw);
+    delete rawCopy.dn;
+    delete rawCopy.controls;
+    this.raw = ProbeGroup.validate(app, rawCopy);
 
-  var self = this;
-  this.__defineGetter__('name', function () {
-    return self.raw.name;
-  });
-  this.__defineGetter__('contacts', function () {
-    return self.raw.contact;
-  });
-  this.disabled = boolFromString(this.raw.disabled, false, 'raw.disabled');
+    var self = this;
+    this.__defineGetter__('name', function () {
+        return self.raw.name;
+    });
+    this.__defineGetter__('contacts', function () {
+        return self.raw.contact;
+    });
+    this.disabled = boolFromString(this.raw.disabled, false, 'raw.disabled');
 }
 
 
@@ -90,49 +90,50 @@ function ProbeGroup(app, raw) {
  * @param callback {Function} `function (err, probe)`.
  */
 ProbeGroup.create = function createProbeGroup(app, data, callback) {
-  assert.object(app, 'app');
-  assert.object(data, 'data');
-  assert.func(callback, 'callback');
+    assert.object(app, 'app');
+    assert.object(data, 'data');
+    assert.func(callback, 'callback');
 
-  // Basic validation.
-  // TODO: not sure assert-plus is right here. It is for pre-conditions,
-  // not for API data validation. With NO_DEBUG (or whatever the envvar),
-  // all validation will be broken.
-  try {
-    assert.string(data.user, 'data.user');
-    assert.ok(UUID_RE.test(data.user),
-      format('invalid probe group data: "user" is not a valid UUID: %j', data));
-    assert.optionalString(data.name, 'data.name');
-    if (data.name) {
-      assert.ok(data.name.length < 512,
-        format('probe group name is too long (max 512 characters): "%s"',
-          data.name));
+    // Basic validation.
+    // TODO: not sure assert-plus is right here. It is for pre-conditions,
+    // not for API data validation. With NO_DEBUG (or whatever the envvar),
+    // all validation will be broken.
+    try {
+        assert.string(data.user, 'data.user');
+        assert.ok(UUID_RE.test(data.user), format(
+            'invalid probe group data: "user" is not a valid UUID: %j',
+            data));
+        assert.optionalString(data.name, 'data.name');
+        if (data.name) {
+            assert.ok(data.name.length < 512, format(
+                'probe group name is too long (max 512 characters): "%s"',
+                data.name));
+        }
+        assert.arrayOfString(data.contacts, 'data.contacts');
+        assert.optionalBool(data.disabled, 'data.disabled');
+    } catch (aErr) {
+        return callback(aErr);
     }
-    assert.arrayOfString(data.contacts, 'data.contacts');
-    assert.optionalBool(data.disabled, 'data.disabled');
-  } catch (aErr) {
-    return callback(aErr);
-  }
 
-  // Put together the raw data.
-  var newUuid = genUuid();
-  var raw = {
-    user: data.user,
-    uuid: newUuid,
-    contact: data.contacts, // singular is intentional
-    disabled: data.disabled || false,
-    objectclass: ProbeGroup.objectclass
-  };
-  if (data.name) raw.name = data.name;
+    // Put together the raw data.
+    var newUuid = genUuid();
+    var raw = {
+        user: data.user,
+        uuid: newUuid,
+        contact: data.contacts, // singular is intentional
+        disabled: data.disabled || false,
+        objectclass: ProbeGroup.objectclass
+    };
+    if (data.name) raw.name = data.name;
 
-  var probegroup = null;
-  try {
-    probegroup = new ProbeGroup(app, raw);
-  } catch (cErr) {
-    return callback(cErr);
-  }
+    var probegroup = null;
+    try {
+        probegroup = new ProbeGroup(app, raw);
+    } catch (cErr) {
+        return callback(cErr);
+    }
 
-  callback(null, probegroup);
+    callback(null, probegroup);
 };
 
 
@@ -140,20 +141,21 @@ ProbeGroup.create = function createProbeGroup(app, data, callback) {
 ProbeGroup.objectclass = 'amonprobegroup';
 
 ProbeGroup.dn = function (user, uuid) {
-  return format('amonprobegroup=%s, uuid=%s, ou=users, o=smartdc', uuid, user);
+    return format('amonprobegroup=%s, uuid=%s, ou=users, o=smartdc',
+        uuid, user);
 };
 
 ProbeGroup.dnFromRequest = function (req) {
-  var uuid = req.params.uuid;
-  if (! UUID_RE.test(uuid)) {
-    throw new restify.InvalidArgumentError(
-      format('invalid probe UUID: "%s"', uuid));
-  }
-  return ProbeGroup.dn(req._user.uuid, uuid);
+    var uuid = req.params.uuid;
+    if (! UUID_RE.test(uuid)) {
+        throw new restify.InvalidArgumentError(
+            format('invalid probe UUID: "%s"', uuid));
+    }
+    return ProbeGroup.dn(req._user.uuid, uuid);
 };
 
 ProbeGroup.parentDnFromRequest = function (req) {
-  return req._user.dn;
+    return req._user.dn;
 };
 
 
@@ -161,16 +163,16 @@ ProbeGroup.parentDnFromRequest = function (req) {
  * Return the API view of this ProbeGroup's data.
  */
 ProbeGroup.prototype.serialize = function serialize() {
-  var data = {
-    uuid: this.uuid,
-    user: this.user,
-    contacts: (typeof (this.contacts) === 'string' ? [this.contacts]
-      : this.contacts),
-    disabled: this.disabled || false
-  };
-  if (this.name) data.name = this.name;
-  if (this.disabled != null) data.disabled = this.disabled;
-  return data;
+    var data = {
+        uuid: this.uuid,
+        user: this.user,
+        contacts: (typeof (this.contacts) === 'string' ? [this.contacts]
+            : this.contacts),
+        disabled: this.disabled || false
+    };
+    if (this.name) data.name = this.name;
+    if (this.disabled != null) data.disabled = this.disabled;
+    return data;
 };
 
 
@@ -183,11 +185,11 @@ ProbeGroup.prototype.serialize = function serialize() {
  *    InternalError: some other error in authorizing
  */
 ProbeGroup.prototype.authorizeWrite = function (app, callback) {
-  callback();
+    callback();
 };
 
 ProbeGroup.prototype.authorizeDelete = function (app, callback) {
-  callback();
+    callback();
 };
 
 
@@ -201,12 +203,12 @@ ProbeGroup.prototype.authorizeDelete = function (app, callback) {
  * @param callback {Function} `function (err, probe)`
  */
 ProbeGroup.get = function get(app, user, uuid, callback) {
-  if (! UUID_RE.test(user)) {
-    throw new restify.InvalidArgumentError(
-      format('invalid user UUID: "%s"', user));
-  }
-  var dn = ProbeGroup.dn(user, uuid);
-  ufdsmodel.modelGet(app, ProbeGroup, dn, app.log, callback);
+    if (! UUID_RE.test(user)) {
+        throw new restify.InvalidArgumentError(
+            format('invalid user UUID: "%s"', user));
+    }
+    var dn = ProbeGroup.dn(user, uuid);
+    ufdsmodel.modelGet(app, ProbeGroup, dn, app.log, callback);
 };
 
 
@@ -220,21 +222,22 @@ ProbeGroup.get = function get(app, user, uuid, callback) {
  * @throws {restify Error} if the raw data is invalid.
  */
 ProbeGroup.validate = function validate(app, raw) {
-  if (raw.name && raw.name.length > 512) {
-    throw new restify.InvalidArgumentError(
-      format('probe name is too long (max 512 characters): \'%s\'', raw.name));
-  }
-
-  if (raw.contact) {
-    if (!(raw.contact instanceof Array)) {
-      raw.contact = [raw.contact];
+    if (raw.name && raw.name.length > 512) {
+        throw new restify.InvalidArgumentError(
+            format('probe name is too long (max 512 characters): "%s"',
+                raw.name));
     }
-    raw.contact.forEach(function (c) {
-      Contact.parseUrn(app, c);
-    });
-  }
 
-  return raw;
+    if (raw.contact) {
+        if (!(raw.contact instanceof Array)) {
+            raw.contact = [raw.contact];
+        }
+        raw.contact.forEach(function (c) {
+            Contact.parseUrn(app, c);
+        });
+    }
+
+    return raw;
 };
 
 
@@ -242,27 +245,27 @@ ProbeGroup.validate = function validate(app, raw) {
 //---- API controllers
 
 function apiListProbeGroups(req, res, next) {
-  return ufdsmodel.requestList(req, res, next, ProbeGroup);
+    return ufdsmodel.requestList(req, res, next, ProbeGroup);
 }
 
 function apiPostProbeGroup(req, res, next) {
-  return ufdsmodel.requestPost(req, res, next, ProbeGroup);
+    return ufdsmodel.requestPost(req, res, next, ProbeGroup);
 }
 
 function apiCreateProbeGroup(req, res, next) {
-  return ufdsmodel.requestCreate(req, res, next, ProbeGroup);
+    return ufdsmodel.requestCreate(req, res, next, ProbeGroup);
 }
 
 function apiPutProbeGroup(req, res, next) {
-  return ufdsmodel.requestPut(req, res, next, ProbeGroup);
+    return ufdsmodel.requestPut(req, res, next, ProbeGroup);
 }
 
 function apiGetProbeGroup(req, res, next) {
-  return ufdsmodel.requestGet(req, res, next, ProbeGroup);
+    return ufdsmodel.requestGet(req, res, next, ProbeGroup);
 }
 
 function apiDeleteProbeGroup(req, res, next) {
-  return ufdsmodel.requestDelete(req, res, next, ProbeGroup);
+    return ufdsmodel.requestDelete(req, res, next, ProbeGroup);
 }
 
 
@@ -272,21 +275,21 @@ function apiDeleteProbeGroup(req, res, next) {
  * @param server {restify.Server}
  */
 function mountApi(server) {
-  server.get(
-    {path: '/pub/:user/probegroups', name: 'ListProbeGroups'},
-    apiListProbeGroups);
-  server.post(
-    {path: '/pub/:user/probegroups', name: 'CreateProbeGroup'},
-    apiCreateProbeGroup);
-  server.put(
-    {path: '/pub/:user/probegroups/:uuid', name: 'PutProbeGroup'},
-    apiPutProbeGroup);
-  server.get(
-    {path: '/pub/:user/probegroups/:uuid', name: 'GetProbeGroup'},
-    apiGetProbeGroup);
-  server.del(
-    {path: '/pub/:user/probegroups/:uuid', name: 'DeleteProbeGroup'},
-    apiDeleteProbeGroup);
+    server.get(
+        {path: '/pub/:user/probegroups', name: 'ListProbeGroups'},
+        apiListProbeGroups);
+    server.post(
+        {path: '/pub/:user/probegroups', name: 'CreateProbeGroup'},
+        apiCreateProbeGroup);
+    server.put(
+        {path: '/pub/:user/probegroups/:uuid', name: 'PutProbeGroup'},
+        apiPutProbeGroup);
+    server.get(
+        {path: '/pub/:user/probegroups/:uuid', name: 'GetProbeGroup'},
+        apiGetProbeGroup);
+    server.del(
+        {path: '/pub/:user/probegroups/:uuid', name: 'DeleteProbeGroup'},
+        apiDeleteProbeGroup);
 }
 
 
@@ -294,6 +297,6 @@ function mountApi(server) {
 //---- exports
 
 module.exports = {
-  ProbeGroup: ProbeGroup,
-  mountApi: mountApi
+    ProbeGroup: ProbeGroup,
+    mountApi: mountApi
 };

@@ -14,6 +14,6 @@ var uuid = require('node-uuid');
 
 var client = redis.createClient();
 for (var i = 0; i < 1000000; i++) {
-    client.hincrby("capacityAlarmIds", uuid(), 1);
+        client.hincrby("capacityAlarmIds", uuid(), 1);
 }
 client.quit();
