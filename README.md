@@ -7,7 +7,7 @@
 - XMPP/Jabber: <mib@groupchat.joyent.com>
 - Tickets/bugs: <https://devhub.joyent.com/jira/browse/MON>
 - CI builds: <https://jenkins.joyent.us/job/amon>,
-  <https://stuff.joyent.us/stuff/builds/amon/>
+  <https://bits.joyent.us/builds/amon/>
 
 
 Amon is a monitoring and alarming system for SmartDataCenter (SDC). It has
