@@ -40,10 +40,10 @@ var theApp;
  */
 var _serializers = objCopy(restify.bunyan.serializers);
 _serializers.alarm = function (alarm) {
-    return (alarm.serializeDb && alarm.serializeDb() || alarm);
+    return (alarm && alarm.serializeDb && alarm.serializeDb() || alarm);
 };
 _serializers.maint = function (maint) {
-    return (maint.serializeDb && maint.serializeDb() || maint);
+    return (maint && maint.serializeDb && maint.serializeDb() || maint);
 };
 var log = bunyan.createLogger({
     name: 'amon-master',
