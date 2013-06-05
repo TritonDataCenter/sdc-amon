@@ -44,7 +44,7 @@ var errors = require('./errors');
  *    Model instances.
  */
 function modelList(app, Model, parentDn, log, callback) {
-    log.info({parentDn: parentDn}, 'modelList');
+    log.trace({parentDn: parentDn}, 'modelList');
 
     // Check cache. "cached" is `{err: <error>, data: <data>}`.
     var cacheScope = Model.name + 'List';
@@ -123,7 +123,7 @@ function modelList(app, Model, parentDn, log, callback) {
  *    Model instance.
  */
 function modelCreate(app, Model, data, log, callback) {
-    log.info({data: data, modelName: Model.name}, 'modelCreate');
+    log.trace({data: data, modelName: Model.name}, 'modelCreate');
 
     // 1. Create the object (this handles validation).
     Model.create(app, data, function (cErr, item) {
@@ -170,7 +170,7 @@ function modelCreate(app, Model, data, log, callback) {
  *    instance.
  */
 function modelPut(app, Model, data, log, callback) {
-    log.info({data: data, modelName: Model.name}, 'modelPut');
+    log.trace({data: data, modelName: Model.name}, 'modelPut');
 
     var item;
     try {
@@ -219,7 +219,7 @@ function modelPut(app, Model, data, log, callback) {
  *    instance.
  */
 function modelGet(app, Model, dn, log, skipCache, callback) {
-    log.info({dn: dn, modelName: Model.name}, 'modelGet');
+    log.trace({dn: dn, modelName: Model.name}, 'modelGet');
 
     if (callback === undefined) {
         callback = skipCache;
@@ -293,7 +293,7 @@ function modelGet(app, Model, dn, log, skipCache, callback) {
  *    restify.RestError instance on error.
  */
 function modelDelete(app, Model, dn, log, callback) {
-    log.info({dn: dn, modelName: Model.name}, 'modelDelete');
+    log.trace({dn: dn, modelName: Model.name}, 'modelDelete');
     //TODO: could validate the 'dn'
 
     // We need to first get the item (we'll need it for proper cache

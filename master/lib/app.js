@@ -390,11 +390,11 @@ App.prototype.getRedisClient = function getRedisClient() {
         // Must handle 'error' event to avoid propagation to top-level
         // where node will terminate.
         client.on('error', function (err) {
-            log.info(err, 'redis client error');
+            log.warn(err, 'redis client error');
         });
 
         client.on('end', function () {
-            log.info('redis client end, recycling it');
+            log.debug('redis client end, recycling it');
             client.end();
             self._redisClient = null;
         });

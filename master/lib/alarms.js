@@ -154,7 +154,7 @@ function idFromFault(fault) {
  */
 function createAlarm(app, userUuid, probeUuid, probeGroupUuid, callback) {
     var log = app.log;
-    log.info({userUuid: userUuid, probeUuid: probeUuid,
+    log.trace({userUuid: userUuid, probeUuid: probeUuid,
         probeGroupUuid: probeGroupUuid}, 'createAlarm');
 
     var data = {
@@ -169,7 +169,7 @@ function createAlarm(app, userUuid, probeUuid, probeGroupUuid, callback) {
         if (idErr) {
             return callback(idErr);  // XXX translate redis err
         }
-        log.trace({id: id, user: userUuid}, 'new alarm id');
+        log.trace({id: id, userUuid: userUuid}, 'new alarm id');
         data.id = id;
         try {
             var alarm = new Alarm(data, log);
@@ -197,6 +197,9 @@ function createAlarm(app, userUuid, probeUuid, probeGroupUuid, callback) {
                     log.error(err, 'error saving alarm to redis');
                     return callback(err);
                 }
+                log.info({alarmId: id, userUuid: userUuid,
+                    probeUuid: probeUuid, probeGroupUuid: probeGroupUuid},
+                    'createAlarm');
                 return callback(null, alarm);
             });
     });
@@ -528,7 +531,7 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
     var event = options.event;
     var log = this.log.child({event_uuid: event.uuid, alarm_id: this.id,
         user: this.user}, true);
-    log.info('handleEvent');
+    log.trace('handleEvent');
 
     maintenances.isEventInMaintenance({
             app: app,
@@ -544,7 +547,9 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
                 'error determining if event is under maintenace');
             return callback(maintErr);
         }
-        log.info({maint: maint}, 'determined if event is in maint');
+        if (maint) {
+            log.info({maint: maint}, 'event is in maint');
+        }
 
         var redisClient = app.getRedisClient();
         var multi = redisClient.multi();
@@ -647,7 +652,7 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
                 reason = 'clear';
             }
             log.info({shouldNotify: shouldNotify, reason: reason},
-                'should notify?');
+                'should notify? %s', shouldNotify);
             if (shouldNotify) {
                 //XXX:TODO pass reason info to notify
                 self.notify(app, options, function (err) {
