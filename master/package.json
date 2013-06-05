@@ -12,7 +12,7 @@
     "restify": "git+ssh://git@github.com:trentm/node-restify.git#7535bb3",
     "once": "1.1.1",
     "async": "0.1.22",
-    "bunyan": "0.20.0",
+    "bunyan": "0.21.3",
     "node-uuid": "1.4.0",
     "nopt": "2.1.1",
     "retry": "0.6.0",

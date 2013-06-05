@@ -9,7 +9,7 @@
 
     "sdc-clients": "git+ssh://git@git.joyent.com:node-sdc-clients.git#fe76c2f",
     "restify": "git+ssh://git@github.com:trentm/node-restify.git#7535bb3",
-    "bunyan": "0.20.0",
+    "bunyan": "0.21.3",
     "ldapjs": "0.5.7",
     "async": "0.1.22",
     "http-signature": "0.9.11",
