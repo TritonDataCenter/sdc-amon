@@ -218,6 +218,7 @@ function App(config, cnapiClient, vmapiClient, log) {
         name: serverName,
         log: log
     });
+    server.use(restify.requestLogger());
     server.use(restify.queryParser({mapParams: false}));
     server.use(restify.bodyParser({mapParams: false}));
     server.on('after', audit.auditLogger({

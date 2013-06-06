@@ -165,6 +165,7 @@ function App(options) {
         log: log,
         dtrace: disabledDtrace
     });
+    server.use(restify.requestLogger());
     server.use(restify.queryParser({mapParams: false}));
     server.use(restify.bodyParser({mapParams: false}));
     server.on('after', audit.auditLogger({
