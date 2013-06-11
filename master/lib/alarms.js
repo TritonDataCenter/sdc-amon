@@ -170,7 +170,13 @@ function createAlarm(app, userUuid, probeUuid, probeGroupUuid, callback) {
             return callback(idErr);  // XXX translate redis err
         }
         log.trace({id: id, userUuid: userUuid}, 'new alarm id');
-        data.id = id;
+        data.id = Number(id);
+        if (isNaN(data.id)) {
+            log.error({id: id, userUuid: userUuid, issue: 'MON-233'},
+                'new alarm id');
+            return callback(new errors.InternalError(
+                'could not get a valid id for new alarm'));
+        }
         try {
             var alarm = new Alarm(data, log);
         } catch (invalidErr) {
@@ -197,7 +203,7 @@ function createAlarm(app, userUuid, probeUuid, probeGroupUuid, callback) {
                     log.error(err, 'error saving alarm to redis');
                     return callback(err);
                 }
-                log.info({alarmId: id, userUuid: userUuid,
+                log.info({alarmId: alarm.id, userUuid: userUuid,
                     probeUuid: probeUuid, probeGroupUuid: probeGroupUuid},
                     'createAlarm');
                 return callback(null, alarm);
