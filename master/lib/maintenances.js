@@ -449,7 +449,8 @@ Maintenance.get = function get(app, userUuid, id, callback) {
             try {
                 maintenance = new Maintenance(data, log);
             } catch (invalidErr) {
-                log.warn({err: invalidErr, data: data},
+                log.warn({err: invalidErr, data: data,
+                    maintenanceKey: maintenanceKey},
                     'invalid maintenance window data in redis (removing this ' +
                     'maintenance window)');
             }

@@ -851,7 +851,7 @@ function apiListAllAlarms(req, res, next) {
             for (i = 0; i < alarms.length; i++) {
                 if (alarms[i] === null) {
                     // Alarm.get returns a null alarm for invalid data.
-                    return false;
+                    continue;
                 }
                 serialized.push(alarms[i].serializeDb());
             }
