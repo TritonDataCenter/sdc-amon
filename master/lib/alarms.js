@@ -988,9 +988,9 @@ function reqGetAlarm(req, res, next) {
     // Validate inputs.
     var userUuid = req._user.uuid;
     var alarmId = Number(req.params.alarm);
-    if (isNaN(alarmId) || alarmId !== Math.floor(alarmId) || alarmId <= 0) {
+    if (isNaN(alarmId) || alarmId !== Math.floor(alarmId) || alarmId < 0) {
         return next(new errors.InvalidArgumentError(
-            'invalid "alarm" id: %j (must be an integer greater than 0)',
+            'invalid "alarm" id: %j (must be a positive integer)',
             req.params.alarm));
     }
 
