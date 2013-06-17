@@ -13,10 +13,6 @@
       <service_fmri value="svc:/system/filesystem/local"/>
     </dependency>
 
-    <dependency name='config-agent' grouping='require_all' restart_on='error' type='service'>
-      <service_fmri value='svc:/smartdc/application/config-agent'/>
-    </dependency>
-
     <exec_method type="method" name="start"
         exec="/usr/bin/ctrun -l child -o noorphan /opt/smartdc/amon/bin/amon-master -f %{config_file} &amp;"
         timeout_seconds="60">
