@@ -168,6 +168,7 @@ pkg_master:
 	cp -PR master/bin \
 		master/lib \
 		master/smf \
+		master/sapi_manifests \
 		master/test \
 		master/factory-settings.json \
 		master/main.js \
