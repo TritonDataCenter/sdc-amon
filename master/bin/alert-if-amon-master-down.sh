@@ -13,6 +13,7 @@ set -o pipefail
 
 #---- globals/config
 
+PATH=/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin
 CONFIG_FILE=/opt/smartdc/amon/cfg/amon-master.json
 
 
