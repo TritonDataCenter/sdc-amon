@@ -2,6 +2,7 @@
   "port": 80,
   "logLevel": "info",
   "adminUuid": "{{{ufds_admin_uuid}}}",
+  "adminEmail": "{{{ufds_admin_email}}}",
   "ufds": {
     "url": "ldaps://{{{UFDS_SERVICE}}}",
     "bindDN": "{{{ufds_ldap_root_dn}}}",
@@ -14,7 +15,7 @@
     "url": "http://{{{VMAPI_SERVICE}}}"
   },
   "redis": {
-    "host": "{{{REDIS_SERVICE}}}",
+    "host": "{{{AMONREDIS_SERVICE}}}",
     "port": "6379"
   },
   "datacenterName": "{{{datacenter_name}}}",
