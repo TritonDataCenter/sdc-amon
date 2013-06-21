@@ -380,9 +380,9 @@ App.prototype._getUfdsClient = function _getUfdsClient(ufdsConfig) {
  */
 App.prototype.getRedisClient = function getRedisClient() {
     var self = this;
-    var log = self.log;
 
     if (!this._redisClient) {
+        var log = self.log.child({redis: true}, true);
         var client = this._redisClient = new redis.createClient(
             this.config.redis.port || 6379,   // redis default port
             this.config.redis.host || '127.0.0.1',
@@ -392,6 +392,12 @@ App.prototype.getRedisClient = function getRedisClient() {
         // where node will terminate.
         client.on('error', function (err) {
             log.warn(err, 'redis client error');
+        });
+        client.on('drain', function () {
+            log.debug('redis client drain');
+        });
+        client.on('idle', function () {
+            log.debug('redis client idle');
         });
 
         client.on('end', function () {
@@ -403,6 +409,15 @@ App.prototype.getRedisClient = function getRedisClient() {
         client.select(1); // Amon uses DB 1 in redis.
     }
     return this._redisClient;
+};
+
+App.prototype.assertRedisObject = function assertRedisObject(obj) {
+    try {
+        assert.object(obj, 'unexpected redis value')
+    } catch (err) {
+        return new errors.InternalError(err, 'unexpected db (redis) value');
+    }
+    return null;
 };
 
 

@@ -445,6 +445,10 @@ Maintenance.get = function get(app, userUuid, id, callback) {
                 return callback(err);
             }
             var data = replies[0];
+            var rErr = app.assertRedisObject(data);
+            if (rErr) {
+                return callback(err);
+            }
             var maintenance = null;
             try {
                 maintenance = new Maintenance(data, log);
@@ -454,7 +458,7 @@ Maintenance.get = function get(app, userUuid, id, callback) {
                     'invalid maintenance window data in redis (removing this ' +
                     'maintenance window)');
             }
-            if (!maintenance) {
+            if (!maintenance && data && data.user && data.id) {
                 // Remove a bogus maintenance. This is necessary to avoid an
                 // infinite loop in the maintenance expiry reaper's
                 // continued use of a bogus maint in `maintenancesByEnd`.
