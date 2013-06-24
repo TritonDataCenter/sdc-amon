@@ -4,8 +4,9 @@
  * The Amon Master app. It defines the master API endpoints.
  */
 
+var p = console.log;
 var http = require('http');
-var assert = require('assert');
+var assert = require('assert-plus');
 var debug = console.log;
 var format = require('util').format;
 
@@ -413,7 +414,7 @@ App.prototype.getRedisClient = function getRedisClient() {
 
 App.prototype.assertRedisObject = function assertRedisObject(obj) {
     try {
-        assert.object(obj, 'unexpected redis value')
+        assert.object(obj, 'unexpected redis value');
     } catch (err) {
         return new errors.InternalError(err, 'unexpected db (redis) value');
     }

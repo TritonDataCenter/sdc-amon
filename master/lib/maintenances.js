@@ -51,6 +51,7 @@
  * (dc-name, user, id).
  */
 
+var p = console.log;
 var format = require('util').format;
 
 var assert = require('assert-plus');
@@ -68,7 +69,7 @@ var errors = require('./errors');
 var MAINTENANCE_MODEL_VERSION = 1;
 var MAX_NOTES_LENGTH = 255;
 var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-var MAX_REAPER_FREQ = 100;  // 100ms is max frequency of maint expiry reaping
+var MAX_REAPER_FREQ = 1000;  // 100ms is max frequency of maint expiry reaping
 
 
 
@@ -458,14 +459,14 @@ Maintenance.get = function get(app, userUuid, id, callback) {
                     'invalid maintenance window data in redis (removing this ' +
                     'maintenance window)');
             }
-            if (!maintenance && data && data.user && data.id) {
+            if (!maintenance) {
                 // Remove a bogus maintenance. This is necessary to avoid an
                 // infinite loop in the maintenance expiry reaper's
                 // continued use of a bogus maint in `maintenancesByEnd`.
                 var fakeMaint = {  // enough for `deleteMaintenance` to work
-                    user: data.user,
-                    id: data.id,
-                    _key: Maintenance.key(data.user, data.id)
+                    user: userUuid,
+                    id: id,
+                    _key: maintenanceKey
                 };
                 deleteMaintenance(app, fakeMaint, function (delErr) {
                     if (delErr)
