@@ -412,14 +412,41 @@ App.prototype.getRedisClient = function getRedisClient() {
     return this._redisClient;
 };
 
-App.prototype.assertRedisObject = function assertRedisObject(obj) {
+
+/**
+ * Some redis data checkers to be defensive with possible bogus responses
+ * from node_redis. See MON-239 for details.
+ */
+App.prototype.assertRedisObject = function assertRedisObject(d) {
     try {
-        assert.object(obj, 'unexpected redis value');
+        assert.object(d, format('redis reply is not an object: %j', d));
     } catch (err) {
         return new errors.InternalError(err, 'unexpected db (redis) value');
     }
     return null;
 };
+App.prototype.assertRedisArrayOfNumber = function assertRedisArrayOfNumber(d) {
+    try {
+        assert.arrayOfString(d);
+        for (var i = 0; i < d.length; i++) {
+            assert.ok(!isNaN(Number(d[i])),
+                format('item %d (%j) is NaN, full array is %j', i, d[i], d));
+        }
+    } catch (err) {
+        return new errors.InternalError(err, 'unexpected db (redis) value');
+    }
+    return null;
+};
+App.prototype.assertRedisArrayOfString = function assertRedisArrayOfString(d) {
+    try {
+        assert.arrayOfString(d,
+            format('redis data is not an array of strings: %j', d));
+    } catch (err) {
+        return new errors.InternalError(err, 'unexpected db (redis) value');
+    }
+    return null;
+};
+
 
 
 /**

@@ -371,10 +371,19 @@ Alarm.filter = function filter(app, options, callback) {
             log.error(err, 'redis error getting alarm ids'); // XXX xlate error
             return callback(err);
         }
+        var rErr = app.assertRedisArrayOfNumber(alarmIds);
+        if (rErr) {
+            return callback(err);
+        }
         log.debug({alarmIds: alarmIds}, 'filter alarms: %d alarm ids',
             alarmIds.length);
         function alarmFromId(id, next) {
-            Alarm.get(app, options.user, id, next);
+            try {
+                Alarm.get(app, options.user, id, next);
+            } catch (e) {
+                log.warn('could not get alarm')
+                next(null);
+            }
         }
         async.map(alarmIds, alarmFromId, function (getErr, alarms) {
             if (getErr) {
@@ -841,6 +850,10 @@ function apiListAllAlarms(req, res, next) {
     redisClient.keys('alarm:*', function (keysErr, alarmKeys) {
         if (keysErr) {
             return next(keysErr);
+        }
+        var rErr = app.assertRedisArrayOfString(alarmKeys);
+        if (rErr) {
+            return callback(err);
         }
         log.debug('get alarm data for each key (%d keys)', alarmKeys.length);
         function alarmFromKey(key, cb) {
