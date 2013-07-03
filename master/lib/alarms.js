@@ -851,7 +851,7 @@ function apiListAllAlarms(req, res, next) {
         if (keysErr) {
             return next(keysErr);
         }
-        var rErr = app.assertRedisArrayOfString(alarmKeys);
+        var rErr = req._app.assertRedisArrayOfString(alarmKeys);
         if (rErr) {
             return callback(err);
         }
