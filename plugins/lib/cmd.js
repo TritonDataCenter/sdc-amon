@@ -104,7 +104,7 @@ CmdProbe.prototype.runCmd = function runCmd() {
             var fail = false, reason;
             if (!self.ignoreExitStatus && cmdErr) {
                 fail = true;
-                if (cmdErr.signal === 9 /* SIGKILL */) {
+                if (cmdErr.signal === 'SIGKILL') {
                     // We are *assuming* that this means it was a timeout.
                     // TODO: see if there is a more explicit indicator.
                     reason = 'timeout';
