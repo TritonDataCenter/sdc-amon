@@ -62,7 +62,7 @@ NPM := PATH=$(TOP)/tools/bin:$(TOP)/$(NODE_INSTALL)/bin:$(PATH) node $(TOP)/$(NO
 # Repo-specific targets
 #
 
-all: common plugins agent testbuild relay master dev
+all: common plugins agent testbuild relay master dev sdc-scripts
 
 
 #
@@ -174,6 +174,11 @@ pkg_master:
 		master/main.js \
 		master/package.json \
 		$(BUILD)/pkg/master/root/opt/smartdc/amon/
+	@mkdir -p $(BUILD)/pkg/master/root/opt/smartdc/sdc-boot/scripts
+	cp sdc-boot/*.sh \
+	    $(BUILD)/pkg/master/root/opt/smartdc/sdc-boot/
+	cp deps/sdc-scripts/*.sh \
+	    $(BUILD)/pkg/master/root/opt/smartdc/sdc-boot/scripts/
 
 	# tools/amon-pkg.exclude contains a list of files and patterns of some
 	#  unnecessary, duplicated, or dev-only pieces we don't want in the build.
