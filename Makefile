@@ -174,11 +174,9 @@ pkg_master:
 		master/main.js \
 		master/package.json \
 		$(BUILD)/pkg/master/root/opt/smartdc/amon/
-	@mkdir -p $(BUILD)/pkg/master/root/opt/smartdc/sdc-boot/scripts
-	cp sdc-boot/*.sh \
-	    $(BUILD)/pkg/master/root/opt/smartdc/sdc-boot/
-	cp deps/sdc-scripts/*.sh \
-	    $(BUILD)/pkg/master/root/opt/smartdc/sdc-boot/scripts/
+	mkdir -p $(BUILD)/pkg/master/root/opt/smartdc/boot
+	cp -R deps/sdc-scripts/* $(BUILD)/pkg/master/root/opt/smartdc/boot/
+	cp -R boot/* $(BUILD)/pkg/master/root/opt/smartdc/boot/
 
 	# tools/amon-pkg.exclude contains a list of files and patterns of some
 	#  unnecessary, duplicated, or dev-only pieces we don't want in the build.
@@ -260,3 +258,5 @@ else
 endif
 include ./tools/mk/Makefile.smf.targ
 include ./tools/mk/Makefile.targ
+
+sdc-scripts: deps/sdc-scripts/.git
