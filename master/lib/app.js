@@ -387,7 +387,10 @@ App.prototype.getRedisClient = function getRedisClient() {
         var client = this._redisClient = new redis.createClient(
             this.config.redis.port || 6379,   // redis default port
             this.config.redis.host || '127.0.0.1',
-            {max_attempts: 1});
+            {
+                max_attempts: 1,
+                enable_offline_queue: false
+            });
 
         // Must handle 'error' event to avoid propagation to top-level
         // where node will terminate.
