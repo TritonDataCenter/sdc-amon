@@ -7,7 +7,7 @@
   "main": "lib/index.js",
   "dependencies": {
     "restify": "git+ssh://git@github.com:trentm/node-restify.git#7535bb3",
-    "node-uuid": "1.4.0"
+    "libuuid": "0.1.2"
   },
   "engines": {
     "node": ">=0.8"

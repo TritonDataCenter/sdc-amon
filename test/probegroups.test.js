@@ -11,7 +11,6 @@ var http = require('http');
 var format = require('util').format;
 var test = require('tap').test;
 var async = require('async');
-var uuid = require('node-uuid');
 var exec = require('child_process').exec;
 
 var common = require('./common');

@@ -6,7 +6,7 @@ var http = require('http');
 var format = require('util').format;
 var test = require('tap').test;
 var async = require('async');
-var uuid = require('node-uuid');
+var uuid = require('libuuid');
 
 var common = require('./common');
 var bunyan = require('bunyan');
@@ -317,7 +317,7 @@ test('probes: get', function (t) {
 });
 
 test('probes: get 404', function (t) {
-    var bogusUuid = uuid();
+    var bogusUuid = uuid.create();
     masterClient.get('/pub/amontestuserulrich/probes/' + bogusUuid,
                                      function (err, req, res, obj) {
         t.equal(err.statusCode, 404, 'should get 404');
@@ -460,7 +460,7 @@ test('relay api: AddEvents', function (t) {
         'machine': prep.amontestzone.uuid,
 
         // Added by relay:
-        'uuid': uuid(),
+        'uuid': uuid.create(),
         'time': Date.now(),
         'agent': prep.amontestzone.uuid,
         'agentAlias': 'headnode',

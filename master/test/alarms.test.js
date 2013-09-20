@@ -12,7 +12,7 @@ var path = require('path');
 var format = require('util').format;
 var test = require('tap').test;
 var async = require('async');
-var uuid = require('node-uuid');
+var uuid = require('libuuid');
 var Logger = require('bunyan');
 
 // 'raw' test stuff
@@ -42,7 +42,7 @@ test('raw alarm', function (t) {
         redisClient: redis.createClient(config.redis.port, config.redis.host)
     };
 
-    var userUuid = uuid();
+    var userUuid = uuid.create();
     var alarm = new Alarm({id: 123, user: userUuid}, log);
     t.equal(alarm.user, userUuid, 'alarm.user');
     t.equal(alarm.id, 123, 'alarm.id');

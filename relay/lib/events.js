@@ -4,7 +4,7 @@
  * Controller for relay 'POST /events' endpoint.
  */
 
-var uuid = require('node-uuid');
+var uuid = require('libuuid');
 
 
 function addEvents(req, res, next) {
@@ -33,7 +33,7 @@ function addEvents(req, res, next) {
 
         // Add data known by the relay (this is info the master can trust more
         // because the relay is always in the hands of the operator).
-        event.uuid = uuid();
+        event.uuid = uuid.create();
         event.time = Date.now();
         event.agent = req._agent;
         event.agentAlias = req._agentAlias;

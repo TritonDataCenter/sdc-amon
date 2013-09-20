@@ -14,7 +14,7 @@
     "async": "0.1.22",
     "http-signature": "0.9.11",
     "node-dev": "2.0.1",
-    "node-uuid": "1.4.0",
+    "libuuid": "0.1.2",
     "redis": "0.8.2",
     "jsontool": "5.1.3"
   },

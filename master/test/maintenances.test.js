@@ -9,7 +9,7 @@ var debug = console.log;
 var fs = require('fs');
 var format = require('util').format;
 var test = require('tap').test;
-var uuid = require('node-uuid');
+var uuid = require('libuuid');
 var Logger = require('bunyan');
 
 // 'raw' test stuff
@@ -60,7 +60,7 @@ function objMerge() {
 //---- test: raw working with Maintenance Window objects
 
 test('raw maintenance window creation', function (t) {
-    var userUuid = uuid();
+    var userUuid = uuid.create();
     var data = {
         user: userUuid,
         id: 123,
@@ -105,7 +105,7 @@ test('raw maintenance window creation', function (t) {
         [ {id: 1.5}, 'integer' ],
         [ {start: 'now'}, 'timestamp' ],
         [ {end: '1d'}, 'timestamp' ],
-        [ {machines: uuid()}, 'exactly one' ]
+        [ {machines: uuid.create()}, 'exactly one' ]
     ];
     errData.forEach(function (errDatum) {
         var eData = objMerge(base, errDatum[0]);

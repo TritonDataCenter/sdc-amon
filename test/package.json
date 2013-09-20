@@ -10,7 +10,7 @@
     "async": "0.1.22",
     "bunyan": "0.21.3",
     "restify": "git://github.com/mcavage/node-restify.git#198dcbb",
-    "node-uuid": "1.4.0",
+    "libuuid": "0.1.2",
     "http-signature": "0.9.9",
     "tap": "0.3.3",
     "ldapjs": "0.5.7"

@@ -22,7 +22,7 @@
 
 var debug = console.warn;
 
-var uuid = require('node-uuid');
+var uuid = require('libuuid');
 var ldap = require('ldapjs');
 var restify = require('restify');
 
@@ -350,7 +350,7 @@ function requestCreate(req, res, next, Model) {
     }
     data.user = req._user.uuid;
     // TODO: remove this once the models are generating the uuid. Probe is.
-    data.uuid = uuid();
+    data.uuid = uuid.create();
 
     modelCreate(req._app, Model, data, req.log, function (err, item) {
         if (err) {

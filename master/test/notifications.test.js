@@ -7,7 +7,7 @@
 var fs = require('fs');
 var test = require('tap').test;
 
-var uuid = require('node-uuid');
+var uuid = require('libuuid');
 var Logger = require('bunyan');
 
 var Contact = require('../lib/contact');
@@ -151,9 +151,9 @@ test('email: notify', function (t) {
         'type': 'probe',
         'user': user.id,
         time: Date.now(),
-        agent: uuid(),
+        agent: uuid.create(),
         agentAlias: 'tehagent',
-        relay: uuid(),
+        relay: uuid.create(),
         data: {
             message: 'test from amon master test/notifications.test.js'
         }

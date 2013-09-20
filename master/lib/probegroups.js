@@ -12,7 +12,7 @@ var assert = require('assert-plus');
 var ldap = require('ldapjs');
 var restify = require('restify');
 var async = require('async');
-var genUuid = require('node-uuid');
+var genUuid = require('libuuid');
 
 var ufdsmodel = require('./ufdsmodel');
 var utils = require('amon-common').utils,
@@ -116,7 +116,7 @@ ProbeGroup.create = function createProbeGroup(app, data, callback) {
     }
 
     // Put together the raw data.
-    var newUuid = genUuid();
+    var newUuid = genUuid.create();
     var raw = {
         user: data.user,
         uuid: newUuid,
