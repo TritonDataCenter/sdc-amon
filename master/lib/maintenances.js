@@ -209,34 +209,41 @@ function createMaintenance(options, callback) {
     };
     log.info(data, 'createMaintenance');
 
-    var redisClient = options.app.getRedisClient();
-    return redisClient.hincrby('maintenanceIds', userUuid, 1,
-        function (idErr, id) {
-            if (idErr) {
-                return callback(idErr);
-            }
-            log.trace({id: id, user: userUuid}, 'new maintenance id');
-            data.id = id;
-            try {
-                var maintenance = new Maintenance(data, log);
-            } catch (invalidErr) {
-                return callback(invalidErr);
-            }
-            redisClient.multi()
-                .sadd('maintenances:' + userUuid, maintenance.id)
-                .zadd('maintenancesByEnd', maintenance.end, maintenance._key)
-                .hmset(maintenance._key, maintenance.serializeDb())
-                .exec(function (err, replies) {
-                    if (err) {
-                        log.error(err, 'error saving maintenance to redis');
-                        return callback(err);
-                    }
-                    // may need to reschedule
-                    scheduleNextMaintenanceExpiry(options.app);
-                    callback(null, maintenance);
-                });
+    return options.app.getRedisClient(function (cerr, redisClient) {
+        if (cerr) {
+            log.error(cerr, 'error getting redis client');
+            return callback(cerr);
         }
-    );
+        redisClient.hincrby('maintenanceIds', userUuid, 1,
+            function (idErr, id) {
+                if (idErr) {
+                    return callback(idErr);
+                }
+                log.trace({id: id, user: userUuid}, 'new maintenance id');
+                data.id = id;
+                var maintenance;
+                try {
+                    maintenance = new Maintenance(data, log);
+                } catch (invalidErr) {
+                    return callback(invalidErr);
+                }
+                redisClient.multi()
+                    .sadd('maintenances:' + userUuid, maintenance.id)
+                    .zadd('maintenancesByEnd', maintenance.end,
+                        maintenance._key)
+                    .hmset(maintenance._key, maintenance.serializeDb())
+                    .exec(function (err, replies) {
+                        if (err) {
+                            log.error(err, 'error saving maintenance to redis');
+                            return callback(err);
+                        }
+                        // may need to reschedule
+                        scheduleNextMaintenanceExpiry(options.app);
+                        callback(null, maintenance);
+                    });
+            }
+        );
+    });
 }
 
 
@@ -261,35 +268,45 @@ function deleteMaintenance(app, maint, callback) {
     var log = app.log;
     log.info({maint: maint}, 'deleteMaintenance');
 
-    app.getRedisClient().multi()
-        .srem('maintenances:' + maint.user, maint.id)
-        .zrem('maintenancesByEnd', maint._key)
-        .del(maint._key)
-        .exec(function (redisErr, replies) {
-            if (redisErr) {
-                //XXX Really should have a retry here, else maint expiry
-                //    is now stopped.
-                return callback(redisErr);
-            }
-            if (maint.end) {
-                app.handleMaintenanceEnd(maint, function (endErr) {
-                    scheduleNextMaintenanceExpiry(app); // may need to resched
-                    if (endErr) {
-                        log.error({err: endErr, maint: (maint.serializePublic
-                                ? maint.serializePublic() : maint)},
-                            'error handling maint end (now deleted)');
-                        return callback(endErr);
-                    }
-                    callback();
-                });
-            } else {
-                // This is a fake maint that we're just expunging from the DB.
-                // Re-scheduling of the next maint expiry will be handled by
-                // the caller.
-                callback();
-            }
+    app.getRedisClient(function (cerr, client) {
+        if (cerr) {
+            log.error(cerr, 'error getting redis client');
+            return callback(cerr);
         }
-    );
+        client.multi()
+            .srem('maintenances:' + maint.user, maint.id)
+            .zrem('maintenancesByEnd', maint._key)
+            .del(maint._key)
+            .exec(function (redisErr, replies) {
+                if (redisErr) {
+                    //XXX Really should have a retry here, else maint expiry
+                    //    is now stopped.
+                    return callback(redisErr);
+                }
+                if (maint.end) {
+                    app.handleMaintenanceEnd(maint, function (endErr) {
+                        // may need to resched
+                        scheduleNextMaintenanceExpiry(app);
+                        if (endErr) {
+                            log.error({
+                                err: endErr,
+                                maint: (maint.serializePublic ?
+                                        maint.serializePublic() :
+                                        maint)
+                                }, 'error handling maint end (now deleted)');
+                            return callback(endErr);
+                        }
+                        callback();
+                    });
+                } else {
+                    // This is a fake maint that we're just expunging from the
+                    // DB. Re-scheduling of the next maint expiry will be
+                    // handled by the caller.
+                    callback();
+                }
+            }
+        );
+    });
 }
 
 
@@ -323,35 +340,40 @@ function listMaintenances(app, userUuid, log, callback) {
 
     var setKey = 'maintenances:' + userUuid;
     log.debug('get "%s" smembers', setKey);
-    var redisClient = app.getRedisClient();
-    redisClient.smembers(setKey, function (setErr, maintenanceIds) {
-        if (setErr) {
-            return callback(setErr);
+    app.getRedisClient(function (cerr, redisClient) {
+        if (cerr) {
+            log.error(cerr, 'error getting redis client');
+            return callback(cerr);
         }
-        log.debug({maintenanceIds: maintenanceIds},
-            'get maintenance window data for each key (%d ids)',
-            maintenanceIds.length);
-
-        async.map(maintenanceIds, maintenanceFromId,
-                            function (getErr, maintenances) {
-            if (getErr) {
-                log.error({err: getErr, maintenanceIds: maintenanceIds},
-                    'redis error getting maintenance window data');
-                return callback(getErr);
+        redisClient.smembers(setKey, function (setErr, maintenanceIds) {
+            if (setErr) {
+                return callback(setErr);
             }
+            log.debug({maintenanceIds: maintenanceIds},
+                'get maintenance window data for each key (%d ids)',
+                maintenanceIds.length);
 
-            var filtered = [];
-            for (var i = 0; i < maintenances.length; i++) {
-                var a = maintenances[i];
-                if (maintenances[i] != null) {
-                    // Maintenance.get returns a null maintenance
-                    // for invalid data.
-                    filtered.push(a);
+            async.map(maintenanceIds, maintenanceFromId,
+                                function (getErr, maintenances) {
+                if (getErr) {
+                    log.error({err: getErr, maintenanceIds: maintenanceIds},
+                        'redis error getting maintenance window data');
+                    return callback(getErr);
                 }
-            }
-            maintenances = filtered;
 
-            callback(null, maintenances);
+                var filtered = [];
+                for (var i = 0; i < maintenances.length; i++) {
+                    var a = maintenances[i];
+                    if (maintenances[i] !== null) {
+                        // Maintenance.get returns a null maintenance
+                        // for invalid data.
+                        filtered.push(a);
+                    }
+                }
+                maintenances = filtered;
+
+                callback(null, maintenances);
+            });
         });
     });
 }
@@ -437,46 +459,52 @@ Maintenance.get = function get(app, userUuid, id, callback) {
     var log = app.log;
     var maintenanceKey = ['maintenance', userUuid, id].join(':');
 
-    app.getRedisClient().multi()
-        .hgetall(maintenanceKey)
-        .exec(function (err, replies) {
-            if (err) {
-                log.error(err, 'error retrieving "%s" data from redis',
-                    maintenanceKey);
-                return callback(err);
-            }
-            var data = replies[0];
-            var rErr = app.assertRedisObject(data);
-            if (rErr) {
-                return callback(err);
-            }
-            var maintenance = null;
-            try {
-                maintenance = new Maintenance(data, log);
-            } catch (invalidErr) {
-                log.warn({err: invalidErr, data: data,
-                    maintenanceKey: maintenanceKey},
-                    'invalid maintenance window data in redis (removing this ' +
-                    'maintenance window)');
-            }
-            if (!maintenance) {
-                // Remove a bogus maintenance. This is necessary to avoid an
-                // infinite loop in the maintenance expiry reaper's
-                // continued use of a bogus maint in `maintenancesByEnd`.
-                var fakeMaint = {  // enough for `deleteMaintenance` to work
-                    user: userUuid,
-                    id: id,
-                    _key: maintenanceKey
-                };
-                deleteMaintenance(app, fakeMaint, function (delErr) {
-                    if (delErr)
-                        log.error(delErr, 'could not delete invalid maint');
-                    callback(delErr, null);
-                });
-            } else {
-                callback(null, maintenance);
-            }
-        });
+    app.getRedisClient(function (cerr, client) {
+        if (cerr) {
+            log.error(cerr, 'error getting redis client');
+            return callback(cerr);
+        }
+        client.multi()
+            .hgetall(maintenanceKey)
+            .exec(function (err, replies) {
+                if (err) {
+                    log.error(err, 'error retrieving "%s" data from redis',
+                        maintenanceKey);
+                    return callback(err);
+                }
+                var data = replies[0];
+                var rErr = app.assertRedisObject(data);
+                if (rErr) {
+                    return callback(err);
+                }
+                var maintenance = null;
+                try {
+                    maintenance = new Maintenance(data, log);
+                } catch (invalidErr) {
+                    log.warn({err: invalidErr, data: data,
+                        maintenanceKey: maintenanceKey},
+                        'invalid maintenance window data in redis (removing this ' +
+                        'maintenance window)');
+                }
+                if (!maintenance) {
+                    // Remove a bogus maintenance. This is necessary to avoid an
+                    // infinite loop in the maintenance expiry reaper's
+                    // continued use of a bogus maint in `maintenancesByEnd`.
+                    var fakeMaint = {  // enough for `deleteMaintenance` to work
+                        user: userUuid,
+                        id: id,
+                        _key: maintenanceKey
+                    };
+                    deleteMaintenance(app, fakeMaint, function (delErr) {
+                        if (delErr)
+                            log.error(delErr, 'could not delete invalid maint');
+                        callback(delErr, null);
+                    });
+                } else {
+                    callback(null, maintenance);
+                }
+            });
+    });
 };
 
 
@@ -523,36 +551,43 @@ Maintenance.prototype.serializeDb = function serializeDb() {
 function apiListAllMaintenanceWindows(req, res, next) {
     var log = req.log;
     var i;
-    var redisClient = req._app.getRedisClient();
 
     log.debug('get all maintenance keys');
-    redisClient.zrange('maintenancesByEnd', 0, -1, function (keysErr, keys) {
-        if (keysErr) {
-            return next(keysErr);
+    req._app.getRedisClient(function (cerr, redisClient) {
+        if (cerr) {
+            log.error(cerr, 'error getting redis client');
+            return next(cerr);
         }
-        log.debug('get maintenance window data for each key (%d keys)',
-            keys.length);
-        function maintenanceFromKey(maintKey, cb) {
-            var bits = maintKey.split(':');
-            Maintenance.get(req._app, bits[1], bits[2], cb);
-        }
-        async.map(keys, maintenanceFromKey, function (getErr, maintenances) {
-            if (getErr) {
-                log.error({err: getErr, maintenanceKeys: keys},
-                    'redis error getting maintenance window data');
-                return next(getErr);
+        redisClient.zrange('maintenancesByEnd', 0, -1,
+          function (keysErr, keys) {
+            if (keysErr) {
+                return next(keysErr);
             }
-            var serialized = [];
-            for (i = 0; i < maintenances.length; i++) {
-                if (maintenances[i] === null) {
-                    // Maintenance.get returns a null maintenance window
-                    // for invalid data.
-                    return false;
+            log.debug('get maintenance window data for each key (%d keys)',
+                keys.length);
+            function maintenanceFromKey(maintKey, cb) {
+                var bits = maintKey.split(':');
+                Maintenance.get(req._app, bits[1], bits[2], cb);
+            }
+            async.map(keys, maintenanceFromKey,
+              function (getErr, maintenances) {
+                if (getErr) {
+                    log.error({err: getErr, maintenanceKeys: keys},
+                        'redis error getting maintenance window data');
+                    return next(getErr);
                 }
-                serialized.push(maintenances[i].serializeDb());
-            }
-            res.send(serialized);
-            next();
+                var serialized = [];
+                for (i = 0; i < maintenances.length; i++) {
+                    if (maintenances[i] === null) {
+                        // Maintenance.get returns a null maintenance window
+                        // for invalid data.
+                        return false;
+                    }
+                    serialized.push(maintenances[i].serializeDb());
+                }
+                res.send(serialized);
+                next();
+            });
         });
     });
 }
@@ -641,21 +676,28 @@ function reqGetMaintenanceWindow(req, res, next) {
         } else {
             log.debug('get curr maintenance window id for user "%s" to ' +
                 'disambiguate 404 and 410', userUuid);
-            req._app.getRedisClient().hget('maintenanceIds', userUuid,
-                function (idErr, currId) {
-                    if (idErr) {
-                        return next(idErr);  // XXX translate node_redis error
-                    }
-                    currId = Number(currId) || 0;
-                    if (id <= currId) {
-                        return next(new errors.GoneError(format(
-                            'maint window %d was previously deleted', id)));
-                    } else {
-                        return next(new errors.ResourceNotFoundError(
-                            'maint window %d not found', id));
-                    }
+            req._app.getRedisClient(function (cerr, client) {
+                if (cerr) {
+                    log.error(cerr, 'error getting redis client');
+                    return next(cerr);
                 }
-            );
+                client.hget('maintenanceIds', userUuid,
+                    function (idErr, currId) {
+                        if (idErr) {
+                            // XXX translate node_redis error
+                            return next(idErr);
+                        }
+                        currId = Number(currId) || 0;
+                        if (id <= currId) {
+                            return next(new errors.GoneError(format(
+                                'maint window %d was previously deleted', id)));
+                        } else {
+                            return next(new errors.ResourceNotFoundError(
+                                'maint window %d not found', id));
+                        }
+                    }
+                );
+            });
         }
     });
 }
@@ -747,53 +789,61 @@ function scheduleNextMaintenanceExpiry(app) {
         }, 5 * 60 * 1000);
     }
 
-    var redisClient = app.getRedisClient();
-    redisClient.zrange('maintenancesByEnd', 0, 0, 'WITHSCORES',
-                                         function (err, nextMaint) {
-        if (err) {
-            // It is bad if maintenance expiry tanks, so we'll log an error
-            // (i.e. we expect an operator to take a look at some point) and
-            // reschedule for a few minutes from now.
-            log.error(err, 'Error finding next maintenance window to expire.');
-            rescheduleLater();
-        } else if (nextMaint.length === 0) {
-            log.info('no current maintenance windows');
-        } else {
-            var maintRepr = nextMaint[0];
-            var maintenanceEnd = nextMaint[1];
-            var expiresIn = maintenanceEnd - Date.now();
-            // Guard against a too-small `expiresIn`. An accidental
-            // negative number is hard loop.
-            expiresIn = Math.max(MAX_REAPER_FREQ, expiresIn);
-            log.info({maintenanceEnd: new Date(maintenanceEnd),
-                expiresIn: expiresIn, maintRepr: maintRepr},
-                'set maintenance expiryTimeout');
-            expiryTimeout = setTimeout(function () {
-                var userUuid = maintRepr.split(':')[1];
-                var id = maintRepr.split(':')[2];
-                Maintenance.get(app, userUuid, id, function (getErr, maint) {
-                    if (getErr) {
-                        log.error({err: getErr, userUuid: userUuid, id: id},
-                            'error getting maint to expire in expiryTimeout');
-                        rescheduleLater();
-                    } else if (!maint) {
-                        log.info({userUuid: userUuid, id: id},
-                            'maint to expire no longer exists');
-                        scheduleNextMaintenanceExpiry(app);
-                    } else {
-                        log.info({maint: maint.serializePublic()},
-                            'expire maint');
-                        deleteMaintenance(app, maint, function (delErr) {
-                            if (delErr) {
-                                log.error({err: delErr, maintRepr: maintRepr},
-                                    'error deleting maint in expiryTimeout');
-                            }
-                            scheduleNextMaintenanceExpiry(app);
-                        });
-                    }
-                });
-            }, expiresIn);
+    app.getRedisClient(function (cerr, redisClient) {
+        if (cerr) {
+            log.error(cerr, 'error getting redis client');
+            return;
         }
+        redisClient.zrange('maintenancesByEnd', 0, 0, 'WITHSCORES',
+                                             function (err, nextMaint) {
+            if (err) {
+                // It is bad if maintenance expiry tanks, so we'll log an error
+                // (i.e. we expect an operator to take a look at some point) and
+                // reschedule for a few minutes from now.
+                log.error(err,
+                    'Error finding next maintenance window to expire.');
+                rescheduleLater();
+            } else if (nextMaint.length === 0) {
+                log.info('no current maintenance windows');
+            } else {
+                var maintRepr = nextMaint[0];
+                var maintenanceEnd = nextMaint[1];
+                var expiresIn = maintenanceEnd - Date.now();
+                // Guard against a too-small `expiresIn`. An accidental
+                // negative number is hard loop.
+                expiresIn = Math.max(MAX_REAPER_FREQ, expiresIn);
+                log.info({maintenanceEnd: new Date(maintenanceEnd),
+                    expiresIn: expiresIn, maintRepr: maintRepr},
+                    'set maintenance expiryTimeout');
+                expiryTimeout = setTimeout(function () {
+                    var userUuid = maintRepr.split(':')[1];
+                    var id = maintRepr.split(':')[2];
+                    Maintenance.get(app, userUuid, id,
+                      function (getErr, maint) {
+                        if (getErr) {
+                            log.error({err: getErr, userUuid: userUuid, id: id},
+                            'error getting maint to expire in expiryTimeout');
+                            rescheduleLater();
+                        } else if (!maint) {
+                            log.info({userUuid: userUuid, id: id},
+                                'maint to expire no longer exists');
+                            scheduleNextMaintenanceExpiry(app);
+                        } else {
+                            log.info({maint: maint.serializePublic()},
+                                'expire maint');
+                            deleteMaintenance(app, maint, function (delErr) {
+                                if (delErr) {
+                                    log.error({err: delErr,
+                                        maintRepr: maintRepr}, 'error ' +
+                                        'deleting maint in expiryTimeout');
+                                }
+                                scheduleNextMaintenanceExpiry(app);
+                            });
+                        }
+                    });
+                }, expiresIn);
+            }
+        });
     });
 }
 

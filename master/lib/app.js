@@ -58,6 +58,7 @@ var VALID_LOGIN_CHARS = /^[a-zA-Z][a-zA-Z0-9_\.@]+$/;
  * "GET /ping"
  */
 function ping(req, res, next) {
+    var log = req.log;
     if (req.query.error !== undefined) {
         var restCode = req.query.error || 'InternalError';
         if (restCode.slice(-5) !== 'Error') {
@@ -70,14 +71,20 @@ function ping(req, res, next) {
             ping: 'pong',
             pid: process.pid  // used by test suite
         };
-        req._app.getRedisClient().info(function (infoErr, info) {
-            if (infoErr) {
-                data.redisErr = infoErr;
-            } else {
-                data.redis = info.match(/^redis_version:(.*?)$/m)[1];
+        req._app.getRedisClient(function (cerr, client) {
+            if (cerr) {
+                log.error(cerr, 'error getting redis client');
+                return next(cerr);
             }
-            res.send(data);
-            next();
+            client.info(function (infoErr, info) {
+                if (infoErr) {
+                    data.redisErr = infoErr;
+                } else {
+                    data.redis = info.match(/^redis_version:(.*?)$/m)[1];
+                }
+                res.send(data);
+                next();
+            });
         });
     }
 }
@@ -379,40 +386,46 @@ App.prototype._getUfdsClient = function _getUfdsClient(ufdsConfig) {
  *     all callers to check val of `getRedisClient()`.
  * XXX Can node-pool help here?
  */
-App.prototype.getRedisClient = function getRedisClient() {
+App.prototype.getRedisClient = function getRedisClient(cb) {
     var self = this;
 
-    if (!this._redisClient) {
-        var log = self.log.child({redis: true}, true);
-        var client = this._redisClient = new redis.createClient(
-            this.config.redis.port || 6379,   // redis default port
-            this.config.redis.host || '127.0.0.1',
-            {
-                max_attempts: 1,
-                enable_offline_queue: false
-            });
-
-        // Must handle 'error' event to avoid propagation to top-level
-        // where node will terminate.
-        client.on('error', function (err) {
-            log.warn(err, 'redis client error');
-        });
-        client.on('drain', function () {
-            log.debug('redis client drain');
-        });
-        client.on('idle', function () {
-            log.debug('redis client idle');
-        });
-
-        client.on('end', function () {
-            log.debug('redis client end, recycling it');
-            client.end();
-            self._redisClient = null;
-        });
-
-        client.select(1); // Amon uses DB 1 in redis.
+    if (this._redisClient) {
+        return cb(null, this._redisClient);
     }
-    return this._redisClient;
+
+    var log = self.log.child({redis: true}, true);
+    var client = this._redisClient = new redis.createClient(
+        this.config.redis.port || 6379,   // redis default port
+        this.config.redis.host || '127.0.0.1',
+        {
+            max_attempts: 1,
+            enable_offline_queue: false
+        });
+
+    client.on('ready', function () {
+        log.debug('redis client ready');
+        client.select(1); // Amon uses DB 1 in redis.
+        cb(client);
+    });
+
+    // Must handle 'error' event to avoid propagation to top-level
+    // where node will terminate.
+    client.on('error', function (err) {
+        log.warn(err, 'redis client error');
+        cb(err);
+    });
+    client.on('drain', function () {
+        log.debug('redis client drain');
+    });
+    client.on('idle', function () {
+        log.debug('redis client idle');
+    });
+
+    client.on('end', function () {
+        log.debug('redis client end, recycling it');
+        client.end();
+        self._redisClient = null;
+    });
 };
 
 

@@ -163,51 +163,57 @@ function createAlarm(app, userUuid, probeUuid, probeGroupUuid, callback) {
     if (probeUuid) data.probe = probeUuid;
     if (probeGroupUuid) data.probeGroup = probeGroupUuid;
     var alarmsKey = 'alarms:' + userUuid;
-    var redisClient = app.getRedisClient();
-
-    return redisClient.hincrby('alarmIds', userUuid, 1, function (idErr, id) {
-        if (idErr) {
-            return callback(idErr);  // XXX translate redis err
-        }
-        log.trace({id: id, userUuid: userUuid}, 'new alarm id');
-        data.id = Number(id);
-        if (isNaN(data.id)) {
-            log.error({id: id, userUuid: userUuid, issue: 'MON-233'},
-                'new alarm id');
-            return callback(new errors.InternalError(
-                'could not get a valid id for new alarm'));
-        }
-        try {
-            var alarm = new Alarm(data, log);
-        } catch (invalidErr) {
-            return callback(invalidErr);
+    return app.getRedisClient(function (cerr, redisClient) {
+        if (cerr) {
+            log.error(cerr, 'error getting redis client');
+            return callback(cerr);
         }
 
-        var rdata = {
-            v: ALARM_MODEL_VERSION,
-            user: alarm.user,
-            id: alarm.id,
-            closed: alarm.closed,
-            suppressed: alarm.suppressed,
-            timeOpened: alarm.timeOpened,
-            timeClosed: alarm.timeClosed,
-            timeLastEvent: alarm.timeLastEvent
-        };
-        if (alarm.probe) rdata.probe = alarm.probe;
-        if (alarm.probeGroup) rdata.probeGroup = alarm.probeGroup;
-        redisClient.multi()
-            .sadd(alarmsKey, alarm.id)
-            .hmset(alarm._key, rdata)
-            .exec(function (err, replies) {
-                if (err) {
-                    log.error(err, 'error saving alarm to redis');
-                    return callback(err);
-                }
-                log.info({alarmId: alarm.id, userUuid: userUuid,
-                    probeUuid: probeUuid, probeGroupUuid: probeGroupUuid},
-                    'createAlarm');
-                return callback(null, alarm);
-            });
+        redisClient.hincrby('alarmIds', userUuid, 1, function (idErr, id) {
+            if (idErr) {
+                return callback(idErr);  // XXX translate redis err
+            }
+            log.trace({id: id, userUuid: userUuid}, 'new alarm id');
+            data.id = Number(id);
+            if (isNaN(data.id)) {
+                log.error({id: id, userUuid: userUuid, issue: 'MON-233'},
+                    'new alarm id');
+                return callback(new errors.InternalError(
+                    'could not get a valid id for new alarm'));
+            }
+            var alarm;
+            try {
+                alarm = new Alarm(data, log);
+            } catch (invalidErr) {
+                return callback(invalidErr);
+            }
+
+            var rdata = {
+                v: ALARM_MODEL_VERSION,
+                user: alarm.user,
+                id: alarm.id,
+                closed: alarm.closed,
+                suppressed: alarm.suppressed,
+                timeOpened: alarm.timeOpened,
+                timeClosed: alarm.timeClosed,
+                timeLastEvent: alarm.timeLastEvent
+            };
+            if (alarm.probe) rdata.probe = alarm.probe;
+            if (alarm.probeGroup) rdata.probeGroup = alarm.probeGroup;
+            redisClient.multi()
+                .sadd(alarmsKey, alarm.id)
+                .hmset(alarm._key, rdata)
+                .exec(function (err, replies) {
+                    if (err) {
+                        log.error(err, 'error saving alarm to redis');
+                        return callback(err);
+                    }
+                    log.info({alarmId: alarm.id, userUuid: userUuid,
+                        probeUuid: probeUuid, probeGroupUuid: probeGroupUuid},
+                        'createAlarm');
+                    return callback(null, alarm);
+                });
+        });
     });
 }
 
@@ -308,7 +314,12 @@ Alarm.get = function get(app, userUuid, id, callback) {
     var faultsKey = ['faults', userUuid, id].join(':');
     var maintFaultsKey = ['maintFaults', userUuid, id].join(':');
 
-    app.getRedisClient().multi()
+    app.getRedisClient(function (cerr, client) {
+        if (cerr) {
+            log.error(cerr, 'error getting redis client');
+            return callback(cerr);
+        }
+        client.multi()
         .hgetall(alarmKey)
         .hgetall(faultsKey)
         .hgetall(maintFaultsKey)
@@ -334,6 +345,7 @@ Alarm.get = function get(app, userUuid, id, callback) {
             }
             callback(null, alarm);
         });
+    });
 };
 
 
@@ -366,58 +378,65 @@ Alarm.filter = function filter(app, options, callback) {
 
     log.debug({filterOptions: options}, 'filter alarms');
     var alarmsKey = 'alarms:' + options.user;
-    app.getRedisClient().smembers(alarmsKey, function (err, alarmIds) {
-        if (err) {
-            log.error(err, 'redis error getting alarm ids'); // XXX xlate error
-            return callback(err);
+    app.getRedisClient(function (cerr, client) {
+        if (cerr) {
+            log.error(cerr, 'error getting redis client');
+            return callback(cerr);
         }
-        var rErr = app.assertRedisArrayOfNumber(alarmIds);
-        if (rErr) {
-            return callback(err);
-        }
-        log.debug({alarmIds: alarmIds}, 'filter alarms: %d alarm ids',
-            alarmIds.length);
-        function alarmFromId(id, next) {
-            try {
-                Alarm.get(app, options.user, id, next);
-            } catch (e) {
-                log.warn('could not get alarm')
-                next(null);
+        client.smembers(alarmsKey, function (err, alarmIds) {
+            if (err) {
+                // XXX xlate error
+                log.error(err, 'redis error getting alarm ids');
+                return callback(err);
             }
-        }
-        async.map(alarmIds, alarmFromId, function (getErr, alarms) {
-            if (getErr) {
-                log.error({err: getErr, alarmIds: alarmIds},
-                    'redis error getting alarm data');
-                return callback(getErr);
+            var rErr = app.assertRedisArrayOfNumber(alarmIds);
+            if (rErr) {
+                return callback(err);
             }
-            var filtered = alarms.filter(function (a) {
-                if (a === null) {
-                    // Alarm.get returns a null alarm for invalid data.
-                    return false;
+            log.debug({alarmIds: alarmIds}, 'filter alarms: %d alarm ids',
+                alarmIds.length);
+            function alarmFromId(id, next) {
+                try {
+                    Alarm.get(app, options.user, id, next);
+                } catch (e) {
+                    log.warn('could not get alarm');
+                    next(null);
                 }
-                if (options.closed !== undefined &&
-                    a.closed !== options.closed)
-                {
-                    log.trace({alarm: a},
-                        'filter out alarm (closed: %j != %j)',
-                        a.closed, options.closed);
-                    return false;
+            }
+            async.map(alarmIds, alarmFromId, function (getErr, alarms) {
+                if (getErr) {
+                    log.error({err: getErr, alarmIds: alarmIds},
+                        'redis error getting alarm data');
+                    return callback(getErr);
                 }
-                if (options.probe && a.probe !== options.probe) {
-                    log.trace({alarm: a}, 'filter out alarm (probe: %j != %j)',
-                        a.probe, options.probe);
-                    return false;
-                }
-                if (options.probeGroup && a.probeGroup !== options.probeGroup) {
-                    log.trace({alarm: a},
-                        'filter out alarm (probeGroup: %j != %j)',
-                        a.probeGroup, options.probeGroup);
-                    return false;
-                }
-                return true;
+                var filtered = alarms.filter(function (a) {
+                    if (a === null) {
+                        // Alarm.get returns a null alarm for invalid data.
+                        return false;
+                    }
+                    if (options.closed !== undefined &&
+                        a.closed !== options.closed)
+                    {
+                        log.trace({alarm: a},
+                            'filter out alarm (closed: %j != %j)',
+                            a.closed, options.closed);
+                        return false;
+                    }
+                    if (options.probe && a.probe !== options.probe) {
+                        log.trace({alarm: a}, 'filter out alarm (probe: %j != %j)',
+                            a.probe, options.probe);
+                        return false;
+                    }
+                    if (options.probeGroup && a.probeGroup !== options.probeGroup) {
+                        log.trace({alarm: a},
+                            'filter out alarm (probeGroup: %j != %j)',
+                            a.probeGroup, options.probeGroup);
+                        return false;
+                    }
+                    return true;
+                });
+                return callback(null, filtered);
             });
-            return callback(null, filtered);
         });
     });
 };
@@ -566,118 +585,124 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
             log.info({maint: maint}, 'event is in maint');
         }
 
-        var redisClient = app.getRedisClient();
-        var multi = redisClient.multi();
-        var idx = {  // index into `replies` below
-            numFaultsBefore: 0,
-            numFaultsAfter: 0,
-            numMaintFaultsAfter: 0,
-            numEvents: 0
-        };
-        multi.hlen(self._faultsKey); // numFaultsBefore
-        idx.numFaultsAfter++; idx.numMaintFaultsAfter++; idx.numEvents++;
+        app.getRedisClient(function (cerr, redisClient) {
+            if (cerr) {
+                log.error(cerr, 'error getting redis client');
+                return callback(cerr);
+            }
+            var multi = redisClient.multi();
+            var idx = {  // index into `replies` below
+                numFaultsBefore: 0,
+                numFaultsAfter: 0,
+                numMaintFaultsAfter: 0,
+                numEvents: 0
+            };
+            multi.hlen(self._faultsKey); // numFaultsBefore
+            idx.numFaultsAfter++; idx.numMaintFaultsAfter++; idx.numEvents++;
 
-        // Update data (on `this` and in redis).
-        multi.hincrby(self._key, 'numEvents', 1); // numEvents
-        idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
-        self.timeLastEvent = event.time;
-        multi.hset(self._key, 'timeLastEvent', self.timeLastEvent);
-        idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
+            // Update data (on `this` and in redis).
+            multi.hincrby(self._key, 'numEvents', 1); // numEvents
+            idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
+            self.timeLastEvent = event.time;
+            multi.hset(self._key, 'timeLastEvent', self.timeLastEvent);
+            idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
 
-        // Update faults.
-        var fault = faultFromEvent(event);
-        var faultId = idFromFault(fault);
-        if (event.clear) {
-            self.removeFault(faultId);
-            multi.hdel(self._faultsKey, faultId);
-            idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
-            self.removeMaintFault(faultId);
-            multi.hdel(self._maintFaultsKey, faultId);
-            idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
-        } else if (maint) {
-            self.addMaintFault(faultId, fault);
-            multi.hset(self._maintFaultsKey, faultId, JSON.stringify(fault));
-            idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
-        } else {
-            self.addFault(faultId, fault);
-            multi.hset(self._faultsKey, faultId, JSON.stringify(fault));
-            idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
-        }
-        multi.hlen(self._faultsKey); // numFaultsAfter
-        idx.numMaintFaultsAfter++;
-        multi.hlen(self._maintFaultsKey); // numMaintFaultsAfter
-
-        multi.exec(function (saveErr, replies) {
-            var stats = null;
-            if (saveErr) {
-                log.error(saveErr,
-                    'error updating redis with alarm event data');
-                callback(saveErr);
+            // Update faults.
+            var fault = faultFromEvent(event);
+            var faultId = idFromFault(fault);
+            if (event.clear) {
+                self.removeFault(faultId);
+                multi.hdel(self._faultsKey, faultId);
+                idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
+                self.removeMaintFault(faultId);
+                multi.hdel(self._maintFaultsKey, faultId);
+                idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
+            } else if (maint) {
+                self.addMaintFault(faultId, fault);
+                multi.hset(self._maintFaultsKey, faultId,
+                    JSON.stringify(fault));
+                idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
             } else {
-                stats = {};
-                Object.keys(idx).forEach(function (k) {
-                    stats[k] = replies[idx[k]];
-                });
-                self.numEvents = stats.numEvents;
-                var numFaults = stats.numFaultsAfter +
-                    stats.numMaintFaultsAfter;
-                if (event.clear && numFaults === 0) {
-                    log.info('cleared last fault: close this alarm');
-                    self.closed = true;
-                    self.timeClosed = Date.now();
-                    redisClient.hmset(self._key,
-                        'closed', self.closed,
-                        'timeClosed', self.timeClosed,
-                        function (closedErr) {
-                            if (closedErr) {
-                                callback(closedErr);
-                            } else {
-                                callback();
-                            }
-                        }
-                    );
+                self.addFault(faultId, fault);
+                multi.hset(self._faultsKey, faultId, JSON.stringify(fault));
+                idx.numFaultsAfter++; idx.numMaintFaultsAfter++;
+            }
+            multi.hlen(self._faultsKey); // numFaultsAfter
+            idx.numMaintFaultsAfter++;
+            multi.hlen(self._maintFaultsKey); // numMaintFaultsAfter
+
+            multi.exec(function (saveErr, replies) {
+                var stats = null;
+                if (saveErr) {
+                    log.error(saveErr,
+                        'error updating redis with alarm event data');
+                    callback(saveErr);
                 } else {
-                    callback();
-                }
-            }
-
-            // Here we notify even if error saving to redis. We don't wait
-            // for the notify to complete or report its possible error.
-            //
-            // TODOs:
-            // - TODO: guard against too frequent notifications. Set a
-            //   timeout for 5 minutes from now. Hold ref to alarm. Send
-            //   notification with all details for that 5 minutes. New events
-            //   need, say, a rise in severity to break the delay.
-            // - TODO: re-notify
-
-            // Notify if the number of non-maintenance faults changed, and
-            // also if there was trouble saving such that we don't know if
-            // the maintenance count changed.
-            var shouldNotify = false;
-            var reason = null;
-            if (!stats) {
-                shouldNotify = true;
-                reason = 'unknown';
-            } else if (stats.numFaultsAfter > stats.numFaultsBefore) {
-                shouldNotify = true;
-                reason = 'fault';
-            } else if (stats.numFaultsAfter < stats.numFaultsBefore) {
-                shouldNotify = true;
-                reason = 'clear';
-            }
-            log.info({shouldNotify: shouldNotify, reason: reason},
-                'should notify? %s', shouldNotify);
-            if (shouldNotify) {
-                //XXX:TODO pass reason info to notify
-                self.notify(app, options, function (err) {
-                    if (err) {
-                        //XXX Watch for infinite loop here.
-                        log.error(err,
-                            'TODO:XXX send a user event about error notifying');
+                    stats = {};
+                    Object.keys(idx).forEach(function (k) {
+                        stats[k] = replies[idx[k]];
+                    });
+                    self.numEvents = stats.numEvents;
+                    var numFaults = stats.numFaultsAfter +
+                        stats.numMaintFaultsAfter;
+                    if (event.clear && numFaults === 0) {
+                        log.info('cleared last fault: close this alarm');
+                        self.closed = true;
+                        self.timeClosed = Date.now();
+                        redisClient.hmset(self._key,
+                            'closed', self.closed,
+                            'timeClosed', self.timeClosed,
+                            function (closedErr) {
+                                if (closedErr) {
+                                    callback(closedErr);
+                                } else {
+                                    callback();
+                                }
+                            }
+                        );
+                    } else {
+                        callback();
                     }
-                });
-            }
+                }
+
+                // Here we notify even if error saving to redis. We don't wait
+                // for the notify to complete or report its possible error.
+                //
+                // TODOs:
+                // - TODO: guard against too frequent notifications. Set a
+                //   timeout for 5 minutes from now. Hold ref to alarm. Send
+                //   notification with all details for that 5 minutes. New
+                //   events need, say, a rise in severity to break the delay.
+                // - TODO: re-notify
+
+                // Notify if the number of non-maintenance faults changed, and
+                // also if there was trouble saving such that we don't know if
+                // the maintenance count changed.
+                var shouldNotify = false;
+                var reason = null;
+                if (!stats) {
+                    shouldNotify = true;
+                    reason = 'unknown';
+                } else if (stats.numFaultsAfter > stats.numFaultsBefore) {
+                    shouldNotify = true;
+                    reason = 'fault';
+                } else if (stats.numFaultsAfter < stats.numFaultsBefore) {
+                    shouldNotify = true;
+                    reason = 'clear';
+                }
+                log.info({shouldNotify: shouldNotify, reason: reason},
+                    'should notify? %s', shouldNotify);
+                if (shouldNotify) {
+                    //XXX:TODO pass reason info to notify
+                    self.notify(app, options, function (err) {
+                        if (err) {
+                            //XXX Watch for infinite loop here.
+                            log.error(err, 'TODO:XXX send a user event ' +
+                                'about error notifying');
+                        }
+                    });
+                }
+            });
         });
     });
 };
@@ -691,11 +716,17 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
  *    and a node_redis error on failure.
  */
 Alarm.prototype.close = function close(app, callback) {
-    var redisClient = app.getRedisClient();
-    redisClient.hmset(this._key,
-        'closed', true,
-        'timeClosed', Date.now(),
-        callback);
+    var log = app.log;
+    app.getRedisClient(function (cerr, client) {
+        if (cerr) {
+            log.error(cerr, 'error getting redis client');
+            return callback(cerr);
+        }
+        client.hmset(this._key,
+            'closed', true,
+            'timeClosed', Date.now(),
+            callback);
+    });
 };
 
 
@@ -710,11 +741,17 @@ Alarm.prototype.close = function close(app, callback) {
  *    and a node_redis error on failure.
  */
 Alarm.prototype.reopen = function (app, callback) {
-    var redisClient = app.getRedisClient();
-    redisClient.hmset(this._key,
-        'closed', false,
-        'timeClosed', null,
-        callback);
+    var log = app.log;
+    app.getRedisClient(function (cerr, client) {
+        if (cerr) {
+            log.error(cerr, 'error getting redis client');
+            return callback(cerr);
+        }
+        client.hmset(this._key,
+            'closed', false,
+            'timeClosed', null,
+            callback);
+    });
 };
 
 
@@ -726,8 +763,14 @@ Alarm.prototype.reopen = function (app, callback) {
  *    and a node_redis error on failure.
  */
 Alarm.prototype.suppress = function (app, callback) {
-    var redisClient = app.getRedisClient();
-    redisClient.hset(this._key, 'suppressed', true, callback);
+    var log = app.log;
+    app.getRedisClient(function (cerr, client) {
+        if (cerr) {
+            log.error(cerr, 'error getting redis client');
+            return callback(cerr);
+        }
+        client.hset(this._key, 'suppressed', true, callback);
+    });
 };
 
 
@@ -739,8 +782,14 @@ Alarm.prototype.suppress = function (app, callback) {
  *    and a node_redis error on failure.
  */
 Alarm.prototype.unsuppress = function (app, callback) {
-    var redisClient = app.getRedisClient();
-    redisClient.hset(this._key, 'suppressed', false, callback);
+    var log = app.log;
+    app.getRedisClient(function (cerr, client) {
+        if (cerr) {
+            log.error(cerr, 'error getting redis client');
+            return callback(cerr);
+        }
+        client.hset(this._key, 'suppressed', false, callback);
+    });
 };
 
 
@@ -844,38 +893,43 @@ Alarm.prototype.notify = function notify(app, options, callback) {
 function apiListAllAlarms(req, res, next) {
     var log = req.log;
     var i;
-    var redisClient = req._app.getRedisClient();
-
-    log.debug('get "alarm:*" keys');
-    redisClient.keys('alarm:*', function (keysErr, alarmKeys) {
-        if (keysErr) {
-            return next(keysErr);
+    req._app.getRedisClient(function (cerr, redisClient) {
+        if (cerr) {
+            log.error(cerr, 'error getting redis client');
+            return next(cerr);
         }
-        var rErr = req._app.assertRedisArrayOfString(alarmKeys);
-        if (rErr) {
-            return callback(err);
-        }
-        log.debug('get alarm data for each key (%d keys)', alarmKeys.length);
-        function alarmFromKey(key, cb) {
-            var bits = key.split(':');
-            Alarm.get(req._app, bits[1], bits[2], cb);
-        }
-        async.map(alarmKeys, alarmFromKey, function (getErr, alarms) {
-            if (getErr) {
-                log.error({err: getErr, alarmKeys: alarmKeys},
-                    'redis error getting alarm data');
-                return next(getErr);
+        log.debug('get "alarm:*" keys');
+        redisClient.keys('alarm:*', function (keysErr, alarmKeys) {
+            if (keysErr) {
+                return next(keysErr);
             }
-            var serialized = [];
-            for (i = 0; i < alarms.length; i++) {
-                if (alarms[i] === null) {
-                    // Alarm.get returns a null alarm for invalid data.
-                    continue;
+            var rErr = req._app.assertRedisArrayOfString(alarmKeys);
+            if (rErr) {
+                return callback(err);
+            }
+            log.debug('get alarm data for each key (%d keys)',
+                alarmKeys.length);
+            function alarmFromKey(key, cb) {
+                var bits = key.split(':');
+                Alarm.get(req._app, bits[1], bits[2], cb);
+            }
+            async.map(alarmKeys, alarmFromKey, function (getErr, alarms) {
+                if (getErr) {
+                    log.error({err: getErr, alarmKeys: alarmKeys},
+                        'redis error getting alarm data');
+                    return next(getErr);
                 }
-                serialized.push(alarms[i].serializeDb());
-            }
-            res.send(serialized);
-            next();
+                var serialized = [];
+                for (i = 0; i < alarms.length; i++) {
+                    if (alarms[i] === null) {
+                        // Alarm.get returns a null alarm for invalid data.
+                        continue;
+                    }
+                    serialized.push(alarms[i].serializeDb());
+                }
+                res.send(serialized);
+                next();
+            });
         });
     });
 }
@@ -904,87 +958,91 @@ function apiListAlarms(req, res, next) {
     }
     var probeGroup = req.query.probeGroup;
 
-    var redisClient = req._app.getRedisClient();
-
-    function alarmObjFromId(id, cb) {
-        var key = format('alarm:%s:%s', userUuid, id);
-        redisClient.hgetall(key, cb);
-    }
-
-    var setKey = 'alarms:' + userUuid;
-    log.debug('get "%s" smembers', setKey);
-    redisClient.smembers(setKey, function (setErr, alarmIds) {
-        if (setErr) {
-            return next(setErr);
+    req._app.getRedisClient(function (cerr, redisClient) {
+        if (cerr) {
+            log.error(cerr, 'error getting redis client');
+            return next(cerr);
         }
-        log.debug({alarmIds: alarmIds},
-            'get alarm data for each key (%d ids)', alarmIds.length);
-
-        function alarmFromId(id, cb) {
-            Alarm.get(req._app, userUuid, id, cb);
+        function alarmObjFromId(id, cb) {
+            var key = format('alarm:%s:%s', userUuid, id);
+            redisClient.hgetall(key, cb);
         }
-        async.map(alarmIds, alarmFromId, function (getErr, alarms) {
-            if (getErr) {
-                log.error({err: getErr, alarmIds: alarmIds},
-                    'redis error getting alarm data');
-                return next(getErr);
+
+        var setKey = 'alarms:' + userUuid;
+        log.debug('get "%s" smembers', setKey);
+        redisClient.smembers(setKey, function (setErr, alarmIds) {
+            if (setErr) {
+                return next(setErr);
             }
+            log.debug({alarmIds: alarmIds},
+                'get alarm data for each key (%d ids)', alarmIds.length);
 
-            var filtered = [];
-            for (i = 0; i < alarms.length; i++) {
-                a = alarms[i];
-                if (alarms[i] != null) {
-                    // Alarm.get returns a null alarm for invalid data.
-                    filtered.push(a);
+            function alarmFromId(id, cb) {
+                Alarm.get(req._app, userUuid, id, cb);
+            }
+            async.map(alarmIds, alarmFromId, function (getErr, alarms) {
+                if (getErr) {
+                    log.error({err: getErr, alarmIds: alarmIds},
+                        'redis error getting alarm data');
+                    return next(getErr);
                 }
-            }
-            alarms = filtered;
 
-            if (probeGroup) {
-                log.debug('filter alarms for probeGroup="%s"', probeGroup);
-                filtered = [];
+                var filtered = [];
                 for (i = 0; i < alarms.length; i++) {
                     a = alarms[i];
-                    if (a.probeGroup === probeGroup) {
+                    if (alarms[i] !== null) {
+                        // Alarm.get returns a null alarm for invalid data.
                         filtered.push(a);
                     }
                 }
                 alarms = filtered;
-            }
 
-            log.debug('filter alarms for state="%s"', state);
-            filtered = [];
-            if (state === 'all') {
-                filtered = alarms;
-            } else if (state === 'recent') {
-                var ONE_HOUR_AGO = Date.now() - 60 * 60 * 1000;
-                for (i = 0; i < alarms.length; i++) {
-                    a = alarms[i];
-                    if (!a.closed || a.timeClosed > ONE_HOUR_AGO) {
-                        filtered.push(a);
+                if (probeGroup) {
+                    log.debug('filter alarms for probeGroup="%s"', probeGroup);
+                    filtered = [];
+                    for (i = 0; i < alarms.length; i++) {
+                        a = alarms[i];
+                        if (a.probeGroup === probeGroup) {
+                            filtered.push(a);
+                        }
                     }
+                    alarms = filtered;
                 }
-            } else if (state === 'open') {
-                for (i = 0; i < alarms.length; i++) {
-                    if (!alarms[i].closed) {
-                        filtered.push(alarms[i]);
-                    }
-                }
-            } else { // state === 'closed'
-                for (i = 0; i < alarms.length; i++) {
-                    if (alarms[i].closed) {
-                        filtered.push(alarms[i]);
-                    }
-                }
-            }
-            alarms = filtered;
 
-            var serialized = [];
-            for (i = 0; i < alarms.length; i++) {
-                serialized.push(alarms[i].serializePublic());
-            }
-            res.send(serialized);
-            next();
+                log.debug('filter alarms for state="%s"', state);
+                filtered = [];
+                if (state === 'all') {
+                    filtered = alarms;
+                } else if (state === 'recent') {
+                    var ONE_HOUR_AGO = Date.now() - 60 * 60 * 1000;
+                    for (i = 0; i < alarms.length; i++) {
+                        a = alarms[i];
+                        if (!a.closed || a.timeClosed > ONE_HOUR_AGO) {
+                            filtered.push(a);
+                        }
+                    }
+                } else if (state === 'open') {
+                    for (i = 0; i < alarms.length; i++) {
+                        if (!alarms[i].closed) {
+                            filtered.push(alarms[i]);
+                        }
+                    }
+                } else { // state === 'closed'
+                    for (i = 0; i < alarms.length; i++) {
+                        if (alarms[i].closed) {
+                            filtered.push(alarms[i]);
+                        }
+                    }
+                }
+                alarms = filtered;
+
+                var serialized = [];
+                for (i = 0; i < alarms.length; i++) {
+                    serialized.push(alarms[i].serializePublic());
+                }
+                res.send(serialized);
+                next();
+            });
         });
     });
 }
@@ -1018,21 +1076,29 @@ function reqGetAlarm(req, res, next) {
             log.debug(
                 'get curr alarm id for user "%s" to disambiguate 404 and 410',
                 userUuid);
-            req._app.getRedisClient().hget('alarmIds', userUuid,
-                function (idErr, currId) {
-                    if (idErr) {
-                        return next(idErr);  // XXX translate node_redis error
-                    }
-                    currId = Number(currId) || 0;
-                    if (alarmId <= currId) {
-                        return next(new errors.GoneError(
-                            format('alarm %d has been expunged', alarmId)));
-                    } else {
-                        return next(new errors.ResourceNotFoundError(
-                            'alarm %d not found', alarmId));
-                    }
+
+            req._app.getRedisClient(function (cerr, client) {
+                if (cerr) {
+                    log.error(cerr, 'error getting redis client');
+                    return next(cerr);
                 }
-            );
+                client.hget('alarmIds', userUuid,
+                    function (idErr, currId) {
+                        if (idErr) {
+                            // XXX translate node_redis error
+                            return next(idErr);
+                        }
+                        currId = Number(currId) || 0;
+                        if (alarmId <= currId) {
+                            return next(new errors.GoneError(
+                                format('alarm %d has been expunged', alarmId)));
+                        } else {
+                            return next(new errors.ResourceNotFoundError(
+                                'alarm %d not found', alarmId));
+                        }
+                    }
+                );
+            });
         }
     });
 }
@@ -1128,18 +1194,25 @@ function apiDeleteAlarm(req, res, next) {
     var userUuid = req._user.uuid;
     var alarm = req._alarm;
     var alarmsKey = 'alarms:' + userUuid;
+    var log = req.log;
 
-    var multi = req._app.getRedisClient().multi();
-    multi.srem(alarmsKey, alarm.id);
-    multi.del(alarm._key);
-    multi.del(alarm._faultsKey);
-    multi.del(alarm._maintFaultsKey);
-    multi.exec(function (err, replies) {
-        if (err) {
-            return next(err);  //XXX xlate redis err
+    req._app.getRedisClient(function (cerr, client) {
+        if (cerr) {
+            log.error(cerr, 'error getting redis client');
+            return next(cerr);
         }
-        res.send(204);
-        next();
+        var multi = client.multi();
+        multi.srem(alarmsKey, alarm.id);
+        multi.del(alarm._key);
+        multi.del(alarm._faultsKey);
+        multi.del(alarm._maintFaultsKey);
+        multi.exec(function (err, replies) {
+            if (err) {
+                return next(err);  //XXX xlate redis err
+            }
+            res.send(204);
+            next();
+        });
     });
 }
 
