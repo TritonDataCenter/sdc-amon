@@ -405,7 +405,7 @@ App.prototype.getRedisClient = function getRedisClient(cb) {
     client.on('ready', function () {
         log.debug('redis client ready');
         client.select(1); // Amon uses DB 1 in redis.
-        cb(client);
+        cb(null, client);
     });
 
     // Must handle 'error' event to avoid propagation to top-level
