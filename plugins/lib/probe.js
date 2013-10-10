@@ -288,7 +288,7 @@ Matcher.prototype.test = function (s) {
 Matcher.prototype.matches = function (s) {
     assert.string(s, 's');
 
-    var CONTEXT = 20;  // Num chars before and after to include in context.
+    var CONTEXT = 300;  // Num chars before and after to include in context.
 
     // Make a new regex with 'g' to allow finding successive matches.
     /* JSSTYLED */
