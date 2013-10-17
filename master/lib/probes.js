@@ -193,6 +193,79 @@ Probe.create = function createProbe(app, data_, callback) {
 };
 
 
+/**
+ * Create an update Probe object from request data.
+ *
+ * @param app {App}
+ * @param data_ {Object} The probe data.
+ * @param callback {Function} `function (err, probe)`.
+ */
+Probe.update = function updateProbe(app, data_, callback) {
+    assert.object(app, 'app');
+    assert.object(data_, 'data');
+    assert.func(callback, 'callback');
+
+    var data = objCopy(data_);
+
+    // Validate group.
+    function getGroup(groupUuid, cb) {
+        if (!groupUuid)
+            return cb();
+        ProbeGroup.get(app, data.user, groupUuid, cb);
+    }
+    getGroup(data.group, function (gErr, group) {
+        if (gErr)
+            return callback(gErr);
+
+        // Put together the raw data.
+        data.objectclass = Probe.objectclass;
+        if (data_.config) data.config = JSON.stringify(data_.config);
+
+        delete data_.user;
+        delete data_.type;
+        delete data_.agent;
+        delete data_.disabled;
+        delete data_.name;
+        delete data_.contacts;
+        delete data_.config;
+        delete data_.machine;
+        delete data_.group;
+        delete data_.uuid;
+
+        var skipauthz = data_.skipauthz;
+        delete data_.skipauthz;
+
+        // Error on extra spurious fields.
+        var extraFields = Object.keys(data_);
+        if (extraFields.length > 0) {
+            return callback(new errors.InvalidParameterError(
+                _('invalid extra parameters: "%s"', extraFields.join('", "')),
+                extraFields.map(function (f) {
+                    return {field:f, code:'Invalid'};
+                })));
+        }
+
+        var probe = null;
+        try {
+            probe = new Probe(app, data);
+        } catch (cErr) {
+            return callback(cErr);
+        }
+
+        // 'skipauthz' in the probe data is a request to skip authorization
+        // for PUTting this probe. It exists to facilitate the setting of
+        // probes by core SDC zones during initial headnode setup, when all
+        // facilities (specifically VMAPI) for authZ might not be up yet.
+        // Note: This request is **only honoured for the admin user** (the
+        // only user for which probes should be added during headnode setup).
+        probe._skipauthz = (skipauthz ? data.user === app.config.adminUuid
+                                      : false);
+
+        callback(null, probe);
+    });
+};
+
+
 Probe.objectclass = 'amonprobe';
 
 Probe.dn = function (user, uuid) {
@@ -534,16 +607,16 @@ Probe.validate = function validateProbe(app, raw) {
     }
 
     // Validate the probe-type-specific config.
-    var config = null;
-    if (raw.config) {
+    var config = raw.config;
+    if (config && typeof (config) === 'string') {
         try {
-            config = JSON.parse(raw.config);
+            config = JSON.parse(config);
         } catch (parseErr) {
             errs.push({
                 field: 'config',
                 code: 'Invalid',
                 message: _('probe config, "%s", is not valid JSON: %s',
-                    raw.config, parseErr)
+                    config, parseErr)
             });
         }
     }

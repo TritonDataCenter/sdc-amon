@@ -172,34 +172,34 @@ function modelCreate(app, Model, data, log, callback) {
 function modelPut(app, Model, data, log, callback) {
     log.trace({data: data, modelName: Model.name}, 'modelPut');
 
-    var item;
-    try {
-        item = new Model(app, data);
-    } catch (e) {
-        return callback(e);
-    }
-
-    // Access control check.
-    item.authorizeWrite(app, function (err) {
-        if (err) {
-            log.debug({err: err, modelName: Model.name, dn: item.dn},
-                'authorizeWrite err');
-            return callback(err);
+    // 1. Create the object (this handles validation).
+    Model.update(app, data, function (cErr, item) {
+        if (cErr) {
+            return callback(cErr); //XXX wrap this error?
         }
-        log.debug({modelName: Model.name, dn: item.dn},
-            'authorizeWrite: authorized');
 
-        // Add it.
-        var dn = item.dn;
-        app.ufdsAdd(dn, item.raw, function (addErr) {
-            if (addErr) {
-                log.error(addErr, 'Error saving to UFDS (dn="%s")', dn);
-                callback(addErr);
-            } else {
-                log.trace('<%s> create item:', Model.name, item);
-                app.cacheInvalidatePut(Model.name, item);
-                callback(null, item);
+        // 2. Access control check.
+        item.authorizeWrite(app, function (err) {
+            if (err) {
+                log.debug({err: err, modelName: Model.name, dn: item.dn},
+                    'authorizeWrite err');
+                return callback(err);
             }
+            log.debug({modelName: Model.name, dn: item.dn},
+                'authorizeWrite: authorized');
+
+            // 3. Update it.
+            var dn = item.dn;
+            app.ufdsModify(dn, item.raw, function (addErr) {
+                if (addErr) {
+                    log.error(addErr, 'Error saving to UFDS (dn="%s")', dn);
+                    callback(addErr);
+                } else {
+                    log.trace('<%s> modify item:', Model.name, item);
+                    app.cacheInvalidateWrite(Model.name, item);
+                    callback(null, item);
+                }
+            });
         });
     });
 }

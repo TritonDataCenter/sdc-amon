@@ -680,18 +680,38 @@ App.prototype.ufdsAdd = function ufdsAdd(dn, data, callback) {
         if (addErr) {
             if (addErr instanceof ldap.EntryAlreadyExistsError) {
                 return callback(new errors.InternalError(addErr,
-                    'DN "'+dn+'" already exists.'));
-                // TODO: modify support (does replace work if have children?)
-                //var change = new ldap.Change({
-                //  operation: 'replace',
-                //  modification: item.raw
-                //});
-                //client.modify(dn, change, function (err) {
-                //  if (err) console.warn("client.modify err: %s", err)
-                //  client.unbind(function (err) {});
-                //});
+                    'DN "'+ dn + '" already exists.'));
             }
             return callback(new errors.InternalError(addErr, 'error saving'));
+        }
+        callback();
+    });
+};
+
+/**
+ * Modify an item on UFDS
+ *
+ * @param dn {String}
+ * @param data {Object}
+ * @param callback {Function} `function (err)`
+ */
+App.prototype.ufdsModify = function ufdsModify(dn, data, callback) {
+    var self = this;
+    console.log(dn);
+    console.log(data);
+    if (!self.ufdsClient) {
+        return callback(new errors.ServiceUnavailableError(
+            'service unavailable (ufds)'));
+    }
+
+    var change = {
+        operation: 'replace',
+        modification: data
+    };
+
+    self.ufdsClient.modify(dn, change, function (err) {
+        if (err) {
+            return callback(new errors.InternalError(err, 'error modifying'));
         }
         callback();
     });
