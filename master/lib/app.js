@@ -1076,6 +1076,14 @@ App.prototype.getOrCreateAlarm = function (options, callback) {
         } else {
             associatedProbe = probe.uuid;
         }
+
+        // When the event is associated with a probe and the probe's groupEvents
+        // attribute is false, every new event must result in a new alarm
+        if (probe.groupEvents === false) {
+            log.debug('getOrCreateAlarm: probe.groupEvents is false');
+            return createAlarm(self, event.user, associatedProbe,
+                associatedProbeGroup, callback);
+        }
     }
 
     // Get all open alarms for this user and probe/probe group.

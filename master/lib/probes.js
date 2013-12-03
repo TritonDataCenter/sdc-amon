@@ -105,6 +105,8 @@ function Probe(app, raw) {
     this.__defineGetter__('group', function () {
         return self.raw.group;
     });
+    this.groupEvents = boolFromString(this.raw.groupEvents, true,
+        'raw.groupEvents');
     this.disabled = boolFromString(this.raw.disabled, false, 'raw.disabled');
 }
 
@@ -148,6 +150,7 @@ Probe.create = function createProbe(app, data_, callback) {
         if (data.config) raw.config = JSON.stringify(data.config);
         if (data.machine) raw.machine = data.machine;
         if (data.group) raw.group = data.group;
+        if (data.groupEvents) raw.groupEvents = data.groupEvents;
         delete data.user;
         delete data.type;
         delete data.agent;
@@ -157,6 +160,7 @@ Probe.create = function createProbe(app, data_, callback) {
         delete data.config;
         delete data.machine;
         delete data.group;
+        delete data.groupEvents;
         delete data.uuid;  // spurious uuid added in `ufdsmodel.requestCreate`.
 
         var skipauthz = data.skipauthz;
@@ -230,6 +234,7 @@ Probe.update = function updateProbe(app, data_, callback) {
         delete data_.config;
         delete data_.machine;
         delete data_.group;
+        delete data_.groupEvents;
         delete data_.uuid;
 
         var skipauthz = data_.skipauthz;
@@ -310,6 +315,7 @@ Probe.prototype.serialize = function serialize(priv) {
     }
     if (this.config) data.config = this.config;
     if (this.machine) data.machine = this.machine;
+    if (this.groupEvents !== undefined) data.groupEvents = this.groupEvents;
     if (priv) {
         if (this.runInVmHost) data.runInVmHost = this.runInVmHost;
     }
@@ -632,6 +638,21 @@ Probe.validate = function validateProbe(app, raw) {
                     raw.config || '(none)', valErr)
             });
         }
+    }
+
+    // groupEvents
+    // Allow it to be valid for values from requests or values from UFDS, yuck.
+    var groupEvents = raw.groupEvents || raw.groupevents;
+    if (groupEvents !== undefined) {
+        groupEvents = boolFromString(groupEvents);
+        if (typeof (groupEvents) !== 'boolean') {
+            errs.push({
+                field: 'groupEvents',
+                code: 'Invalid'
+            });
+        }
+        delete raw.groupevents;
+        raw.groupEvents = groupEvents;
     }
 
     // disabled
