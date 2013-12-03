@@ -716,13 +716,14 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
  *    and a node_redis error on failure.
  */
 Alarm.prototype.close = function close(app, callback) {
+    var self = this;
     var log = app.log;
     app.getRedisClient(function (cerr, client) {
         if (cerr) {
             log.error(cerr, 'error getting redis client');
             return callback(cerr);
         }
-        client.hmset(this._key,
+        client.hmset(self._key,
             'closed', true,
             'timeClosed', Date.now(),
             callback);
@@ -741,13 +742,14 @@ Alarm.prototype.close = function close(app, callback) {
  *    and a node_redis error on failure.
  */
 Alarm.prototype.reopen = function (app, callback) {
+    var self = this;
     var log = app.log;
     app.getRedisClient(function (cerr, client) {
         if (cerr) {
             log.error(cerr, 'error getting redis client');
             return callback(cerr);
         }
-        client.hmset(this._key,
+        client.hmset(self._key,
             'closed', false,
             'timeClosed', null,
             callback);
@@ -763,13 +765,14 @@ Alarm.prototype.reopen = function (app, callback) {
  *    and a node_redis error on failure.
  */
 Alarm.prototype.suppress = function (app, callback) {
+    var self = this;
     var log = app.log;
     app.getRedisClient(function (cerr, client) {
         if (cerr) {
             log.error(cerr, 'error getting redis client');
             return callback(cerr);
         }
-        client.hset(this._key, 'suppressed', true, callback);
+        client.hset(self._key, 'suppressed', true, callback);
     });
 };
 
@@ -782,13 +785,14 @@ Alarm.prototype.suppress = function (app, callback) {
  *    and a node_redis error on failure.
  */
 Alarm.prototype.unsuppress = function (app, callback) {
+    var self = this;
     var log = app.log;
     app.getRedisClient(function (cerr, client) {
         if (cerr) {
             log.error(cerr, 'error getting redis client');
             return callback(cerr);
         }
-        client.hset(this._key, 'suppressed', false, callback);
+        client.hset(self._key, 'suppressed', false, callback);
     });
 };
 
