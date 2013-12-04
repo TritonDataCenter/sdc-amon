@@ -150,7 +150,7 @@ Probe.create = function createProbe(app, data_, callback) {
         if (data.config) raw.config = JSON.stringify(data.config);
         if (data.machine) raw.machine = data.machine;
         if (data.group) raw.group = data.group;
-        if (data.groupEvents) raw.groupEvents = data.groupEvents;
+        if (data.groupEvents !== undefined) raw.groupEvents = data.groupEvents;
         delete data.user;
         delete data.type;
         delete data.agent;
