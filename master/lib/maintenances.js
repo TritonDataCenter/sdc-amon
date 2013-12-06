@@ -364,8 +364,8 @@ function listMaintenances(app, userUuid, log, callback) {
                 var filtered = [];
                 for (var i = 0; i < maintenances.length; i++) {
                     var a = maintenances[i];
-                    if (maintenances[i] !== null) {
-                        // Maintenance.get returns a null maintenance
+                    if (maintenances[i]) {
+                        // Maintenance.get returns a null or undefined
                         // for invalid data.
                         filtered.push(a);
                     }
