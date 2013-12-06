@@ -391,7 +391,7 @@ Alarm.filter = function filter(app, options, callback) {
             }
             var rErr = app.assertRedisArrayOfNumber(alarmIds);
             if (rErr) {
-                return callback(err);
+                return callback(rErr);
             }
             log.debug({alarmIds: alarmIds}, 'filter alarms: %d alarm ids',
                 alarmIds.length);
