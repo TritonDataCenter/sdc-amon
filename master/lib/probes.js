@@ -265,6 +265,8 @@ Probe.update = function updateProbe(app, data_, callback) {
         // only user for which probes should be added during headnode setup).
         probe._skipauthz = (skipauthz ? data.user === app.config.adminUuid
                                       : false);
+        // When updating a Probe model we don't want to update its uuid
+        delete probe.raw.uuid;
 
         callback(null, probe);
     });

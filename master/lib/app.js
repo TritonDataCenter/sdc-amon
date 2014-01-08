@@ -697,8 +697,6 @@ App.prototype.ufdsAdd = function ufdsAdd(dn, data, callback) {
  */
 App.prototype.ufdsModify = function ufdsModify(dn, data, callback) {
     var self = this;
-    console.log(dn);
-    console.log(data);
     if (!self.ufdsClient) {
         return callback(new errors.ServiceUnavailableError(
             'service unavailable (ufds)'));
