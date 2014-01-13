@@ -909,7 +909,7 @@ function apiListAllAlarms(req, res, next) {
             }
             var rErr = req._app.assertRedisArrayOfString(alarmKeys);
             if (rErr) {
-                return callback(err);
+                return callback(rErr);
             }
             log.debug('get alarm data for each key (%d keys)',
                 alarmKeys.length);
