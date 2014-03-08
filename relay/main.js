@@ -129,7 +129,8 @@ function getMasterUrl(poll, callback) {
     function pollVMapi() {
         log.info('Poll VMAPI for Amon zone (admin uuid "%s").',
             process.env.UFDS_ADMIN_UUID);
-        vmapiClient.listVms({owner_uuid: process.env.UFDS_ADMIN_UUID},
+        vmapiClient.listVms(
+            {owner_uuid: process.env.UFDS_ADMIN_UUID, state: 'running'},
             function (err, vms) {
                 if (err) {
                     // Retry on error.
@@ -138,13 +139,13 @@ function getMasterUrl(poll, callback) {
                     setTimeout(pollVMapi, pollInterval);
                     return;
                 }
+                log.trace({vms: vms}, 'VMAPI ListVms response');
 
                 for (var i = 0; i < vms.length; i++) {
                     var vm = vms[i];
                     // Limitation: just using first one. Will need to
                     // change for H/A.
-                    if (vm.tags && vm.tags.smartdc_role === 'amon' &&
-                            vm.state === 'running') {
+                    if (vm.tags && vm.tags.smartdc_role === 'amon') {
                         var amonIp = vm.nics && vm.nics[0] && vm.nics[0].ip;
                         if (!amonIp) {
                             log.error({amonZone: vm}, 'No Amon zone IP');
@@ -480,7 +481,7 @@ function updateAgentAliases() {
                 log.info('updateAgentAliases for agent "global": "%s" -> "%s"',
                     app.agentAlias, alias);
                 app.agentAlias = alias;
-            }
+
             log.info('updateAgentAliases: done');
         });
     });
