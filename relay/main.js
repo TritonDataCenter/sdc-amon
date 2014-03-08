@@ -481,6 +481,7 @@ function updateAgentAliases() {
                 log.info('updateAgentAliases for agent "global": "%s" -> "%s"',
                     app.agentAlias, alias);
                 app.agentAlias = alias;
+            }
 
             log.info('updateAgentAliases: done');
         });
@@ -510,6 +511,13 @@ function startUpdateAgentAliasesInterval(next) {
  * @param next (Function) Optional. `function (err) {}`.
  */
 function updateAgentProbes(next) {
+    function getDelay() {
+        // 50ms to 500ms delay.
+        var min = 50;
+        var max = 500;
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
     function updateForOneZone(zonename, nextOne) {
         var app = zoneApps[zonename];
         if (!app)
