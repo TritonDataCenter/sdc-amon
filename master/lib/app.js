@@ -17,6 +17,7 @@ var sdcClients = require('sdc-clients'),
     VMAPI = sdcClients.VMAPI,
     UFDS = sdcClients.UFDS;
 var Cache = require('expiring-lru-cache');
+var LRU = require('lru-cache');
 var redis = require('redis');
 var async = require('async');
 var bunyan = require('bunyan');
@@ -210,15 +211,14 @@ function App(config, cnapiClient, vmapiClient, log) {
             log:log,
             name:'ProbeList'
         }),
-        // This is unbounded in size because (a) the data stored is small and
-        // (b) we expect `headAgentProbes` calls for *all* machines (the key)
-        // regularly so an LRU-cache is pointless.
-        headAgentProbes: new Cache({
-            size:100,
-            expiry:300000,
-            log:log,
-            name:'headAgentProbes'
-        })
+        /*
+         * Cache size: 1 million, the design max num VMs in an SDC.
+         * - the data stored is small and
+         * - we expect `headAgentProbes` calls for *all* machines (the key)
+         *   regularly so an LRU-cache is pointless.
+         * See MON-252 for discussion.
+         */
+        headAgentProbes: new LRU(1000000)
     };
 
     var serverName = 'Amon Master/' + Constants.ApiVersion;
