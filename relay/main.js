@@ -38,8 +38,12 @@ var ZoneEventWatcher = require('./lib/zoneeventwatcher');
 
 //---- Globals and constants
 
-// Config defaults.
-var DEFAULT_POLL = 30;
+/*
+ * Given a design max of 1M VMs in an SDC, we need a quite large polling
+ * interval. See MON-252 for discussion.
+ */
+var DEFAULT_POLL = 30 * 60; // 30 *minutes* for now.
+
 var DEFAULT_DATA_DIR = '/var/db/amon-relay';
 
 // Don't change this path! The platform's "joyent" brand is specifically
@@ -511,13 +515,6 @@ function startUpdateAgentAliasesInterval(next) {
  * @param next (Function) Optional. `function (err) {}`.
  */
 function updateAgentProbes(next) {
-    function getDelay() {
-        // 50ms to 500ms delay.
-        var min = 50;
-        var max = 500;
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
-
     function updateForOneZone(zonename, nextOne) {
         var app = zoneApps[zonename];
         if (!app)
@@ -579,20 +576,46 @@ function updateAgentProbes(next) {
         });
     }
 
+    function getDelay() {
+        // 50ms to 500ms delay.
+        var min = 50;
+        var max = 500;
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function delayThenUpdateForOneZone(zonename, nextOne) {
+        setTimeout(updateForOneZone, getDelay(), zonename, nextOne);
+    }
+
     var zonenames = Object.keys(zoneApps);
     log.trace('checking for agent probe updates (%d zones)', zonenames.length);
-    async.forEachSeries(zonenames, updateForOneZone, function (zonesErr) {
-        return (next && next());
-    });
+    async.forEachSeries(zonenames, delayThenUpdateForOneZone,
+        function (zonesErr) {
+            return (next && next());
+        });
 }
 
 
 /**
  * Update the agent probes for all running zones from the master
  */
-function startUpdateAgentProbesInterval(next) {
-    setInterval(updateAgentProbes, config.poll * 1000);
-    // TODO: Need to clear this interval on exit?
+function startUpdateAgentProbesPolling(next) {
+    var interval = config.poll * 1000;
+
+    function waitUpdateReschedule(wait) {
+        setTimeout(function () {
+            updateAgentProbes(function () {
+                waitUpdateReschedule(interval);
+            });
+        }, wait);
+    }
+
+    // First update at max 5 minutes. E.g. if interval is 1 hour or something
+    // very long, we want a reasonably soon first update. Note that the
+    // initial `updateAgentProbes` call in `main` below is often ineffective
+    // as the zone apps are not yet setup.
+    waitUpdateReschedule(Math.min(interval, 300000));
+
     next();
 }
 
@@ -736,7 +759,7 @@ function main() {
         updateZoneApps,
         startUpdateZoneAppsInterval,
         updateAgentProbes,
-        startUpdateAgentProbesInterval,
+        startUpdateAgentProbesPolling,
         startUpdateAgentAliasesInterval,
         startAdminApp
     ], function (err) {
