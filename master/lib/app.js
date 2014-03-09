@@ -229,17 +229,25 @@ function App(config, cnapiClient, vmapiClient, log) {
     server.use(restify.requestLogger());
     server.use(restify.queryParser({mapParams: false}));
     server.use(restify.bodyParser({mapParams: false}));
-    server.on('after', audit.auditLogger({
-        body: true,
-        log: bunyan.createLogger({
-            name: 'amon-master',
-            component: 'audit',
-            streams: [ {
-                level: log.level(),  // use same level as amon-master log
-                stream: process.stdout
-            } ]
-        })
-    }));
+    server.on('after', function (req, res, route, err) {
+        // Skip logging some high frequency or unimportant endpoints to key
+        // log noise down.
+        var method = req.method;
+        var pth = req.path();
+        if (method === 'GET' || method === 'HEAD') {
+            if (pth === '/ping') {
+                return;
+            }
+        }
+        // Successful GET res bodies are uninteresting and *big*.
+        var body = !(method === 'GET' &&
+            Math.floor(res.statusCode / 100) === 2);
+
+        audit.auditLogger({
+            log: req.log.child({route: route && route.name}, true),
+            body: body
+        })(req, res, route, err);
+    });
     server.on('uncaughtException', function (req, res, route, err) {
         req.log.error(err);
         res.send(err);
