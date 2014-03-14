@@ -610,11 +610,22 @@ function startUpdateAgentProbesPolling(next) {
         }, wait);
     }
 
-    // First update at max 5 minutes. E.g. if interval is 1 hour or something
-    // very long, we want a reasonably soon first update. Note that the
-    // initial `updateAgentProbes` call in `main` below is often ineffective
-    // as the zone apps are not yet setup.
-    waitUpdateReschedule(Math.min(interval, 300000));
+    /**
+     * Randomize the first update in the range [2 minutes, interval]. This is
+     * to avoid a dogpile with many CNs where all amon-relays are restarted
+     * at about the same time (e.g. with an agent upgrade or restart via
+     * sdc-oneachnode).
+     *
+     * We start at "2 minutes" instead of right away because typically some
+     * time is needed to get the `App` instances up for each zone (see
+     * `updateZoneApps`). Ideally the start bound should be "after
+     * updateZoneApps has first completed".
+     */
+    var min = 2 * 60 * 1000;  // 2 minutes
+    var max = Math.max(10 * 60 * 1000, interval);  // at least 10 minutes
+    var firstDelay = Math.floor(Math.random() * (max - min + 1)) + min;
+    log.info({firstDelay: firstDelay}, 'updateAgentProbes first delay');
+    waitUpdateReschedule(firstDelay);
 
     next();
 }
@@ -758,7 +769,6 @@ function main() {
         startZoneEventWatcher,
         updateZoneApps,
         startUpdateZoneAppsInterval,
-        updateAgentProbes,
         startUpdateAgentProbesPolling,
         startUpdateAgentAliasesInterval,
         startAdminApp
