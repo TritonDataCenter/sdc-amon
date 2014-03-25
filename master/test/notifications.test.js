@@ -20,6 +20,7 @@ var config;
 var notificationPlugins;
 var twilio;
 var email;
+var xmpp;
 
 var log = new Logger({
     name: 'notifications.test',
@@ -63,6 +64,21 @@ var CONFIG = {
         'webhook': {
             'path': '../lib/notifications/webhook',
             'config': {}
+        },
+        'xmpp': {
+            'path': '../lib/notifications/xmpp',
+
+            // Need to fill in jid and password to use the notify test
+            // below
+            'config': {
+                'jid': 'NAME@joyent.com',
+                'password': 'XXXXXX',
+                'host': 'jabber.joyent.com',
+                'port': 5223,
+                'room': 'test@conference.joyent.com',
+                'legacySSL': true,
+                'preferredSaslMechanism': 'PLAIN'
+            }
         }
     }
 };
@@ -82,6 +98,7 @@ test('setup', function (t) {
     }
     twilio = notificationPlugins.sms;
     email = notificationPlugins.email;
+    xmpp = notificationPlugins.xmpp;
 
     t.end();
 });
@@ -182,3 +199,74 @@ test('email: teardown', function (t) {
 
 //---- test webhook
 //XXX
+
+
+//---- test XMPP
+
+test('xmpp: sanitize empty', function (t) {
+    t.ok(!email.sanitizeAddress(null));
+    t.end();
+});
+
+/*
+test('xmpp: notify', function (t) {
+    var alarm = {
+        'user': 'a3040770-c93b-6b41-90e9-48d3142263cf',
+        'id': 1,
+        'monitor': 'gz',
+        'closed': false,
+        'suppressed': false,
+        'timeOpened': 1343070741494,
+        'timeClosed': null,
+        'timeLastEvent': 1343070741324,
+        'faults': [
+            {
+                'type': 'probe',
+                'probe': 'smartlogin'
+            }
+        ],
+        'maintenanceFaults': []
+    };
+    var user = {
+        'login': 'otto',
+        'email': 'trent.mick+amontestemail@joyent.com',
+        'id': 'a3040770-c93b-6b41-90e9-48d3142263cf',
+        'firstName': 'Trent',
+        'lastName': 'the Test Case'
+    };
+    var contact = new Contact('my', 'email', 'email',
+        'trentm+amonemailtest@gmail.com');
+    var event = {
+        'v': 1,
+        'type': 'probe',
+        'user': user.id,
+        time: Date.now(),
+        agent: uuid.create(),
+        agentAlias: 'tehagent',
+        relay: uuid.create(),
+        data: {
+            message: 'test from amon master test/notifications.test.js'
+        }
+    };
+
+    xmpp.notify({
+        alarm: alarm,
+        user: user,
+        event: event,
+        contact: contact,
+        probe: {
+            name: 'test probe',
+            machine: 'coal',
+            type: 'foo'
+        }
+    }, function (err) {
+        t.ifError(err, err);
+        t.end();
+    });
+});
+*/
+
+test('xmpp: teardown', function (t) {
+    xmpp.once('close', t.end.bind(t));
+    xmpp.close();
+});

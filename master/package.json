@@ -7,21 +7,22 @@
   "dependencies": {
     "amon-common": "1.0.0",
     "amon-plugins": "1.0.0",
-
-    "sdc-clients": "git+ssh://git@git.joyent.com:node-sdc-clients.git#fe76c2f",
-    "restify": "git+ssh://git@github.com:trentm/node-restify.git#7535bb3",
-    "once": "1.1.1",
+    "assert-plus": "0.1.5",
     "async": "0.1.22",
-    "bunyan": "0.21.3",
-    "libuuid": "0.1.2",
-    "nopt": "2.1.1",
-    "retry": "0.6.0",
-    "nodemailer": "0.3.44",
-    "ldapjs": "0.5.7",
-    "lru-cache": "2.5.0",
+    "bunyan": "0.22.1",
     "expiring-lru-cache": "2.1.0",
+    "ldapjs": "0.5.7",
+    "libuuid": "0.1.2",
+    "lru-cache": "2.5.0",
+    "ltx": "0.4.1",
+    "nodemailer": "0.3.44",
+    "node-xmpp-client": "0.4.0",
+    "nopt": "2.1.1",
+    "once": "1.1.1",
+    "restify": "git+ssh://git@github.com:trentm/node-restify.git#7535bb3",
     "redis": "0.8.2",
-    "assert-plus": "0.1.2"
+    "retry": "0.6.0",
+    "sdc-clients": "git+ssh://git@git.joyent.com:node-sdc-clients.git#fe76c2f"
   },
   "devDependencies": {
     "tap": "0.4.0"
