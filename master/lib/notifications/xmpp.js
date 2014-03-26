@@ -101,7 +101,7 @@ XMPP.prototype.acceptsMedium = function acceptsMedium(medium) {
     assert.string(medium, 'medium');
 
     var mediumLower = medium.toLowerCase();
-    return (mediumLower.slice(-5) === 'xmpp');
+    return (mediumLower.slice(-4) === 'xmpp');
 };
 
 
