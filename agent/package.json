@@ -1,15 +1,15 @@
 {
   "name": "amon-agent",
   "description": "Smart DataCenter Monitoring Agent",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "author": "Joyent (joyent.com)",
   "dependencies": {
-    "amon-common": "1.0.0",
-    "amon-plugins": "1.0.0",
+    "amon-common": "*",
+    "amon-plugins": "*",
 
     "restify": "git+ssh://git@github.com:trentm/node-restify.git#7535bb3",
-    "bunyan": "0.20.0",
+    "bunyan": "0.22.1",
     "nopt": "2.1.1",
     "zutil": "0.2.1"
   },

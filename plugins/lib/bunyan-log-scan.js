@@ -29,6 +29,28 @@ var SECONDS = 1000;
 
 
 
+//---- internal support stuff
+
+/**
+ * Lookup `lookup` key in object `obj`, where the lookup can be a dotted name,
+ * e.g. "foo.bar" to do a nested lookup.
+ */
+function dottedLookup(obj, lookup) {
+    var result = obj[lookup]; // Allow lookup of actual 'foo.bar'.
+    if (result === undefined && ~lookup.indexOf('.')) {
+        var parts = lookup.split(/\./g);
+        var result = obj;
+        for (var p = 0; p < parts.length; p++) {
+            result = result[parts[p]];
+            if (result === undefined) {
+                return undefined;
+            }
+        }
+    }
+    return result;
+}
+
+
 //---- probe class
 
 /**
@@ -42,21 +64,6 @@ var SECONDS = 1000;
 function BunyanLogScanProbe(options) {
     LogScanProbe.call(this, options);
 
-    // In some simpler cases we can filter out non-hits quickly with
-    // a single regex against full chunks of log data. I.e. no need to
-    // `JSON.parse` or match per-line.
-    if (this.config.match && !this.config.fields) {
-        this._quickOutMatcher = this.matcher;
-    } else if (!this.config.match && Object.keys(this.config.fields) === 1) {
-        var k = Object.keys(this.config.fields)[0];
-        var v = (k === 'level' ? this.config.fields[k]
-            : bunyan.resolveLevel(this.config.fields[k]));
-        this._quickOutMatcher = this.matcherFromMatchConfig({
-            pattern: format('"%s":%j', k, v),
-            type: 'substring'
-        });
-    }
-
     if (this.config.fields) {
         this._fields = objCopy(this.config.fields);
         if (this._fields.level) {
@@ -66,6 +73,38 @@ function BunyanLogScanProbe(options) {
         this._numFields = this._fieldNames.length;
     }
     this._matchField = this.config.match && this.config.match.field;
+
+    // In some simpler cases we can filter out non-hits quickly with
+    // a single regex against full chunks of log data. I.e. no need to
+    // `JSON.parse` or match per-line.
+    this._quickOutMatchers = []
+    if (this.config.match) {
+        if (this._matchField && this.matcher.type !== 'substring'
+            && (~this.matcher.pattern.indexOf('^') ||
+                ~this.matcher.pattern.indexOf('$')))
+        {
+            // If there is a match.field and the match.pattern has anchors in it
+            // (^, $) then we cannot do "quick out" matching. We can only use
+            // the (slower) matching on the extracted field.
+        } else {
+            this._quickOutMatchers.push(this.matcher);
+        }
+    }
+    if (this._fields) {
+        for (var i = 0; i < this._fieldNames.length; i++) {
+            var name = this._fieldNames[i];
+            // If the field is a dotted string (e.g. "foo.bar"), then the
+            // JSON against which we'll match uses just the suffix (e.g. "bar").
+            var k = (~name.indexOf('.')
+                ? name.split(/\./g).slice(-1)[0]
+                : name);
+            var v = this._fields[name];
+            this._quickOutMatchers.push(this.matcherFromMatchConfig({
+                pattern: format('"%s":%j', k, v),
+                type: 'substring'
+            }));
+        }
+    }
 }
 util.inherits(BunyanLogScanProbe, LogScanProbe);
 
@@ -161,26 +200,28 @@ BunyanLogScanProbe.prototype._matchChunk = function (chunk) {
         return null;
 
     //// Note: This is a hot path. We don't even want the log.trace lines.
-    //var log = this.log.child({component: 'matchChunk'}, true);
-    //if (log.trace())
-    //  log.trace({chunk: JSON.stringify(schunk)}, 'match chunk');
+    //if (this.log.trace())
+    //    this.log.trace({chunk: JSON.stringify(schunk)}, 'match chunk');
 
     // First: quick out to not have to match per line at all.
-    if (this._quickOutMatcher && !this._quickOutMatcher.test(schunk)) {
-        //log.trace({_quickOutMatcher: this._quickOutMatcher}, 'quick out');
-        return null;
+    for (var q = 0; q < this._quickOutMatchers.length; q++) {
+        if (!this._quickOutMatchers[q].test(schunk)) {
+            //this.log.trace({quickOutMatcher: this._quickOutMatchers[q]},
+            //    'quick out');
+            return null;
+        }
     }
 
     // Now we need to split on lines and JSON.parse each record.
     var matches = [];
-    var i, j, record, line, field, value;
+    var i, j, record, line, field, value, fail;
     var fieldsLength = this._numFields;
     var lines = schunk.split(/\r\n|\n/);
     for (i = 0; i < lines.length; i++) {
         line = lines[i];
         if (!line.trim())
             continue;
-        //log.trace({line: line}, 'match line');
+        //this.log.trace({line: line}, 'match line');
         try {
             record = JSON.parse(line);
         } catch (err) {
@@ -188,13 +229,15 @@ BunyanLogScanProbe.prototype._matchChunk = function (chunk) {
         }
 
         if (fieldsLength) {
-            var fail = false;
+            fail = false;
             for (j = 0; j < fieldsLength; j++) {
                 field = this._fieldNames[j];
-                if (record[field] !== this._fields[field]) {
+                value = dottedLookup(record, field);
+                if (value !== this._fields[field]) {
                     fail = true;
-                    //log.trace({field: field, expected: this._fields[field],
-                    //  actual: record[field]}, 'match fail (field)')
+                    //this.log.trace({field: field,
+                    //    expected: this._fields[field],
+                    //    value: value}, 'match fail (field)')
                     break;
                 }
             }
@@ -205,15 +248,16 @@ BunyanLogScanProbe.prototype._matchChunk = function (chunk) {
         if (this.matcher) {
             if (!this._matchField) {
                 if (!this.matcher.test(line)) {
-                    //log.trace({matcher: this.matcher}, 'match fail (matcher)')
+                    //this.log.trace({matcher: this.matcher},
+                    //    'match fail (matcher)')
                     continue;
                 }
             } else {
-                value = record[this._matchField];
+                value = dottedLookup(record, this._matchField);
                 if (value === undefined || !this.matcher.test(value)) {
-                    //log.trace({field: this._matchField,
-                    //  matcher: this.matcher},
-                    //  'match fail (matcher on field)')
+                    //this.log.trace({field: this._matchField,
+                    //    matcher: this.matcher},
+                    //    'match fail (matcher on field)')
                     continue;
                 }
             }

@@ -5,8 +5,8 @@
   "author": "Joyent (joyent.com)",
   "private": true,
   "dependencies": {
-    "amon-common": "1.0.0",
-    "amon-plugins": "1.0.0",
+    "amon-common": "*",
+    "amon-plugins": "*",
     "assert-plus": "0.1.5",
     "async": "0.1.22",
     "bunyan": "0.22.1",

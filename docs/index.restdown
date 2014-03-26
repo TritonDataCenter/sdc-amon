@@ -1551,7 +1551,7 @@ probe type.
 ||**Parameter**||**Required?**||**Default**||**Description**||
 ||path||Required(\*)||-||Path to the log file to watch. One of "path" or "smfServiceName" must be provided.||
 ||smfServiceName||Required(\*)||-||The name of an SMF service to watch. SMF is a SmartOS/illumos service management framework. `svcs -L $name` is used to get the service's log path to watch. One of "path" or "smfServiceName" must be provided.||
-||**fields**||Required(\*)||-||A set of key/value pairs to compare against each JSON log record. Each field is compared for equality. The "level" field is special in that you can specify a Bunyan log level name (e.g. "error") instead of the Bunyan level *integers* (e.g. 50) used in the log records. Deeper objects can be specified with a "foo.bar.blah" lookup format, e.g. `"fields": {"foo.bar": true}`||
+||**fields**||Required(\*)||-||A set of key/value pairs to compare against each JSON log record. Each field is compared for equality. The "level" field is special in that you can specify a Bunyan log level name (e.g. "error") instead of the Bunyan level *integers* (e.g. 50) used in the log records. Deeper objects can be specified with a "foo.bar.blah" lookup format, e.g. `"fields": {"foo.bar": true}`. At least one of "fields" or "match" is required.||
 ||match||Required(\*)||-||Match data to match against log content. At least one of "fields" or "match" is required.||
 ||match.pattern||Required||-||The pattern with which to match. If a "match" is given, then this is required.||
 ||match.type||Optional||regex||One of 'substring' or 'regex'. Defines the type of 'match.pattern'.||

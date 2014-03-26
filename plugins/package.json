@@ -1,12 +1,12 @@
 {
   "name": "amon-plugins",
   "description": "Smart DataCenter Monitoring Probes package",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Joyent (joyent.com)",
   "private": true,
   "main": "lib/index.js",
   "dependencies": {
-    "bunyan": "0.21.3",
+    "bunyan": "0.22.1",
     "assert-plus": "0.1.2"
   },
   "devDependencies": {

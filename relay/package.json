@@ -5,8 +5,8 @@
   "author": "Joyent (joyent.com)",
   "private": true,
   "dependencies": {
-    "amon-common": "1.0.0",
-    "amon-plugins": "1.0.0",
+    "amon-common": "*",
+    "amon-plugins": "*",
 
     "sdc-clients": "git+ssh://git@git.joyent.com:node-sdc-clients.git#fe76c2f",
     "restify": "git+ssh://git@github.com:trentm/node-restify.git#7535bb3",
