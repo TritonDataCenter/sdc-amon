@@ -2377,8 +2377,11 @@ the amon-master's "notificationsPlugin" config var.
 
 In SDC, the xmpp notification type should be added by setting the
 "AMON_CUSTOM_NOTIFICATION_TYPES" metadata on the "amon" service in SAPI.
-There is a "/opt/smartdc/amon/tools/add-xmpp-notification-type.sh" tool in
-the amon zone to assist with this.
+There is a tool in the amon zone to assist with this:
+
+    sdc-login amon
+    /opt/smartdc/amon/tools/add-xmpp-notification-type.sh
+
 
 After the amon-master has the 'xmpp' notification type, to get a probe
 to send over xmpp you need to:
