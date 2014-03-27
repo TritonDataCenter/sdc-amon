@@ -38,8 +38,9 @@ try {
 
 var CONFIG = {
     'datacenterName': localConfig.datacenterName || 'testdc',
-    'notificationPlugins': {
-        'sms': {
+    'notificationPlugins': [
+        {
+            'type': 'sms',
             'path': '../lib/notifications/twilio',
             'config': {
                 'accountSid': 'TODO',
@@ -49,7 +50,8 @@ var CONFIG = {
                 url: 'https://todo.local/todo'
             }
         },
-        'email': {
+        {
+            'type': 'email',
             'path': '../lib/notifications/email',
             'config': {
                 'smtp': {
@@ -61,11 +63,13 @@ var CONFIG = {
                 'from': '\"Monitoring\" <no-reply@joyent.com>'
             }
         },
-        'webhook': {
+        {
+            'type': 'webhook',
             'path': '../lib/notifications/webhook',
             'config': {}
         },
-        'xmpp': {
+        {
+            'type': 'xmpp',
             'path': '../lib/notifications/xmpp',
 
             // Need to fill in jid and password to use the notify test
@@ -80,25 +84,25 @@ var CONFIG = {
                 'preferredSaslMechanism': 'PLAIN'
             }
         }
-    }
+    ]
 };
 
 
 //---- setup
 
 test('setup', function (t) {
-    notificationPlugins = {};
+    notificationPluginFromType = {};
     if (CONFIG.notificationPlugins) {
         Object.keys(CONFIG.notificationPlugins).forEach(function (name) {
             var plugin = CONFIG.notificationPlugins[name];
             var NotificationType = require(plugin.path);
-            notificationPlugins[name] = new NotificationType(
+            notificationPluginFromType[name] = new NotificationType(
                 log, plugin.config, CONFIG.datacenterName);
         });
     }
-    twilio = notificationPlugins.sms;
-    email = notificationPlugins.email;
-    xmpp = notificationPlugins.xmpp;
+    twilio = notificationPluginFromType.sms;
+    email = notificationPluginFromType.email;
+    xmpp = notificationPluginFromType.xmpp;
 
     t.end();
 });

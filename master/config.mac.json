@@ -11,8 +11,9 @@
   "vmapi": {
     "url": "http://10.99.99.TODO:80"
   },
-  "notificationPlugins": {
-    "sms": {
+  "notificationPlugins": [
+    {
+      "type": "sms",
       "path": "./notifications/twilio",
       "config": {
         "accountSid": "TODO",
@@ -21,7 +22,8 @@
         "url": "https://todo.local/todo"
       }
     },
-    "email": {
+    {
+      "type": "email",
       "path": "./notifications/email",
       "config": {
         "sendmail": "/usr/sbin/sendmail -i",

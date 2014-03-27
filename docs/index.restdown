@@ -1788,9 +1788,10 @@ whole userCache object.
 ||redis.port||Number||6379||Redis server port.||
 ||userCache.size||Number||1000||The number of entries to cache.||
 ||userCache.expiry||Number||300||The number of seconds for which cache entries are valid.||
-||notificationPlugins||Object||-||An object defining all notification mechanisms. This is a mapping of plugin name, e.g. "email" or "sms", to plugin data.||
-||notificationPlugins.NAME.path||String||-||A node `require()` path from which the Amon master can load the plugin module, e.g. "./lib/twillio".||
-||notificationPlugins.NAME.config||Object||-||An object with instance data for the plugin.||
+||notificationPlugins||Array||-||An array of objects defining all notification mechanisms.||
+||notificationPlugins.*.type||String||-||The notification type. This should be a short string, preferably all lowercase and satifying JS identifier rules, e.g. 'email', 'sms', 'xmpp'.||
+||notificationPlugins.*.path||String||-||A node `require()` path from which the Amon master can load the plugin module, e.g. "./lib/twillio".||
+||notificationPlugins.*.config||Object||-||An object with instance data for the plugin.||
 
 
 
@@ -2365,6 +2366,104 @@ TODO: sdc-healthcheck, sdc-webinfo
 ||amon-master||in each "amon" zone||[Bunyan](https://github.com/trentm/node-bunyan)||`` sdc-login amon; tail -f `svcs -L amon-master` | bunyan ``||
 ||amon-relay||in each GZ||[Bunyan](https://github.com/trentm/node-bunyan)||`` tail -f `svcs -L amon-relay` | bunyan ``||
 ||amon-agent||in each GZ and in some zones||[Bunyan](https://github.com/trentm/node-bunyan)||`` tail -f `svcs -L amon-agent` | bunyan ``||
+
+
+
+## How to use the XMPP notification plugin
+
+The Amon Master now ships with a 'xmpp' plugin. In its current state all XMPP
+information (host, jid, Jabber room in which to notify) is configured in
+the amon-master's "notificationsPlugin" config var.
+
+In SDC, the xmpp notification type should be added by setting the
+"AMON_CUSTOM_NOTIFICATION_TYPES" metadata on the "amon" service in SAPI.
+There is a "/opt/smartdc/amon/tools/add-xmpp-notification-type.sh" tool in
+the amon zone to assist with this.
+
+After the amon-master has the 'xmpp' notification type, to get a probe
+to send over xmpp you need to:
+
+1. Have a `fooxmpp` field on the sdcPerson node in UFDS for the owner
+   of the probe, where "foo" is whatever identifying string you like. It
+   must end with "xmpp" (case-insensitive). The value of that field isn't
+   currently used
+
+2. Set `fooxmpp` as one of the `contacts` for your probe (or probeGroup).
+
+
+**Note**: If you think having a "fooxmpp" value that isn't used is silly,
+you are right. A future implementation of this will move some or all of the
+xmpp server and room info to the individual contact entries. For now amon
+is just for operators so this take on it should be fine.
+
+
+Example of doing #1 and #2 (running in the GZ):
+
+```
+# First create a user for myself. Generally the 'admin' user shouldn't be
+# used as its amon probes get sync'd to a set of probe definitions.
+[root@headnode (coal) ~]# sdc sdc-useradm create -i
+login: userbob
+email: userbob@joyent.com
+userpassword:
+userpassword confirm:
+cn: User Bob
+User 9144796e-0880-440c-bb77-257af293bbb4 (login "userbob") created
+
+# And our user needs to be an operator to be able to add a probe to the 'sdc'
+# zone (because 'userbob' doesn't own that zone).
+[root@headnode (coal) ~]# cat <<EOM | sdc-ldap modify
+dn: cn=operators, ou=groups, o=smartdc
+changetype: modify
+add: uniquemember
+uniquemember: $(sdc-useradm get userbob | json dn)
+EOM
+modifying entry "cn=operators, ou=groups, o=smartdc"
+
+# Then add a 'bobxmpp' entry on the sdcperson node.
+[root@headnode (coal) ~]# sdc sdc-ufds modify -a bobxmpp -v notused "$(sdc-ufds search login=userbob | json dn)"
+
+# And verify it got there.
+[root@headnode (coal) ~]# sdc-ldap search login=userbob | grep bobxmpp
+bobxmpp: notused
+
+
+# Then let's add a probe using that.
+# We'll have it fire whenever "chirp" appears in "/var/tmp/canary.log",
+# *in the GZ* (we're using the GZ because MON-300).
+[root@headnode (coal) ~]# sdc-amon /pub/userbob/probes -X POST -d@- <<EOP
+{
+  "name": "xmpp-test",
+  "type": "log-scan",
+  "agent": "$(sdc-cnapi /servers?hostname=headnode | json -H 0.uuid)",
+  "contacts": ["bobxmpp"],
+  "groupEvents": false,
+  "config": {
+    "path": "/var/tmp/canary.log",
+    "match": {
+      "pattern": "chirp"
+    }
+  }
+}
+EOP
+
+
+# The polling to get amon probe data out to the agents is very slow
+# (~30 minutes), so we'll force the headnode amon-relay to expedite that.
+# - get the amon-relay to pull from amon-master
+curl http://127.0.0.1:4307/state?action=syncprobes -X POST
+# - then the amon-agent to pull from the amon-relay
+svcadm restart amon-agent && sleep 3
+# - verify
+json -f /var/db/amon-agent/probeData.json | grep chirp
+
+
+# Now trigger an alarm. If this doesn't result in a jabber message, then
+# time to debug.
+echo 'chirp' >>/var/tmp/canary.log
+
+```
+
 
 
 ## Ops Examples

@@ -34,6 +34,8 @@ rsync -av ${TOP}/plugins/ \
     $NODE:/zones/$AMON_ZONE/root/opt/smartdc/amon/node_modules/amon-plugins/ \
     --exclude "*.node" \
     --exclude tmp/
+rsync -av ${TOP}/tools/add-xmpp-notification-type.sh \
+    $NODE:/zones/$AMON_ZONE/root/opt/smartdc/amon/tools/ \
 
 ssh ${NODE} svcadm -z ${AMON_ZONE} clear amon-master || true
 ssh ${NODE} svcadm -z ${AMON_ZONE} restart amon-master

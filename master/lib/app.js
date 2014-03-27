@@ -158,17 +158,22 @@ function App(config, cnapiClient, vmapiClient, log) {
         ? true : config.ufds.caching);
     this._getUfdsClient(config.ufds);
 
-    this.notificationPlugins = {};
+    this.notificationPluginFromType = {};
     if (config.notificationPlugins) {
-        Object.keys(config.notificationPlugins || {}).forEach(function (name) {
-            var plugin = config.notificationPlugins[name];
-            log.info('Loading "%s" notification plugin.', name);
+        for (var i = 0; i < config.notificationPlugins.length; i++) {
+            var plugin = config.notificationPlugins[i];
+            var repr = JSON.stringify(plugin);
+            assert.string(plugin.type, '"type" field in ' + repr);
+            assert.string(plugin.path, '"path" field in ' + repr);
+            assert.object(plugin.config, '"config" field in ' + repr);
+            var type = plugin.type;
+            log.info('Loading "%s" notification plugin.', type);
             var NotificationType = require(plugin.path);
-            self.notificationPlugins[name] = new NotificationType(
-                log.child({notification_type: name}, true),
+            self.notificationPluginFromType[type] = new NotificationType(
+                log.child({notification_type: type}, true),
                 plugin.config,
                 config.datacenterName);
-        });
+        }
     }
 
     // Cache of login/uuid (aka username) -> full user record.
@@ -1191,10 +1196,10 @@ App.prototype.chooseRelatedAlarm = function (candidateAlarms,
 App.prototype.notificationTypeFromMedium = function (medium) {
     var log = this.log;
     var self = this;
-    var types = Object.keys(this.notificationPlugins);
+    var types = Object.keys(this.notificationPluginFromType);
     for (var i = 0; i < types.length; i++) {
         var type = types[i];
-        var plugin = self.notificationPlugins[type];
+        var plugin = self.notificationPluginFromType[type];
         if (plugin.acceptsMedium(medium)) {
             return type;
         }
@@ -1245,7 +1250,8 @@ App.prototype.alarmConfig = function (userId, msg, callback) {
  */
 App.prototype.notifyContact = function (options, callback) {
     var log = this.log;
-    var plugin = this.notificationPlugins[options.contact.notificationType];
+    var plugin = this.notificationPluginFromType[
+        options.contact.notificationType];
     if (!plugin) {
         var msg = format('notification plugin "%s" not found',
                                          options.contact.notificationType);

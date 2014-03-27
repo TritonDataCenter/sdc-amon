@@ -15,8 +15,9 @@
     "host": "10.99.99.21",
     "port": "6379"
   },
-  "notificationPlugins": {
-    "email": {
+  "notificationPlugins": [
+    {
+      "type": "email"
       "path": "./notifications/email",
       "config": {
         "smtp": {
@@ -28,5 +29,5 @@
         "from": "\"Monitoring\" <no-reply@joyent.com>"
       }
     }
-  }
+  ]
 }

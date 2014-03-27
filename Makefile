@@ -174,6 +174,9 @@ pkg_master:
 		master/main.js \
 		master/package.json \
 		$(BUILD)/pkg/master/root/opt/smartdc/amon/
+	mkdir -p $(BUILD)/pkg/master/root/opt/smartdc/amon/tools
+	cp tools/add-xmpp-notification-type.sh \
+	    $(BUILD)/pkg/master/root/opt/smartdc/amon/tools/
 	mkdir -p $(BUILD)/pkg/master/root/opt/smartdc/boot
 	cp -R deps/sdc-scripts/* $(BUILD)/pkg/master/root/opt/smartdc/boot/
 	cp -R boot/* $(BUILD)/pkg/master/root/opt/smartdc/boot/

@@ -61,7 +61,7 @@ function XMPP(log, config, dcName) {
     function onConnect() {
         self.online = true;
         self.xmpp.send(new ltx.Element('presence', {
-            to: self.room +'/amon'
+            to: self.room + '/' + self.dc + ' amon'
         }).c('x', {
             xmlns: 'http://jabber.org/protocol/muc'
         }));

@@ -19,8 +19,12 @@
     "port": "6379"
   },
   "datacenterName": "{{{datacenter_name}}}",
-  "notificationPlugins": {
-    "email": {
+  "notificationPlugins": [
+    {{#AMON_CUSTOM_NOTIFICATION_PLUGINS}}
+    {{{.}}},
+    {{/AMON_CUSTOM_NOTIFICATION_PLUGINS}}
+    {
+      "type": "email",
       "path": "./notifications/email",
       "config": {
         "smtp": {
@@ -32,9 +36,10 @@
         "from": "\"{{{datacenter_name}}} Monitoring\" <no-reply@joyent.com>"
       }
     },
-    "webhook": {
+    {
+      "type": "webhook",
       "path": "./notifications/webhook",
       "config": {}
     }
-  }
+  ]
 }
