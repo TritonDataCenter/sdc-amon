@@ -690,8 +690,11 @@ Alarm.prototype.handleEvent = function handleEvent(app, options, callback) {
                     shouldNotify = true;
                     reason = 'clear';
                 }
-                log.info({shouldNotify: shouldNotify, reason: reason},
-                    'should notify? %s', shouldNotify);
+                log.info({
+                    shouldNotify: shouldNotify,
+                    reason: reason,
+                    stats: stats
+                }, 'should notify? %s', shouldNotify);
                 if (shouldNotify) {
                     //XXX:TODO pass reason info to notify
                     self.notify(app, options, function (err) {

@@ -3,7 +3,9 @@
  *
  */
 
+var dns = require('dns');
 var EventEmitter = require('events').EventEmitter;
+var net = require('net');
 var util = require('util');
 
 var assert = require('assert-plus');
@@ -11,6 +13,93 @@ var ltx = require('ltx');
 var retry = require('retry');
 var XMPPClient = require('node-xmpp-client');
 
+
+
+///--- Helpers
+
+function createXmppClient(opts, cb) {
+    var dc = opts.datacenter;
+    var log = opts.log;
+    var _opts = {
+        jid: opts.jid,
+        password: opts.password,
+        host: opts.host,
+        port: opts.port,
+        reconnect: true,
+        legacySSL: opts.legacySSL,
+        preferredSaslMechanism: opts.preferredSaslMechanism
+    };
+    var room = opts.room;
+    var xmpp;
+
+    log.debug({
+        opts: _opts
+    }, 'createXmppClient: entered');
+
+    var done = false;
+    function _cb(err) {
+        if (done)
+            return;
+
+        done = true;
+        cb(err, xmpp);
+    }
+
+    function presence() {
+        log.debug({
+            opts: _opts
+        }, 'createXmppClient: sending presence notification');
+
+        xmpp.send(new ltx.Element('presence', {
+            to: room + '/' + opts.dc + ' amon'
+        }).c('x', {
+            xmlns: 'http://jabber.org/protocol/muc'
+        }));
+    }
+
+    function onConnect() {
+        log.debug({
+            opts: _opts
+        }, 'createXmppClient: connected');
+        xmpp.removeListener('error', onConnectError);
+        xmpp.connection.socket.setTimeout(0);
+        xmpp.connection.socket.setKeepAlive(true, 10000);
+        _cb(null, xmpp);
+    }
+
+    function onConnectError(err) {
+        log.debug({
+            opts: _opts,
+            err: err
+        }, 'createXmppClient: connection error');
+        xmpp.removeAllListeners('online');
+        _cb(err);
+    }
+
+    function connect() {
+        xmpp = new XMPPClient(_opts);
+        xmpp.once('online', onConnect);
+        xmpp.on('error', onConnectError);
+        xmpp.on('online', presence);
+    }
+
+    if (net.isIP(_opts.host)) {
+        connect();
+    } else {
+        dns.resolve4(_opts.host, function (err, addresses) {
+            if (err) {
+                log.error({
+                    err: err,
+                    host: _opts.host
+                }, 'createXmppClient: unable to resolve host');
+                _cb(err);
+            } else {
+                _opts.host = addresses[0];
+                connect();
+            }
+        });
+    }
+}
 
 
 /**
@@ -28,7 +117,6 @@ function XMPP(log, config, dcName) {
     assert.string(config.password, 'config.password');
     assert.string(config.host, 'config.host');
     assert.number(config.port, 'config.port');
-    assert.string(config.room, 'config.room');
     assert.string(dcName, 'datacenterName');
 
     var self = this;
@@ -39,47 +127,26 @@ function XMPP(log, config, dcName) {
     this.host = config.host;
     this.jid = config.jid;
     this.group = config.isGroupChat !== undefined ? config.isGroupChat : true;
+    this.legacySSL = config.legacySSL;
     this.log = log;
     this.password = config.password;
     this.port = config.port;
-    this.room = config.room;
-    this.xmpp = new XMPPClient({
-        jid: self.jid,
-        password: self.password,
-        host: self.host,
-        port: self.port,
-        reconnect: true,
-        legacySSL: config.legacySSL,
-        preferredSaslMechanism: config.preferredSaslMechanism
-    });
-
-    this.xmpp.on('close', this.emit.bind(this, 'close'));
-    this.xmpp.on('error', this.emit.bind(this, 'error'));
-    this.xmpp.on('online', this.emit.bind(this, 'online'));
-    this.xmpp.on('stanza', this.emit.bind(this, 'stanza'));
-
-    function onConnect() {
-        self.online = true;
-        self.xmpp.send(new ltx.Element('presence', {
-            to: self.room + '/' + self.dc + ' amon'
-        }).c('x', {
-            xmlns: 'http://jabber.org/protocol/muc'
-        }));
-    }
-
-    this.xmpp.once('online', onConnect);
-    this.xmpp.on('reconnect', onConnect);
-
-    this.on('disconnect', function onDisconnect() {
-        self.online = false;
-    });
+    this.preferredSaslMechanism = config.preferredSaslMechanism;
+    this.xmpp = {};
 }
 util.inherits(XMPP, EventEmitter);
 
 
 XMPP.prototype.close = function close() {
-    this.online = false;
-    this.xmpp.end();
+    var self = this;
+
+    this.log.debug({
+        xmpp: self.toString()
+    }, 'XMPP: close entered');
+
+    Object.keys(this.xmpp).forEach(function (k) {
+        self.xmpp[k].end();
+    });
 };
 
 
@@ -87,8 +154,7 @@ XMPP.prototype.toString = function toString() {
     return ('[object XMPP<' +
             'host=' + this.host + ', ' +
             'port=' + this.port + ', ' +
-            'jid=' + this.jid + ', ' +
-            'room=' + this.room +
+            'jid=' + this.jid +
             '>]');
 };
 
@@ -101,11 +167,23 @@ XMPP.prototype.acceptsMedium = function acceptsMedium(medium) {
     assert.string(medium, 'medium');
 
     var mediumLower = medium.toLowerCase();
+    var self = this;
+
+    this.log.trace({
+        medium: medium,
+        xmpp: self.toString()
+    }, 'XMPP: acceptsMedium');
+
     return (mediumLower.slice(-4) === 'xmpp');
 };
 
 
 XMPP.prototype.sanitizeAddress = function sanitizeAddress(data) {
+    var self = this;
+    this.log.trace({
+        address: address,
+        xmpp: self.toString()
+    }, 'XMPP: sanitizeAddress')
     return (data);
 };
 
@@ -139,11 +217,14 @@ XMPP.prototype.notify = function notify(opts, cb) {
 
     var alarm = opts.alarm;
     var event = opts.event;
+    var log = this.log;
     var probe = opts.probe || {};
+    var room = opts.contact.address;
     var self = this;
-    var xmpp = this.xmpp;
 
-    function _notify() {
+    log.debug('XMPP: notify entered');
+
+    function _notify(xmpp) {
         var msg = 'ALARM: probe=' + (probe.name || probe.uuid);
         if (probe.machine !== event.machine) {
             msg += ', machine=' + probe.machine;
@@ -167,18 +248,64 @@ XMPP.prototype.notify = function notify(opts, cb) {
         if (event.data.details)
             msg += '\n' + JSON.stringify(event.data.details, null, 2);
 
-        xmpp.send(new ltx.Element('message', {
-            to: self.room,
-            type: 'groupchat'
-        }).c('body').t(msg));
+        var msg;
+        if (self.group) {
+            msg = new ltx.Element('message', {
+                to: room,
+                type: 'groupchat'
+            }).c('body').t(msg);
+        } else {
+            msg = new ltx.Element('message', {
+                to: room,
+                type: 'chat'
+            }).c('body').t(msg);
+        }
 
+        log.debug('XMPP: notifying: %s', msg);
+
+        xmpp.send(msg);
         process.nextTick(cb);
     }
 
-    if (!this.online) {
-        this.xmpp.once('online', _notify);
+    if (!this.xmpp[room]) {
+        log.debug('XMPP: no client exists, creating');
+        var _opts = {
+            dc: self.dc,
+            jid: self.jid,
+            password: self.password,
+            host: self.host,
+            log: self.log,
+            port: self.port,
+            reconnect: false,
+            room: room,
+            legacySSL: self.legacySSL,
+            preferredSaslMechanism: self.preferredSaslMechanism
+        };
+        createXmppClient(_opts, function (err, xmpp) {
+            if (err) {
+                log.error(err, 'unable to create XMPP client for %s', room);
+                cb(err);
+            } else {
+                self.xmpp[room] = xmpp;
+
+                xmpp.on('error', function onError(err) {
+                    log.error(err, 'XMPP error encountered for %s', room);
+                    if (self.xmpp[room])
+                        delete self.xmpp[room];
+                    xmpp.end();
+                });
+
+                xmpp.once('offline', function onClose() {
+                    if (self.xmpp[room])
+                        delete self.xmpp[room];
+                });
+
+                _notify(xmpp);
+            }
+        });
     } else {
-        _notify();
+        log.debug('XMPP: client exists, sending notification');
+        _notify(this.xmpp[room]);
     }
 };
 
