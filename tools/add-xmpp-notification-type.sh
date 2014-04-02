@@ -46,11 +46,6 @@ echo -n "jabber host [$default]: "
 read host
 [[ -z "$host" ]] && host=$default
 
-default=coal@conference.joyent.com
-echo -n "room [$default]: "
-read room
-[[ -z "$room" ]] && room=$default
-
 
 AMON_SVC=$(sapi /services?name=amon | json -H 0.uuid)
 
@@ -73,7 +68,6 @@ cat <<EOM \
             "password": "$password",
             "host": "$host",
             "port": 5223,
-            "room": "$room",
             "legacySSL": true,
             "preferredSaslMechanism": "PLAIN"
         }

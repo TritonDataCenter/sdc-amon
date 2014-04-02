@@ -283,13 +283,13 @@ XMPP.prototype.notify = function notify(opts, cb) {
         };
         createXmppClient(_opts, function (err, xmpp) {
             if (err) {
-                log.error(err, 'unable to create XMPP client for %s', room);
+                log.error(err, 'unable to create XMPP client (room=%s)', room);
                 cb(err);
             } else {
                 self.xmpp[room] = xmpp;
 
                 xmpp.on('error', function onError(err) {
-                    log.error(err, 'XMPP error encountered for %s', room);
+                    log.error(err, 'XMPP error encountered (room=%s)', room);
                     if (self.xmpp[room])
                         delete self.xmpp[room];
                     xmpp.end();
