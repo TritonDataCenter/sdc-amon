@@ -64,7 +64,12 @@ function createXmppClient(opts, cb) {
         xmpp.removeListener('error', onConnectError);
         xmpp.connection.socket.setTimeout(0);
         xmpp.connection.socket.setKeepAlive(true, 10000);
-        _cb(null, xmpp);
+
+        xmpp.on('online', presence);
+        presence();
+        process.nextTick(function () {
+            _cb(null, xmpp);
+        });
     }
 
     function onConnectError(err) {
@@ -80,7 +85,6 @@ function createXmppClient(opts, cb) {
         xmpp = new XMPPClient(_opts);
         xmpp.once('online', onConnect);
         xmpp.on('error', onConnectError);
-        xmpp.on('online', presence);
     }
 
     if (net.isIP(_opts.host)) {
