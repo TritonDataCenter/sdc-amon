@@ -2388,16 +2388,17 @@ to send over xmpp you need to:
 
 1. Have a `fooxmpp` field on the sdcPerson node in UFDS for the owner
    of the probe, where "foo" is whatever identifying string you like. It
-   must end with "xmpp" (case-insensitive). The value of that field isn't
-   currently used
+   must end with "xmpp" (case-insensitive). The value of that field is the
+   groupchat room JID to which the notification should be send. E.g.:
+
+        monxmpp=mon@conference.example.com
 
 2. Set `fooxmpp` as one of the `contacts` for your probe (or probeGroup).
 
 
-**Note**: If you think having a "fooxmpp" value that isn't used is silly,
-you are right. A future implementation of this will move some or all of the
-xmpp server and room info to the individual contact entries. For now amon
-is just for operators so this take on it should be fine.
+**Note**: A future implementation of this will move some or all of the xmpp
+server info to the individual contact entries. For now amon is just for
+operators so this take on it should be fine.
 
 
 Example of doing #1 and #2 (running in the GZ):
@@ -2424,11 +2425,11 @@ EOM
 modifying entry "cn=operators, ou=groups, o=smartdc"
 
 # Then add a 'bobxmpp' entry on the sdcperson node.
-[root@headnode (coal) ~]# sdc sdc-ufds modify -a bobxmpp -v notused "$(sdc-ufds search login=userbob | json dn)"
+[root@headnode (coal) ~]# sdc-ufds modify -a bobxmpp -v mon@conference.example.com "$(sdc-useradm get userbob | json dn)"
 
 # And verify it got there.
-[root@headnode (coal) ~]# sdc-ldap search login=userbob | grep bobxmpp
-bobxmpp: notused
+[root@headnode (coal) ~]# sdc-useradm get userbob | json bobxmpp
+mon@conference.example.com
 
 
 # Then let's add a probe using that.
