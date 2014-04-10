@@ -1147,11 +1147,16 @@ App.prototype.getOrCreateAlarm = function (options, callback) {
  *    be null.
  *
  * First pass at this: Choose the alarm with the most recent
- * `timeLastEvent`. If `event.time - alarm.timeLastEvent > 1 hour` then
+ * `timeLastEvent`. If `event.time - alarm.timeLastEvent > 25 hours` then
  * return none, i.e. not related. Else, return that alarm. A 'clear' event
- * is excluded from this "1 hour" check.
+ * is excluded from this "25 hour" check. 25 hours is chosen because: in
+ * our experience 1 hour has been too little for errors with an hourly
+ * period (results in many alarms for the same thing); slightly longer than
+ * a day allows a failure in a daily job (e.g. a daily cron) to group into
+ * the same alarm.
  *
- * Eventually make this "1 hour" an optional var on probe/probeGroup.
+ * TODO:
+ * Eventually make this "25 hour" an optional var on probe/probeGroup.
  * Eventually this algo can consider more vars.
  */
 App.prototype.chooseRelatedAlarm = function (candidateAlarms,
@@ -1161,7 +1166,7 @@ App.prototype.chooseRelatedAlarm = function (candidateAlarms,
     if (candidateAlarms.length === 0) {
         return callback(null, null);
     }
-    var ONE_HOUR = 60 * 60 * 1000;  // an hour in milliseconds
+    var ONE_HOUR = 25 * 60 * 60 * 1000;  // twelve hour in milliseconds
     candidateAlarms.sort(
         // Sort the latest 'timeLastEvent' first (alarms with no 'timeLastEvent'
         // field sort to the end).
