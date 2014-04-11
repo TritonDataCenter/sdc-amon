@@ -204,6 +204,7 @@ function addUlrichTestWebhookContact(next) {
     var interfaceNames = Object.keys(interfaces);
     for (var i = 0; i < interfaceNames.length; i++) {
         if (interfaceNames[i].slice(0, 3) === 'bnx' ||
+            interfaceNames[i].slice(0, 5) === 'ixgbe' ||
                 interfaceNames[i] === 'e1000g1'  /* for COAL */) {
             // intentionally global
             gzIp = interfaces[interfaceNames[i]][0].address;
@@ -267,7 +268,7 @@ function getHeadnodeUuid(next) {
 function getSmartosDatasetUuid(next) {
     // No DSAPI in the DC yet, so hack it.
     log('# Get "smartos" image UUID.');
-    exec('ls -1 /usbkey/datasets/smartos-*.dsmanifest | head -n1 '
+    exec('ls -1 /usbkey/datasets/sdc-smartos-*.dsmanifest | head -n1 '
                     + '| xargs cat | json uuid',
              function (err, stdout, stderr) {
         if (err) {

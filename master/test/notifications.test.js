@@ -93,10 +93,10 @@ var CONFIG = {
 test('setup', function (t) {
     notificationPluginFromType = {};
     if (CONFIG.notificationPlugins) {
-        Object.keys(CONFIG.notificationPlugins).forEach(function (name) {
-            var plugin = CONFIG.notificationPlugins[name];
+        CONFIG.notificationPlugins.forEach(function (plugin) {
+            var type = plugin.type;
             var NotificationType = require(plugin.path);
-            notificationPluginFromType[name] = new NotificationType(
+            notificationPluginFromType[type] = new NotificationType(
                 log, plugin.config, CONFIG.datacenterName);
         });
     }
