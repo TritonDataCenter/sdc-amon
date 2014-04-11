@@ -67,7 +67,7 @@ function clearUser() {
             # VMAPI shouldn't get confused.
             local server_uuid=$(echo $machine | cut -d: -f1)
             local machine_uuid=$(echo $machine | cut -d: -f2)
-            echo "# [$(date -u)]Delete machine $machine_uuid (on server $server_uuid)."
+            echo "# [$(date -u)] Delete machine $machine_uuid (on server $server_uuid)."
             sdc-oneachnode -n $server_uuid vmadm delete $machine_uuid
         done
 
@@ -90,12 +90,11 @@ function clearUser() {
 
         # Blow away all children of the user to avoid "ldap_delete: Operation
         # not allowed on non-leaf (66)".
-        local children=$(sdc-ldap search -b "$person" dn \
+        sdc-ldap search -b "$person" dn \
             | (grep dn || true) \
-            | grep -v "dn: $person" \
+            | (grep -v "dn: $person" || true) \
             | sed 's/^dn: //' \
-            | sed 's/, /,/g' | xargs)
-        for child in $children; do
+            | while read child; do
             echo "# Delete '$child'"
             sdc-ldap delete "$child"
             # Lame attempt to avoid "ldap_delete: Operation not allowed on

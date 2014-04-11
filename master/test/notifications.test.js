@@ -208,7 +208,7 @@ test('email: teardown', function (t) {
 //---- test XMPP
 
 test('xmpp: sanitize empty', function (t) {
-    t.ok(!email.sanitizeAddress(null));
+    t.ok(!xmpp.sanitizeAddress(null));
     t.end();
 });
 
@@ -268,9 +268,9 @@ test('xmpp: notify', function (t) {
         t.end();
     });
 });
-*/
 
 test('xmpp: teardown', function (t) {
     xmpp.once('close', t.end.bind(t));
     xmpp.close();
 });
+*/

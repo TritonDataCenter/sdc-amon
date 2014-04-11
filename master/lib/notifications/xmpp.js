@@ -182,13 +182,13 @@ XMPP.prototype.acceptsMedium = function acceptsMedium(medium) {
 };
 
 
-XMPP.prototype.sanitizeAddress = function sanitizeAddress(data) {
+XMPP.prototype.sanitizeAddress = function sanitizeAddress(address) {
     var self = this;
     this.log.trace({
         address: address,
         xmpp: self.toString()
     }, 'XMPP: sanitizeAddress')
-    return (data);
+    return (address);
 };
 
 
