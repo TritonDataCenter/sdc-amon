@@ -9,19 +9,13 @@ fi
 
 set -o xtrace
 
-. /lib/sdc/config.sh
-load_sdc_config
-
 export SMFDIR=$npm_config_smfdir
 
 function subfile () {
   IN=$1
   OUT=$2
-  local VMAPI_CLIENT_IP=$(echo $CONFIG_vmapi_admin_ips | cut -d, -f1)
   sed -e "s#@@PREFIX@@#$npm_config_prefix#g" \
       -e "s#@@VERSION@@#$npm_package_version#g" \
-      -e "s#@@VMAPI_CLIENT_URL@@#http://$VMAPI_CLIENT_IP#g" \
-      -e "s#@@UFDS_ADMIN_UUID@@#$CONFIG_ufds_admin_uuid#g" \
       $IN > $OUT
 }
 

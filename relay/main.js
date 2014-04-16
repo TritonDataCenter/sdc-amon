@@ -12,12 +12,15 @@
  *    curl -i localhost:4307/ping
  */
 
+var p = console.log;
 var fs = require('fs');
 var net = require('net');
 var child_process = require('child_process'),
+    exec = child_process.exec,
     execFile = child_process.execFile;
 var format = require('util').format;
 
+var assert = require('assert-plus');
 var bunyan = require('bunyan');
 var restify = require('restify');
 var async = require('async');
@@ -51,7 +54,8 @@ var DEFAULT_DATA_DIR = '/var/db/amon-relay';
 // <https://mo.joyent.com/illumos-joyent/commit/2e9c9a5#L399>.
 var DEFAULT_SOCKET = '/var/run/.smartdc-amon.sock';
 
-var config;         // set in `main()`
+var config;         // set in `loadConfig()`
+var adminApp;       // set in `startAdminApp()`
 var zoneApps = {};  // Mapping <zonename> -> <Relay app>.
 var masterClient;   // Client to Relay API on Amon master.
 
@@ -100,77 +104,89 @@ function createZoneApp(zonename) {
 
 
 /**
- * Get the URL for the amon master from VMAPI.
- * The necessary connection details for VMAPI are expected to be in the
- * environment.
+ * Load amon-relay config.
  *
- * If the amon zone isn't yet in VMAPI, this will sit in a polling loop
- * waiting for an amon master.
+ * Partly this is given opts, partly from environment, partly from
+ * `bash /lib/sdc/config.sh -json` (i.e. the SDC config for this CN).
  *
- * @param poll {Integer} Number of seconds polling interval.
- * @param callback {Function} `function (err, masterUrl)`
+ * @param rawOpts {Object} The `nopt`-parsed command-line options.
  */
-function getMasterUrl(poll, callback) {
-    var pollInterval = poll * 1000;  // seconds -> ms
+function loadConfig(rawOpts, cb) {
+    assert.object(rawOpts, 'rawOpts');
+    assert.func(cb, 'cb');
+    var self = this;
 
-    var missing = [];
-    ['VMAPI_CLIENT_URL', 'UFDS_ADMIN_UUID'].forEach(function (name) {
-        if (!process.env[name]) {
-            missing.push(name);
-        }
-    });
-    if (missing.length > 0) {
-        return callback('missing environment variables: "'
-            + missing.join('", "') + '"');
-    }
+    config = {};  // intentionally global
 
-    var VMAPI = require('sdc-clients').VMAPI;
-    //clients.setLogLevel('trace');
-    var vmapiClient = new VMAPI({
-        url: process.env.VMAPI_CLIENT_URL
-    });
+    async.series([
+        function loadDefaults(next) {
+            config.dataDir = DEFAULT_DATA_DIR;
+            config.poll = DEFAULT_POLL;
+            config.socket = DEFAULT_SOCKET;
+            config.allZones = false;
+            next();
+        },
 
-    function pollVMapi() {
-        log.info('Poll VMAPI for Amon zone (admin uuid "%s").',
-            process.env.UFDS_ADMIN_UUID);
-        vmapiClient.listVms(
-            {owner_uuid: process.env.UFDS_ADMIN_UUID, state: 'running'},
-            function (err, vms) {
-                if (err) {
-                    // Retry on error.
-                    log.error('VMAPI listMachines error: "%s"',
-                        String(err).slice(0, 100) + '...');
-                    setTimeout(pollVMapi, pollInterval);
-                    return;
-                }
-                log.trace({vms: vms}, 'VMAPI ListVms response');
-
-                for (var i = 0; i < vms.length; i++) {
-                    var vm = vms[i];
-                    // Limitation: just using first one. Will need to
-                    // change for H/A.
-                    if (vm.tags && vm.tags.smartdc_role === 'amon') {
-                        var amonIp = vm.nics && vm.nics[0] && vm.nics[0].ip;
-                        if (!amonIp) {
-                            log.error({amonZone: vm}, 'No Amon zone IP');
-                            setTimeout(pollVMapi, pollInterval);
-                        } else {
-                            var amonMasterUrl = 'http://' + amonIp;
-                            log.info('Found amon zone: %s <%s>', vm.uuid,
-                                amonMasterUrl);
-                            callback(null, amonMasterUrl);
-                        }
-                        return;
-                    }
-                }
-
-                log.error('No Amon Master zone (tag smartdc_role=amon).');
-                setTimeout(pollVMapi, pollInterval);
+        function loadRawOpts(next) {
+            if (rawOpts['data-dir'] !== undefined) {
+                config.dataDir = rawOpts['data-dir'];
             }
-        );
-    }
+            if (rawOpts['master-url'] !== undefined) {
+                config.masterUrl = rawOpts['master-url'];
+            }
+            if (rawOpts['poll'] !== undefined) {
+                config.poll = rawOpts['poll'];
+            }
+            if (rawOpts['socket'] !== undefined) {
+                config.socket = rawOpts['socket'];
+            }
+            if (rawOpts['all-zones'] !== undefined) {
+                config.allZones = rawOpts['all-zones'];
+            }
+            if (rawOpts['compute-node-uuid'] !== undefined) {
+                config.computeNodeUuid = rawOpts['compute-node-uuid'];
+            }
+            next();
+        },
 
-    return pollVMapi();
+        function loadSdcConfig(next) {
+            // Currently we only use the SDC config to get the DNS name for
+            // the amon master. If we already have that, then don't bother.
+            if (config.masterUrl !== undefined) {
+                return next();
+            }
+
+            var cmd = '/usr/bin/bash /lib/sdc/config.sh -json';
+            log.trace({cmd: cmd}, 'load SDC config');
+            exec(cmd, function (err, stdout, stderr) {
+                if (err) {
+                    return next(new Error({
+                        message: 'could not load SDC config',
+                        cmd: cmd,
+                        stderr: stderr,
+                        cause: err
+                    }));
+                }
+                try {
+                    var sdcConfig = JSON.parse(stdout);
+                } catch (parseErr) {
+                    return next(new Error({
+                        message: 'unexpected SDC config content',
+                        cause: parseErr
+                    }));
+                }
+
+                config.masterUrl = format('http://amon.%s.%s',
+                    sdcConfig.datacenter_name, sdcConfig.dns_domain);
+                next();
+            });
+        }
+    ], function done(err) {
+        if (err) {
+            return cb(err);
+        }
+        cb();
+    });
 }
 
 
@@ -240,27 +256,6 @@ function ensureComputeNodeUuid(next) {
 function logConfig(next) {
     log.debug({config: config}, 'config');
     next();
-}
-
-
-/**
- * Determine the master URL.
- * Either 'config.masterUrl' is set (from '-m' option), or we get it
- * from VMAPI (with VMAPI passed in on env: VMAPI_CLIENT_URL, ...).
- */
-function ensureMasterUrl(next) {
-    if (!config.masterUrl) {
-        log.info('Getting master URL from VMAPI.');
-        return getMasterUrl(config.poll, function (err, masterUrl) {
-            if (err)
-                return next('Error getting Amon master URL from VMAPI: '+err);
-            log.info('Got master URL (from VMAPI): %s', masterUrl);
-            config.masterUrl = masterUrl;
-            return next();
-        });
-    } else {
-        return next();
-    }
 }
 
 
@@ -637,7 +632,8 @@ function startUpdateAgentProbesPolling(next) {
  * @param callback {Function} Optional. `function (err)`
  */
 function startAdminApp(callback) {
-    var adminApp = new AdminApp({
+    // intentionally global
+    adminApp = new AdminApp({
         log: log,
         updateAgentProbes: updateAgentProbes,
         zoneApps: zoneApps
@@ -747,36 +743,31 @@ function main() {
         usage(1);
     }
 
-    // Build the config (intentionally global).
-    config = {
-        dataDir: rawOpts['data-dir'] || DEFAULT_DATA_DIR,
-        masterUrl: rawOpts['master-url'],
-        poll: rawOpts.poll || DEFAULT_POLL,
-        socket: rawOpts.socket || DEFAULT_SOCKET,
-        allZones: rawOpts['all-zones'] || false,
-        computeNodeUuid: rawOpts['compute-node-uuid']
-    };
-    if (config.allZones && typeof (config.socket) === 'number') {
+    // Guards on options
+    if (rawOpts['all-zones'] && typeof (rawOpts.socket) === 'number') {
         usage(1, 'cannot use "-Z" and a port number to "-s"');
     }
 
     async.series([
+        function loadTheConfig(next) {
+            loadConfig(rawOpts, next);
+        },
         ensureDataDir,
         ensureComputeNodeUuid,
         logConfig,
-        ensureMasterUrl,
+        startAdminApp,
         createMasterClient,
         startZoneEventWatcher,
         updateZoneApps,
         startUpdateZoneAppsInterval,
         startUpdateAgentProbesPolling,
-        startUpdateAgentAliasesInterval,
-        startAdminApp
+        startUpdateAgentAliasesInterval
     ], function (err) {
         if (err) {
             log.error(err);
             process.exit(2);
         }
+        adminApp.setStatus('OK');
         log.info('startup complete');
     });
 }

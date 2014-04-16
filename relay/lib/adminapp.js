@@ -9,8 +9,9 @@
  * See <https://mo.joyent.com/docs/amon/master/#relay-admin-api>.
  */
 
+var p = console.log;
 var os = require('os');
-var assert = require('assert');
+var assert = require('assert-plus');
 var format = require('util').format;
 
 var restify = require('restify');
@@ -40,11 +41,12 @@ function AdminApp(options) {
         throw TypeError('"options.updateAgentProbes" is required');
     if (!options.zoneApps)
         throw TypeError('"options.zoneApps" is required');
+    var self = this;
 
     var log = this.log = options.log.child({component: 'adminapp'}, true);
     //this.updateAgentProbes = options.updateAgentProbes;
     this.zoneApps = options.zoneApps;
-    var self = this;
+    this._status = 'initializing';
 
     var server = this.server = restify.createServer({
         name: 'Amon Relay Admin',
@@ -61,7 +63,10 @@ function AdminApp(options) {
     // Routes.
     this.server.get({path: '/ping', name: 'RelayAdminPing'},
         function apiRelayAdminPing(req, res, next) {
-            res.send({'ping': 'pong'});
+            res.send({
+                ping: 'pong',
+                status: self._status
+            });
             next();
         });
     this.server.get({path: '/state', name: 'RelayAdminGetState'},
@@ -96,18 +101,24 @@ function AdminApp(options) {
 }
 
 
-AdminApp.prototype.listen = function (callback) {
+AdminApp.prototype.setStatus = function setStatus(status) {
+    assert.string(status, 'status');
+    this._status = status;
+};
+
+
+AdminApp.prototype.listen = function listen(callback) {
     // Admin App listened only on a local interface.
     var loIfaces = os.networkInterfaces()['lo0'];
     var address;
     for (var i = 0; i < loIfaces.length; i++) {
         if (loIfaces[i].family === 'IPv4') {
             address = loIfaces[i].address;
-            assert(loIfaces[i].internal);
+            assert.ok(loIfaces[i].internal);
             break;
         }
     }
-    assert(address);
+    assert.ok(address);
 
     this.server.listen(ADMIN_PORT, address, callback);
 };
