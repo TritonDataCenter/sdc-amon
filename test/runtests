@@ -185,8 +185,8 @@ fi
 echo ""
 amon_masters=$(sdc-vmapi /vms \
     | json -H \
-        -c 'tags.smartdc_role === "amon"' \
-        -c 'state === "running"' \
+        -c 'this.tags.smartdc_role === "amon"' \
+        -c 'this.state === "running"' \
         -a server_uuid uuid alias -d: \
     | xargs)
 for amon_master in $amon_masters; do
