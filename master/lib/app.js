@@ -337,37 +337,33 @@ function App(config, cnapiClient, vmapiClient, log) {
  */
 App.prototype._getUfdsClient = function _getUfdsClient(ufdsConfig) {
     var self = this;
-    var attempts = 1;
-    var timeout = null;
 
     var config = objCopy(ufdsConfig);
-    config.log = self.log.child({'ufdsClient': true}, true);
+    var log = config.log = self.log.child({'ufdsClient': true}, true);
     config.cache = false;  // for now at least, no caching in the client
+    var ufdsClient = self.ufdsClient = new UFDS(config);
 
-    function initUfdsRetry() {
-        self.log.debug('getting UFDS client: attempt %d', attempts);
-
-        var ufdsClient = new UFDS(config);
-        ufdsClient.once('error', function (err) {
-            if (timeout) {
-                clearTimeout(timeout);
-                timeout = null;
-            }
-
-            self.log.error(err,
-                'error getting bound UFDS client (attempt: %d): retrying',
-                attempts);
-            attempts++;
-            timeout = setTimeout(initUfdsRetry, 10000);
+    ufdsClient.once('connect', function () {
+        ufdsClient.removeAllListeners('error');
+        ufdsClient.on('error', function (err) {
+            log.warn(err, 'UFDS: unexpected error occurred');
         });
 
-        ufdsClient.once('ready', function () {
-            self.log.info('UFDS client ready');
-            self.ufdsClient = ufdsClient;
+        ufdsClient.on('close', function () {
+            log.warn('UFDS: disconnected');
         });
-    }
 
-    initUfdsRetry();
+        ufdsClient.on('connect', function () {
+            log.info('UFDS: reconnected');
+        });
+
+        log.info('UFDS: connected');
+    });
+
+    ufdsClient.once('error', function (err) {
+        log.fatal(err, 'UFDS: unable to connect and/or bind');
+        return callback(err);
+    });
 };
 
 

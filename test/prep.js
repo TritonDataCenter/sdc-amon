@@ -283,7 +283,7 @@ function getSmartosDatasetUuid(next) {
 
 function getExternalNetworkUuid(next) {
     log('# Get "external" network UUID.');
-    exec('sdc-napi /networks | json -H -c \'name === "external"\' 0.uuid',
+    exec('sdc-napi /networks | json -H -c \'this.name === "external"\' 0.uuid',
              function (err, stdout, stderr) {
         if (err) {
             return next(err);

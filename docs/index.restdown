@@ -1987,7 +1987,7 @@ because zone up/down alarms can clear.
     #    }'
     admin_uuid=$(bash /lib/sdc/config.sh -json | json ufds_admin_uuid)
     sdc_zones=$(sdc-vmapi /vms?owner_uuid=$admin_uuid \
-        | json -H -c "tags.smartdc_type" -a uuid alias -d:)
+        | json -H -c "this.tags.smartdc_type" -a uuid alias -d:)
     for z in $sdc_zones; do
         uuid=${z%:*}
         alias=${z#*:}
@@ -2302,7 +2302,7 @@ Amon consists of three pieces:
    of these zones. To list them:
 
         sdc-vmapi /vms?owner_uuid=$(bash /lib/sdc/config.sh -json | json ufds_admin_uuid) \
-            | json -H -c "tags.smartdc_role=='amon'"
+            | json -H -c "this.tags.smartdc_role=='amon'"
 
    The master provides the "Master API" endpoints (as documented above).
    The Operator Portal (adminui) exposes the Amon Master API. Parts of the
