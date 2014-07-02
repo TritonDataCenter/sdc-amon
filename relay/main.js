@@ -12,7 +12,6 @@
  *    curl -i localhost:4307/ping
  */
 
-var p = console.log;
 var fs = require('fs');
 var net = require('net');
 var child_process = require('child_process'),
@@ -114,7 +113,6 @@ function createZoneApp(zonename) {
 function loadConfig(rawOpts, cb) {
     assert.object(rawOpts, 'rawOpts');
     assert.func(cb, 'cb');
-    var self = this;
 
     config = {};  // intentionally global
 

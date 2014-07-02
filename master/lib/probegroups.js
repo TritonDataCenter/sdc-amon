@@ -9,7 +9,6 @@ var events = require('events');
 var format = require('util').format;
 
 var assert = require('assert-plus');
-var ldap = require('ldapjs');
 var restify = require('restify');
 var async = require('async');
 var genUuid = require('libuuid');

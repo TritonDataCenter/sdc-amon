@@ -91,7 +91,7 @@ var CONFIG = {
 //---- setup
 
 test('setup', function (t) {
-    notificationPluginFromType = {};
+    var notificationPluginFromType = {};
     if (CONFIG.notificationPlugins) {
         CONFIG.notificationPlugins.forEach(function (plugin) {
             var type = plugin.type;
@@ -139,66 +139,67 @@ test('email: sanitize empty', function (t) {
 });
 
 
-/* DISABLED. See comment about hang below.
-test('email: notify', function (t) {
-    var alarm = {
-        'user': 'a3040770-c93b-6b41-90e9-48d3142263cf',
-        'id': 1,
-        'monitor': 'gz',
-        'closed': false,
-        'suppressed': false,
-        'timeOpened': 1343070741494,
-        'timeClosed': null,
-        'timeLastEvent': 1343070741324,
-        'faults': [
-            {
-                'type': 'probe',
-                'probe': 'smartlogin'
-            }
-        ],
-        'maintenanceFaults': []
-    };
-    var user = {
-        'login': 'otto',
-        'email': 'trent.mick+amontestemail@joyent.com',
-        'id': 'a3040770-c93b-6b41-90e9-48d3142263cf',
-        'firstName': 'Trent',
-        'lastName': 'the Test Case'
-    };
-    var contact = new Contact('my', 'email', 'email',
-        'trentm+amonemailtest@gmail.com');
-    var event = {
-        'v': 1,
-        'type': 'probe',
-        'user': user.id,
-        time: Date.now(),
-        agent: uuid.create(),
-        agentAlias: 'tehagent',
-        relay: uuid.create(),
-        data: {
-            message: 'test from amon master test/notifications.test.js'
-        }
-    };
-
-    email.notify({
-            alarm: alarm,
-            user: user,
-            event: event,
-            contact: contact
-        }, function (err) {
-            t.ifError(err, err);
-            t.end();
-        }
-    );
-});
-
-test('email: teardown', function (t) {
-    // We still hang here, so I'm DISABLING these tests. :|
-    var nodemailer = require('nodemailer');
-    nodemailer._smtp_transport.close();
-    t.end();
-});
-*/
+/*
+ * DISABLED. See comment about hang below.
+ * test('email: notify', function (t) {
+ *     var alarm = {
+ *         'user': 'a3040770-c93b-6b41-90e9-48d3142263cf',
+ *         'id': 1,
+ *         'monitor': 'gz',
+ *         'closed': false,
+ *         'suppressed': false,
+ *         'timeOpened': 1343070741494,
+ *         'timeClosed': null,
+ *         'timeLastEvent': 1343070741324,
+ *         'faults': [
+ *             {
+ *                 'type': 'probe',
+ *                 'probe': 'smartlogin'
+ *             }
+ *         ],
+ *         'maintenanceFaults': []
+ *     };
+ *     var user = {
+ *         'login': 'otto',
+ *         'email': 'trent.mick+amontestemail@joyent.com',
+ *         'id': 'a3040770-c93b-6b41-90e9-48d3142263cf',
+ *         'firstName': 'Trent',
+ *         'lastName': 'the Test Case'
+ *     };
+ *     var contact = new Contact('my', 'email', 'email',
+ *         'trentm+amonemailtest@gmail.com');
+ *     var event = {
+ *         'v': 1,
+ *         'type': 'probe',
+ *         'user': user.id,
+ *         time: Date.now(),
+ *         agent: uuid.create(),
+ *         agentAlias: 'tehagent',
+ *         relay: uuid.create(),
+ *         data: {
+ *             message: 'test from amon master test/notifications.test.js'
+ *         }
+ *     };
+ *
+ *     email.notify({
+ *             alarm: alarm,
+ *             user: user,
+ *             event: event,
+ *             contact: contact
+ *         }, function (err) {
+ *             t.ifError(err, err);
+ *             t.end();
+ *         }
+ *     );
+ * });
+ *
+ * test('email: teardown', function (t) {
+ *     // We still hang here, so I'm DISABLING these tests. :|
+ *     var nodemailer = require('nodemailer');
+ *     nodemailer._smtp_transport.close();
+ *     t.end();
+ * });
+ */
 
 
 //---- test webhook
@@ -213,64 +214,64 @@ test('xmpp: sanitize empty', function (t) {
 });
 
 /*
-test('xmpp: notify', function (t) {
-    var alarm = {
-        'user': 'a3040770-c93b-6b41-90e9-48d3142263cf',
-        'id': 1,
-        'monitor': 'gz',
-        'closed': false,
-        'suppressed': false,
-        'timeOpened': 1343070741494,
-        'timeClosed': null,
-        'timeLastEvent': 1343070741324,
-        'faults': [
-            {
-                'type': 'probe',
-                'probe': 'smartlogin'
-            }
-        ],
-        'maintenanceFaults': []
-    };
-    var user = {
-        'login': 'otto',
-        'email': 'trent.mick+amontestemail@joyent.com',
-        'id': 'a3040770-c93b-6b41-90e9-48d3142263cf',
-        'firstName': 'Trent',
-        'lastName': 'the Test Case'
-    };
-    var contact = new Contact('my', 'email', 'email',
-        'trentm+amonemailtest@gmail.com');
-    var event = {
-        'v': 1,
-        'type': 'probe',
-        'user': user.id,
-        time: Date.now(),
-        agent: uuid.create(),
-        agentAlias: 'tehagent',
-        relay: uuid.create(),
-        data: {
-            message: 'test from amon master test/notifications.test.js'
-        }
-    };
-
-    xmpp.notify({
-        alarm: alarm,
-        user: user,
-        event: event,
-        contact: contact,
-        probe: {
-            name: 'test probe',
-            machine: 'coal',
-            type: 'foo'
-        }
-    }, function (err) {
-        t.ifError(err, err);
-        t.end();
-    });
-});
-
-test('xmpp: teardown', function (t) {
-    xmpp.once('close', t.end.bind(t));
-    xmpp.close();
-});
-*/
+ * test('xmpp: notify', function (t) {
+ *     var alarm = {
+ *         'user': 'a3040770-c93b-6b41-90e9-48d3142263cf',
+ *         'id': 1,
+ *         'monitor': 'gz',
+ *         'closed': false,
+ *         'suppressed': false,
+ *         'timeOpened': 1343070741494,
+ *         'timeClosed': null,
+ *         'timeLastEvent': 1343070741324,
+ *         'faults': [
+ *             {
+ *                 'type': 'probe',
+ *                 'probe': 'smartlogin'
+ *             }
+ *         ],
+ *         'maintenanceFaults': []
+ *     };
+ *     var user = {
+ *         'login': 'otto',
+ *         'email': 'trent.mick+amontestemail@joyent.com',
+ *         'id': 'a3040770-c93b-6b41-90e9-48d3142263cf',
+ *         'firstName': 'Trent',
+ *         'lastName': 'the Test Case'
+ *     };
+ *     var contact = new Contact('my', 'email', 'email',
+ *         'trentm+amonemailtest@gmail.com');
+ *     var event = {
+ *         'v': 1,
+ *         'type': 'probe',
+ *         'user': user.id,
+ *         time: Date.now(),
+ *         agent: uuid.create(),
+ *         agentAlias: 'tehagent',
+ *         relay: uuid.create(),
+ *         data: {
+ *             message: 'test from amon master test/notifications.test.js'
+ *         }
+ *     };
+ *
+ *     xmpp.notify({
+ *         alarm: alarm,
+ *         user: user,
+ *         event: event,
+ *         contact: contact,
+ *         probe: {
+ *             name: 'test probe',
+ *             machine: 'coal',
+ *             type: 'foo'
+ *         }
+ *     }, function (err) {
+ *         t.ifError(err, err);
+ *         t.end();
+ *     });
+ * });
+ *
+ * test('xmpp: teardown', function (t) {
+ *     xmpp.once('close', t.end.bind(t));
+ *     xmpp.close();
+ * });
+ */

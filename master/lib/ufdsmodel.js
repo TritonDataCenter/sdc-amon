@@ -23,7 +23,6 @@
 var debug = console.warn;
 
 var uuid = require('libuuid');
-var ldap = require('ldapjs');
 var restify = require('restify');
 
 var errors = require('./errors');

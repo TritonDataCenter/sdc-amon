@@ -10,7 +10,6 @@ var assert = require('assert-plus');
 var debug = console.log;
 var format = require('util').format;
 
-var ldap = require('ldapjs');
 var restify = require('restify');
 var sdcClients = require('sdc-clients'),
     CNAPI = sdcClients.CNAPI,
@@ -362,7 +361,6 @@ App.prototype._getUfdsClient = function _getUfdsClient(ufdsConfig) {
 
     ufdsClient.once('error', function (err) {
         log.fatal(err, 'UFDS: unable to connect and/or bind');
-        return callback(err);
     });
 };
 
@@ -687,7 +685,7 @@ App.prototype.ufdsAdd = function ufdsAdd(dn, data, callback) {
 
     self.ufdsClient.add(dn, data, function (addErr) {
         if (addErr) {
-            if (addErr instanceof ldap.EntryAlreadyExistsError) {
+            if (addErr.name === 'EntryAlreadyExistsError') {
                 return callback(new errors.InternalError(addErr,
                     'DN "'+ dn + '" already exists.'));
             }

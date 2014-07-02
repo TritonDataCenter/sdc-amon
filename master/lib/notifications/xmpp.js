@@ -18,7 +18,6 @@ var XMPPClient = require('node-xmpp-client');
 ///--- Helpers
 
 function createXmppClient(opts, cb) {
-    var dc = opts.datacenter;
     var log = opts.log;
     var _opts = {
         jid: opts.jid,
@@ -123,8 +122,6 @@ function XMPP(log, config, dcName) {
     assert.number(config.port, 'config.port');
     assert.string(dcName, 'datacenterName');
 
-    var self = this;
-
     EventEmitter.call(this);
 
     this.dc = dcName;
@@ -187,7 +184,7 @@ XMPP.prototype.sanitizeAddress = function sanitizeAddress(address) {
     this.log.trace({
         address: address,
         xmpp: self.toString()
-    }, 'XMPP: sanitizeAddress')
+    }, 'XMPP: sanitizeAddress');
     return (address);
 };
 
@@ -252,7 +249,6 @@ XMPP.prototype.notify = function notify(opts, cb) {
         if (event.data.details)
             msg += '\n' + JSON.stringify(event.data.details, null, 2);
 
-        var msg;
         if (self.group) {
             msg = new ltx.Element('message', {
                 to: room,
@@ -292,8 +288,8 @@ XMPP.prototype.notify = function notify(opts, cb) {
             } else {
                 self.xmpp[room] = xmpp;
 
-                xmpp.on('error', function onError(err) {
-                    log.error(err, 'XMPP error encountered (room=%s)', room);
+                xmpp.on('error', function onError(err2) {
+                    log.error(err2, 'XMPP error encountered (room=%s)', room);
                     if (self.xmpp[room])
                         delete self.xmpp[room];
                     xmpp.end();

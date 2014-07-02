@@ -330,10 +330,6 @@ function listMaintenances(app, userUuid, log, callback) {
     if (!callback)
         throw new TypeError('"callback" is required');
 
-    function maintenanceObjFromId(id, cb) {
-        var maintKey = format('maintenance:%s:%s', userUuid, id);
-        redisClient.hgetall(maintKey, cb);
-    }
     function maintenanceFromId(id, cb) {
         Maintenance.get(app, userUuid, id, cb);
     }
@@ -483,8 +479,8 @@ Maintenance.get = function get(app, userUuid, id, callback) {
                 } catch (invalidErr) {
                     log.warn({err: invalidErr, data: data,
                         maintenanceKey: maintenanceKey},
-                        'invalid maintenance window data in redis (removing this ' +
-                        'maintenance window)');
+                        'invalid maintenance window data in redis (removing ' +
+                        'this maintenance window)');
                 }
                 if (!maintenance) {
                     // Remove a bogus maintenance. This is necessary to avoid an

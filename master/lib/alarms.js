@@ -423,11 +423,13 @@ Alarm.filter = function filter(app, options, callback) {
                         return false;
                     }
                     if (options.probe && a.probe !== options.probe) {
-                        log.trace({alarm: a}, 'filter out alarm (probe: %j != %j)',
+                        log.trace({alarm: a},
+                            'filter out alarm (probe: %j != %j)',
                             a.probe, options.probe);
                         return false;
                     }
-                    if (options.probeGroup && a.probeGroup !== options.probeGroup) {
+                    if (options.probeGroup &&
+                        a.probeGroup !== options.probeGroup) {
                         log.trace({alarm: a},
                             'filter out alarm (probeGroup: %j != %j)',
                             a.probeGroup, options.probeGroup);
@@ -912,7 +914,7 @@ function apiListAllAlarms(req, res, next) {
             }
             var rErr = req._app.assertRedisArrayOfString(alarmKeys);
             if (rErr) {
-                return callback(rErr);
+                return next(rErr);
             }
             log.debug('get alarm data for each key (%d keys)',
                 alarmKeys.length);

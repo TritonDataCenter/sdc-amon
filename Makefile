@@ -228,7 +228,7 @@ test-coal:
 	./tools/rsync-master-to-coal
 	./tools/rsync-relay-to-coal
 	./tools/rsync-agent-to-coal
-	ssh $COAL /opt/smartdc/agents/lib/node_modules/amon-relay/test/runtests
+	ssh $(COAL) /opt/smartdc/agents/lib/node_modules/amon-relay/test/runtests
 
 # Test on Trent's kvm7.
 .PHONY: test-kvm7

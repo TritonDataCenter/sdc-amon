@@ -39,7 +39,7 @@ function dottedLookup(obj, lookup) {
     var result = obj[lookup]; // Allow lookup of actual 'foo.bar'.
     if (result === undefined && ~lookup.indexOf('.')) {
         var parts = lookup.split(/\./g);
-        var result = obj;
+        result = obj;
         for (var p = 0; p < parts.length; p++) {
             result = result[parts[p]];
             if (result === undefined) {
@@ -77,10 +77,10 @@ function BunyanLogScanProbe(options) {
     // In some simpler cases we can filter out non-hits quickly with
     // a single regex against full chunks of log data. I.e. no need to
     // `JSON.parse` or match per-line.
-    this._quickOutMatchers = []
+    this._quickOutMatchers = [];
     if (this.config.match) {
-        if (this._matchField && this.matcher.type !== 'substring'
-            && (~this.matcher.pattern.indexOf('^') ||
+        if (this._matchField && this.matcher.type !== 'substring' &&
+                (~this.matcher.pattern.indexOf('^') ||
                 ~this.matcher.pattern.indexOf('$')))
         {
             // If there is a match.field and the match.pattern has anchors in it
