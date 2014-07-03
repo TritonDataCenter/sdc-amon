@@ -11,7 +11,6 @@
     "async": "0.1.22",
     "bunyan": "0.22.1",
     "expiring-lru-cache": "2.1.0",
-    "ldapjs": "0.5.7",
     "libuuid": "0.1.2",
     "lru-cache": "2.5.0",
     "ltx": "0.4.1",
@@ -22,7 +21,8 @@
     "restify": "git+ssh://git@github.com:trentm/node-restify.git#7535bb3",
     "redis": "0.8.2",
     "retry": "0.6.0",
-    "sdc-clients": "git+ssh://git@git.joyent.com:node-sdc-clients.git#beace1d"
+    "sdc-clients": "git+ssh://git@git.joyent.com:node-sdc-clients.git#beace1d",
+    "ufds": "git+ssh://git@github.com:joyent/node-ufds#1ace075d7c89579c1ee547e50812c4d73890efab"
   },
   "devDependencies": {
     "tap": "0.4.0"

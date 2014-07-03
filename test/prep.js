@@ -29,8 +29,8 @@ var httpSignature = require('http-signature');
 var ldap = require('ldapjs');
 var sdcClients = require('sdc-clients'),
     VMAPI = sdcClients.VMAPI,
-    CNAPI = sdcClients.CNAPI,
-    UFDS = sdcClients.UFDS;
+    CNAPI = sdcClients.CNAPI;
+var UFDS = require('ufds');
 
 var common = require('./common');
 

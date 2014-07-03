@@ -13,8 +13,8 @@ var format = require('util').format;
 var restify = require('restify');
 var sdcClients = require('sdc-clients'),
     CNAPI = sdcClients.CNAPI,
-    VMAPI = sdcClients.VMAPI,
-    UFDS = sdcClients.UFDS;
+    VMAPI = sdcClients.VMAPI;
+var UFDS = require('ufds');
 var Cache = require('expiring-lru-cache');
 var LRU = require('lru-cache');
 var redis = require('redis');
@@ -340,10 +340,10 @@ App.prototype._getUfdsClient = function _getUfdsClient(ufdsConfig) {
     var config = objCopy(ufdsConfig);
     var log = config.log = self.log.child({'ufdsClient': true}, true);
     config.cache = false;  // for now at least, no caching in the client
+    config.failFast = true;
     var ufdsClient = self.ufdsClient = new UFDS(config);
 
     ufdsClient.once('connect', function () {
-        ufdsClient.removeAllListeners('error');
         ufdsClient.on('error', function (err) {
             log.warn(err, 'UFDS: unexpected error occurred');
         });
@@ -359,8 +359,10 @@ App.prototype._getUfdsClient = function _getUfdsClient(ufdsConfig) {
         log.info('UFDS: connected');
     });
 
-    ufdsClient.once('error', function (err) {
-        log.fatal(err, 'UFDS: unable to connect and/or bind');
+    ufdsClient.once('destroy', function (err) {
+        if (err) {
+            log.fatal(err, 'UFDS: client destroyed');
+        }
     });
 };
 
@@ -612,11 +614,6 @@ App.prototype.ufdsGet = function ufdsGet(dn, callback) {
     var self = this;
     var log = this.log;
 
-    if (!self.ufdsClient) {
-        return callback(new errors.ServiceUnavailableError(
-            'service unavailable (ufds)'));
-    }
-
     log.trace({dn: dn}, 'ufdsGet');
     self.ufdsClient.search(dn, {scope: 'base'}, function (err, items) {
         if (err) {
@@ -652,11 +649,6 @@ App.prototype.ufdsSearch = function ufdsSearch(base, opts, callback) {
     var self = this;
     var log = this.log;
 
-    if (!self.ufdsClient) {
-        return callback(new errors.ServiceUnavailableError(
-            'service unavailable (ufds)'));
-    }
-
     log.trace({filter: opts.filter}, 'ldap search');
     self.ufdsClient.search(base, opts, function (sErr, items) {
         if (sErr) {
@@ -677,11 +669,6 @@ App.prototype.ufdsSearch = function ufdsSearch(base, opts, callback) {
  */
 App.prototype.ufdsAdd = function ufdsAdd(dn, data, callback) {
     var self = this;
-
-    if (!self.ufdsClient) {
-        return callback(new errors.ServiceUnavailableError(
-            'service unavailable (ufds)'));
-    }
 
     self.ufdsClient.add(dn, data, function (addErr) {
         if (addErr) {
@@ -704,10 +691,6 @@ App.prototype.ufdsAdd = function ufdsAdd(dn, data, callback) {
  */
 App.prototype.ufdsModify = function ufdsModify(dn, data, callback) {
     var self = this;
-    if (!self.ufdsClient) {
-        return callback(new errors.ServiceUnavailableError(
-            'service unavailable (ufds)'));
-    }
 
     var change = {
         operation: 'replace',
@@ -731,10 +714,6 @@ App.prototype.ufdsModify = function ufdsModify(dn, data, callback) {
 App.prototype.ufdsDelete = function ufdsDelete(dn, callback) {
     var self = this;
 
-    if (!self.ufdsClient) {
-        return callback(new errors.ServiceUnavailableError(
-            'service unavailable (ufds)'));
-    }
 
     self.ufdsClient.del(dn, function (delErr) {
         if (delErr) {
