@@ -68,7 +68,7 @@ function clearUser() {
             local server_uuid=$(echo $machine | cut -d: -f1)
             local machine_uuid=$(echo $machine | cut -d: -f2)
             echo "# [$(date -u)] Delete machine $machine_uuid (on server $server_uuid)."
-            sdc-oneachnode -n $server_uuid vmadm delete $machine_uuid
+            sdc-oneachnode -n $server_uuid "vmadm delete $machine_uuid"
         done
 
         # Blowing away the machines can result in an alarm from a

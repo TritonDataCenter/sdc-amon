@@ -197,9 +197,7 @@ for amon_master in $amon_masters; do
     echo ""
     echo "# Run Amon Master ${amon_master_zonename} (alias $amon_master_alias) test suite (on CN ${amon_master_node})."
     output=$(sdc-oneachnode -j -n ${amon_master_node} \
-        zlogin ${amon_master_zonename} \
-        /opt/smartdc/amon/test/runtests $opt_test_pattern \
-        || true)
+        "zlogin ${amon_master_zonename} /opt/smartdc/amon/test/runtests $opt_test_pattern || true")
     #echo "$output" | json 0
     amon_master_output=$OUTPUT_DIR/amon-master-$amon_master_alias.tap
     echo "$output" | json 0.result.stdout > $amon_master_output

@@ -243,7 +243,7 @@ function ldapClientUnbind(next) {
 
 function getHeadnodeUuid(next) {
     log('# Get headnode UUID.');
-    var cnapiClient = new CNAPI({   // intentionally global
+    var cnapiClient = new CNAPI({
         url: process.env.CNAPI_URL
     });
     cnapiClient.listServers(function (err, servers) {
