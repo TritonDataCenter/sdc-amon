@@ -9,6 +9,7 @@
     "amon-plugins": "*",
     "assert-plus": "0.1.5",
     "async": "0.1.22",
+    "backoff": "2.4.0",
     "bunyan": "0.22.1",
     "expiring-lru-cache": "2.1.0",
     "libuuid": "0.1.2",

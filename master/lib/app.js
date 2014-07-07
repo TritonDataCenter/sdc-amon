@@ -21,6 +21,7 @@ var redis = require('redis');
 var async = require('async');
 var bunyan = require('bunyan');
 var once = require('once');
+var backoff = require('backoff');
 
 var amonCommon = require('amon-common'),
     Constants = amonCommon.Constants,
@@ -97,6 +98,115 @@ function apiGetUser(req, res, next) {
     return next();
 }
 
+/**
+ * Handle redis connection/reconnection.
+ *
+ * Problem: By default (node_redis 0.7.1) when the redis connection goes down
+ * (e.g. the redis-server stops) the node_redis client will start a
+ * backoff-retry loop to reconnect. The retry interval grows unbounded
+ * (unless max_attempts or connection_timeout are given) resulting
+ * eventually in *looooong* or possibly hung
+ * (https://github.com/mranney/node_redis/pull/132) Amon Master API
+ * requests (timeout) when using redis. We don't want that.
+ *
+ * Solution: Lacking a mechanism to notice when RedisClient.connection_gone()
+ * has given up (without polling it, lame), the only solution is to disable
+ * node_redis reconnection logic via `max_attempts = 1` and recycle our
+ * `_redisClient` on the "end" event.
+ *
+ * Limitations: While redis is unavailable, requesters receive errors.
+ */
+function RedisReconnector(host, port, log) {
+    this.host = host;
+    this.port = port;
+    this.log = log.child({redis:true}, true);
+    this._client = null;
+    this._connect();
+}
+
+RedisReconnector.prototype._connect = function () {
+    if (this._client || this._quit) {
+        return;
+    }
+
+    var self = this;
+
+    function postConnect(client) {
+        if (self._quit) {
+            // Catch cases where quit was requested during connection
+            client.quit();
+            return;
+        }
+        client.select(1); // Amon uses DB 1 in redis.
+        client.removeAllListeners('error');
+        client.on('error', function (err) {
+            self.log.warn(err, 'redis client error during connect');
+            client.end();
+        });
+        client.on('drain', function () {
+            self.log.debug('redis client drain');
+        });
+        client.on('idle', function () {
+            self.log.debug('redis client idle');
+        });
+        client.on('end', function () {
+            self.log.debug('redis client end');
+            self._client = null;
+            self._connect();
+        });
+        self._connecting = null;
+        self._client = client;
+        self.log.info('redis client ready');
+    }
+
+    var retry = backoff.exponential({
+        initialDelay: 100,
+        maxDelay: 10000
+    });
+    retry.on('ready', function (num) {
+        if (self._quit) {
+            return;
+        }
+        self.log.debug('redis connect attempt %d', num);
+        var client = new redis.createClient(
+            self.port,
+            self.host,
+            {
+                max_attempts: 1,
+                enable_offline_queue: false
+            });
+        client.on('ready', function () {
+            postConnect(client);
+        });
+        client.on('error', function (err) {
+            self.log.warn(err, 'redis client error during connect');
+            client.end();
+            retry.backoff(err);
+        });
+    });
+    this._connecting = retry;
+    retry.backoff();
+};
+
+RedisReconnector.prototype.getClient = function (cb) {
+    if (this._quit) {
+        return cb(new Error('redis has quit'));
+    }
+    if (this._client) {
+        return cb(null, this._client);
+    }
+    return cb(new Error('redis not available'));
+};
+
+RedisReconnector.prototype.quit = function () {
+    this._quit = true;
+    if (this._client) {
+        this._client.quit();
+    } else if (this._connecting) {
+        this._connecting.reset();
+        this._connecting = null;
+    }
+};
 
 
 //---- exports
@@ -156,6 +266,10 @@ function App(config, cnapiClient, vmapiClient, log) {
     this._ufdsCaching = (config.ufds.caching === undefined
         ? true : config.ufds.caching);
     this._getUfdsClient(config.ufds);
+    this._redisReconnector = new RedisReconnector(
+        this.config.redis.host || '127.0.0.1',
+        this.config.redis.port || 6379,   // redis default port
+        this.log.child({redis: true}, true));
 
     this.notificationPluginFromType = {};
     if (config.notificationPlugins) {
@@ -374,68 +488,9 @@ App.prototype._getUfdsClient = function _getUfdsClient(ufdsConfig) {
  *
  * @returns {redis.RedisClient}
  *
- * Problem: By default (node_redis 0.7.1) when the redis connection goes down
- * (e.g. the redis-server stops) the node_redis client will start a
- * backoff-retry loop to reconnect. The retry interval grows unbounded
- * (unless max_attempts or connection_timeout are given) resulting
- * eventually in *looooong* or possibly hung
- * (https://github.com/mranney/node_redis/pull/132) Amon Master API
- * requests (timeout) when using redis. We don't want that.
- *
- * Solution: Lacking a mechanism to notice when RedisClient.connection_gone()
- * has given up (without polling it, lame), the only solution is to disable
- * node_redis reconnection logic via `max_attempts = 1` and recycle our
- * `_redisClient` on the "end" event.
- *
- * Limitations: A problem with this solution is that when redis is down
- * and with a torrent of incoming events (i.e. where we need redis for
- * handling) we naively do a fairly quick cycle of creating new redis
- * clients without intelligent backoff.
- * XXX We could mitigate that by returning `null` here if the last "recycle"
- *     was N ms ago (e.g. within the last second). That's harsh, b/c requires
- *     all callers to check val of `getRedisClient()`.
- * XXX Can node-pool help here?
  */
 App.prototype.getRedisClient = function getRedisClient(cb) {
-    var self = this;
-
-    if (this._redisClient) {
-        return cb(null, this._redisClient);
-    }
-
-    var log = self.log.child({redis: true}, true);
-    var client = this._redisClient = new redis.createClient(
-        this.config.redis.port || 6379,   // redis default port
-        this.config.redis.host || '127.0.0.1',
-        {
-            max_attempts: 1,
-            enable_offline_queue: false
-        });
-
-    client.on('ready', function () {
-        log.debug('redis client ready');
-        client.select(1); // Amon uses DB 1 in redis.
-        cb(null, client);
-    });
-
-    // Must handle 'error' event to avoid propagation to top-level
-    // where node will terminate.
-    client.on('error', function (err) {
-        log.warn(err, 'redis client error');
-        cb(err);
-    });
-    client.on('drain', function () {
-        log.debug('redis client drain');
-    });
-    client.on('idle', function () {
-        log.debug('redis client idle');
-    });
-
-    client.on('end', function () {
-        log.debug('redis client end, recycling it');
-        client.end();
-        self._redisClient = null;
-    });
+    this._redisReconnector.getClient(cb);
 };
 
 
@@ -479,11 +534,7 @@ App.prototype.assertRedisArrayOfString = function assertRedisArrayOfString(d) {
  * Quit the redis client (if we have one) gracefully.
  */
 App.prototype.quitRedisClient = function () {
-    if (this._redisClient) {
-        this._redisClient.quit();
-        this._redisClient = null;
-    }
-    return;
+    this._redisReconnector.quit();
 };
 
 
