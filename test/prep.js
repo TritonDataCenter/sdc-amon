@@ -260,6 +260,8 @@ function getHeadnodeUuid(next) {
             throw new Error('could not find headnode in MAPI servers list');
         }
         log('# Header server UUID "%s".', headnodeUuid);
+        //FIXME: work around broken keepalive
+        cnapiClient.close();
         next();
     });
 }
@@ -342,6 +344,8 @@ function createAmontestzone(next) {
                                 if (err4)
                                     return next(err4);
                                 amontestzone = zone;
+                                //FIXME: work around broken keepalive
+                                vmapiClient.close();
                                 next();
                             }
                         );

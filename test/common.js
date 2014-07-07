@@ -83,6 +83,8 @@ function waitForVmapiJob(options, callback) {
             }, POLL);
         },
         function (err) {
+            // FIXME: work around broken keepalive
+            vmapiClient.close();
             if (err) {
                 callback(err);
             } else if (job.execution === 'failed') {
