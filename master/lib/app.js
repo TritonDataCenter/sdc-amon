@@ -341,6 +341,7 @@ App.prototype._getUfdsClient = function _getUfdsClient(ufdsConfig) {
     var log = config.log = self.log.child({'ufdsClient': true}, true);
     config.cache = false;  // for now at least, no caching in the client
     config.failFast = true;
+    config.connectTimeout = 5000;
     var ufdsClient = self.ufdsClient = new UFDS(config);
 
     ufdsClient.once('connect', function () {
