@@ -191,7 +191,9 @@ function syncRelaysAndAgents(relays, agents, callback) {
                 ' && sleep 1"', agent[0], agent[1], agent[1]);
         }
         console.log('# %s', cmd);
-        exec(cmd, function (err, stdout, stderr) {
+        // This test is timing out in nightly, but not in COAL
+        // Set a timeout on the exec to gain more insight
+        exec(cmd, {timeout: 45000}, function (err, stdout, stderr) {
             if (err) {
                 return next(format(
                     'error running `%s`: stdout=%j, stderr=%j, err=%s',

@@ -126,8 +126,7 @@ test('setup: maintprobe', function (t) {
     );
 });
 
-
-test('setup: sync all agents', function (t) {
+test('setup: sync all agents', {timeout: 60000}, function (t) {
     // Currently, the only relevant relay and agent are the headnode GZ ones
     // for the 'amontestzone'.
     common.syncRelaysAndAgents(
