@@ -23,7 +23,9 @@ CLEAN_FILES += agent/node_modules relay/node_modules \
 # "tools/mk/Makefile.node_prebuilt.targ" for details.
 NODE_PREBUILT_VERSION=v0.8.26
 NODE_PREBUILT_TAG=gz
-
+ifeq ($(shell uname -s),SunOS)
+    NODE_PREBUILT_IMAGE=fd2cc906-8938-11e3-beab-4359c665ac99
+endif
 
 #
 # Included definitions
@@ -126,12 +128,21 @@ pkg_relay:
 		relay/.npmignore \
 		test \
 		$(BUILD)/pkg/amon-relay/
-
 	# tools/amon-relay.exclude contains a list of files and patterns of some
 	#  unnecessary, duplicated, or dev-only pieces we don't want in the build.
 	(cd $(BUILD)/pkg && $(TAR) --exclude-from=$(TOP)/tools/amon-relay.exclude \
 		-zcf ../amon-relay-$(STAMP).tgz amon-relay)
-	@echo "Created '$(BUILD)/amon-relay-$(STAMP).tgz'."
+	cat $(TOP)/relay/manifest.tmpl | sed \
+		-e "s/UUID/$$(uuid -v4)/" \
+		-e "s/NAME/$$(json name < $(TOP)/relay/package.json)/" \
+		-e "s/VERSION/$$(json version < $(TOP)/relay/package.json)/" \
+		-e "s/DESCRIPTION/$$(json description < $(TOP)/relay/package.json)/" \
+		-e "s/BUILDSTAMP/$(STAMP)/" \
+		-e "s/SIZE/$$(stat --printf="%s" $(BUILD)/amon-relay-$(STAMP).tgz)/" \
+		-e "s/SHA/$$(openssl sha1 $(BUILD)/amon-relay-$(STAMP).tgz \
+		     | cut -d ' ' -f2)/" \
+		> $(BUILD)/amon-relay-$(STAMP).manifest
+	@echo "Created '$(BUILD)/amon-relay-$(STAMP).{tgz,manifest}'."
 
 .PHONY: pkg_agent
 pkg_agent:
@@ -149,12 +160,21 @@ pkg_agent:
 		agent/bin \
 		agent/.npmignore \
 		$(BUILD)/pkg/amon-agent/
-
 	# tools/amon-agent.exclude contains a list of files and patterns of some
 	#  unnecessary, duplicated, or dev-only pieces we don't want in the build.
 	(cd $(BUILD)/pkg && $(TAR) --exclude-from=$(TOP)/tools/amon-agent.exclude \
 	  -zcf ../amon-agent-$(STAMP).tgz amon-agent)
-	@echo "Created '$(BUILD)/amon-agent-$(STAMP).tgz'."
+	cat $(TOP)/agent/manifest.tmpl | sed \
+		-e "s/UUID/$$(uuid -v4)/" \
+		-e "s/NAME/$$(json name < $(TOP)/agent/package.json)/" \
+		-e "s/VERSION/$$(json version < $(TOP)/agent/package.json)/" \
+		-e "s/DESCRIPTION/$$(json description < $(TOP)/agent/package.json)/" \
+		-e "s/BUILDSTAMP/$(STAMP)/" \
+		-e "s/SIZE/$$(stat --printf="%s" $(BUILD)/amon-agent-$(STAMP).tgz)/" \
+		-e "s/SHA/$$(openssl sha1 $(BUILD)/amon-agent-$(STAMP).tgz \
+		     | cut -d ' ' -f2)/" \
+		> $(BUILD)/amon-agent-$(STAMP).manifest
+	@echo "Created '$(BUILD)/amon-agent-$(STAMP).{tgz,manifest}'."
 
 .PHONY: pkg_master
 pkg_master:
