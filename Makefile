@@ -220,7 +220,9 @@ publish: $(BITS_DIR)
 	mkdir -p $(BITS_DIR)/amon
 	cp $(BUILD)/amon-pkg-$(STAMP).tar.bz2 \
 		$(BUILD)/amon-relay-$(STAMP).tgz \
+		$(BUILD)/amon-relay-$(STAMP).manifest \
 		$(BUILD)/amon-agent-$(STAMP).tgz \
+		$(BUILD)/amon-agent-$(STAMP).manifest \
 		$(BITS_DIR)/amon/
 
 
