@@ -131,10 +131,11 @@ pkg_relay:
 		$(BUILD)/pkg/amon-relay/
 	# tools/amon-relay.exclude contains a list of files and patterns of some
 	#  unnecessary, duplicated, or dev-only pieces we don't want in the build.
+	uuid -v4 > $(BUILD)/pkg/amon-relay/image_uuid
 	(cd $(BUILD)/pkg && $(TAR) --exclude-from=$(TOP)/tools/amon-relay.exclude \
 		-zcf ../amon-relay-$(STAMP).tgz amon-relay)
 	cat $(TOP)/relay/manifest.tmpl | sed \
-		-e "s/UUID/$$(uuid -v4)/" \
+		-e "s/UUID/$$(cat $(BUILD)/pkg/amon-relay/image_uuid)/" \
 		-e "s/NAME/$$(json name < $(TOP)/relay/package.json)/" \
 		-e "s/VERSION/$$(json version < $(TOP)/relay/package.json)/" \
 		-e "s/DESCRIPTION/$$(json description < $(TOP)/relay/package.json)/" \
@@ -163,10 +164,11 @@ pkg_agent:
 		$(BUILD)/pkg/amon-agent/
 	# tools/amon-agent.exclude contains a list of files and patterns of some
 	#  unnecessary, duplicated, or dev-only pieces we don't want in the build.
+	uuid -v4 > $(BUILD)/pkg/amon-agent/image_uuid
 	(cd $(BUILD)/pkg && $(TAR) --exclude-from=$(TOP)/tools/amon-agent.exclude \
 	  -zcf ../amon-agent-$(STAMP).tgz amon-agent)
 	cat $(TOP)/agent/manifest.tmpl | sed \
-		-e "s/UUID/$$(uuid -v4)/" \
+		-e "s/UUID/$$(cat $(BUILD)/pkg/amon-agent/image_uuid)/" \
 		-e "s/NAME/$$(json name < $(TOP)/agent/package.json)/" \
 		-e "s/VERSION/$$(json version < $(TOP)/agent/package.json)/" \
 		-e "s/DESCRIPTION/$$(json description < $(TOP)/agent/package.json)/" \
