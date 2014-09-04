@@ -15,11 +15,10 @@ apisections:
 
 # Amon Design Discussions
 
-**This is a Joyent internal document.** Here-in some design discussions for
-Amon, collected here because they might be helpful to understand why Amon
-is the way it is. Each section is dated to give context if reading this
-in the future when Amon design might have moved on. *Add new sections to
-the top.*
+Here-in some design discussions for Amon, collected here because they might be
+helpful to understand why Amon is the way it is. Each section is dated to give
+context if reading this in the future when Amon design might have moved on. *Add
+new sections to the top.*
 
 
 # amon-agent runtime
