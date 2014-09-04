@@ -5,7 +5,7 @@
   "author": "Joyent (joyent.com)",
   "private": true,
   "dependencies": {
-    "sdc-clients": "git+ssh://git@git.joyent.com:node-sdc-clients.git#beace1d",
+    "sdc-clients": "git+ssh://git@github.com:joyent/node-sdc-clients.git#beace1d",
     "ufds": "git+ssh://git@github.com:joyent/node-ufds#1ace075d7c89579c1ee547e50812c4d73890efab",
 
     "async": "0.1.22",

@@ -8,7 +8,7 @@
     "amon-common": "*",
     "amon-plugins": "*",
 
-    "sdc-clients": "git+ssh://git@git.joyent.com:node-sdc-clients.git#beace1d",
+    "sdc-clients": "git+ssh://git@github.com:joyent/node-sdc-clients.git#beace1d",
     "restify": "git+ssh://git@github.com:trentm/node-restify.git#7535bb3",
     "assert-plus": "0.1.2",
     "bunyan": "0.21.3",
