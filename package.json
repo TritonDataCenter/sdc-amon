@@ -6,7 +6,6 @@
   "private": true,
   "devDependencies": {
     "amon-common": "1.0.0",
-
     "sdc-clients": "git+ssh://git@github.com:joyent/node-sdc-clients.git#fe76c2f",
     "ufds": "git+ssh://git@github.com:joyent/node-ufds#1ace075d7c89579c1ee547e50812c4d73890efab",
     "restify": "git+ssh://git@github.com:trentm/node-restify.git#7535bb3",
@@ -24,5 +23,6 @@
   },
   "engines": {
     "node": ">=0.8"
-  }
+  },
+  "license": "MPL-2.0"
 }

@@ -1,6 +1,14 @@
 /*
- * Copyright 2012 Joyent, Inc.  All rights reserved.
- *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+/*
+ * Copyright (c) 2014, Joyent, Inc.
+ */
+
+/*
  * A client for "Relay API", i.e. getting agent probes and sending events.
  * The Amon Master also implements the relay api endpoints, so this client
  * can be used by an amon-relay to talk to the amon-master, and by an
