@@ -1036,7 +1036,7 @@ Create a maintenance window.
 ||**Parameter**||**Required?**||**Default**||**Description**||
 ||user (URL)||Required||-||The user UUID (from UFDS) or username ('login' in UFDS)||
 ||start||Required||-||The time at which the maintenance window starts. RFC date, timestamp, or "now".||
-||end||Required||-||The time at which the maintenance window ends. RFC date, timestamp, or "<digit>[mhd]" (minute, hour, day). E.g.: "1d" means one day.||
+||end||Required||-||The time at which the maintenance window ends. RFC date, timestamp, or `<digit>[mhd]` (minute, hour, day). E.g.: "1d" means one day.||
 ||notes||Optional||-||Short notes on why this maintenance window.||
 ||all||Optional||-||A boolean. Set to "true" to indicate that the maintenance window should apply to all monitors. See *Note 1*.||
 ||monitors||Optional||-||A comma-separated list of monitor names to which the maintenance window applies. See *Note 1*.||
