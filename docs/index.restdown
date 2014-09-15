@@ -18,23 +18,22 @@ apisections: Master API: Probe Groups, Master API: Probes, Master API: Alarms, M
 This is the reference documentation for Amon, the monitoring and alarming
 system for SmartDataCenter (SDC). It includes both information relevant
 to SDC developers using Amon and internal API details. *End-user docs for SDC
-monitoring and alarming are part of the Cloud API documentation.*
+monitoring and alarming are part of the CloudAPI documentation.*
 
-For external users (i.e. anyone other than an Amon developer), it is the Amon
-Master API (or "Amon API" for short) that is most relevant. This document
-also describes the (internal) Relay API and administrative endpoints on the
-Master API.
+The Master API is most relevant. For SDC developers, this document also
+describes the internal Relay API and administrative endpoints on
+the Amon Master API.
 
-Public endpoints of the Amon Master API are under a "/pub" prefix to
-facilitate proxying to Cloud API. For example, the set of open alarms for an
+Public endpoints of the Master API are under a "/pub" prefix to
+facilitate proxying to CloudAPI. For example, the set of open alarms for an
 user is:
 
     GET  /pub/:account/probes        # Amon Master API
-    GET  /:login/probes              # Cloud API (**to be determined**)
+    GET  /:login/probes              # CloudAPI (**to be determined**)
 
 Where ":account" is typically a user UUID. However, for convenience in
 development, ":account" may also be a user's login string. Note that Amon
-does no auth. That is up to Cloud API.
+does no authentication. That is up to CloudAPI.
 
 
 ## Conventions and Notes
@@ -48,48 +47,38 @@ and information are formatted like this:
 
     GET /my/stor/foo HTTP/1.1
 
-`sdc-amon` is a light wrapper around `curl` for calling the Amon Master API.
-It is available in the GZ ([source
-code](https://mo.joyent.com/usb-headnode/blob/master/tools/sdc-amon)). For
+`sdc-amon` is a light wrapper around `curl` for calling the Amon API.
+It is available in the global zone (GZ) ([source
+code](https://github.com/joyent/sdc-sdc/blob/master/bin/sdc-amon)). For
 example `sdc-amon /ping` translates to:
 
     curl -sS -i -H accept:application/json -H content-type:application/json \
         --url http://10.2.207.185/ping
 
 
-## Current Status
-
-- Functional for internal SDC usage, but not yet for customers.
-- Running an amon-agent in a zone is not yet supported. Currently there
-  are only amon-agents running in the compute node (and headnode) GZs. This
-  limits which [types of probes](#probe-types) can be effective run.
-  See [MON-29](https://devhub.joyent.com/jira/browse/MON-29).
-- Amon is not integrated into cloudapi, portal or adminui.
-
-
-
 # Amon Overview
 
-Amon is a monitoring and alarming system for SmartDataCenter (SDC). From
-the user point of view Amon provides an API (part of Cloud API) and UI
-(in the portals) to configure monitoring. Configuration information is
-propagated to an amon-agent running in their zone (a few types of probes
-don't require the user to run an amon-agent). On detecting a fault, the
-amon-agent will send an event to the central master, typically resulting in
-an alarm (an object accessible via the API and portals) and a notification
-(email, SMS, webhook, etc.).
+Amon is a monitoring and alarming system for SmartDataCenter (SDC).
+It provides an API (part of CloudAPI) and UI (in the operator portal) to 
+configure monitoring. Configuration information is propagated to Amon agents
+running in zones (a few types of probes don't require the user to run 
+an Amon agent). On detecting a fault, the Amon agent will send an event to
+the central master, typically resulting in an alarm (an object accessible via
+the API and portals) and a notification (email, SMS, webhook, etc.).
 
 Operationally, Amon has three components: a central master ("amon-master"), a
 relay agent ("amon relay") in each compute node global zone, agents
-("amon-agent") in global zones and, eventually, in zones. See the [Operators
-Guide](#operators-guide) for more details.
+("amon-agent") in global zones and zones. See the [Operators
+Guide][sdc_operators_guide].
 
 
 # Key Concepts
 
+TODO: define a monitor.
+
 **Probes** (things to check and alarm on) and **probe groups** (optional
 grouping of related probes) are configured on the master (i.e. by calling the
-"Amon Master API"). Probe data is passed from the master, via the relays to
+"Amon API"). Probe data is passed from the master, via the relays to
 the appropriate agent where the probe is run. When a probe faults it raises
 an event, which passes through the relays up to the master. The master
 handles events by creating or updating **alarms** and sending notifications
@@ -100,6 +89,8 @@ LDAP object).
 
 
 ## Contacts
+
+TODO: Describe the new contacts API and handling when implemented (MON-150).
 
 A **contact** provides the data needed to send a notification. Each probe
 or probe group has a list of contact names that are all notified for alarms.
@@ -121,8 +112,6 @@ Contacts for Ulrich are `email: ulrich@example.com` (notification type
 "webhook). The *type* of notification mechanism must be the suffix of the
 contact name. (That is lame and will be changed.)
 
-TODO: Describe the new contacts API and handling when implemented (MON-150)
-
 
 ## Probes
 
@@ -138,7 +127,7 @@ Probes](#master-api-probes) for how to create/list/delete probes. See
 
 ## Probe Groups
 
-Optionally one can group a number of probes into one set. For larger
+Optionally one can group a number of probes into a **probe group**. For larger
 setups (with many machines, services, probes) this can be helpful:
 
 - The set of contacts for probes in the group is specified on the group,
@@ -167,7 +156,7 @@ create/list/delete maintenance windows.
 
 ## Alarms
 
-A **alarm** is an object created by Amon when a fault is detected by a
+An **alarm** is an object created by Amon when a fault is detected by a
 running probe. Typically an alarm is associated with a monitor. When
 created an alarm is "open" (`closed === false`). An alarm can be closed
 either manually via the API or automatically (depending on the type of
@@ -190,7 +179,7 @@ alarms.
   might create or update an alarm.
 - An open **alarm** is the state of a failing probe (or probe group). An
   alarm is created when a probe faults. An alarm can be closed by user action
-  (via the API or in the Operator or User Portals) or via an Amon *clear*
+  (via the API or in the operator portal) or via an Amon *clear*
   event -- the failing state is no longer failing, e.g. a halted machine has
   come back up. An alarm object lives until it is closed.
 - A **fault** is a single probe failure (i.e. it finds the condition for
@@ -374,7 +363,7 @@ TODO: errors
 
 # Master API: Probes
 
-A "probe" object is the config information that tells an amon-agent a single
+A "probe" object is the config information that tells an Amon agent a single
 thing to check or watch for. See the [Probes](#probes) section above for more
 details.
 
@@ -608,7 +597,7 @@ only guaranteed to be persisted for a week. I.e. this is mainly about showing
 open (i.e. unresolved) alarm situations.
 
 The point of an "alarm" object is (a) to have a persistent object to show
-current open alarms (e.g. for Cloud API, Operator Portal and Customer Portal);
+current open alarms (e.g. for CloudAPI, operator portal);
 (b) for the master to handle de-duplication, i.e. avoid a flood
 of duplicate notifications for a stream of events relating to the same
 problem; and (c) to support the user suppressing notifications for this
@@ -1741,7 +1730,7 @@ TODO: consider longer multiline scripts. Using same 'cmd' field or 'script'?
 ## Probe: disk-usage
 
 Regularly checks the free space left on a mountpoint, and alarms when a threshold
-is passed.  This probe type requires an amon-agent running inside the target VM
+is passed. This probe type requires an amon-agent running inside the target VM
 (i.e. the VM with the UUID of the "agent" field).
 
 ### Config
@@ -1905,8 +1894,8 @@ More detail:
   suppression for a pre-defined period of time).
 - Ability for operator to set a maintenance window on a CN and on the whole
   cloud. This would disable alerts to operator.
-- Amon Master API integrated into Cloud API.
-- Integration of Monitor management into AdminUI and Portal.
+- Amon Master API integrated into CloudAPI.
+- Integration of Monitor management into the operator portal.
 - Upgradable amon system.
 
 
@@ -2078,7 +2067,7 @@ a separate monitor? Or add a probe (or probes?) to the same monitor?
 Probably another probe to the same monitor. Naming (of probe or
 monitor) will be a pain, need to include machine UUID in the name?
 
-Cloud API: You have to add these separately per-machine. That shouldn't
+CloudAPI: You have to add these separately per-machine. That shouldn't
 be so bad.
 
     PUT /my/monitors/machine-up < {
@@ -2553,3 +2542,5 @@ Some possibly helpful commands for working with the amon.
         1363107930479 6232d723-4ba8-4fc9-93c5-5d3270e0d74a 622 Tue Mar 12 2013 17:05:30 GMT+0000 (UTC)
         1363108178337 6232d723-4ba8-4fc9-93c5-5d3270e0d74a 623 Tue Mar 12 2013 17:09:38 GMT+0000 (UTC)
         1363108179851 6232d723-4ba8-4fc9-93c5-5d3270e0d74a 624 Tue Mar 12 2013 17:09:39 GMT+0000 (UTC)
+
+[sdc_operators_guide]: https://docs.joyent.com/sdc7/
