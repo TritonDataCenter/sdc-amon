@@ -15,7 +15,7 @@
 #
 # Files
 #
-DOC_FILES = index.restdown design.restdown
+DOC_FILES = index.md design.md
 EXTRA_DOC_DEPS += deps/restdown-brand-remora/.git
 RESTDOWN_FLAGS   = --brand-dir=deps/restdown-brand-remora
 JS_FILES = $(shell ls master/*.js relay/*.js agent/*.js) \

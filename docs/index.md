@@ -1,6 +1,6 @@
 ---
 title: Amon (SDC Monitoring and Alarming)
-markdown2extras: wiki-tables, code-friendly, cuddled-lists, fenced-code-blocks
+markdown2extras: tables, code-friendly, cuddled-lists, fenced-code-blocks
 apisections: Master API: Probe Groups, Master API: Probes, Master API: Alarms, Master API: Maintenance Windows, Master API: Miscellaneous, Relay API, Relay Admin API
 ---
 <!--
@@ -242,11 +242,12 @@ Groups](#probe-groups) section above for more details.
 
 In the API, a probe group contains the following fields:
 
-||**Field**||**Type**||**Description**||
-||user||String||The UUID of the owning user of this probe group.||
-||uuid||UUID||Unique identifier for this probe group.||
-||name||String||Free form name (max 512 chars).||
-||contacts||Array||Set of contact names that are to be notified when a probe in the group alarms.||
+| Field    | Type   | Description                                                                    |
+| -------- | ------ | ------------------------------------------------------------------------------ |
+| user     | String | The UUID of the owning user of this probe group.                               |
+| uuid     | UUID   | Unique identifier for this probe group.                                        |
+| name     | String | Free form name (max 512 chars).                                                |
+| contacts | Array  | Set of contact names that are to be notified when a probe in the group alarms. |
 
 
 ## ListProbeGroups (GET /pub/:account/probegroups)
@@ -297,10 +298,11 @@ Create a probe group.
 
 ### Inputs
 
-||**Field**||**Required?**||**Type**||**Description**||
-||user (URL)||-||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||contacts||required||Array||An array of contact names to notify when probes in this group alarm.||
-||name||optional||String||Name of this probe group (max 512 chars). Meant to assist with identifying this group.||
+| Field      | Required? | Type   | Description                                                                            |
+| ---------- | --------- | ------ | -------------------------------------------------------------------------------------- |
+| user (URL) | -         | String | The user UUID (from UFDS) or username ('login' in UFDS)                                |
+| contacts   | required  | Array  | An array of contact names to notify when probes in this group alarm.                   |
+| name       | optional  | String | Name of this probe group (max 512 chars). Meant to assist with identifying this group. |
 
 ### Returns
 
@@ -321,10 +323,11 @@ Update a probe group.
 
 ### Inputs
 
-||**Field**||**Required?**||**Type**||**Description**||
-||user (URL)||-||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||contacts||required||Array||An array of contact names to notify when probes in this group alarm.||
-||name||optional||String||Name of this probe group (max 512 chars). Meant to assist with identifying this group.||
+| Field      | Required? | Type   | Description                                                                            |
+| ---------- | --------- | ------ | -------------------------------------------------------------------------------------- |
+| user (URL) | -         | String | The user UUID (from UFDS) or username ('login' in UFDS)                                |
+| contacts   | required  | Array  | An array of contact names to notify when probes in this group alarm.                   |
+| name       | optional  | String | Name of this probe group (max 512 chars). Meant to assist with identifying this group. |
 
 
 ### Returns
@@ -380,17 +383,18 @@ details.
 
 In the API, a probe contains the following fields:
 
-||**Field**||**Type**||**Description**||
-||uuid||String||The UUID of the probe.||
-||user||String||The UUID of the owning user.||
-||name||String||Name of this probe. This is unique for probes on this monitor. It must be 1-512 chars, begin with alphanumeric character and include only alphanumeric, '_', '.' and '-' ||
-||type||String||One of the supported [probe types](#probe-types).||
-||config||Object||Extra configuration information for the probe, if required. This is specific to the [probe type](#probe-types). Most probe types require some config information.||
-||agent||String||The UUID of the agent that will run this probe. An agent UUID is the UUID of the VM or node on which it is running. For some probe types the agent will be the same as "machine", e.g. a log-scan probe, for others it will be a separate, e.g. a ping (ICMP) probe is no use running on the same machine it is checking.||
-||machine||String||Optional. The UUID of the VM or node being monitored, if applicable. An example where "machine" is not applicable might be an HTTP check against a hostname that handled by multiple webheads behind a load balancer.||
-||contacts||Array||Optional. Set of contact names for this probe. If the probe is a member of a group then the group's contacts take precedence.||
-||group||UUID||Optional. UUID of a probe group to which this probe belongs, if any.||
-||groupEvents||Boolean||Optional. If true, multiple events will be grouped into a single alarm whenever possible (depending on when did the last event happen). If false, there will be a new alarm for every event generated by this probe. Defaults to true.||
+| Field       | Type    | Description                                                                                                                                                                                                                                                                                                               |
+| ----------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| uuid        | String  | The UUID of the probe.                                                                                                                                                                                                                                                                                                    |
+| user        | String  | The UUID of the owning user.                                                                                                                                                                                                                                                                                              |
+| name        | String  | Name of this probe. This is unique for probes on this monitor. It must be 1-512 chars, begin with alphanumeric character and include only alphanumeric, '_', '.' and '-'                                                                                                                                                  |
+| type        | String  | One of the supported [probe types](#probe-types).                                                                                                                                                                                                                                                                         |
+| config      | Object  | Extra configuration information for the probe, if required. This is specific to the [probe type](#probe-types). Most probe types require some config information.                                                                                                                                                         |
+| agent       | String  | The UUID of the agent that will run this probe. An agent UUID is the UUID of the VM or node on which it is running. For some probe types the agent will be the same as "machine", e.g. a log-scan probe, for others it will be a separate, e.g. a ping (ICMP) probe is no use running on the same machine it is checking. |
+| machine     | String  | Optional. The UUID of the VM or node being monitored, if applicable. An example where "machine" is not applicable might be an HTTP check against a hostname that handled by multiple webheads behind a load balancer.                                                                                                     |
+| contacts    | Array   | Optional. Set of contact names for this probe. If the probe is a member of a group then the group's contacts take precedence.                                                                                                                                                                                             |
+| group       | UUID    | Optional. UUID of a probe group to which this probe belongs, if any.                                                                                                                                                                                                                                                      |
+| groupEvents | Boolean | Optional. If true, multiple events will be grouped into a single alarm whenever possible (depending on when did the last event happen). If false, there will be a new alarm for every event generated by this probe. Defaults to true.                                                                                    |
 
 
 ## ListProbes (GET /pub/:account/probes)
@@ -503,16 +507,17 @@ Create a probe.
 
 ### Inputs
 
-||**Field**||**Required?**||**Type**||**Description**||
-||user||required (in URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||type||required||String||One of the supported [probe types](#probe-types).||
-||config||see [Probe Types](#probe-types)||Object||Extra configuration information for the probe, if required. This is specific to the [probe type](#probe-types). Most probe types require some config information.||
-||agent||required||String||The UUID of the agent that will run this probe. An agent uses the UUID of the VM (`zonename` in a zone, ??? in a virtual machine) or node (`sysinfo | json UUID`) on which it is running as its UUID.||
-||machine||optional||String||The UUID of the VM or node being monitored, if applicable. For some probe types (those that must run locally), "machine" is the same value as the "agent". An example where "machine" is not applicable might be an HTTP check against a hostname that handled by multiple webheads behind a load balancer.||
-||contacts||optional||Array||Set of contact names for this probe. If the probe is a member of a group then the group's contacts take precedence.||
-||group||optional||UUID||UUID of a probe group to which to add this probe.||
-||groupEvents||optional||Boolean||If true, multiple events will be grouped into a single alarm whenever possible (depending on when did the last event happen). If false, there will be a new alarm for every event generated by this probe. Defaults to true.||
-||skipauthz||optional||Boolean||**Internal.** This is an admin-only option to skip PUT authorization. It is accepted only for the special system admin user. It exists to facilitate bootstrapping probe creation during SDC headnode setup when all services required for authZ may not yet be online.||
+| Field       | Required?                       | Type    | Description                                                                                                                                                                                                                                                                                                 |
+| ----------- | ------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| user        | required (in URL)               | String  | The user UUID (from UFDS) or username ('login' in UFDS)                                                                                                                                                                                                                                                     |
+| type        | required                        | String  | One of the supported [probe types](#probe-types).                                                                                                                                                                                                                                                           |
+| config      | see [Probe Types](#probe-types) | Object  | Extra configuration information for the probe, if required. This is specific to the [probe type](#probe-types). Most probe types require some config information.                                                                                                                                           |
+| agent       | required                        | String  | The UUID of the agent that will run this probe. An agent uses the UUID of the VM (`zonename` in a zone, ??? in a virtual machine) or node on which it is running as its UUID.                                                                                                                               |
+| machine     | optional                        | String  | The UUID of the VM or node being monitored, if applicable. For some probe types (those that must run locally), "machine" is the same value as the "agent". An example where "machine" is not applicable might be an HTTP check against a hostname that handled by multiple webheads behind a load balancer. |
+| contacts    | optional                        | Array   | Set of contact names for this probe. If the probe is a member of a group then the group's contacts take precedence.                                                                                                                                                                                         |
+| group       | optional                        | UUID    | UUID of a probe group to which to add this probe.                                                                                                                                                                                                                                                           |
+| groupEvents | optional                        | Boolean | If true, multiple events will be grouped into a single alarm whenever possible (depending on when did the last event happen). If false, there will be a new alarm for every event generated by this probe. Defaults to true.                                                                                |
+| skipauthz   | optional                        | Boolean | **Internal.** This is an admin-only option to skip PUT authorization. It is accepted only for the special system admin user. It exists to facilitate bootstrapping probe creation during SDC headnode setup when all services required for authZ may not yet be online.                                     |
 
 ### Returns
 
@@ -535,16 +540,17 @@ TODO: Clarify: Is this just diffs? Or is the whole thing required?
 
 ### Inputs
 
-||**Field**||**Required?**||**Type**||**Description**||
-||user (URL)||-||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||uuid (URL)||-||UUID||UUID of the probe.||
-||type||String||required||One of the supported [probe types](#probe-types).||
-||config||Object||see [Probe Types](#probe-types)||Extra configuration information for the probe, if required. This is specific to the [probe type](#probe-types). Most probe types require some config information.||
-||agent||String||required||The UUID of the agent that will run this probe. An agent uses the UUID of the VM (`zonename` in a zone, ??? in a virtual machine) or node (`sysinfo | json UUID`) on which it is running as its UUID.||
-||machine||String||optional||The UUID of the VM or node being monitored, if applicable. For some probe types (those that must run locally), "machine" is the same value as the "agent". An example where "machine" is not applicable might be an HTTP check against a hostname that handled by multiple webheads behind a load balancer.||
-||contacts||Array||optional||Set of contact names for this probe. If the probe is a member of a group then the group's contacts take precedence.||
-||group||UUID||optional||UUID of a probe group to which to add this probe.||
-||groupEvents||optional||Boolean||If true, multiple events will be grouped into a single alarm whenever possible (depending on when did the last event happen). If false, there will be a new alarm for every event generated by this probe. Defaults to true.||
+| Field       | Required? | Type                            | Description                                                                                                                                                                                                                                                                                                 |
+| ----------- | --------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| user (URL)  | -         | String                          | The user UUID (from UFDS) or username ('login' in UFDS)                                                                                                                                                                                                                                                     |
+| uuid (URL)  | -         | UUID                            | UUID of the probe.                                                                                                                                                                                                                                                                                          |
+| type        | String    | required                        | One of the supported [probe types](#probe-types).                                                                                                                                                                                                                                                           |
+| config      | Object    | see [Probe Types](#probe-types) | Extra configuration information for the probe, if required. This is specific to the [probe type](#probe-types). Most probe types require some config information.                                                                                                                                           |
+| agent       | String    | required                        | The UUID of the agent that will run this probe. An agent uses the UUID of the VM (`zonename` in a zone, ??? in a virtual machine) or node on which it is running as its UUID.                                                                                                                               |
+| machine     | String    | optional                        | The UUID of the VM or node being monitored, if applicable. For some probe types (those that must run locally), "machine" is the same value as the "agent". An example where "machine" is not applicable might be an HTTP check against a hostname that handled by multiple webheads behind a load balancer. |
+| contacts    | Array     | optional                        | Set of contact names for this probe. If the probe is a member of a group then the group's contacts take precedence.                                                                                                                                                                                         |
+| group       | UUID      | optional                        | UUID of a probe group to which to add this probe.                                                                                                                                                                                                                                                           |
+| groupEvents | optional  | Boolean                         | If true, multiple events will be grouped into a single alarm whenever possible (depending on when did the last event happen). If false, there will be a new alarm for every event generated by this probe. Defaults to true.                                                                                |
 
 
 ### Returns
@@ -618,16 +624,17 @@ alarm ("Yah, I know it is a problem, but I can't deal with it right now.").
 
 ### Alarm Fields
 
-||**Field**||**Type**||**Description**||
-||user||String||The UUID of the user to which this alarm belongs.||
-||id||Integer||The integer ID of this alarm. Note that this is scoped on `user`.||
-||monitor||String||The name of the monitor with which this alarm is associated.||
-||closed||Boolean||Whether this alarm has been closed.||
-||suppressed||Boolean||Whether notifications for this alarm are currently suppressed.||
-||timeOpened||Integer||Timestamp (milliseconds since the epoch) at which the alarm was opened.||
-||timeClosed||Integer||Timestamp (milliseconds since the epoch) at which the alarm was closed or null if the alarm is not closed.||
-||timeLastEvent||Integer||Timestamp (milliseconds since the epoch) at which the last event for this alarm occurred.||
-||v||Integer||The version of this Alarm object schema. Currently this is only exposed via the internal APIs.||
+| Field         | Type    | Description                                                                                                |
+| ------------- | ------- | ---------------------------------------------------------------------------------------------------------- |
+| user          | String  | The UUID of the user to which this alarm belongs.                                                          |
+| id            | Integer | The integer ID of this alarm. Note that this is scoped on `user`.                                          |
+| monitor       | String  | The name of the monitor with which this alarm is associated.                                               |
+| closed        | Boolean | Whether this alarm has been closed.                                                                        |
+| suppressed    | Boolean | Whether notifications for this alarm are currently suppressed.                                             |
+| timeOpened    | Integer | Timestamp (milliseconds since the epoch) at which the alarm was opened.                                    |
+| timeClosed    | Integer | Timestamp (milliseconds since the epoch) at which the alarm was closed or null if the alarm is not closed. |
+| timeLastEvent | Integer | Timestamp (milliseconds since the epoch) at which the last event for this alarm occurred.                  |
+| v             | Integer | The version of this Alarm object schema. Currently this is only exposed via the internal APIs.             |
 
 An example alarm (TODO: update this example):
 
@@ -691,17 +698,19 @@ automatically expunged (currently a week after being closed).
 
 ### Inputs
 
-||**Field**||**Type**||**Description**||
-||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||state||String||One of "recent" (open and recently closed alarms, this is the default), "open", "closed" and "all".||
-||probeGroup||UUID||Only return alarms associated with this probe group.||
+| Field      | Type   | Description                                                                                         |
+| ---------- | ------ | --------------------------------------------------------------------------------------------------- |
+| user (URL) | String | The user UUID (from UFDS) or username ('login' in UFDS)                                             |
+| state      | String | One of "recent" (open and recently closed alarms, this is the default), "open", "closed" and "all". |
+| probeGroup | UUID   | Only return alarms associated with this probe group.                                                |
 
 ### Errors
 
 For all possible errors, see [Error Response](#error-responses) above.
 
-||**Error Code**||**HTTP Code**||**Description**||
-||InvalidArgumentError||400||If `state` or `monitor` is invalid.||
+| Error Code           | HTTP Code | Description                         |
+| -------------------- | --------- | ----------------------------------- |
+| InvalidArgumentError | 400       | If `state` or `monitor` is invalid. |
 
 ### Returns
 
@@ -734,9 +743,10 @@ Get a particular alarm.
 
 ### Inputs
 
-||**Field**||**Type**||**Description**||
-||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||alarm (URL)||Integer||The alarm id for this user.||
+| Field       | Type    | Description                                             |
+| ----------- | ------- | ------------------------------------------------------- |
+| user (URL)  | String  | The user UUID (from UFDS) or username ('login' in UFDS) |
+| alarm (URL) | Integer | The alarm id for this user.                             |
 
 ### Returns
 
@@ -746,9 +756,10 @@ An alarm object (see [Alarm Fields](#alarm-fields) above).
 
 For all possible errors, see [Error Response](#error-responses) above.
 
-||**Error Code**||**HTTP Code**||**Description**||
-||ResourceNotFound||404||If `user` does not exist or the `alarm` id does not exist.||
-||Gone||410||If the `alarm` has been expunged. Closed alarms are expunged after about a week.||
+| Error Code       | HTTP Code | Description                                                                      |
+| ---------------- | --------- | -------------------------------------------------------------------------------- |
+| ResourceNotFound | 404       | If `user` does not exist or the `alarm` id does not exist.                       |
+| Gone             | 410       | If the `alarm` has been expunged. Closed alarms are expunged after about a week. |
 
 ### Example
 
@@ -775,10 +786,11 @@ Close the given alarm.
 
 ### Inputs
 
-||**Field**||**Type**||**Description**||
-||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||alarm (URL)||Integer||The alarm id for this user.||
-||action||String||"close". See other "*Alarm*" actions in this section.||
+| Field       | Type    | Description                                             |
+| ----------- | ------- | ------------------------------------------------------- |
+| user (URL)  | String  | The user UUID (from UFDS) or username ('login' in UFDS) |
+| alarm (URL) | Integer | The alarm id for this user.                             |
+| action      | String  | "close". See other "*Alarm*" actions in this section.   |
 
 ### Returns
 
@@ -788,9 +800,10 @@ Nothing. Responds with an HTTP 202 (Accepted) on success.
 
 For all possible errors, see [Error Response](#error-responses) above.
 
-||**Error Code**||**HTTP Code**||**Description**||
-||ResourceNotFound||404||If `user` does not exist or the `alarm` id does not exist.||
-||Gone||410||If the `alarm` has been expunged. Closed alarms are expunged after about a week.||
+| Error Code       | HTTP Code | Description                                                                      |
+| ---------------- | --------- | -------------------------------------------------------------------------------- |
+| ResourceNotFound | 404       | If `user` does not exist or the `alarm` id does not exist.                       |
+| Gone             | 410       | If the `alarm` has been expunged. Closed alarms are expunged after about a week. |
 
 ### Example
 
@@ -816,10 +829,11 @@ accidental "close" action.
 
 ### Inputs
 
-||**Field**||**Type**||**Description**||
-||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||alarm (URL)||Integer||The alarm id for this user.||
-||action||String||"reopen". See other "*Alarm*" actions in this section.||
+| Field       | Type    | Description                                             |
+| ----------- | ------- | ------------------------------------------------------- |
+| user (URL)  | String  | The user UUID (from UFDS) or username ('login' in UFDS) |
+| alarm (URL) | Integer | The alarm id for this user.                             |
+| action      | String  | "reopen". See other "*Alarm*" actions in this section.  |
 
 ### Returns
 
@@ -829,9 +843,10 @@ Nothing. Responds with an HTTP 202 (Accepted) on success.
 
 For all possible errors, see [Error Response](#error-responses) above.
 
-||**Error Code**||**HTTP Code**||**Description**||
-||ResourceNotFound||404||If `user` does not exist or the `alarm` id does not exist.||
-||Gone||410||If the `alarm` has been expunged. Closed alarms are expunged after about a week.||
+| Error Code       | HTTP Code | Description                                                                      |
+| ---------------- | --------- | -------------------------------------------------------------------------------- |
+| ResourceNotFound | 404       | If `user` does not exist or the `alarm` id does not exist.                       |
+| Gone             | 410       | If the `alarm` has been expunged. Closed alarms are expunged after about a week. |
 
 ### Example
 
@@ -856,10 +871,11 @@ Suppress notifications for events on the given alarm.
 
 ### Inputs
 
-||**Field**||**Type**||**Description**||
-||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||alarm (URL)||Integer||The alarm id for this user.||
-||action||String||"suppress". See other "*Alarm*" actions in this section.||
+| Field       | Type    | Description                                              |
+| ----------- | ------- | -------------------------------------------------------- |
+| user (URL)  | String  | The user UUID (from UFDS) or username ('login' in UFDS)  |
+| alarm (URL) | Integer | The alarm id for this user.                              |
+| action      | String  | "suppress". See other "*Alarm*" actions in this section. |
 
 ### Returns
 
@@ -869,9 +885,10 @@ Nothing. Responds with an HTTP 202 (Accepted) on success.
 
 For all possible errors, see [Error Response](#error-responses) above.
 
-||**Error Code**||**HTTP Code**||**Description**||
-||ResourceNotFound||404||If `user` does not exist or the `alarm` id does not exist.||
-||Gone||410||If the `alarm` has been expunged. Closed alarms are expunged after about a week.||
+| Error Code       | HTTP Code | Description                                                                      |
+| ---------------- | --------- | -------------------------------------------------------------------------------- |
+| ResourceNotFound | 404       | If `user` does not exist or the `alarm` id does not exist.                       |
+| Gone             | 410       | If the `alarm` has been expunged. Closed alarms are expunged after about a week. |
 
 ### Example
 
@@ -896,10 +913,11 @@ Stop suppression of notifications on the given alarm.
 
 ### Inputs
 
-||**Field**||**Type**||**Description**||
-||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||alarm (URL)||Integer||The alarm id for this user.||
-||action||String||"close". See other "*Alarm*" actions in this section.||
+| Field       | Type    | Description                                             |
+| ----------- | ------- | ------------------------------------------------------- |
+| user (URL)  | String  | The user UUID (from UFDS) or username ('login' in UFDS) |
+| alarm (URL) | Integer | The alarm id for this user.                             |
+| action      | String  | "close". See other "*Alarm*" actions in this section.   |
 
 ### Returns
 
@@ -909,9 +927,10 @@ Nothing. Responds with an HTTP 202 (Accepted) on success.
 
 For all possible errors, see [Error Response](#error-responses) above.
 
-||**Error Code**||**HTTP Code**||**Description**||
-||ResourceNotFound||404||If `user` does not exist or the `alarm` id does not exist.||
-||Gone||410||If the `alarm` has been expunged. Closed alarms are expunged after about a week.||
+| Error Code       | HTTP Code | Description                                                                      |
+| ---------------- | --------- | -------------------------------------------------------------------------------- |
+| ResourceNotFound | 404       | If `user` does not exist or the `alarm` id does not exist.                       |
+| Gone             | 410       | If the `alarm` has been expunged. Closed alarms are expunged after about a week. |
 
 ### Example
 
@@ -938,9 +957,10 @@ At least for first blush I'd suggest *not* exposing this to the user.
 
 ### Inputs
 
-||**Field**||**Type**||**Description**||
-||user (URL)||String||The user UUID (from UFDS) or username ('login' in UFDS)||
-||alarm (URL)||Integer||The alarm id for this user.||
+| Field       | Type    | Description                                             |
+| ----------- | ------- | ------------------------------------------------------- |
+| user (URL)  | String  | The user UUID (from UFDS) or username ('login' in UFDS) |
+| alarm (URL) | Integer | The alarm id for this user.                             |
 
 ### Returns
 
@@ -950,8 +970,9 @@ Nothing. Responds with an HTTP 204 (Accepted) on success.
 
 For all possible errors, see [Error Response](#error-responses) above.
 
-||**Error Code**||**HTTP Code**||**Description**||
-||ResourceNotFound||404||If `user` does not exist or the `alarm` id does not exist.||
+| Error Code       | HTTP Code | Description                                                |
+| ---------------- | --------- | ---------------------------------------------------------- |
+| ResourceNotFound | 404       | If `user` does not exist or the `alarm` id does not exist. |
 
 ### Example
 
@@ -977,15 +998,16 @@ suppress notifications for probe failures.
 
 ### Maintenance Window Fields
 
-||**Field**||**Type**||**Description**||
-||user||UUID||The UUID of the user to which the maintenance window belongs.||
-||id||Integer||A unique (to this user) integer id for this maintenance window.||
-||start||timestamp||A timestamp at which this maintenance window starts.||
-||end||timestamp||A timestamp at which this maintenance window ends.||
-||notes||String||The given "notes". This key is excluded if there are no notes.||
-||all||Boolean||"true", if this maintenance window applies to all monitors.||
-||monitors||Array||Array of monitor names to which this maintenance window applies, if any.||
-||machines||Array||Array of machine UUIDs to which this maintenance window applies, if any.||
+| Field    | Type      | Description                                                              |
+| -------- | --------- | ------------------------------------------------------------------------ |
+| user     | UUID      | The UUID of the user to which the maintenance window belongs.            |
+| id       | Integer   | A unique (to this user) integer id for this maintenance window.          |
+| start    | timestamp | A timestamp at which this maintenance window starts.                     |
+| end      | timestamp | A timestamp at which this maintenance window ends.                       |
+| notes    | String    | The given "notes". This key is excluded if there are no notes.           |
+| all      | Boolean   | "true", if this maintenance window applies to all monitors.              |
+| monitors | Array     | Array of monitor names to which this maintenance window applies, if any. |
+| machines | Array     | Array of machine UUIDs to which this maintenance window applies, if any. |
 
 Only one of `all`, `monitors`, `machines` will exist.
 
@@ -1033,14 +1055,15 @@ Create a maintenance window.
 
 ### Inputs
 
-||**Parameter**||**Required?**||**Default**||**Description**||
-||user (URL)||Required||-||The user UUID (from UFDS) or username ('login' in UFDS)||
-||start||Required||-||The time at which the maintenance window starts. RFC date, timestamp, or "now".||
-||end||Required||-||The time at which the maintenance window ends. RFC date, timestamp, or `<digit>[mhd]` (minute, hour, day). E.g.: "1d" means one day.||
-||notes||Optional||-||Short notes on why this maintenance window.||
-||all||Optional||-||A boolean. Set to "true" to indicate that the maintenance window should apply to all monitors. See *Note 1*.||
-||monitors||Optional||-||A comma-separated list of monitor names to which the maintenance window applies. See *Note 1*.||
-||machines||Optional||-||A comma-separated list of machine UUIDs to which the maintenance window applies. See *Note 1*.||
+| Parameter  | Required? | Default | Description                                                                                                                          |
+| ---------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| user (URL) | Required  | -       | The user UUID (from UFDS) or username ('login' in UFDS)                                                                              |
+| start      | Required  | -       | The time at which the maintenance window starts. RFC date, timestamp, or "now".                                                      |
+| end        | Required  | -       | The time at which the maintenance window ends. RFC date, timestamp, or `<digit>[mhd]` (minute, hour, day). E.g.: "1d" means one day. |
+| notes      | Optional  | -       | Short notes on why this maintenance window.                                                                                          |
+| all        | Optional  | -       | A boolean. Set to "true" to indicate that the maintenance window should apply to all monitors. See *Note 1*.                         |
+| monitors   | Optional  | -       | A comma-separated list of monitor names to which the maintenance window applies. See *Note 1*.                                       |
+| machines   | Optional  | -       | A comma-separated list of machine UUIDs to which the maintenance window applies. See *Note 1*.                                       |
 
 *Note 1*: One of `all`, `monitors` or `machines` must be supplied.
 
@@ -1076,24 +1099,27 @@ the Amon master server process. This is helpful for the test suite.
 
 ### Inputs
 
-||**Field**||**Type**||**Description**||
-||error||String||Optional. An error code name, e.g. "ResourceNotFound" to simulate an error response.||
-||message||String||Optional. The error message to include in the simulated error response. Defaults to "pong".||
+| Field   | Type   | Description                                                                                 |
+| ------- | ------ | ------------------------------------------------------------------------------------------- |
+| error   | String | Optional. An error code name, e.g. "ResourceNotFound" to simulate an error response.        |
+| message | String | Optional. The error message to include in the simulated error response. Defaults to "pong". |
 
 ### Returns
 
 When not simulating an error response, a "pong" object is returned:
 
-||**Field**||**Type**||**Description**||
-||ping||String||"pong"||
-||pid||String||The PID of Amon Master process.||
+| Field | Type   | Description                     |
+| ----- | ------ | ------------------------------- |
+| ping  | String | "pong"                          |
+| pid   | String | The PID of Amon Master process. |
 
 When simulating an error, the HTTP response code depends on the error type
 and the response body is an JSON object with:
 
-||**Field**||**Type**||**Description**||
-||code||String||Error code string.||
-||message||String||Error message.||
+| Field   | Type   | Description        |
+| ------- | ------ | ------------------ |
+| code    | String | Error code string. |
+| message | String | Error message.     |
 
 ### Examples
 
@@ -1151,8 +1177,9 @@ if not useful.
 
 ### Inputs
 
-||**Field**||**Type**||**Description**||
-||user (URL)||String||The user UUID or login||
+| Field      | Type   | Description            |
+| ---------- | ------ | ---------------------- |
+| user (URL) | String | The user UUID or login |
 
 ### Example
 
@@ -1201,8 +1228,9 @@ cases.
 
 ### Inputs
 
-||**Field**||**Type**||**Description**||
-||action||String||"dropcaches"||
+| Field  | Type   | Description  |
+| ------ | ------ | ------------ |
+| action | String | "dropcaches" |
 
 ### Example
 
@@ -1282,8 +1310,9 @@ stable "Content-MD5" header to use for caching.
 
 ### Inputs
 
-||**Parameter**||**Required?**||**Default**||**Description**||
-||agent||Required||-||The agent UUID. Note that the agent UUID is that of the machine -- VM, SmartMachine (aka zone), or physical node -- on which is runs.||
+| Parameter | Required? | Default | Description                                                                                                                           |
+| --------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| agent     | Required  | -       | The agent UUID. Note that the agent UUID is that of the machine -- VM, SmartMachine (aka zone), or physical node -- on which is runs. |
 
 Note: The `agent` parameter is required when calling this endpoint on an
 Amon Master. However, when an amon-agent calls this endpoint on an amon-relay,
@@ -1296,8 +1325,9 @@ An array of probe objects. See [Probes API](#master-api-probes) section above
 for the fields in a probe object. This internal API includes an additional
 field on each probe object:
 
-||**Field**||**Type**||**Description**||
-||runInVmHost||Boolean||This is 'true' if the probe is a type that must run in the VM *host* for a VM. An example is the 'machine-up' probe type, which tracks vm/zone state by watching kernel sysevent events from the global zone.||
+| Field       | Type    | Description                                                                                                                                                                                                   |
+| ----------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| runInVmHost | Boolean | This is 'true' if the probe is a type that must run in the VM *host* for a VM. An example is the 'machine-up' probe type, which tracks vm/zone state by watching kernel sysevent events from the global zone. |
 
 ### Errors
 
@@ -1350,8 +1380,9 @@ caching on the server can be on the (smaller) `Content-MD5`.
 
 ### Inputs
 
-||**Parameter**||**Required?**||**Default**||**Description**||
-||agent||Required||-||The agent UUID. Note that the agent UUID is that of the machine -- VM, SmartMachine (aka zone), or physical node -- on which is runs.||
+| Parameter | Required? | Default | Description                                                                                                                           |
+| --------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| agent     | Required  | -       | The agent UUID. Note that the agent UUID is that of the machine -- VM, SmartMachine (aka zone), or physical node -- on which is runs. |
 
 ### Errors
 
@@ -1406,8 +1437,9 @@ Immediately update agentprobes data from the Amon master.
 
 ### Inputs
 
-||**Field**||**Type**||**Description**||
-||action||String||"syncprobes"||
+| Field  | Type   | Description  |
+| ------ | ------ | ------------ |
+| action | String | "syncprobes" |
 
 ### Returns
 
@@ -1439,9 +1471,10 @@ Set the logging level for the amon-relay.
 
 ### Inputs
 
-||**Field**||**Type**||**Description**||
-||action||String||"loglevel"||
-||level||String||One of the [Bunyan supported log level strings](https://github.com/trentm/node-bunyan#levels), e.g. "debug", "trace".||
+| Field  | Type   | Description                                                                                                           |
+| ------ | ------ | --------------------------------------------------------------------------------------------------------------------- |
+| action | String | "loglevel"                                                                                                            |
+| level  | String | One of the [Bunyan supported log level strings](https://github.com/trentm/node-bunyan#levels), e.g. "debug", "trace". |
 
 ### Returns
 
@@ -1476,14 +1509,15 @@ specific to the probe type. Those are specified here.
 
 Some aggregated data on the probe types:
 
-||**Type**||**Requires Agent**||**Sends Clear Events**||**Description**||
-||machine-up||no||yes||watch for a vm going down (shutdown, reboot)||
-||log-scan||yes||no||watch for a pattern in a log file||
-||bunyan-log-scan||yes||no||watch for a pattern or field matches in a Bunyan log file||
-||http||yes||no||hit an HTTP(S) endpoint and assert a status, body match, response time, etc.||
-||icmp (i.e. ping)||yes||no||ping a host and assert a response time, etc.||
-||cmd||yes||no||run a command and assert an exit status, stdout match||
-||disk-usage||yes||yes||checks that free space on a mountpoint doesn't drop below a threshold||
+| Type             | Requires Agent | Sends Clear Events | Description                                                                  |
+| ---------------- | -------------- | ------------------ | ---------------------------------------------------------------------------- |
+| machine-up       | no             | yes                | watch for a vm going down (shutdown, reboot)                                 |
+| log-scan         | yes            | no                 | watch for a pattern in a log file                                            |
+| bunyan-log-scan  | yes            | no                 | watch for a pattern or field matches in a Bunyan log file                    |
+| http             | yes            | no                 | hit an HTTP(S) endpoint and assert a status, body match, response time, etc. |
+| icmp (i.e. ping) | yes            | no                 | ping a host and assert a response time, etc.                                 |
+| cmd              | yes            | no                 | run a command and assert an exit status, stdout match                        |
+| disk-usage       | yes            | yes                | checks that free space on a mountpoint doesn't drop below a threshold        |
 
 "Requires Agent" means that a probe of this type needs an amon-agent running
 in the customer vm/zone to run the probe. "machine-up" is the exception here,
@@ -1498,17 +1532,18 @@ the VM with the UUID of the "agent" field).
 
 ### Config
 
-||**Parameter**||**Required?**||**Default**||**Description**||
-||path||Required(\*)||-||Path to the log file to watch. One of "path" or "smfServiceName" must be provided.||
-||smfServiceName||Required(\*)||-||The name of an SMF service to watch. SMF is a SmartOS/illumos service management framework. `svcs -L $name` is used to get the service's log path to watch. One of "path" or "smfServiceName" must be provided.||
-||match||Required||-||Match data to match against log content.||
-||match.pattern||Required||-||The pattern with which to match.||
-||match.type||Optional||regex||One of 'substring' or 'regex'. Defines the type of 'match.pattern'.||
-||match.flags||Optional||-||Pattern flags. 'i' to ignore case. 'm' for multiline match (i.e. '^' and '$' match the start and end of lines within a multiline string). Note that matching is not always on a single line, so if your regular expression pattern uses '^' or '$' you will want the 'm' flag.||
-||match.matchWord||Optional||false||A boolean indicating if matching should be restricted to word boundaries.||
-||match.invert||Optional||false||Set to true to invert the sense of matching (i.e. alarm on log lines that do NOT match).||
-||period||Optional||60||Integer number of seconds. Time window in which `threshold` number of matches must be found to alarm.||
-||threshold||Optional||1||Integer. Number of times a match must be found within `period` to alarm.||
+| Parameter       | Required?    | Default | Description                                                                                                                                                                                                                                                                    |
+| --------------- | ------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| path            | Required(\*) | -       | Path to the log file to watch. One of "path" or "smfServiceName" must be provided.                                                                                                                                                                                             |
+| smfServiceName  | Required(\*) | -       | The name of an SMF service to watch. SMF is a SmartOS/illumos service management framework. `svcs -L $name` is used to get the service's log path to watch. One of "path" or "smfServiceName" must be provided.                                                                |
+| match           | Required     | -       | Match data to match against log content.                                                                                                                                                                                                                                       |
+| match.pattern   | Required     | -       | The pattern with which to match.                                                                                                                                                                                                                                               |
+| match.type      | Optional     | regex   | One of 'substring' or 'regex'. Defines the type of 'match.pattern'.                                                                                                                                                                                                            |
+| match.flags     | Optional     | -       | Pattern flags. 'i' to ignore case. 'm' for multiline match (i.e. '^' and '$' match the start and end of lines within a multiline string). Note that matching is not always on a single line, so if your regular expression pattern uses '^' or '$' you will want the 'm' flag. |
+| match.matchWord | Optional     | false   | A boolean indicating if matching should be restricted to word boundaries.                                                                                                                                                                                                      |
+| match.invert    | Optional     | false   | Set to true to invert the sense of matching (i.e. alarm on log lines that do NOT match).                                                                                                                                                                                       |
+| period          | Optional     | 60      | Integer number of seconds. Time window in which `threshold` number of matches must be found to alarm.                                                                                                                                                                          |
+| threshold       | Optional     | 1       | Integer. Number of times a match must be found within `period` to alarm.                                                                                                                                                                                                       |
 
 ### Examples
 
@@ -1557,19 +1592,20 @@ The bolded parameters below are those that differ from the "log-scan"
 probe type.
 
 
-||**Parameter**||**Required?**||**Default**||**Description**||
-||path||Required(\*)||-||Path to the log file to watch. One of "path" or "smfServiceName" must be provided.||
-||smfServiceName||Required(\*)||-||The name of an SMF service to watch. SMF is a SmartOS/illumos service management framework. `svcs -L $name` is used to get the service's log path to watch. One of "path" or "smfServiceName" must be provided.||
-||**fields**||Required(\*)||-||A set of key/value pairs to compare against each JSON log record. Each field is compared for equality. The "level" field is special in that you can specify a Bunyan log level name (e.g. "error") instead of the Bunyan level *integers* (e.g. 50) used in the log records. Deeper objects can be specified with a "foo.bar.blah" lookup format, e.g. `"fields": {"foo.bar": true}`. At least one of "fields" or "match" is required.||
-||match||Required(\*)||-||Match data to match against log content. At least one of "fields" or "match" is required.||
-||match.pattern||Required||-||The pattern with which to match. If a "match" is given, then this is required.||
-||match.type||Optional||regex||One of 'substring' or 'regex'. Defines the type of 'match.pattern'.||
-||match.flags||Optional||-||Pattern flags. 'i' to ignore case. 'm' for multiline match (i.e. '^' and '$' match the start and end of lines within a multiline string). Note that matching is not always on a single line, so if your regular expression pattern uses '^' or '$' you will want the 'm' flag.||
-||match.matchWord||Optional||false||A boolean indicating if matching should be restricted to word boundaries.||
-||match.invert||Optional||false||Set to true to invert the sense of matching (i.e. alarm on log lines that do NOT match).||
-||**match.field**||Optional||-||Limit the match to the given log record field. E.g., use `field: "msg"` to limit to just the Bunyan log record *message*.||
-||period||Optional||60||Integer number of seconds. Time window in which `threshold` number of matches must be found to alarm.||
-||threshold||Optional||1||Integer. Number of times a match must be found within `period` to alarm.||
+| Parameter       | Required?    | Default | Description                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| --------------- | ------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| path            | Required(\*) | -       | Path to the log file to watch. One of "path" or "smfServiceName" must be provided.                                                                                                                                                                                                                                                                                                                                                     |
+| smfServiceName  | Required(\*) | -       | The name of an SMF service to watch. SMF is a SmartOS/illumos service management framework. `svcs -L $name` is used to get the service's log path to watch. One of "path" or "smfServiceName" must be provided.                                                                                                                                                                                                                        |
+| **fields**      | Required(\*) | -       | A set of key/value pairs to compare against each JSON log record. Each field is compared for equality. The "level" field is special in that you can specify a Bunyan log level name (e.g. "error") instead of the Bunyan level *integers* (e.g. 50) used in the log records. Deeper objects can be specified with a "foo.bar.blah" lookup format, e.g. `"fields": {"foo.bar": true}`. At least one of "fields" or "match" is required. |
+| match           | Required(\*) | -       | Match data to match against log content. At least one of "fields" or "match" is required.                                                                                                                                                                                                                                                                                                                                              |
+| match.pattern   | Required     | -       | The pattern with which to match. If a "match" is given, then this is required.                                                                                                                                                                                                                                                                                                                                                         |
+| match.type      | Optional     | regex   | One of 'substring' or 'regex'. Defines the type of 'match.pattern'.                                                                                                                                                                                                                                                                                                                                                                    |
+| match.flags     | Optional     | -       | Pattern flags. 'i' to ignore case. 'm' for multiline match (i.e. '^' and '$' match the start and end of lines within a multiline string). Note that matching is not always on a single line, so if your regular expression pattern uses '^' or '$' you will want the 'm' flag.                                                                                                                                                         |
+| match.matchWord | Optional     | false   | A boolean indicating if matching should be restricted to word boundaries.                                                                                                                                                                                                                                                                                                                                                              |
+| match.invert    | Optional     | false   | Set to true to invert the sense of matching (i.e. alarm on log lines that do NOT match).                                                                                                                                                                                                                                                                                                                                               |
+| **match.field** | Optional     | -       | Limit the match to the given log record field. E.g., use `field: "msg"` to limit to just the Bunyan log record *message*.                                                                                                                                                                                                                                                                                                              |
+| period          | Optional     | 60      | Integer number of seconds. Time window in which `threshold` number of matches must be found to alarm.                                                                                                                                                                                                                                                                                                                                  |
+| threshold       | Optional     | 1       | Integer. Number of times a match must be found within `period` to alarm.                                                                                                                                                                                                                                                                                                                                                               |
 
 ### Examples
 
@@ -1630,25 +1666,26 @@ VM (i.e. the VM with the UUID of the "agent" field).
 
 ### Config
 
-||**Parameter**||**Required?**||**Default**||**Description**||
-||url||Required||-||URL to probe, this url must be accessable from the machine or server running the probe||
-||method||Optional||GET||Curently Supports GET (default) or POST||
-||headers||Optional||-||Additional headers to include with request (an object)||
-||body||Optional||-||string of form data (TODO: example, kevin might drop this)||
-||username||Optional||-||Username used for HTTP Basic Auth||
-||password||Optional||-||Password used for HTTP Basic Auth||
-||interval||Optional||90||interval in seconds to check the specified URL||
-||period||Optional||300||Integer number of seconds. Time window in which `threshold` number of matches must be found to alarm.||
-||threshold||Optional||1||Integer. Number of times a match must be found within `period` to alarm.||
-||maxResponseTime||Optional||-||When response time (ms) exceeds `maxResponseTime`, an event will fire||
-||timeout||Optional||30||Maximum time in seconds that you allow the connection to the server to take.||
-||bodyMatch||Optional||-||Match data to match against the response body. A given bodyMatch means that this probe will fire if the response body does **not** match the given pattern. See `bodyMatch.invert` to change that sense.||
-||bodyMatch.pattern||Optional||-||The pattern with which to match.||
-||bodyMatch.type||Optional||regex||One of 'substring' or 'regex'. Defines the type of 'match.pattern'.||
-||bodyMatch.flags||Optional||-||Pattern flags. 'i' to ignore case. 'm' for multiline match (i.e. '^' and '$' match the start and end of lines within a multiline string). Note that matching is not always on a single line, so if your regular expression pattern uses '^' or '$' you will want the 'm' flag.||
-||bodyMatch.matchWord||Optional||false||A boolean indicating if matching should be restricted to word boundaries.||
-||bodyMatch.invert||Optional||false||Set to true to invert the sense of matching (i.e. alarm if the body does NOT match).||
-||statusCodes||Optional||[200,201,202,204]||an array of status codes to be compared to the response, if statusCodes does not contain include the response status code form the request, then an alarm is fired||
+| Parameter           | Required? | Default           | Description                                                                                                                                                                                                                                                                    |
+| ------------------- | --------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| url                 | Required  | -                 | URL to probe, this url must be accessable from the machine or server running the probe                                                                                                                                                                                         |
+| method              | Optional  | GET               | Curently Supports GET (default) or POST                                                                                                                                                                                                                                        |
+| headers             | Optional  | -                 | Additional headers to include with request (an object)                                                                                                                                                                                                                         |
+| body                | Optional  | -                 | string of form data (TODO: example, kevin might drop this)                                                                                                                                                                                                                     |
+| username            | Optional  | -                 | Username used for HTTP Basic Auth                                                                                                                                                                                                                                              |
+| password            | Optional  | -                 | Password used for HTTP Basic Auth                                                                                                                                                                                                                                              |
+| interval            | Optional  | 90                | interval in seconds to check the specified URL                                                                                                                                                                                                                                 |
+| period              | Optional  | 300               | Integer number of seconds. Time window in which `threshold` number of matches must be found to alarm.                                                                                                                                                                          |
+| threshold           | Optional  | 1                 | Integer. Number of times a match must be found within `period` to alarm.                                                                                                                                                                                                       |
+| maxResponseTime     | Optional  | -                 | When response time (ms) exceeds `maxResponseTime`, an event will fire                                                                                                                                                                                                          |
+| timeout             | Optional  | 30                | Maximum time in seconds that you allow the connection to the server to take.                                                                                                                                                                                                   |
+| bodyMatch           | Optional  | -                 | Match data to match against the response body. A given bodyMatch means that this probe will fire if the response body does **not** match the given pattern. See `bodyMatch.invert` to change that sense.                                                                       |
+| bodyMatch.pattern   | Optional  | -                 | The pattern with which to match.                                                                                                                                                                                                                                               |
+| bodyMatch.type      | Optional  | regex             | One of 'substring' or 'regex'. Defines the type of 'match.pattern'.                                                                                                                                                                                                            |
+| bodyMatch.flags     | Optional  | -                 | Pattern flags. 'i' to ignore case. 'm' for multiline match (i.e. '^' and '$' match the start and end of lines within a multiline string). Note that matching is not always on a single line, so if your regular expression pattern uses '^' or '$' you will want the 'm' flag. |
+| bodyMatch.matchWord | Optional  | false             | A boolean indicating if matching should be restricted to word boundaries.                                                                                                                                                                                                      |
+| bodyMatch.invert    | Optional  | false             | Set to true to invert the sense of matching (i.e. alarm if the body does NOT match).                                                                                                                                                                                           |
+| statusCodes         | Optional  | [200,201,202,204] | an array of status codes to be compared to the response, if statusCodes does not contain include the response status code form the request, then an alarm is fired                                                                                                             |
 
 ### Example
 
@@ -1672,12 +1709,13 @@ the VM with the UUID of the "agent" field).
 
 ### Config
 
-||**Parameter**||**Required?**||**Default**||**Description**||
-||host||Required||-||the host to check, ie `4.2.2.1`, or `example.com`||
-||npackets||Optional||5||number of packets to send per check||
-||interval||Optional||90||interval in seconds to check the specified host||
-||period||Optional||300||Integer number of seconds. Time window in which `threshold` number of matches must be found to alarm.||
-||threshold||Optional||1||Integer. Number of times packet loss is encountered within `period` before alarming||
+| Parameter | Required? | Default | Description                                                                                           |
+| --------- | --------- | ------- | ----------------------------------------------------------------------------------------------------- |
+| host      | Required  | -       | the host to check, ie `4.2.2.1`, or `example.com`                                                     |
+| npackets  | Optional  | 5       | number of packets to send per check                                                                   |
+| interval  | Optional  | 90      | interval in seconds to check the specified host                                                       |
+| period    | Optional  | 300     | Integer number of seconds. Time window in which `threshold` number of matches must be found to alarm. |
+| threshold | Optional  | 1       | Integer. Number of times packet loss is encountered within `period` before alarming                   |
 
 ### Example
 
@@ -1701,24 +1739,25 @@ etc. This probe type requires an amon-agent running inside the target VM
 
 ### Config
 
-||**Parameter**||**Required?**||**Default**||**Description**||
-||cmd||Required||-||The command to run.||
-||cwd||Optional||-||Current working directory in which to run the command.||
-||env||Optional||-||Object of key/value pairs to set in the environment of the cmd.||
-||encoding||Optional||utf-8||Encoding of stdout/stderr content from the command.||
-||ignoreExitStatus||Optional||false||By default the exit status is checked (non-zero means a failure). Set this to true to ignore the exit status (including that from a timeout).||
-||stdoutMatch||Optional||-||Data to match against stdout content. Alarm if a match is found in stdout.||
-||stdoutMatch.pattern||Required (\*)||-||The pattern with which to match. This is required only if `stdoutMatch` is used at all.||
-||stdoutMatch.type||Optional||regex||One of 'substring' or 'regex'. Defines the type of 'stdoutMatch.pattern'.||
-||stdoutMatch.flags||Optional||-||Pattern flags. 'i' to ignore case. 'm' for multiline match (i.e. '^' and '$' match the start and end of lines within a multiline string). Note that matching is not always on a single line, so if your regular expression pattern uses '^' or '$' you will want the 'm' flag.||
-||stdoutMatch.matchWord||Optional||false||A boolean indicating if matching should be restricted to word boundaries.||
-||stdoutMatch.invert||Optional||false||Set to true to invert the sense of matching (i.e. alarm on stdout NOT including the given pattern)||
-||stderrMatch||Optional||-||Data to match against stdout content. Alarm if a match is found in stdout.||
-||stderrMatch.*||-||-||All options as per `stdoutMatch.*`.||
-||timeout||Optional||5||Time (in seconds) after which to kill the probe command. Timing out will result in an alarm.||
-||interval||Optional||90||Time in seconds between checks (i.e. running the command and asserting exit status or match).||
-||period||Optional||300||Time window (in seconds) in which `threshold` number of checks must fail to alarm.||
-||threshold||Optional||1||Number of check failures within `period` before alarming. With the default `1`, every check failure will result in an alarm being raised.||
+| Parameter             | Required?     | Default | Description                                                                                                                                                                                                                                                                    |
+| --------------------- | ------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| cmd                   | Required      | -       | The command to run.                                                                                                                                                                                                                                                            |
+| cwd                   | Optional      | -       | Current working directory in which to run the command.                                                                                                                                                                                                                         |
+| env                   | Optional      | -       | Object of key/value pairs to set in the environment of the cmd.                                                                                                                                                                                                                |
+| encoding              | Optional      | utf-8   | Encoding of stdout/stderr content from the command.                                                                                                                                                                                                                            |
+| ignoreExitStatus      | Optional      | false   | By default the exit status is checked (non-zero means a failure). Set this to true to ignore the exit status (including that from a timeout).                                                                                                                                  |
+| stdoutMatch           | Optional      | -       | Data to match against stdout content. Alarm if a match is found in stdout.                                                                                                                                                                                                     |
+| stdoutMatch.pattern   | Required (\*) | -       | The pattern with which to match. This is required only if `stdoutMatch` is used at all.                                                                                                                                                                                        |
+| stdoutMatch.type      | Optional      | regex   | One of 'substring' or 'regex'. Defines the type of 'stdoutMatch.pattern'.                                                                                                                                                                                                      |
+| stdoutMatch.flags     | Optional      | -       | Pattern flags. 'i' to ignore case. 'm' for multiline match (i.e. '^' and '$' match the start and end of lines within a multiline string). Note that matching is not always on a single line, so if your regular expression pattern uses '^' or '$' you will want the 'm' flag. |
+| stdoutMatch.matchWord | Optional      | false   | A boolean indicating if matching should be restricted to word boundaries.                                                                                                                                                                                                      |
+| stdoutMatch.invert    | Optional      | false   | Set to true to invert the sense of matching (i.e. alarm on stdout NOT including the given pattern)                                                                                                                                                                             |
+| stderrMatch           | Optional      | -       | Data to match against stdout content. Alarm if a match is found in stdout.                                                                                                                                                                                                     |
+| stderrMatch.*         | -             | -       | All options as per `stdoutMatch.*`.                                                                                                                                                                                                                                            |
+| timeout               | Optional      | 5       | Time (in seconds) after which to kill the probe command. Timing out will result in an alarm.                                                                                                                                                                                   |
+| interval              | Optional      | 90      | Time in seconds between checks (i.e. running the command and asserting exit status or match).                                                                                                                                                                                  |
+| period                | Optional      | 300     | Time window (in seconds) in which `threshold` number of checks must fail to alarm.                                                                                                                                                                                             |
+| threshold             | Optional      | 1       | Number of check failures within `period` before alarming. With the default `1`, every check failure will result in an alarm being raised.                                                                                                                                      |
 
 TODO: consider the ability for clearing alarms via a passing cmd.
 
@@ -1746,10 +1785,11 @@ is passed.  This probe type requires an amon-agent running inside the target VM
 
 ### Config
 
-||**Parameter**||**Required?**||**Default**||**Description**||
-||path||Required||-||the mountpoint path to check||
-||threshold||Optional||20%||alarm after free space in dataset drops below this amount||
-||interval||Optional||3600||interval in seconds to check the specified dataset||
+| Parameter | Required? | Default | Description                                               |
+| --------- | --------- | ------- | --------------------------------------------------------- |
+| path      | Required  | -       | the mountpoint path to check                              |
+| threshold | Optional  | 20%     | alarm after free space in dataset drops below this amount |
+| interval  | Optional  | 3600    | interval in seconds to check the specified dataset        |
 
 `interval` cannot be lower than 300 (five minutes). It's recommended you leave it at least
 at 3600 (one hour) since checks can sometimes be expensive. `threshold` can either be a
@@ -1783,24 +1823,25 @@ Note that given custom values override full top-level keys in the factory
 settings. For example: if providing 'userCache', one must provide the
 whole userCache object.
 
-||**Var**||**Type**||**Default**||**Description**||
-||port||Number||8080||Port number on which to listen.||
-||logLevel||String or Number||info||A bunyan log level. Note that the '-v' CLI option can also set the log level. If '-v' is used, then this config var is ignored.||
-||adminUuid||UUID||-||The UUID of the admin user in this cloud. This is the 'ufds_admin_uuid' SDC config.||
-||ufds.url||String||-||LDAP URL to connect to UFDS.||
-||ufds.bindDN||String||-||UFDS user DN with which to bind.||
-||ufds.bindPassword||String||-||UFDS password for 'bindDN'.||
-||ufds.caching||Boolean||true||Should UFDS caching should be enabled?||
-||cnapi.url||String||-||CNAPI client url.||
-||vmapi.url||String||-||VMAPI client url.||
-||redis.host||String||127.0.0.1||Redis server host or IP.||
-||redis.port||Number||6379||Redis server port.||
-||userCache.size||Number||1000||The number of entries to cache.||
-||userCache.expiry||Number||300||The number of seconds for which cache entries are valid.||
-||notificationPlugins||Array||-||An array of objects defining all notification mechanisms.||
-||notificationPlugins.*.type||String||-||The notification type. This should be a short string, preferably all lowercase and satifying JS identifier rules, e.g. 'email', 'sms', 'xmpp'.||
-||notificationPlugins.*.path||String||-||A node `require()` path from which the Amon master can load the plugin module, e.g. "./lib/twillio".||
-||notificationPlugins.*.config||Object||-||An object with instance data for the plugin.||
+| Var                          | Type             | Default   | Description                                                                                                                                    |
+| ---------------------------- | ---------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| port                         | Number           | 8080      | Port number on which to listen.                                                                                                                |
+| logLevel                     | String or Number | info      | A bunyan log level. Note that the '-v' CLI option can also set the log level. If '-v' is used, then this config var is ignored.                |
+| adminUuid                    | UUID             | -         | The UUID of the admin user in this cloud. This is the 'ufds_admin_uuid' SDC config.                                                            |
+| ufds.url                     | String           | -         | LDAP URL to connect to UFDS.                                                                                                                   |
+| ufds.bindDN                  | String           | -         | UFDS user DN with which to bind.                                                                                                               |
+| ufds.bindPassword            | String           | -         | UFDS password for 'bindDN'.                                                                                                                    |
+| ufds.caching                 | Boolean          | true      | Should UFDS caching should be enabled?                                                                                                         |
+| cnapi.url                    | String           | -         | CNAPI client url.                                                                                                                              |
+| vmapi.url                    | String           | -         | VMAPI client url.                                                                                                                              |
+| redis.host                   | String           | 127.0.0.1 | Redis server host or IP.                                                                                                                       |
+| redis.port                   | Number           | 6379      | Redis server port.                                                                                                                             |
+| userCache.size               | Number           | 1000      | The number of entries to cache.                                                                                                                |
+| userCache.expiry             | Number           | 300       | The number of seconds for which cache entries are valid.                                                                                       |
+| notificationPlugins          | Array            | -         | An array of objects defining all notification mechanisms.                                                                                      |
+| notificationPlugins.*.type   | String           | -         | The notification type. This should be a short string, preferably all lowercase and satifying JS identifier rules, e.g. 'email', 'sms', 'xmpp'. |
+| notificationPlugins.*.path   | String           | -         | A node `require()` path from which the Amon master can load the plugin module, e.g. "./lib/twillio".                                           |
+| notificationPlugins.*.config | Object           | -         | An object with instance data for the plugin.                                                                                                   |
 
 
 
@@ -1815,14 +1856,15 @@ Other types of events are supported for minor usage.
 
 Common event fields:
 
-||**Field**||**Required?**||**Type**||**Description**||
-||v||required||Integer||Amon event version. A single integer, updated for backward compat breaking changes.||
-||type||required||String||One of "probe" or "fake". See sections below.||
-||user||required||UUID||The UUID of the owning user.||
-||time||required||Timestamp||Added by the amon-relay. The time of the event.||
-||agent||required||UUID||Added by the amon-relay. The agent from which the event originated.||
-||agentAlias||required||String||Added by the amon-relay. An alias for the agent: the hostname for a server, vm alias (if any) for a vm.||
-||relay||required||UUID||Added by the amon-relay. The UUID of the amon-relay.||
+| Field      | Required? | Type      | Description                                                                                             |
+| ---------- | --------- | --------- | ------------------------------------------------------------------------------------------------------- |
+| v          | required  | Integer   | Amon event version. A single integer, updated for backward compat breaking changes.                     |
+| type       | required  | String    | One of "probe" or "fake". See sections below.                                                           |
+| user       | required  | UUID      | The UUID of the owning user.                                                                            |
+| time       | required  | Timestamp | Added by the amon-relay. The time of the event.                                                         |
+| agent      | required  | UUID      | Added by the amon-relay. The agent from which the event originated.                                     |
+| agentAlias | required  | String    | Added by the amon-relay. An alias for the agent: the hostname for a server, vm alias (if any) for a vm. |
+| relay      | required  | UUID      | Added by the amon-relay. The UUID of the amon-relay.                                                    |
 
 Other potential event types:
 
@@ -1839,14 +1881,15 @@ Other potential event types:
 
 An event from a probe firing.
 
-||**Field**||**Required?**||**Type**||**Description**||
-||probeUuid||required||UUID||The UUID of the probe that generated this event.||
-||clear||required||Boolean||Whether this event should result in clearing a fault on an alarm (and possibly clearing the alarm).||
-||data||required||Object||Extra data specific to the type of probe.||
-||data.message||required||String||A brief prose description of the event.||
-||data.value||optional||Number||A numerical value useful for comparing/tracking/using the event.||
-||data.details||optional||Object||Additional probe type-specific info about the event.||
-||machine||required||UUID||The server or vm from which the event originated.||
+| Field        | Required? | Type    | Description                                                                                         |
+| ------------ | --------- | ------- | --------------------------------------------------------------------------------------------------- |
+| probeUuid    | required  | UUID    | The UUID of the probe that generated this event.                                                    |
+| clear        | required  | Boolean | Whether this event should result in clearing a fault on an alarm (and possibly clearing the alarm). |
+| data         | required  | Object  | Extra data specific to the type of probe.                                                           |
+| data.message | required  | String  | A brief prose description of the event.                                                             |
+| data.value   | optional  | Number  | A numerical value useful for comparing/tracking/using the event.                                    |
+| data.details | optional  | Object  | Additional probe type-specific info about the event.                                                |
+| machine      | required  | UUID    | The server or vm from which the event originated.                                                   |
 
 An example probe event:
 
@@ -2371,10 +2414,11 @@ TODO: sdc-healthcheck, sdc-webinfo
 
 ## Logs
 
-||**service/path**||**where**||**format**||**tail -f**||
-||amon-master||in each "amon" zone||[Bunyan](https://github.com/trentm/node-bunyan)||`` sdc-login amon; tail -f `svcs -L amon-master` | bunyan ``||
-||amon-relay||in each GZ||[Bunyan](https://github.com/trentm/node-bunyan)||`` tail -f `svcs -L amon-relay` | bunyan ``||
-||amon-agent||in each GZ and in some zones||[Bunyan](https://github.com/trentm/node-bunyan)||`` tail -f `svcs -L amon-agent` | bunyan ``||
+| service/path | where | format | tail -f |
+| ------------ | ----- | ------ | ------- |
+| amon-master | in each "amon" zone | [Bunyan](https://github.com/trentm/node-bunyan) | `` sdc-login amon; tail -f `svcs -L amon-master` | bunyan `` |
+| amon-relay | in each GZ | [Bunyan](https://github.com/trentm/node-bunyan) | `` tail -f `svcs -L amon-relay` | bunyan `` |
+| amon-agent | in each GZ and in some zones | [Bunyan](https://github.com/trentm/node-bunyan) | `` tail -f `svcs -L amon-agent` | bunyan `` |
 
 
 
