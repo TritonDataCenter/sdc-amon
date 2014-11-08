@@ -82,7 +82,7 @@ an alarm (an object accessible via the API and portals) and a notification
 Operationally, Amon has three components: a central master ("amon-master"), a
 relay agent ("amon relay") in each compute node global zone, agents
 ("amon-agent") in global zones and, eventually, in zones. See the [Operators
-Guide](#operators-guide) for more details.
+Guide](#operator-guide) for more details.
 
 
 # Key Concepts
