@@ -20,6 +20,7 @@ var child_process = require('child_process'),
     execFile = child_process.execFile;
 
 var assert = require('assert-plus');
+var backoff = require('backoff');
 var restify = require('restify');
 var zsock = require('zsock');
 var zutil;
@@ -234,7 +235,11 @@ App.prototype.sendOperatorEvent = function (msg, details, callback) {
             details: details
         }
     };
-    this.masterClient.sendEvents([event], callback);
+    var sendEvents = this.masterClient.sendEvents.bind(this.masterClient);
+    var call = backoff.call(sendEvents, [event], callback);
+    call.setStrategy(new backoff.ExponentialStrategy());
+    call.failAfter(20);
+    call.start();
 };
 
 

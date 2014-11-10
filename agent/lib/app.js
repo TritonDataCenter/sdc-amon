@@ -13,6 +13,7 @@
  * Agent functionality.
  */
 
+var backoff = require('backoff');
 var fs = require('fs');
 var util = require('util'),
     format = util.format;
@@ -424,11 +425,15 @@ App.prototype.sendEvent = function sendEvent(event) {
     var self = this;
     var log = self.log;
     log.info({event: event}, 'sending event');
-    self.relayClient.sendEvents([event], function (err) {
+    var sendEvents = self.relayClient.sendEvents.bind(self.relayClient);
+    var call = backoff.call(sendEvents, [event], function (err) {
         if (err) {
             log.error({event: event, err: err}, 'error sending event');
         }
     });
+    call.setStrategy(new backoff.ExponentialStrategy());
+    call.failAfter(20);
+    call.start();
 };
 
 

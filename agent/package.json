@@ -9,6 +9,7 @@
     "amon-plugins": "*",
 
     "restify": "git+ssh://git@github.com:trentm/node-restify.git#7535bb3",
+    "backoff": "2.4.0",
     "bunyan": "0.22.1",
     "nopt": "2.1.1",
     "zutil": "0.2.1"

@@ -12,6 +12,7 @@
  * Controller for relay 'POST /events' endpoint.
  */
 
+var backoff = require('backoff');
 var uuid = require('libuuid');
 
 
@@ -56,13 +57,17 @@ function addEvents(req, res, next) {
 
     req.log.debug({events: rEvents}, 'relaying events (%d of them)',
         rEvents.length);
-    req._masterClient.sendEvents(rEvents, function (err) {
+    var sendEvents = req._masterClient.sendEvents.bind(req._masterClient);
+    var call = backoff.call(sendEvents, rEvents, function (err) {
         if (err) {
             return next(err);
         }
         res.send(202 /* Accepted */);
         next();
     });
+    call.setStrategy(new backoff.ExponentialStrategy());
+    call.failAfter(20);
+    call.start();
 }
 
 
