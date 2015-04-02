@@ -31,7 +31,7 @@ CLEAN_FILES += agent/node_modules relay/node_modules \
 
 # The prebuilt sdcnode version we want. See
 # "tools/mk/Makefile.node_prebuilt.targ" for details.
-NODE_PREBUILT_VERSION=v0.8.26
+NODE_PREBUILT_VERSION=v0.8.28
 NODE_PREBUILT_TAG=gz
 ifeq ($(shell uname -s),SunOS)
     NODE_PREBUILT_IMAGE=fd2cc906-8938-11e3-beab-4359c665ac99
