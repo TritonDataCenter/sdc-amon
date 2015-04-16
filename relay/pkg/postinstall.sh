@@ -188,8 +188,8 @@ IMGAPI_URL=http://${CONFIG_imgapi_domain}
 is_headnode=$(sysinfo | json "Boot Parameters".headnode)
 have_sapi=false
 
-(/opt/smartdc/bin/sdc-sapi /ping)
-if [[ $? == 0 ]]; then
+sapi_ping="curl http://$CONFIG_sapi_domain/ping --connect-timeout 2 -H 'accept-version:*'"
+if $sapi_ping; then
     have_sapi="true"
 fi
 
