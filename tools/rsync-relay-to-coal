@@ -35,6 +35,9 @@ rsync -av ${RELAY_DIR}/ \
     --exclude zsock/ \
     --exclude zutil/ \
     --exclude tmp/
+rsync -av $TOP/test/ \
+    $COAL:/opt/smartdc/agents/lib/node_modules/amon-relay/test/ \
+    $extraOpts
 rsync -av ${TOP}/common/ \
     $COAL:/opt/smartdc/agents/lib/node_modules/amon-relay/node_modules/amon-common/ \
     $extraOpts \

@@ -278,13 +278,16 @@ function getHeadnodeUuid(next) {
 function getSmartosDatasetUuid(next) {
     // No DSAPI in the DC yet, so hack it.
     log('# Get "smartos" image UUID.');
-    exec('ls -1 /usbkey/datasets/sdc-smartos-*.dsmanifest | head -n1 '
+    exec('ls -1 /usbkey/datasets/sdc-smartos-*.*manifest | head -n1 '
                     + '| xargs cat | json uuid',
              function (err, stdout, stderr) {
         if (err) {
             return next(err);
         }
         smartosImageUuid = stdout.trim();
+        if (!smartosImageUuid) {
+            next(new Error('could not determie the sdc-smartos image UUID'));
+        }
         log('# "smartos" dataset UUID is "%s".', smartosImageUuid);
         next();
     });
