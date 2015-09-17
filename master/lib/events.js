@@ -14,6 +14,8 @@
 
 var restify = require('restify');
 
+var errors = require('./errors');
+
 
 
 //---- internal support routines
@@ -81,9 +83,13 @@ function addEvents(req, res, next) {
     asyncForEach(events, validateAndProcess, function (err) {
         if (errs.length > 0) {
             for (var i = 0; i < errs.length; i++) {
-                req.log.warn(errs[i], 'error adding event');
+                req.log.warn({err: errs[i], i: i}, 'error adding event');
             }
-            next(new restify.InternalError(errs.join(', ')));
+            if (errs.length === 1) {
+                next(errs[0]);
+            } else {
+                next(new errors.MultiError(errs));
+            }
         } else {
             res.send(202 /* Accepted */);
             next();

@@ -180,8 +180,7 @@ function App(options) {
     server.on('after', audit.auditLogger({
         body: true,
         log: bunyan.createLogger({
-            name: 'amon-master',
-            component: 'audit',
+            name: 'amon-relay',
             streams: [ {
                 // use same level as general amon-master log
                 level: log.level(),

@@ -5,7 +5,7 @@
  */
 
 /*
- * Copyright (c) 2014, Joyent, Inc.
+ * Copyright (c) 2015, Joyent, Inc.
  */
 
 /*
@@ -15,6 +15,7 @@
 
 var backoff = require('backoff');
 var fs = require('fs');
+var once = require('once');
 var util = require('util'),
     format = util.format;
 
@@ -424,15 +425,51 @@ App.prototype.onProbesUpdated = function () {
 App.prototype.sendEvent = function sendEvent(event) {
     var self = this;
     var log = self.log;
-    log.info({event: event}, 'sending event');
-    var sendEvents = self.relayClient.sendEvents.bind(self.relayClient);
-    var call = backoff.call(sendEvents, [event], function (err) {
+    var call;
+
+    log.info({event: event}, 'sendEvent: start');
+
+    function finish(err) {
         if (err) {
-            log.error({event: event, err: err}, 'error sending event');
+            log.info({err: err, eventUuid: event.uuid}, 'sendEvent: error');
+        } else {
+            log.info({eventUuid: event.uuid}, 'sendEvent: success');
         }
+    }
+    var finishOnce = once(finish);
+
+    function sendEventsAttempt(cb) {
+        self.relayClient.sendEvents([event], function (err) {
+            // Only retry on 5xx errors.
+            if (err && err.statusCode && err.statusCode >= 500) {
+                cb(err);
+            } else {
+                call.abort();
+                finishOnce(err);
+                cb();
+            }
+        });
+    }
+
+    call = backoff.call(sendEventsAttempt, function (err) {
+        /*
+         * node-backoff doesn't call this if `call.abort()`'d. That's lame, so
+         * we need to coordinate our own `finish()`.
+         */
+        finishOnce(err);
     });
-    call.setStrategy(new backoff.ExponentialStrategy());
-    call.failAfter(20);
+
+    /*
+     * The strategy and values are chosen to retry a few times but to stay
+     * under a minute total (a typical period of a probe). This is imperfect,
+     * because it could still result in hammering from the same probe with
+     * a period less than a minute.
+     */
+    call.setStrategy(new backoff.ExponentialStrategy({
+        initialDelay: 1000,
+        maxDelay: 10000
+    }));
+    call.failAfter(5);
     call.start();
 };
 

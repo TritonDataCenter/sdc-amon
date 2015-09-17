@@ -1020,6 +1020,17 @@ App.prototype.processEvent = function (event, callback) {
             format('unknown event type: "%s"', event.type)));
     }
 
+    // If the event is too old, we drop it (see MON-343).
+    var EVENT_DROP_SKEW_MS = 5 * 60 * 1000;
+    assert.number(event.time, 'event.time');
+    var skew = Date.now() - event.time;
+    if (skew > EVENT_DROP_SKEW_MS) {
+        log.info({skew: skew, event: event}, 'drop old event');
+        return callback(new errors.EventTooOldError(format(
+            'dropped event %s: it is %ds old', event.uuid,
+            Math.floor(skew / 1000))));
+    }
+
     // Gather available and necessary info for alarm creation and notification.
     var info = {event: event};
     async.series([
@@ -1192,27 +1203,30 @@ App.prototype.getOrCreateAlarm = function (options, callback) {
  * Eventually make this "25 hour" an optional var on probe/probeGroup.
  * Eventually this algo can consider more vars.
  */
-App.prototype.chooseRelatedAlarm = function (candidateAlarms,
+App.prototype.chooseRelatedAlarm = function chooseRelatedAlarm(candidateAlarms,
         options, callback) {
     this.log.debug({event_uuid: options.event.uuid,
         num_candidate_alarms: candidateAlarms.length}, 'chooseRelatedAlarm');
     if (candidateAlarms.length === 0) {
         return callback(null, null);
     }
-    var ONE_HOUR = 25 * 60 * 60 * 1000;  // twelve hour in milliseconds
+    var NEW_ALARM_GAP = 25 * 60 * 60 * 1000;
     candidateAlarms.sort(
         // Sort the latest 'timeLastEvent' first (alarms with no 'timeLastEvent'
         // field sort to the end).
         function (x, y) { return y.timeLastEvent - x.timeLastEvent; });
     var a = candidateAlarms[0];
-    this.log.debug({alarm: a}, 'best candidate related alarm');
+    this.log.debug({alarm: a},
+        'chooseRelatedAlarm: best candidate related alarm');
     if (a.timeLastEvent &&
             (options.event.clear ||
-             (options.event.time - a.timeLastEvent) < ONE_HOUR)) {
-        this.log.debug({alarmId: a.id}, 'related alarm');
+             (options.event.time - a.timeLastEvent) < NEW_ALARM_GAP)) {
+        this.log.debug({alarmId: a.id, clear: options.event.clear,
+            timeGap: options.event.time - a.timeLastEvent},
+            'chooseRelatedAlarm: related alarm');
         callback(null, a);
     } else {
-        this.log.debug('no related alarm');
+        this.log.debug('chooseRelatedAlarm: no related alarm');
         callback(null, null);
     }
 };

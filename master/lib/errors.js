@@ -88,6 +88,54 @@ InvalidParameterError.statusCode = 422;
 InvalidParameterError.description = 'Given parameter was invalid.';
 
 
+function EventTooOldError(message) {
+    assert.string(message, 'message');
+    RestError.call(this, {
+        restCode: this.constructor.restCode,
+        statusCode: this.constructor.statusCode,
+        message: message,
+        body: {
+            code: this.constructor.restCode,
+            message: message
+        }
+    });
+}
+util.inherits(EventTooOldError, RestError);
+EventTooOldError.prototype.name = 'EventTooOldError';
+EventTooOldError.restCode = 'EventTooOld';
+EventTooOldError.statusCode = 422;
+EventTooOldError.description = 'Event time is too old.';
+
+
+/**
+ * Multiple errors in a group.
+ */
+function MultiError(errs) {
+    assert.arrayOfObject(errs, 'errs');
+    var lines = [format('multiple (%d) errors', errs.length)];
+    for (var i = 0; i < errs.length; i++) {
+        var err = errs[i];
+        lines.push(format('    error (%s): %s', err.code, err.message));
+    }
+    var message = lines.join('\n');
+    RestError.call(this, {
+        restCode: this.constructor.restCode,
+        statusCode: errs[0].statusCode || this.constructor.statusCode,
+        message: message,
+        body: {
+            code: this.constructor.restCode,
+            message: message
+        }
+    });
+}
+MultiError.description = 'Multiple errors.';
+util.inherits(MultiError, RestError);
+MultiError.prototype.name = 'MultiError';
+MultiError.restCode = 'MultiError';
+MultiError.statusCode = 500;
+MultiError.description = 'Multiple grouped errors.';
+
+
 
 
 //---- exports
@@ -95,6 +143,8 @@ InvalidParameterError.description = 'Given parameter was invalid.';
 module.exports = {
         ValidationFailedError: ValidationFailedError,
         InvalidParameterError: InvalidParameterError,
+        EventTooOldError: EventTooOldError,
+        MultiError: MultiError,
 
         // Core restify RestError and HttpError classes used by amon-master.
         InternalError: restify.InternalError,

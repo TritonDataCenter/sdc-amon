@@ -5,7 +5,7 @@
  */
 
 /*
- * Copyright (c) 2014, Joyent, Inc.
+ * Copyright (c) 2015, Joyent, Inc.
  */
 
 /**
@@ -13,6 +13,8 @@
  */
 
 var backoff = require('backoff');
+var once = require('once');
+var restify = require('restify');
 var uuid = require('libuuid');
 
 
@@ -55,18 +57,60 @@ function addEvents(req, res, next) {
         return next();
     }
 
+
     req.log.debug({events: rEvents}, 'relaying events (%d of them)',
         rEvents.length);
-    var sendEvents = req._masterClient.sendEvents.bind(req._masterClient);
-    var call = backoff.call(sendEvents, rEvents, function (err) {
+    var call;
+    var start = Date.now();
+    var MAX_ELAPSED = 5 * 60 * 1000;  // Don't retry if elapsed surpasses this.
+
+    function finish(err) {
         if (err) {
             return next(err);
         }
         res.send(202 /* Accepted */);
         next();
+    }
+    var finishOnce = once(finish);
+
+    function sendEventsAttempt(cb) {
+        if (Date.now() - start > MAX_ELAPSED) {
+            call.abort();
+            finishOnce(new restify.BadGatewayError(
+                'aborting, too much time elapsed since event time'));
+            return cb();
+        }
+        req._masterClient.sendEvents(rEvents, function (err) {
+            // Only retry on 5xx errors.
+            if (err && err.statusCode && err.statusCode >= 500) {
+                cb(err);
+            } else {
+                call.abort();
+                finishOnce(err);
+                cb();
+            }
+        });
+    }
+
+    call = backoff.call(sendEventsAttempt, function (err) {
+        /*
+         * node-backoff doesn't call this if `call.abort()`'d. That's lame, so
+         * we need to coordinate our own `finish()`.
+         */
+        finishOnce(err);
     });
-    call.setStrategy(new backoff.ExponentialStrategy());
-    call.failAfter(20);
+
+    /*
+     * The strategy and values are chosen to retry a few times but to stay
+     * under a minute total (a typical period of a probe). This is imperfect,
+     * because it could still result in hammering from the same probe with
+     * a period less than a minute.
+     */
+    call.setStrategy(new backoff.ExponentialStrategy({
+        initialDelay: 1000,
+        maxDelay: 10000
+    }));
+    call.failAfter(5);
     call.start();
 }
 

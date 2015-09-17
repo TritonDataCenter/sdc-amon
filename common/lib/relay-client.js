@@ -166,19 +166,35 @@ RelayClient.prototype.agentProbes = function (agent, callback) {
  *    "err" is undefined on success, a restify error instance on failure.
  */
 RelayClient.prototype.sendEvents = function (events, callback) {
-    var self = this;
-
     function onComplete(err, res) {
         if (err) {
-            self.log.warn(err, 'RelayClient.sendEvents: HTTP error');
-            return callback(new restify.InternalError());
-        }
-        if (res.statusCode !== 202 /* Accepted */) {
-            self.log.warn({res: res, body: res.body},
-                'invalid response for RelayClient.sendEvents');
-            return callback(new restify.InternalError());
+            callback(err);
+        } else if (res.statusCode !== 202 /* Accepted */) {
+            // TODO: Is there a cleaner way to proxy on the response?
+            var body;
+            if (res.body &&
+                res.headers['content-type'] === 'application/json')
+            {
+                try {
+                    body = JSON.parse(res.body);
+                } catch (e) {
+                }
+            }
+            var code = body && body.code || 'RelayError';
+            var message = body && body.message || format(
+                    'unexpected %s response for RelayClient.sendEvents',
+                    res.statusCode);
+            callback(new restify.RestError({
+                restCode: code,
+                statusCode: res.statusCode,
+                message: message,
+                body: {
+                    code: code,
+                    message: message
+                }
+            }));
         } else {
-            return callback();
+            callback();
         }
     }
 
