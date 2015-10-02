@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "author": "Joyent (joyent.com)",
   "private": true,
+  "// dependencies": "mailcomposer is a hack for MON-347",
   "dependencies": {
     "amon-common": "*",
     "amon-plugins": "*",
@@ -16,6 +17,7 @@
     "lru-cache": "2.5.0",
     "ltx": "0.4.1",
     "nodemailer": "0.3.44",
+      "mailcomposer": "0.2.12",
     "node-xmpp-client": "0.4.0",
     "nopt": "2.1.1",
     "once": "1.1.1",
