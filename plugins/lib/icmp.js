@@ -19,7 +19,7 @@
  *  - data {Object} The Probe data, including it's config
  *  - log {Buyan Logger}
  *
- * @see config options, see docs/index.restdown
+ * @see config options, see docs/index.md
  */
 
 var events = require('events');
