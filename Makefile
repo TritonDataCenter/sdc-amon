@@ -67,10 +67,8 @@ JSSTYLE_FLAGS := -f tools/jsstyle.conf
 
 # Need to get our tools/bin on PATH to get our 'python'
 # first on the PATH. See RELENG-302.
-NPM := \
-	PATH=$(TOP)/tools/bin:$(TOP)/$(NODE_INSTALL)/bin:$(PATH) \
-	SDC_AGENT_SKIP_LIFECYCLE=yes \
-	node $(TOP)/$(NODE_INSTALL)/bin/npm --tar=$(TAR)
+NPM := PATH=$(TOP)/tools/bin:$(TOP)/$(NODE_INSTALL)/bin:$(PATH) node $(TOP)/$(NODE_INSTALL)/bin/npm --tar=$(TAR)
+
 
 #
 # Repo-specific targets
