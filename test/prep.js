@@ -57,6 +57,7 @@ var headnodeUuid;
 var amonZoneUuid;
 var smartosImageUuid;
 var externalNetworkUuid;
+var testPackageUuid;
 var gzIp;
 
 
@@ -308,6 +309,22 @@ function getExternalNetworkUuid(next) {
 }
 
 
+function getTestPackageUuid(next) {
+    log('# Get "sample-128M" package UUID (this assumes '
+        + '"sdcadm post-setup dev-sample-data" was run).');
+    exec('sdc-papi /packages '
+            + '| json -H -c \'this.name === "sample-128M"\' 0.uuid',
+            function (err, stdout, stderr) {
+        if (err) {
+            return next(err);
+        }
+        testPackageUuid = stdout.trim();
+        log('# test package UUID is "%s".', testPackageUuid);
+        next();
+    });
+}
+
+
 function createAmontestzone(next) {
     var vmapiClient = new VMAPI({
         url: process.env.VMAPI_URL
@@ -333,7 +350,7 @@ function createAmontestzone(next) {
                 image_uuid: smartosImageUuid,
                 server_uuid: headnodeUuid,
                 brand: 'joyent',
-                ram: '128',
+                billing_id: testPackageUuid,
                 alias: 'amontestzone',
                 networks: externalNetworkUuid
             },
@@ -440,6 +457,7 @@ async.series([
         getHeadnodeUuid,
         getSmartosDatasetUuid,
         getExternalNetworkUuid,
+        getTestPackageUuid,
         createAmontestzone,
         ensureAmontestzoneIsRunning,
         getAmonZoneUuid,
