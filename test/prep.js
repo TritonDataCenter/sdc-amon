@@ -363,7 +363,7 @@ function createAmontestzone(next) {
                 common.waitForVmapiJob({
                         vmapiClient: vmapiClient,
                         jobInfo: jobInfo,
-                        timeout: 2 * 60 * 1000 /* 2 minutes */
+                        timeout: 5 * 60 * 1000 /* 5 minutes */
                     }, function (err3) {
                         if (err3)
                             return next(err3);

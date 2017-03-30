@@ -1,0 +1,38 @@
+#!/bin/bash
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+
+#
+# Copyright 2017, Joyent, Inc.
+#
+
+#
+# Rsync the *test suite* files in this working copy to the install on the QA
+# "nightly" staging setup (i.e. the small DC setup from last night's build of
+# SDC master).
+#
+
+#set -o xtrace
+set -o errexit
+
+TOP=$(cd $(dirname $0)/../; pwd)
+NODE=$1
+
+extraOpts=
+if [[ $(uname -s) != "SunOS" ]]; then
+    extraOpts="--exclude *.node --exclude build"
+fi
+
+rsync -av ${TOP}/test/ \
+    $NODE:/opt/smartdc/agents/lib/node_modules/amon-relay/test/ \
+    $extraOpts \
+    --exclude "*.log" \
+    --exclude "config.json" \
+    --exclude "prep.json" \
+    --exclude tmp/
+
+rsync -av ${TOP}/plugins/test/ \
+    $NODE:/opt/smartdc/agents/lib/node_modules/amon-relay/node_modules/amon-plugins/test/

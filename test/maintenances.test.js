@@ -435,9 +435,10 @@ test('maint 2: create maint window', function (t) {
     });
 });
 
-test('maint 2: stop amontestzone', {timeout: 60000}, function (t) {
+test('maint 2: stop amontestzone', function (t) {
     notifications = []; // reset
-    common.vmStop({uuid: prep.amontestzone.uuid, timeout: 60000},
+    // I've seen this VM stop on nightly-2 take >1 min.
+    common.vmStop({uuid: prep.amontestzone.uuid, timeout: 3 * 60 * 1000},
         function (err) {
             t.ifError(err, 'stopped amontestzone');
             t.end();
