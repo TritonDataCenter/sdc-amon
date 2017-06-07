@@ -5,7 +5,7 @@
  */
 
 /*
- * Copyright (c) 2014, Joyent, Inc.
+ * Copyright (c) 2017, Joyent, Inc.
  */
 
 /**
@@ -55,7 +55,7 @@ var ufdsClient;
 var amontestzone; // the test zone to use
 var headnodeUuid;
 var amonZoneUuid;
-var smartosImageUuid;
+var testImageUuid;
 var externalNetworkUuid;
 var testPackageUuid;
 var gzIp;
@@ -276,20 +276,18 @@ function getHeadnodeUuid(next) {
 }
 
 
-function getSmartosDatasetUuid(next) {
-    // No DSAPI in the DC yet, so hack it.
-    log('# Get "smartos" image UUID.');
-    exec('ls -1 /usbkey/datasets/sdc-smartos-*.*manifest | head -n1 '
-                    + '| xargs cat | json uuid',
-             function (err, stdout, stderr) {
+function getTestImageUuid(next) {
+    log('# Get a test image UUID (use the latest "amon" image origin)');
+    exec('sdc-imgadm list name=amon --latest -j | json 0.origin',
+            function (err, stdout, stderr) {
         if (err) {
             return next(err);
         }
-        smartosImageUuid = stdout.trim();
-        if (!smartosImageUuid) {
-            next(new Error('could not determie the sdc-smartos image UUID'));
+        testImageUuid = stdout.trim();
+        if (!testImageUuid) {
+            next(new Error('could not find a test image UUID'));
         }
-        log('# "smartos" dataset UUID is "%s".', smartosImageUuid);
+        log('# testImageUuid: %s', testImageUuid);
         next();
     });
 }
@@ -347,7 +345,7 @@ function createAmontestzone(next) {
         log('# Create a test zone for ulrich.');
         vmapiClient.createVm({
                 owner_uuid: ulrich.uuid,
-                image_uuid: smartosImageUuid,
+                image_uuid: testImageUuid,
                 server_uuid: headnodeUuid,
                 brand: 'joyent',
                 billing_id: testPackageUuid,
@@ -455,7 +453,7 @@ async.series([
         ldapClientUnbind,
         ufdsClientUnbind,
         getHeadnodeUuid,
-        getSmartosDatasetUuid,
+        getTestImageUuid,
         getExternalNetworkUuid,
         getTestPackageUuid,
         createAmontestzone,
