@@ -5,7 +5,7 @@
  */
 
 /*
- * Copyright (c) 2014, Joyent, Inc.
+ * Copyright (c) 2017, Joyent, Inc.
  */
 
 /*
@@ -99,16 +99,17 @@ CmdProbe.prototype.runCmd = function runCmd() {
 
     try {
         exec(this.cmd, this._cmdOptions, function (cmdErr, stdout, stderr) {
-            var cmdSummary;
-            if (log.debug()) {
-                cmdSummary = {
-                    cmd: self.cmd,
-                    exitStatus: (cmdErr ? cmdErr.code : 0),
-                    signal: (cmdErr ? cmdErr.signal : undefined),
-                    stdout: clip(stdout, 1024),
-                    stderr: clip(stderr, 1024)
-                };
+            var cmdDetails = {
+                cmd: self.cmd,
+                exitStatus: (cmdErr ? cmdErr.code : 0),
+                signal: (cmdErr ? cmdErr.signal : undefined),
+                stdout: clip(stdout, 1024),
+                stderr: clip(stderr, 1024)
+            };
+            if (self._cmdOptions.env) {
+                cmdDetails.env = self._cmdOptions.env;
             }
+
             var fail = false, reason;
             if (!self.ignoreExitStatus && cmdErr) {
                 fail = true;
@@ -133,9 +134,9 @@ CmdProbe.prototype.runCmd = function runCmd() {
                 reason = 'stderr';
             }
             if (!fail) {
-                log.trace(cmdSummary, 'cmd pass');
+                log.trace(cmdDetails, 'cmd pass');
             } else {
-                log.debug(cmdSummary, 'cmd fail (%s)', reason);
+                log.debug(cmdDetails, 'cmd fail (%s)', reason);
                 if (++self._count >= self.threshold) {
                     log.info({count: self._count, threshold: self.threshold},
                         'cmd event');
@@ -152,7 +153,7 @@ CmdProbe.prototype.runCmd = function runCmd() {
                     else if (reason === 'stderr')
                         msg = format('Command failed (stderr matched %s).',
                             self.stderrMatcher);
-                    self.emitEvent(msg, self._count, cmdSummary);
+                    self.emitEvent(msg, self._count, cmdDetails);
                 }
             }
 
