@@ -24,6 +24,7 @@
     "restify": "git+ssh://git@github.com:trentm/node-restify.git#7535bb3",
     "redis": "0.12.1",
     "retry": "0.6.0",
+    "extsprintf": "1.3.0",
     "sdc-clients": "git+ssh://git@github.com:joyent/node-sdc-clients.git#beace1d",
     "ufds": "git+ssh://git@github.com:joyent/node-ufds#1ace075d7c89579c1ee547e50812c4d73890efab"
   },

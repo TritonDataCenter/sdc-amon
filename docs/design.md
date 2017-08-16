@@ -1,6 +1,6 @@
 ---
 title: Amon Design Discussions
-markdown2extras: tables, cuddled-lists
+markdown2extras: tables, code-friendly, cuddled-lists, fenced-code-blocks
 apisections:
 ---
 <!--
@@ -10,7 +10,7 @@ apisections:
 -->
 
 <!--
-    Copyright (c) 2014, Joyent, Inc.
+    Copyright (c) 2017, Joyent, Inc.
 -->
 
 # Amon Design Discussions
@@ -20,8 +20,252 @@ helpful to understand why Amon is the way it is. Each section is dated to give
 context if reading this in the future when Amon design might have moved on. *Add
 new sections to the top.*
 
+# Amon notifications re-hash (Aug 2017)
 
-# amon-agent runtime
+I'm adding Mattermost notification support and as part of this I'm revisiting
+improving and perhaps sharing the handling of how to format the data for
+a notification.
+
+Here is an example (slightly clipped) of the data available when creating a
+notification:
+
+```
+user: {
+  "login": "trentm",
+}
+alarm: {
+  "id": 1,
+  "probe": "cfbe1b98-e407-61a6-ab1c-b81863546d97",
+  "closed": false,
+  "timeOpened": 1502773793346,
+  "timeClosed": null,
+  "timeLastEvent": 1502773793254,
+  "faults": [
+    {
+      "type": "probe",
+      "probe": "cfbe1b98-e407-61a6-ab1c-b81863546d97",
+      "event": {
+        "v": 1,
+        "type": "probe",
+        "user": "826d2dd2-6456-4edb-9981-a1c41fe8f48e",
+        "probeUuid": "cfbe1b98-e407-61a6-ab1c-b81863546d97",
+        "clear": false,
+        "data": {
+          "message": "Log \"/var/tmp/canary.log\" matched /chirp/.",
+          "value": 1,
+          "details": {
+            "matches": [
+              {
+                "match": "chirp",
+                "context": "chirp"
+              }
+            ]
+          }
+        },
+        "machine": "564d1481-d558-23f4-2db0-8586f70dde2b",
+        "uuid": "eaa0ede9-f052-ccd0-f4ff-ec377a023ae8",
+        "time": 1502773793254,
+        "agent": "564d1481-d558-23f4-2db0-8586f70dde2b",
+        "agentAlias": "headnode"
+      }
+    }
+  ],
+  "maintFaults": [],
+  "numEvents": 1,
+}
+--
+event: {
+  "v": 1,
+  "type": "probe",
+  "user": "826d2dd2-6456-4edb-9981-a1c41fe8f48e",
+  "probeUuid": "cfbe1b98-e407-61a6-ab1c-b81863546d97",
+  "clear": false,
+  "data": "[Circular]",
+  "machine": "564d1481-d558-23f4-2db0-8586f70dde2b",
+  "uuid": "eaa0ede9-f052-ccd0-f4ff-ec377a023ae8",
+  "time": 1502773793254,
+  "agent": "564d1481-d558-23f4-2db0-8586f70dde2b",
+  "agentAlias": "headnode",
+  "relay": "564d1481-d558-23f4-2db0-8586f70dde2b"
+}
+--
+probe: {
+  "user": "826d2dd2-6456-4edb-9981-a1c41fe8f48e",
+  "uuid": "cfbe1b98-e407-61a6-ab1c-b81863546d97",
+  "dn": "amonprobe=cfbe1b98-e407-61a6-ab1c-b81863546d97, uuid=826d2dd2-6456-4edb-9981-a1c41fe8f48e, ou=users, o=smartdc",
+  "raw": {
+    "agent": "564d1481-d558-23f4-2db0-8586f70dde2b",
+    "config": "{\"path\":\"/var/tmp/canary.log\",\"match\":{\"pattern\":\"chirp\"}}",
+    "contact": [
+      "localmattermost"
+    ],
+    "disabled": "false",
+    "machine": "564d1481-d558-23f4-2db0-8586f70dde2b",
+    "name": "mm-test",
+    "objectclass": "amonprobe",
+    "type": "log-scan",
+    "user": "826d2dd2-6456-4edb-9981-a1c41fe8f48e",
+    "uuid": "cfbe1b98-e407-61a6-ab1c-b81863546d97",
+    "groupEvents": false
+  },
+  "name": "mm-test",
+  "type": "log-scan",
+  "agent": "564d1481-d558-23f4-2db0-8586f70dde2b",
+  "machine": "564d1481-d558-23f4-2db0-8586f70dde2b",
+  "contacts": "[Circular]",
+  "config": {
+    "path": "/var/tmp/canary.log",
+    "match": {
+      "pattern": "chirp"
+    }
+  },
+  "groupEvents": false,
+  "disabled": false
+}
+```
+
+
+Working pseudo-template for the distilled data for sections of a notification:
+
+```
+# $from
+# e.g.: Amon poseidon us-east-1
+Amon $dc $user.login
+
+# $color
+- green if alarm is closed
+- yellow if event.clear
+- otherwise, red
+
+# $title
+# Notification title is about the alarm: id, current status, reason for
+# notification.
+#
+# $action:
+# - "closed" if alarm.closed;
+# - "opened, probe $probe.name fault" if this is the first event
+# - "probe $probe.name cleared" if event.clear
+# - "new probe $probe.name fault" (does this also work with probe groups?)
+# - error note if unexpected state
+#
+# $numEvents: Include this is there is >1 event.
+# $numFaults: Include this is there is >1 fault. Else it is typically always 1.
+#
+Alarm 1 in coal ($action, numEvents=$numEvents, numFaults=$numFaults)
+
+# $closed: Include this boolean in summary so notifier can use that for UX.
+closed: false
+
+# $body (markdown)
+# The event is the thing that (at least in current Amon notifications)
+# triggered this notification. Summarize the event.
+**Log \"/var/tmp/canary.log\" matched /chirp/.**
+Probe $probe.name (in probegroup $probeGroup.name) faulted on server/vm $uuid ($alias) at $time.
+    or
+Probe $probe.name (in probegroup $probeGroup.name) *cleared* on server/vm $uuid ($alias) at $time.
+
+# code block of event.data.details (eventually could have probe-type-specific
+# rendering)
+    "matches": [
+      {
+        "match": "chirp",
+        "context": "chirp"
+      }
+    ]
+
+# Summarize current alarm faults, including maint faults, only if more than
+# this one.
+Alarm faults (numEvents=$numEvents):
+- **Log \"/var/tmp/canary.log\" matched /chirp/.** at $timestamp-for-1502773793254 (*maint*)
+```
+
+## Examples
+
+Some examples of notifications from this template, email and Mattermost
+renderings:
+
+Note: For email it would be nice to tweak the `Subject` to have threaded for
+same Alarm. Even if that means just putting Alarm id in subject and context (the
+stuff in parens) at the start of the body.
+
+```
+From: "Amon poseidon eu-central-1a" <$emailAddr>
+Subject: Alarm 171 in eu-central-1a (opened, probe upset.manta.webapi.log_error0 fault)
+
+**Log "/var/log/muskie.log" matched (level=ERROR).**
+Probe upset.manta.webapi.log_error0 faulted on vm 51a75485-a663-4605-9ced-1b857ba2bf85 (webapi.eu-central.scloud.host-51a75485) at 2017-08-14T22:11:03.717Z.
+
+    "matches": [
+      {
+        "match": {
+          "name": "muskie",
+          "hostname": "51a75485-a663-4605-9ced-1b857ba2bf85",
+          "pid": 91889,
+          "method": "POST",
+          "path": "/douglas.anderson/uploads/2/2b12488f-6cb2-6399-dbfd-d3ecbfced7ac/commit",
+          "req_id": "7606e1ae-813d-11e7-9a98-33a8cbb2b470",
+          "level": 50,
+          "msg": "error with shark 92.stor.eu-central.scloud.host: SharkResponseError: mako failure:\nHTTP 400\n{\n  \"server\": \"nginx/1.10.2\",\n  \"date\": \"Mon, 14 Aug 2017 22:11:03 GMT\",\n  \"content-type\": \"application/json\",\n  \"content-length\": \"177\",\n  \"connection\": \"close\"\n}\n{\"code\":\"BadRequestError\",\"message\":\"failed to open file /manta/71655770-4a05-6898-b21f-e4cb3ad1e1e7/211e5290-b1f7-cb39-fc2c-a735b4c1a538 for part 3: No such file or directory\"}",
+          "time": "2017-08-14T22:11:03.717Z",
+          "v": 0
+        }
+      }
+    ]
+
+Alarm Faults (numEvents=1):
+- *Log "/var/log/muskie.log" matched (level=ERROR).* at 2017-08-14T22:11:03.717Z
+```
+
+In Mattermost macOS desktop client:
+![Amon notification in Mattermost](./media/mattermost-example-1.png)
+
+Another Mattermost example showing a "machine-up" probe faulting, and then
+clearing itself as a VM rebooted:
+![Mattermost notification for a VM reboot](./media/mattermost-example-2.png)
+
+Another Mattermost example showing a "machine-up" probe clearing, but colored
+yellow because the alarm is part of a probe group and there are other current
+faults on the alarm:
+![Mattermost notification for a clear, alarm still open](./media/mattermost-example-3.png)
+
+A current XMPP notification example:
+
+```
+eu-central-1a amon
+
+ALARM: probe=upset.manta.marlin_agent.log_error2,server=MSB05755, type=log-scan, id=173 in eu-central-1a
+Log "/var/svc/log/smartdc-agent-marlin-agent:default.log" matched /Stopping because process dumped core./.
+{
+  "matches": [
+    {
+      "match": "Stopping because process dumped core.",
+      "context": "[ Aug 15 22:19:03 Stopping because process dumped core. ]"
+    }
+  ]
+}
+```
+
+With the template proposed we'd (eventually) change that to:
+
+```
+Amon poseidon eu-central-1a
+
+Alarm 173 eu-central-1a (opened, probe upset.manta.marlin_agent.log_error2 fault)
+
+**Log "/var/svc/log/smartdc-agent-marlin-agent:default.log" matched /Stopping because process dumped core./.**
+Probe upset.manta.marlin_agent.log_error2 faulted on server MSB05755 ($uuid) at 2017-08-14T22:11:03.717Z.
+
+    {
+      "matches": [
+        {
+          "match": "Stopping because process dumped core.",
+          "context": "[ Aug 15 22:19:03 Stopping because process dumped core. ]"
+        }
+      ]
+    }
+```
+
+# amon-agent runtime (circa 2012)
 
 Discussion: <https://xmpp.joyent.com/logs/manta%40groupchat.joyent.com/2012-07-26.html#22:46:27.329541>
 

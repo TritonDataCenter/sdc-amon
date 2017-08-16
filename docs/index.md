@@ -1823,22 +1823,22 @@ Note that given custom values override full top-level keys in the factory
 settings. For example: if providing 'userCache', one must provide the
 whole userCache object.
 
-| Var                          | Type             | Default   | Description                                                                                                                                    |
-| ---------------------------- | ---------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| port                         | Number           | 8080      | Port number on which to listen.                                                                                                                |
-| logLevel                     | String or Number | info      | A bunyan log level. Note that the '-v' CLI option can also set the log level. If '-v' is used, then this config var is ignored.                |
-| adminUuid                    | UUID             | -         | The UUID of the admin user in this cloud. This is the 'ufds_admin_uuid' SDC config.                                                            |
-| ufds.url                     | String           | -         | LDAP URL to connect to UFDS.                                                                                                                   |
-| ufds.bindDN                  | String           | -         | UFDS user DN with which to bind.                                                                                                               |
-| ufds.bindPassword            | String           | -         | UFDS password for 'bindDN'.                                                                                                                    |
-| ufds.caching                 | Boolean          | true      | Should UFDS caching should be enabled?                                                                                                         |
-| cnapi.url                    | String           | -         | CNAPI client url.                                                                                                                              |
-| vmapi.url                    | String           | -         | VMAPI client url.                                                                                                                              |
-| redis.host                   | String           | 127.0.0.1 | Redis server host or IP.                                                                                                                       |
-| redis.port                   | Number           | 6379      | Redis server port.                                                                                                                             |
-| userCache.size               | Number           | 1000      | The number of entries to cache.                                                                                                                |
-| userCache.expiry             | Number           | 300       | The number of seconds for which cache entries are valid.                                                                                       |
-| notificationPlugins          | Array            | -         | An array of objects defining all notification mechanisms.                                                                                      |
+| Var                          | Type             | Default   | Description |
+| ---------------------------- | ---------------- | --------- | ----------- |
+| port                         | Number           | 8080      | Port number on which to listen. |
+| logLevel                     | String or Number | info      | A bunyan log level. Note that the '-v' CLI option can also set the log level. If '-v' is used, then this config var is ignored. |
+| adminUuid                    | UUID             | -         | The UUID of the admin user in this cloud. This is the 'ufds_admin_uuid' SDC config. |
+| ufds.url                     | String           | -         | LDAP URL to connect to UFDS. |
+| ufds.bindDN                  | String           | -         | UFDS user DN with which to bind. |
+| ufds.bindPassword            | String           | -         | UFDS password for 'bindDN'. |
+| ufds.caching                 | Boolean          | true      | Should UFDS caching should be enabled? |
+| cnapi.url                    | String           | -         | CNAPI client url. |
+| vmapi.url                    | String           | -         | VMAPI client url. |
+| redis.host                   | String           | 127.0.0.1 | Redis server host or IP. |
+| redis.port                   | Number           | 6379      | Redis server port. |
+| userCache.size               | Number           | 1000      | The number of entries to cache. |
+| userCache.expiry             | Number           | 300       | The number of seconds for which cache entries are valid. |
+| notificationPlugins          | Array            | -         | An array of objects defining all notification mechanisms. |
 | notificationPlugins.*.type   | String           | -         | The notification type. This should be a short string, preferably all lowercase and satifying JS identifier rules, e.g. 'email', 'sms', 'xmpp'. |
 | notificationPlugins.*.path   | String           | -         | A node `require()` path from which the Amon master can load the plugin module, e.g. "./lib/twillio".                                           |
 | notificationPlugins.*.config | Object           | -         | An object with instance data for the plugin.                                                                                                   |
