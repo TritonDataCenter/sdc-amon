@@ -133,7 +133,7 @@ function notificationInfoFromEventInfo(opts) {
     // - event details
     var EVENT_TYPES_WITH_BORING_DETAILS = {
         'machine-up': true
-    }
+    };
     var skipEventDetails = (opts.probe
         ? EVENT_TYPES_WITH_BORING_DETAILS[opts.probe.type] : false);
     if (!skipEventDetails) {
@@ -214,12 +214,12 @@ MattermostNotifier.prototype.acceptsMedium = function acceptsMedium(medium) {
     assert.string(medium, 'medium');
     var MARKER = 'mattermost';
     this.log.trace({medium: medium}, 'acceptsMedium');
-    var mediumLower = medium.toLowerCase();
     return (medium.toLowerCase().slice(-MARKER.length) === MARKER);
 };
 
 
-MattermostNotifier.prototype.sanitizeAddress = function sanitizeAddress(address) {
+MattermostNotifier.prototype.sanitizeAddress =
+function sanitizeAddress(address) {
     return address;
 };
 
@@ -255,10 +255,7 @@ MattermostNotifier.prototype.notify = function notify(opts, cb) {
     assert.optionalObject(opts.probeGroup, 'options.probeGroup');
     assert.func(cb, 'callback');
 
-    var alarm = opts.alarm;
-    var event = opts.event;
     var log = this.log;
-    var probe = opts.probe || {};
     var hookUrl = opts.contact.address;
     var self = this;
 
@@ -299,7 +296,7 @@ MattermostNotifier.prototype.notify = function notify(opts, cb) {
             'User-Agent': USER_AGENT
         },
         port: hook.port,
-        method: 'POST',
+        method: 'POST'
         /*
          * This timeout should somewhat help limit a pile up of hung/failing
          * connections to a faulty endpoint. A better answer would be to (also)
