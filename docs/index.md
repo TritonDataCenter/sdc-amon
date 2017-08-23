@@ -10,7 +10,7 @@ apisections: Master API: Probe Groups, Master API: Probes, Master API: Alarms, M
 -->
 
 <!--
-    Copyright (c) 2014, Joyent, Inc.
+    Copyright (c) 2017, Joyent, Inc.
 -->
 
 # Amon (SDC Monitoring and Alarming)

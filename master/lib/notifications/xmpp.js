@@ -5,10 +5,7 @@
  */
 
 /*
- * Copyright (c) 2014, Joyent, Inc.
- */
-
-/*
+ * Copyright (c) 2017, Joyent, Inc.
  */
 
 var dns = require('dns');
