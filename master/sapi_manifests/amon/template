@@ -37,6 +37,11 @@
       }
     },
     {
+      "type": "mattermost",
+      "path": "./notifications/mattermost",
+      "config": {}
+    },
+    {
       "type": "webhook",
       "path": "./notifications/webhook",
       "config": {}

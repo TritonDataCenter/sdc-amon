@@ -10,7 +10,7 @@ apisections: Master API: Probe Groups, Master API: Probes, Master API: Alarms, M
 -->
 
 <!--
-    Copyright (c) 2014, Joyent, Inc.
+    Copyright (c) 2017, Joyent, Inc.
 -->
 
 # Amon (SDC Monitoring and Alarming)
@@ -1823,22 +1823,22 @@ Note that given custom values override full top-level keys in the factory
 settings. For example: if providing 'userCache', one must provide the
 whole userCache object.
 
-| Var                          | Type             | Default   | Description                                                                                                                                    |
-| ---------------------------- | ---------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| port                         | Number           | 8080      | Port number on which to listen.                                                                                                                |
-| logLevel                     | String or Number | info      | A bunyan log level. Note that the '-v' CLI option can also set the log level. If '-v' is used, then this config var is ignored.                |
-| adminUuid                    | UUID             | -         | The UUID of the admin user in this cloud. This is the 'ufds_admin_uuid' SDC config.                                                            |
-| ufds.url                     | String           | -         | LDAP URL to connect to UFDS.                                                                                                                   |
-| ufds.bindDN                  | String           | -         | UFDS user DN with which to bind.                                                                                                               |
-| ufds.bindPassword            | String           | -         | UFDS password for 'bindDN'.                                                                                                                    |
-| ufds.caching                 | Boolean          | true      | Should UFDS caching should be enabled?                                                                                                         |
-| cnapi.url                    | String           | -         | CNAPI client url.                                                                                                                              |
-| vmapi.url                    | String           | -         | VMAPI client url.                                                                                                                              |
-| redis.host                   | String           | 127.0.0.1 | Redis server host or IP.                                                                                                                       |
-| redis.port                   | Number           | 6379      | Redis server port.                                                                                                                             |
-| userCache.size               | Number           | 1000      | The number of entries to cache.                                                                                                                |
-| userCache.expiry             | Number           | 300       | The number of seconds for which cache entries are valid.                                                                                       |
-| notificationPlugins          | Array            | -         | An array of objects defining all notification mechanisms.                                                                                      |
+| Var                          | Type             | Default   | Description |
+| ---------------------------- | ---------------- | --------- | ----------- |
+| port                         | Number           | 8080      | Port number on which to listen. |
+| logLevel                     | String or Number | info      | A bunyan log level. Note that the '-v' CLI option can also set the log level. If '-v' is used, then this config var is ignored. |
+| adminUuid                    | UUID             | -         | The UUID of the admin user in this cloud. This is the 'ufds_admin_uuid' SDC config. |
+| ufds.url                     | String           | -         | LDAP URL to connect to UFDS. |
+| ufds.bindDN                  | String           | -         | UFDS user DN with which to bind. |
+| ufds.bindPassword            | String           | -         | UFDS password for 'bindDN'. |
+| ufds.caching                 | Boolean          | true      | Should UFDS caching should be enabled? |
+| cnapi.url                    | String           | -         | CNAPI client url. |
+| vmapi.url                    | String           | -         | VMAPI client url. |
+| redis.host                   | String           | 127.0.0.1 | Redis server host or IP. |
+| redis.port                   | Number           | 6379      | Redis server port. |
+| userCache.size               | Number           | 1000      | The number of entries to cache. |
+| userCache.expiry             | Number           | 300       | The number of seconds for which cache entries are valid. |
+| notificationPlugins          | Array            | -         | An array of objects defining all notification mechanisms. |
 | notificationPlugins.*.type   | String           | -         | The notification type. This should be a short string, preferably all lowercase and satifying JS identifier rules, e.g. 'email', 'sms', 'xmpp'. |
 | notificationPlugins.*.path   | String           | -         | A node `require()` path from which the Amon master can load the plugin module, e.g. "./lib/twillio".                                           |
 | notificationPlugins.*.config | Object           | -         | An object with instance data for the plugin.                                                                                                   |
@@ -2420,6 +2420,198 @@ TODO: sdc-healthcheck, sdc-webinfo
 | amon-relay | in each GZ | [Bunyan](https://github.com/trentm/node-bunyan) | `` tail -f `svcs -L amon-relay` | bunyan `` |
 | amon-agent | in each GZ and in some zones | [Bunyan](https://github.com/trentm/node-bunyan) | `` tail -f `svcs -L amon-agent` | bunyan `` |
 
+
+## How to setup Mattermost notifications
+
+The Amon Master now ships with a 'mattermost' notification type. It uses
+[Mattermost incoming
+notifications](https://docs.mattermost.com/developer/webhooks-incoming.html).
+Here is how to get notifications for Amon alarms going to a given Mattermost
+channel:
+
+1.  [Create a Mattermost incoming webhook.](https://docs.mattermost.com/developer/webhooks-incoming.html#simple-incoming-webhook)
+    The result will be a webhook URL something like
+    <http://mattermost.example.com/hooks/818yxgxbe7gnmcmpawzz8gfiqe>.
+    You can test that that works via:
+
+    ```
+    curl -i -X POST \
+        -d 'payload={
+            "username": "teapot",
+            "attachments": [
+                {
+                    "title": "this is my handle",
+                    "text": "**this** is my spout"
+                }
+            ]
+        }' http://mattermost.example.com/hooks/818yxgxbe7gnmcmpawzz8gfiqe
+    ```
+
+    You should see a message attachment in your Mattermost channel.
+    If that message does not say it is from "teapot", then you might want to
+    ask your Mattermost administrator to enable
+    [overriding the username](https://docs.mattermost.com/developer/webhooks-incoming.html#override-the-username).
+    Amon notifications set the username, but allowing the override isn't
+    required.
+
+2.  Configure the account that owns the Amon probes to have this webhook URL
+    as an available Mattermost contact. Here "available", means using a user
+    field that Amon will accept as a Mattermost contact, which is any user
+    attribute ending with "mattermost", e.g.:
+
+    ```
+    sdc-useradm replace-attr poseidon mymattermost \
+        http://mattermost.example.com/hooks/818yxgxbe7gnmcmpawzz8gfiqe
+    ```
+
+    (Here I am using the Manta operator "poseidon" account as an example,
+    because Manta is the heaviest current user of Amon. If you use an account
+    other than "poseidon", it will need to be an operator to allow creating
+    a probe on a server, as in the examples below.)
+
+3.  Update/create the `contacts` on your Amon [probes](#CreateProbe) or
+    [probe groups](#CreateProbeGroup) to include this contact name
+    ("mymattermost" in this example). E.g.:
+
+    ```
+    sdc-amon /pub/trentm/probes -X POST -d@- <<EOP
+    {
+      "name": "mmtest1-log-boom",
+      "type": "log-scan",
+      "agent": "$(sdc-cnapi /servers?hostname=headnode | json -H 0.uuid)",
+      "contacts": ["mymattermost"],
+      "groupEvents": false,
+      "config": {
+        "path": "/var/tmp/mmtest1.log",
+        "match": {
+          "pattern": "boom"
+        }
+      }
+    }
+    EOP
+    ```
+
+    or with a probe group:
+
+    ```
+    groupRes=$(sdc-amon /pub/trentm/probegroups -X POST -d@- <<EOP
+    {
+      "name": "mmtest2-group",
+      "contacts": ["mymattermost"]
+    }
+    EOP
+    )
+    groupUuid=$(echo "$groupRes" | json -H uuid)
+
+    sdc-amon /pub/trentm/probes -X POST -d@- <<EOP
+    {
+      "name": "mmtest2-log-boom",
+      "group": "$groupUuid",
+      "type": "log-scan",
+      "agent": "$(sdc-cnapi /servers?hostname=headnode | json -H 0.uuid)",
+      "config": {
+        "path": "/var/tmp/mmtest2.log",
+        "match": {
+          "pattern": "boom"
+        }
+      }
+    }
+    EOP
+    ```
+
+    Aside: To speed up flushing probe changes to the agents for this example
+    you can run the following. Or you can just wait (up to 30 *minutes*) for
+    the amon-relay(s) to sync.
+
+    ```
+    curl -i localhost:4307/state?action=syncprobes -X POST
+    svcadm restart amon-agent && sleep 3
+    ```
+
+4.  Test tripping one of your Amon probes to create an alarm. You should see
+    a notification in Mattermost. E.g.:
+
+    ```
+    echo 'boom' >>/var/tmp/mmtest1.log
+    echo 'boom' >>/var/tmp/mmtest2.log
+    ```
+
+
+### Setting up Manta alarms to use Mattermost notifications
+
+Manta uses Amon for at least some of its monitoring. Manta's alarm handling is
+controlled by the `manta-adm alarm ...` command. Here is how you can setup a
+deployed Manta to send notifications to a Mattermost channel:
+
+1.  [Create a Mattermost incoming webhook.](https://docs.mattermost.com/developer/webhooks-incoming.html#simple-incoming-webhook)
+    The result will be a webhook URL something like
+    <http://mattermost.example.com/hooks/818yxgxbe7gnmcmpawzz8gfiqe>.
+    You can test that that works via:
+
+    ```
+    curl -i -X POST \
+        -d 'payload={
+            "username": "teapot",
+            "attachments": [
+                {
+                    "title": "this is my handle",
+                    "text": "**this** is my spout"
+                }
+            ]
+        }' http://mattermost.example.com/hooks/818yxgxbe7gnmcmpawzz8gfiqe
+    ```
+
+    You should see a message attachment in your Mattermost channel.
+    If that message does not say it is from "teapot", then you might want to
+    ask your Mattermost administrator to enable
+    [overriding the username](https://docs.mattermost.com/developer/webhooks-incoming.html#override-the-username).
+    Amon notifications set the username, but allowing the override isn't
+    required.
+
+2.  Configure `poseidon` to have the webhook URL as a Mattermost contact, e.g.:
+
+    ```
+    sdc-useradm replace-attr poseidon mantamattermost \
+        http://mattermost.example.com/hooks/818yxgxbe7gnmcmpawzz8gfiqe
+    ```
+
+    The attribute name must end with "mattermost" for the Amon Mattermost
+    notification type to accept it.
+
+3.  Configure `manta-adm alarm config ...` to use this "mantamattermost"
+    contact. For example (this assumes you also want XMPP notifications):
+
+    ```
+    echo '{
+        "metadata": {
+          "MANTAMON_ALERT": [
+            { "contact": "email" },
+            { "contact": "mantaxmpp", "last": true }
+            { "contact": "mantamattermost", "last": true }
+          ],
+          "MANTAMON_INFO": [
+            { "contact": "mantaxmpp", "last": true }
+            { "contact": "mantamattermost", "last": true }
+          ]
+        }
+    }' | sapiadm update $(sdc-sapi /services?name=manta | json -Ha uuid)
+
+    sdc-login -l manta svcadm restart config-agent
+    ```
+
+4.  Update Manta amon probes:
+
+    ```
+    manta-adm alarm config update
+    ```
+
+    You can cheat to get the amon-relay on all CNs to sync these updates
+    right away (the polling interval is 30 *minutes*):
+
+    ```
+    sdc-oneachnode -a 'curl http://127.0.0.1:4307/state?action=syncprobes -X POST'
+    # Wait a bit for each amon-agent's polling interval.
+    ```
 
 
 ## How to use the XMPP notification plugin

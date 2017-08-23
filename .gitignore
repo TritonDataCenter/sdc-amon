@@ -3,6 +3,7 @@ tmp
 node_modules
 *.log
 /amon.sublime*
+.DS_Store
 
 /build
 /config*.json
@@ -11,6 +12,5 @@ node_modules
 /screencasts
 
 # built docs (ignore for now)
-/docs/media
 /docs/*.html
 /docs/*.json

@@ -5,7 +5,7 @@
  */
 
 /*
- * Copyright (c) 2014, Joyent, Inc.
+ * Copyright (c) 2017, Joyent, Inc.
  */
 
 /*
@@ -421,7 +421,7 @@ Probe.prototype.authorizeWrite = function (app, callback) {
                 if (!isOperator) {
                     callback(new restify.InvalidArgumentError(_(
                         'Must be an operator to put a probe on a physical '
-                        + 'machine (%s): user "%s"is not an operator.',
+                        + 'machine (%s): user "%s" is not an operator.',
                         machineUuid, self.user)));
                 } else {
                     log.info('probe PUT authorized: probe for physical '

@@ -5,10 +5,7 @@
  */
 
 /*
- * Copyright (c) 2014, Joyent, Inc.
- */
-
-/*
+ * Copyright (c) 2017, Joyent, Inc.
  */
 
 var dns = require('dns');
@@ -169,8 +166,8 @@ XMPP.prototype.toString = function toString() {
 
 
 /**
- * This notification plugin will handle any contact fields named 'phone'
- * or '*Phone' (e.g. 'fooPhone', "workPhone", "bffPhone").
+ * This notification plugin will handle any contact fields named 'xmpp'
+ * or '*xmpp' (e.g. 'fooxmpp', "workxmpp", "bffxmpp").
  */
 XMPP.prototype.acceptsMedium = function acceptsMedium(medium) {
     assert.string(medium, 'medium');
@@ -244,7 +241,7 @@ XMPP.prototype.notify = function notify(opts, cb) {
             if (event.machine === event.relay) {
                 // Relay's run in the GZ, so the machine is a
                 // GZ (i.e. a server).
-                msg += ',server=' + (alias || probe.machine);
+                msg += ', server=' + (alias || probe.machine);
             } else {
                 msg += ', vm=' + (alias || probe.machine);
             }
