@@ -6,7 +6,7 @@
   "author": "Joyent (joyent.com)",
   "main": "lib/index.js",
   "dependencies": {
-    "restify": "git+ssh://git@github.com:trentm/node-restify.git#7535bb3",
+    "restify": "git+https://github.com/trentm/node-restify.git#7535bb3",
     "libuuid": "0.1.2"
   },
   "engines": {
