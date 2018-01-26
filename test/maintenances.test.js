@@ -63,8 +63,21 @@ var masterClient = common.createAmonMasterClient('maintenances');
 var prep = JSON.parse(fs.readFileSync('/var/tmp/amontest/prep.json', 'utf8'));
 var ulrich = prep.ulrich;
 
-var MAINTSURL = '/pub/amontestuserulrich/maintenances';
 var ALARMSURL = '/pub/amontestuserulrich/alarms';
+var MAINTSURL = '/pub/amontestuserulrich/maintenances';
+/*
+ * (2 to the power of 31) - 1 is the largest timeout delay for a timer created
+ * using setTimeout. We use it as an artificial, almost unlimited timeout for
+ * tap tests that schedule long running async operations which handle their
+ * timeout themselves. This way, tap is most likely not going to time out any
+ * test that should *not* have timed out, and won't introduce any hard-to-debug
+ * race condition. This is still brittle and hacky, but unfortunately there's
+ * not way with the version of tap that this repository uses to prevent tap
+ * tests from *not* timing out. The ideal solution would be to move this tests
+ * suite to using a test driver that doesn't schedule a timeout for each test by
+ * default. That work is tracked by https://smartos.org/bugview/TRITON-91.
+ */
+var TIMEOUT_MAX = Math.pow(2, 31) - 1;
 
 var maintprobe = null;
 
@@ -261,9 +274,9 @@ test('maint basics: no maintenance windows', function (t) {
 
 var maint1AlarmId;
 
-test('maint 1: stop amontestzone', {timeout: 60000}, function (t) {
+test('maint 1: stop amontestzone', {timeout: TIMEOUT_MAX}, function (t) {
     notifications = []; // reset
-    common.vmStop({uuid: prep.amontestzone.uuid, timeout: 40000},
+    common.vmStop({uuid: prep.amontestzone.uuid, timeout: 3 * 60 * 1000},
         function (err) {
             t.ifError(err, 'stopped amontestzone');
             t.end();
@@ -323,7 +336,7 @@ test('maint 1: got alarm on zone stop', function (t) {
     });
 });
 
-test('maint 1: start amontestzone', {timeout: 60000}, function (t) {
+test('maint 1: start amontestzone', {timeout: TIMEOUT_MAX}, function (t) {
     notifications = [];
     common.vmStart({uuid: prep.amontestzone.uuid, timeout: 40000},
         function (err) {
@@ -435,15 +448,14 @@ test('maint 2: create maint window', function (t) {
     });
 });
 
-test('maint 2: stop amontestzone', function (t) {
+test('maint 2: stop amontestzone', {timeout: TIMEOUT_MAX}, function (t) {
     notifications = []; // reset
     // I've seen this VM stop on nightly-2 take >1 min.
     common.vmStop({uuid: prep.amontestzone.uuid, timeout: 3 * 60 * 1000},
         function (err) {
             t.ifError(err, 'stopped amontestzone');
             t.end();
-        }
-    );
+        });
 });
 
 test('maint 2: got alarm on zone stop', function (t) {
@@ -495,7 +507,7 @@ test('maint 2: got NO notification on zone stop', function (t) {
     t.end();
 });
 
-test('maint 2: start amontestzone', {timeout: 60000}, function (t) {
+test('maint 2: start amontestzone', {timeout: TIMEOUT_MAX}, function (t) {
     common.vmStart({uuid: prep.amontestzone.uuid, timeout: 60000},
         function (err) {
             t.ifError(err, 'starting amontestzone');
