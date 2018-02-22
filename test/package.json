@@ -5,16 +5,16 @@
   "author": "Joyent (joyent.com)",
   "private": true,
   "dependencies": {
-    "sdc-clients": "git+https://github.com/joyent/node-sdc-clients.git#beace1d",
-    "ufds": "git+https://github.com/joyent/node-ufds#1ace075d7c89579c1ee547e50812c4d73890efab",
+    "sdc-clients": "git+ssh://github.com/joyent/node-sdc-clients.git#beace1d",
+    "ufds": "git+ssh://github.com/joyent/node-ufds#1ace075d7c89579c1ee547e50812c4d73890efab",
 
     "async": "0.1.22",
     "bunyan": "0.21.3",
-    "restify": "git+https://github.com/mcavage/node-restify.git#198dcbb",
+    "restify": "git+ssh://github.com/mcavage/node-restify.git#198dcbb",
     "libuuid": "0.1.2",
     "http-signature": "0.9.9",
     "tap": "0.3.3",
-    "ldapjs": "git+https://github.com/mcavage/node-ldapjs.git#aed6d2b043715e1a37c45a6293935c25c023ebce"
+    "ldapjs": "git+ssh://github.com/mcavage/node-ldapjs.git#aed6d2b043715e1a37c45a6293935c25c023ebce"
   },
   "engines": {
     "node": ">=0.6"
