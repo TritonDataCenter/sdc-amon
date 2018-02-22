@@ -9,7 +9,7 @@
     "amon-plugins": "*",
 
     "sdc-clients": "git+ssh://github.com/joyent/node-sdc-clients.git#beace1d",
-    "restify": "git+ssh://github.com/trentm/node-restify.git#7535bb3",
+    "restify": "git://github.com/trentm/node-restify.git#7535bb3",
     "assert-plus": "0.1.2",
     "backoff": "2.4.0",
     "bunyan": "0.21.3",
