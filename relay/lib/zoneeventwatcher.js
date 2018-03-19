@@ -5,7 +5,7 @@
  */
 
 /*
- * Copyright (c) 2014, Joyent, Inc.
+ * Copyright (c) 2018, Joyent, Inc.
  */
 
 /*
@@ -94,7 +94,7 @@ function ZoneEventWatcher(log) {
         process.exit(1);
     }
 
-    var zoneevent = spawn('/usr/vm/sbin/zoneevent');
+    var zoneevent = spawn('/usr/vm/sbin/zoneevent', ['-i', 'amon-relay']);
     zoneevent.stdout.setEncoding('utf8');
     var leftover = '';  // Left-over partial line from last chunk.
     zoneevent.stdout.on('data', function (chunk) {

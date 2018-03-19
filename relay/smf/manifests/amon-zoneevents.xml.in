@@ -7,7 +7,7 @@
 -->
 
 <!--
-    Copyright (c) 2014, Joyent, Inc.
+    Copyright (c) 2018, Joyent, Inc.
 -->
 
 <service_bundle type='manifest' name='export'>
@@ -20,7 +20,7 @@
     <dependency name='filesystem' grouping='require_all' restart_on='error' type='service'>
       <service_fmri value='svc:/system/filesystem/local'/>
     </dependency>
-    <exec_method name='start' type='method' exec='/usr/vm/sbin/zoneevent &amp;' timeout_seconds='10'>
+    <exec_method name='start' type='method' exec='/usr/vm/sbin/zoneevent -i amon-zoneevents &amp;' timeout_seconds='10'>
       <method_context>
         <method_credential user='root' group='staff'/>
       </method_context>

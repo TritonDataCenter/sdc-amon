@@ -5,7 +5,7 @@
  */
 
 /*
- * Copyright (c) 2014, Joyent, Inc.
+ * Copyright (c) 2018, Joyent, Inc.
  */
 
 /*
@@ -45,7 +45,8 @@ util.inherits(ZoneEventWatcher, process.EventEmitter);
 ZoneEventWatcher.prototype.start = function () {
     var self = this;
     self.log.trace('spawn zoneevent');
-    var zoneevent = self.child = spawn('/usr/vm/sbin/zoneevent');
+    var zoneevent = self.child = spawn('/usr/vm/sbin/zoneevent',
+        ['-i', 'amon-agent']);
     self.stopped = false;
 
     zoneevent.stdout.setEncoding('utf8');
