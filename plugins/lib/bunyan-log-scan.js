@@ -5,7 +5,7 @@
  */
 
 /*
- * Copyright (c) 2014, Joyent, Inc.
+ * Copyright (c) 2018, Joyent, Inc.
  */
 
 /*
@@ -158,8 +158,8 @@ BunyanLogScanProbe.prototype.validateConfig = function (config) {
 /**
  * Get an appropriate message for a log-scan event.
  *
- * Note: We cheat and use `this._pathCache`. The assumption is that
- * this method is only ever called after `_getPath()` success.
+ * Note: We cheat and use `this._pathsCache`. The assumption is that
+ * this method is only ever called after `_getPaths()` success.
  */
 BunyanLogScanProbe.prototype._getMessage = function () {
     if (! this._messageCache) {
@@ -182,11 +182,16 @@ BunyanLogScanProbe.prototype._getMessage = function () {
         conds = (conds.length ? format(' (%s)', conds.join(', ')) : '');
 
         var msg;
-        if (this.threshold > 1) {
-            msg = format('Log "%s" matched >=%d times in %d seconds%s.',
-                this._pathCache, this.threshold, this.period, conds);
+        if (this._pathsCache.length > 1) {
+            msg = 'Logs "' + this._pathsCache.join('", "') + '" matched';
         } else {
-            msg = format('Log "%s" matched%s.', this._pathCache, conds);
+            msg = 'Log "' + this._pathsCache[0] + '" matched';
+        }
+        if (this.threshold > 1) {
+            msg += format(' >=%d times in %d seconds%s.',
+                this.threshold, this.period, conds);
+        } else {
+            msg += conds + '.';
         }
         this._messageCache = msg;
     }

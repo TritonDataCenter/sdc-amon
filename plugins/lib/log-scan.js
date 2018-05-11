@@ -5,7 +5,7 @@
  */
 
 /*
- * Copyright (c) 2014, Joyent, Inc.
+ * Copyright (c) 2018, Joyent, Inc.
  */
 
 /*
@@ -83,14 +83,14 @@ LogScanProbe.prototype.validateConfig = function (config) {
 };
 
 
-LogScanProbe.prototype._getPath = function (callback) {
+LogScanProbe.prototype._getPaths = function (callback) {
     var self = this;
-    if (this._pathCache) {
-        return callback(null, this._pathCache);
+    if (this._pathsCache) {
+        return callback(null, this._pathsCache);
     }
     if (this.path) {
-        this._pathCache = this.path;
-        callback(null, this._pathCache);
+        this._pathsCache = [this.path];
+        callback(null, this._pathsCache);
     } else if (this.smfServiceName) {
         execFile('/usr/bin/svcs', ['-L', this.smfServiceName],
             function (sErr, stdout, stderr) {
@@ -101,8 +101,8 @@ LogScanProbe.prototype._getPath = function (callback) {
                         'error getting SMF service path: `svcs -L %s`: %s',
                         self.smfServiceName, stderr)));
                 } else {
-                    self._pathCache = stdout.trim();
-                    callback(null, self._pathCache);
+                    self._pathsCache = stdout.trim().split('\n');
+                    callback(null, self._pathsCache);
                 }
             }
         );
@@ -115,17 +115,22 @@ LogScanProbe.prototype._getPath = function (callback) {
 /**
  * Get an appropriate message for a log-scan event.
  *
- * Note: We cheat and use `this._pathCache`. The assumption is that
- * this method is only ever called after `_getPath()` success.
+ * Note: We cheat and use `this._pathsCache`. The assumption is that
+ * this method is only ever called after `_getPaths()` success.
  */
 LogScanProbe.prototype._getMessage = function () {
     if (! this._messageCache) {
         var msg;
-        if (this.threshold > 1) {
-            msg = format('Log "%s" matched %s >=%d times in %d seconds.',
-                this._pathCache, this.matcher, this.threshold, this.period);
+        if (this._pathsCache.length > 1) {
+            msg = 'Logs "' + this._pathsCache.join('", "') + '" matched';
         } else {
-            msg = format('Log "%s" matched %s.', this._pathCache, this.matcher);
+            msg = 'Log "' + this._pathsCache[0] + '" matched';
+        }
+        if (this.threshold > 1) {
+            msg += format(' >=%d times in %d seconds.',
+                this.threshold, this.period);
+        } else {
+            msg += '.';
         }
         this._messageCache = msg;
     }
@@ -154,16 +159,16 @@ LogScanProbe.prototype.start = function (callback) {
 
     var GET_PATH_RETRY = 5 * 60 * 1000; // Every 5 minutes.
 
-    function getPathAndStart(cb) {
-        log.info('get path');
-        self._getPath(function (err, path) {
+    function getPathsAndStart(cb) {
+        log.info('get paths');
+        self._getPaths(function (err, paths) {
             if (err) {
-                log.info(err, 'could not get path to scan, recheck in %dms',
+                log.info(err, 'could not get paths to scan, recheck in %dms',
                     GET_PATH_RETRY);
-                self.pathRetrier = setTimeout(getPathAndStart, GET_PATH_RETRY);
+                self.pathRetrier = setTimeout(getPathsAndStart, GET_PATH_RETRY);
                 return;
             }
-            log.info({path: path}, 'got path');
+            log.info({paths: paths}, 'got paths');
 
             self.timer = setInterval(function () {
                 if (!self._running)
@@ -173,7 +178,8 @@ LogScanProbe.prototype.start = function (callback) {
             }, self.period * SECONDS);
 
             self._running = true;
-            self.tail = spawn('/usr/bin/tail', ['-1cF', path]);
+            var args = ['-1cF', '-q'].concat(paths);
+            self.tail = spawn('/usr/bin/tail', args);
             self.tail.stdout.on('data', function (chunk) {
                 if (!self._running) {
                     return;
@@ -207,7 +213,7 @@ LogScanProbe.prototype.start = function (callback) {
         });
     }
 
-    process.nextTick(getPathAndStart);
+    process.nextTick(getPathsAndStart);
     if (callback && (callback instanceof Function)) {
         return callback();
     }
