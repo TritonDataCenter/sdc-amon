@@ -131,9 +131,6 @@ export UFDS_ROOTDN=$CONFIG_ufds_ldap_root_dn
 export UFDS_PASSWORD=$CONFIG_ufds_ldap_root_pw
 export VMAPI_URL="http://${CONFIG_vmapi_admin_ips%%,*}"
 export CNAPI_URL="http://${CONFIG_cnapi_admin_ips%%,*}"
-export REDIS_HOST=$(echo $CONFIG_redis_admin_ips | cut -d, -f1)
-export REDIS_PORT=6379
-export DATACENTER_NAME=$CONFIG_datacenter_name
 
 echo ""
 echo "# Datacenter config:"
@@ -143,9 +140,6 @@ echo "# UFDS_ROOTDN is $UFDS_ROOTDN"
 echo '# UFDS_PASSWORD is ***'
 echo "# VMAPI_URL is $VMAPI_URL"
 echo "# CNAPI_URL is $CNAPI_URL"
-echo "# REDIS_HOST is $REDIS_HOST"
-echo "# REDIS_PORT is $REDIS_PORT"
-echo "# DATACENTER_NAME is $DATACENTER_NAME"
 
 
 # Currently not sure if we need to run from $TOP. Let's just do so.
