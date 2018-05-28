@@ -244,7 +244,8 @@ function ufdsClientUnbind(next) {
 
 function ldapClientUnbind(next) {
     if (ldapClient) {
-        ldapClient.unbind(next);
+        ldapClient.socket.destroy();
+        next();
     } else {
         next();
     }
@@ -328,18 +329,23 @@ function createAmontestzone(next) {
         url: process.env.VMAPI_URL
     });
 
+    function finish(finishErr) {
+        vmapiClient.close();
+        next(finishErr);
+    }
+
     // First check if there is a zone for ulrich.
     vmapiClient.listVms({owner_uuid: ulrich.uuid, alias: 'amontestzone'},
                                          function (err, zones) {
         if (err) {
-            return next(err);
+            return finish(err);
         }
         for (var i = 0; i < zones.length; i++) {
             if (zones[i].state === 'running' || zones[i].state === 'stopped') {
                 amontestzone = zones[i]; // intentionally global
                 log('# Ulrich already has an "amontestzone" zone (%s).',
                     amontestzone.uuid);
-                return next();
+                return finish();
             }
         }
         log('# Create a test zone for ulrich.');
@@ -354,7 +360,7 @@ function createAmontestzone(next) {
             },
             function (err2, jobInfo) {
                 if (err2) {
-                    return next(err2);
+                    return finish(err2);
                 }
                 amontestzone = jobInfo.vm_uuid; // intentionally global
                 log('# amontestzone uuid: %s', amontestzone);
@@ -364,15 +370,13 @@ function createAmontestzone(next) {
                         timeout: 5 * 60 * 1000 /* 5 minutes */
                     }, function (err3) {
                         if (err3)
-                            return next(err3);
+                            return finish(err3);
                         vmapiClient.getVm({uuid: jobInfo.vm_uuid},
                             function (err4, zone) {
                                 if (err4)
-                                    return next(err4);
+                                    return finish(err4);
                                 amontestzone = zone;
-                                //FIXME: work around broken keepalive
-                                vmapiClient.close();
-                                next();
+                                finish();
                             }
                         );
                     }
@@ -452,12 +456,15 @@ async.series([
         makeOdinAnOperator,
         ldapClientUnbind,
         ufdsClientUnbind,
+
         getHeadnodeUuid,
         getTestImageUuid,
         getExternalNetworkUuid,
         getTestPackageUuid,
+
         createAmontestzone,
         ensureAmontestzoneIsRunning,
+
         getAmonZoneUuid,
         syncRelaysAndAgents,
         writePrepJson
@@ -467,6 +474,8 @@ async.series([
             log('error preparing: %s%s', err,
                 (err.stack ? ': ' + err.stack : ''));
             process.exit(1);
+        } else {
+            console.log('# Prep successful.');
         }
     }
 );
