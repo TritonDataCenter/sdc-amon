@@ -248,9 +248,11 @@ test('got webhook notification for valhalla fault', function (t) {
                 var notification = webhooks[0].body;
                 t.ok(notification.alarm, 'notification.alarm');
                 t.ok(notification.message.indexOf('battle.log') !== -1,
-                    'message mentions "battle.log"');
+                    'message mentions "battle.log": '
+                        + JSON.stringify(notification.message));
                 t.ok(notification.message.indexOf('a warrior died') !== -1,
-                    'message mentions "a warrior died"');
+                    'message mentions "a warrior died": '
+                        + JSON.stringify(notification.message));
                 t.ok(notification.event, 'notification.event');
                 t.equal(notification.event.machine, prep.headnodeUuid,
                     'event was for the headnode');
@@ -324,9 +326,11 @@ test('got second webhook notification for valhalla fault', function (t) {
                 var notification = webhooks[0].body;
                 t.ok(notification.alarm, 'notification.alarm');
                 t.ok(notification.message.indexOf('battle.log') !== -1,
-                    'message mentions "battle.log"');
+                    'message mentions "battle.log": '
+                        + JSON.stringify(notification.message));
                 t.ok(notification.message.indexOf('another warrior') !== -1,
-                    'message mentions "another warrior"');
+                    'message mentions "another warrior": '
+                        + JSON.stringify(notification.message));
                 t.ok(notification.event, 'notification.event');
                 t.equal(notification.event.machine, prep.headnodeUuid,
                     'event was for the headnode');

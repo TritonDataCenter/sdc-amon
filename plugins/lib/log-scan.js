@@ -126,6 +126,9 @@ LogScanProbe.prototype._getMessage = function () {
         } else {
             msg = 'Log "' + this._pathsCache[0] + '" matched';
         }
+        if (this.matcher) {
+            msg += ' ' + this.matcher.toString();
+        }
         if (this.threshold > 1) {
             msg += format(' >=%d times in %d seconds.',
                 this.threshold, this.period);

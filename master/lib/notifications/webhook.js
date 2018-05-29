@@ -5,7 +5,7 @@
  */
 
 /*
- * Copyright (c) 2014, Joyent, Inc.
+ * Copyright (c) 2018, Joyent, Inc.
  */
 
 /**
@@ -69,8 +69,7 @@ Webhook.prototype.notify = function (options, callback) {
     var address = options.contact.address;
     var event = options.event;
     var log = this.log.child({event: event.uuid}, true);
-    log.info({address: address, user: user.uuid, alarm: alarm.id},
-        'email notify');
+    log.info({address: address, user: user.uuid, alarm: alarm.id}, 'notify');
 
     var url = urlParse(address);
     var reqOptions = {
