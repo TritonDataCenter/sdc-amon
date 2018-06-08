@@ -6,7 +6,7 @@
 #
 
 #
-# Copyright (c) 2015, Joyent, Inc.
+# Copyright (c) 2018, Joyent, Inc.
 #
 
 #
@@ -28,6 +28,10 @@ fi
 set -o errexit
 set -o pipefail
 
+if [[ -z "$npm_config_smfdir" || ! -d "$npm_config_smfdir" ]]; then
+    echo "Skipping amon-agent postinstall (assuming build-time install)"
+    exit 0
+fi
 
 TOP=$(cd $(dirname $0)/../ >/dev/null; pwd)
 
