@@ -6,7 +6,7 @@
 #
 
 #
-# Copyright (c) 2015, Joyent, Inc.
+# Copyright (c) 2018, Joyent, Inc.
 #
 
 OS=$(uname -s)
@@ -17,6 +17,11 @@ if [[ $OS != "SunOS" ]]; then
 fi
 
 set -o xtrace
+
+if [[ -z "$npm_config_smfdir" || ! -d "$npm_config_smfdir" ]]; then
+  echo "Skipping amon-relay postinstall (assuming build-time install)"
+  exit 0
+fi
 
 export SMFDIR=$npm_config_smfdir
 
