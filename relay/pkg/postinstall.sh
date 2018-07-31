@@ -18,9 +18,9 @@ fi
 
 set -o xtrace
 
-if [[ -z "$npm_config_smfdir" || ! -d "$npm_config_smfdir" ]]; then
-  echo "Skipping amon-relay postinstall (assuming build-time install)"
-  exit 0
+if [[ "$SDC_AGENT_SKIP_LIFECYCLE" == "yes" ]]; then
+    echo "Skipping amon-relay postinstall (assuming build-time install)"
+    exit 0
 fi
 
 export SMFDIR=$npm_config_smfdir

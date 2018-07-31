@@ -28,7 +28,7 @@ fi
 set -o errexit
 set -o pipefail
 
-if [[ -z "$npm_config_smfdir" || ! -d "$npm_config_smfdir" ]]; then
+if [[ "$SDC_AGENT_SKIP_LIFECYCLE" == "yes" ]]; then
     echo "Skipping amon-agent postinstall (assuming build-time install)"
     exit 0
 fi

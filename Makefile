@@ -5,7 +5,7 @@
 #
 
 #
-# Copyright (c) 2014, Joyent, Inc.
+# Copyright (c) 2018, Joyent, Inc.
 #
 
 #
@@ -61,6 +61,16 @@ else
 	MAKE = make
 	TAR ?= tar
 endif
+
+#
+# Due to the unfortunate nature of npm, the Node Package Manager, there appears
+# to be no way to assemble our dependencies without running the lifecycle
+# scripts.  These lifecycle scripts should not be run except in the context of
+# an agent installation or uninstallation, so we provide a magic environment
+# varible to disable them here.
+#
+NPM_ENV = SDC_AGENT_SKIP_LIFECYCLE=yes MAKE=$(MAKE)
+
 NODE_DEV := ./node_modules/.bin/node-dev
 TAP := ./node_modules/.bin/tap
 JSSTYLE_FLAGS := -f tools/jsstyle.conf
@@ -78,35 +88,38 @@ all: common plugins agent testbuild relay master dev sdc-scripts
 
 .PHONY: common
 common: | $(NPM_EXEC)
-	(cd common && MAKE=$(MAKE) $(NPM) install && $(NPM) link)
+	(cd common && $(NPM_ENV) $(NPM) install && $(NPM) link)
 
 .PHONY: plugins
 plugins: | $(NPM_EXEC)
-	(cd plugins && $(NPM) install && $(NPM) link)
+	(cd plugins && $(NPM_ENV) $(NPM) install && $(NPM) link)
 
 .PHONY: agent
 agent: common plugins | $(NPM_EXEC)
-	(cd agent && $(NPM) link amon-common amon-plugins && MAKE=$(MAKE) $(NPM) install)
+	(cd agent && $(NPM) link amon-common amon-plugins && \
+	$(NPM_ENV) $(NPM) install)
 
 .PHONY: relay
 relay: common plugins testbuild | $(NPM_EXEC)
-	(cd relay && $(NPM) link amon-common amon-plugins && MAKE=$(MAKE) $(NPM) install)
+	(cd relay && $(NPM) link amon-common amon-plugins && \
+	$(NPM_ENV) $(NPM) install)
 
 .PHONY: master
 master: common plugins | $(NPM_EXEC)
-	(cd master && $(NPM) link amon-common amon-plugins && MAKE=$(MAKE) $(NPM) install)
+	(cd master && $(NPM) link amon-common amon-plugins && \
+	$(NPM_ENV) $(NPM) install)
 
 # 'testbuild' is the name for building in the 'test' dir. Want 'make test'
 # to actually *run* the tests.
 .PHONY: testbuild
 testbuild: | $(NPM_EXEC)
-	(cd test && MAKE=$(MAKE) $(NPM) install)
+	(cd test && $(NPM_ENV) $(NPM) install)
 
 # "dev" is the name for the top-level dev package
 .PHONY: dev
 dev: common | $(NPM_EXEC)
 	$(NPM) link amon-common
-	$(NPM) install
+	$(NPM_ENV) $(NPM) install
 
 
 #
