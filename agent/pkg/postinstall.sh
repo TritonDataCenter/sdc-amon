@@ -88,6 +88,8 @@ load_sdc_config
 
 AGENT=$npm_package_name
 
+BOOTPARAMS=/usr/bin/bootparams
+AWK=/usr/bin/awk
 
 # ---- support functions
 
@@ -103,134 +105,184 @@ function warn_and_exit()
     exit 0
 }
 
-function instance_exists()
+#
+# Each installation of an agent is represented by a SAPI instance of the SAPI
+# service for that agent.  These UUIDs are persistent, so that upgrades do not
+# induce the generation of a new UUID.  If a UUID has not yet been written to
+# disk, we generate one now.  Otherwise, the existing UUID is read and
+# returned.
+#
+function get_or_create_instance_uuid
+{
+    local uuid_file="${ETC_DIR}/${AGENT}"
+    local uuid
+
+    if [[ -z "${ETC_DIR}" || -z "${AGENT}" ]]; then
+        fatal 'ETC_DIR and AGENT must be set'
+    fi
+
+    if [[ ! -f "${uuid_file}" ]]; then
+        #
+        # The instance UUID file does not exist.  Create one.
+        #
+        printf 'New agent instance.  Generating new UUID.\n' >&2
+        if ! /usr/bin/uuid -v4 >"${uuid_file}"; then
+            fatal 'could not write new UUID to "%s"' "${uuid_file}"
+        fi
+    fi
+
+    if ! uuid="$(<${uuid_file})" || [[ -z "${uuid}" ]]; then
+            fatal 'could not read UUID from "%s"' "${uuid_file}"
+    fi
+
+    printf 'Agent UUID: %s\n' "${uuid}" >&2
+    printf '%s' "${uuid}"
+    return 0
+}
+
+function adopt_instance
 {
     local instance_uuid=$1
-    local sapi_instance=$(curl ${SAPI_URL}/instances/${instance_uuid} | json -H uuid)
+    local service_uuid
+    local retry=10
+    local url
+    local data
+    local server_uuid
+    local image_uuid
+    server_uuid=$(/usr/bin/sysinfo|json UUID)
+    image_uuid="$(<${ROOT}/image_uuid)"
 
-    if [[ -n ${sapi_instance} ]]; then
+    if [[ -z "${instance_uuid}" ]]; then
+        fatal 'must pass instance_uuid'
+    fi
+
+    while (( retry-- > 0 )); do
+        #
+        # Fetch the UUID of the SAPI service for this agent.
+        #
+        url="${SAPI_URL}/services?type=agent&name=${AGENT}"
+        if ! service_uuid="$(curl -sSf -H 'Accept: application/json' "${url}" \
+          | json -Ha uuid)"; then
+            printf 'Could not retrieve SAPI service UUID for "%s"\n' \
+              "${AGENT}" >&2
+            sleep 5
+            continue
+        fi
+
+        #
+        # Attempt to register the SAPI instance for this agent installation.
+        # We need not be overly clever here; SAPI returns success for a
+        # duplicate agent adoption.
+        #
+        url="${SAPI_URL}/instances"
+        data="{
+            \"service_uuid\": \"${service_uuid}\",
+            \"uuid\": \"${instance_uuid}\",
+            \"params\": {
+                \"server_uuid\": \"${server_uuid}\",
+                \"image_uuid\": \"${image_uuid}\"
+            }
+        }"
+        if ! curl -sSf -X POST -H 'Content-Type: application/json' \
+          -d "${data}" "${url}"; then
+            printf 'Could not register SAPI instance with UUID "%s"\n' \
+              "${instance_uuid}" >&2
+            sleep 5
+            continue
+        fi
+
+        printf 'Agent successfully adopted into SAPI.\n' >&2
         return 0
-    else
+    done
+
+    fatal 'adopt_instance: failing after too many retries'
+}
+
+#
+# Check if we expect SAPI to be available.  Generally, registering with SAPI is
+# a hard requirement for the correct functioning of the system, but this
+# postinstall script can also be run during headnode setup; SAPI is not yet
+# available at that point.
+#
+function sapi_should_be_available
+{
+    local headnode
+    local script
+    local setup_complete
+
+    #
+    # In the event that SAPI is unavailable, we allow the operator to force us
+    # not to register with SAPI.  This behaviour should NOT be exercised
+    # programatically; it exists purely to allow operators to attempt
+    # (manually) to correct in the face of an abject failure of the system.
+    #
+    if [[ "${NO_SAPI:-false}" = true ]]; then
+        printf 'NO_SAPI=true in environment.\n' >&2
         return 1
     fi
-}
 
-function adopt_instance_if_necessary()
-{
-    local instance_uuid=$(cat $ETC_DIR/$AGENT)
-
-    # verify it exists on sapi if there is an instance uuid written to disk
-    if [[ -n ${instance_uuid} ]]; then
-        if ! instance_exists "$instance_uuid"; then
-            adopt_instance $instance_uuid
-        fi
-    else
-        adopt_instance $(uuid -v4)
+    script='
+        $1 == "headnode" {
+            print $2;
+            exit 0;
+        }
+    '
+    if ! headnode=$(${BOOTPARAMS} | ${AWK} -F= "${script}"); then
+        fatal 'could not read bootparams'
     fi
-}
 
-# This is a best effort. We rely into a cn-agent dedicated task to register
-# new agent instances when needed.
-function adopt_instance()
-{
-    local instance_uuid=$1
-    echo $instance_uuid > $ETC_DIR/$AGENT
-
-    local service_uuid=""
-    local sapi_instance=""
-    local i=0
-
-    service_uuid=$(curl "${SAPI_URL}/services?type=agent&name=${AGENT}"\
-        -sS -H accept:application/json | json -Ha uuid)
-
-    [[ -n ${service_uuid} ]] || \
-        warn_and_exit "Unable to get service_uuid for role ${AGENT} from SAPI"
-
-    sapi_instance=$(curl ${SAPI_URL}/instances -sS -X POST \
-        -H content-type:application/json \
-        -d "{ \"service_uuid\" : \"${service_uuid}\", \"uuid\" : \"${instance_uuid}\" }" \
-    | json -H uuid)
-
-    [[ -n ${sapi_instance} ]] \
-        || warn_and_exit "Unable to adopt ${instance_uuid} into SAPI"
-    echo "Adopted service ${AGENT} to instance ${instance_uuid}"
-}
-
-function save_instance_uuid()
-{
-    local instance_uuid=$(cat $ETC_DIR/$AGENT)
-
-    if [[ -z ${instance_uuid} ]]; then
-        instance_uuid=$(uuid -v4)
-        echo $instance_uuid > $ETC_DIR/$AGENT
+    if [[ "${headnode}" != 'true' ]]; then
+        #
+        # This is a compute node.  SAPI is expected to be available, and
+        # registration is expected to work.
+        #
+        printf 'This is not the headnode.\n' >&2
+        return 0
     fi
+
+    #
+    # This is the headnode.  If setup has not yet been completed, then SAPI
+    # is not yet available.
+    #
+    if [[ ! -f '/var/lib/setup.json' ]]; then
+        fatal 'could not find setup state file: "/var/lib/setup.json"'
+    fi
+    if ! setup_complete=$(json -f '/var/lib/setup.json' 'complete'); then
+        fatal 'could not read "complete" from "/var/lib/setup.json"'
+    fi
+
+    if [[ "${setup_complete}" = true ]]; then
+        #
+        # Setup is complete.  SAPI is available.  Registration is expected
+        # to work.
+        #
+        printf 'This is the headnode, and setup is already complete.\n' >&2
+        return 0
+    fi
+
+    #
+    # Setup is not yet complete.  The headnode setup process will register
+    # this SAPI instance at the appropriate time.
+    #
+    printf 'This is the headnode, but setup is not yet complete.\n' >&2
+    return 1
 }
 
-# If agentsshar is being installed on an old SAPI/CN, we can leave this instance
-# disabled and avoid running any SAPI-dependant configuration. sapi_domain is
-# zero length when the upgrade scripts we need were not executed for this CN
-if [[ -z $CONFIG_sapi_domain ]]; then
-    echo "sapi_domain was not found on node.config, agent will be installed but not configured"
-    exit 0
+
+# ---- mainline
+
+if [[ -z "${CONFIG_sapi_domain}" ]]; then
+    fatal '"sapi_domain" was not found in "node.config".'
 fi
+SAPI_URL="http://${CONFIG_sapi_domain}"
 
-SAPI_URL=http://${CONFIG_sapi_domain}
-IMGAPI_URL=http://${CONFIG_imgapi_domain}
+INSTANCE_UUID="$(get_or_create_instance_uuid)"
 
-# Check if we're inside a headnode and if there is a SAPI available. This post-
-# install script runs in the following circumstances:
-# 1. (don't call adopt) hn=1, sapi=0: first hn boot, disable agent, exit 0
-# 2. (call adopt) hn=1, sapi=1: upgrades, run script, get-or-create instance
-# 3. (call adopt) hn=0, sapi=0: new cns, cn upgrades, run script, get-or-create instance
-# 4. (call adopt) hn=0, sapi=1: no sdc-sapi on CNs, unexpected but possible
-is_headnode=$(sysinfo | json "Boot Parameters".headnode)
-have_sapi=false
-
-sapi_ping="curl http://$CONFIG_sapi_domain/ping --connect-timeout 2 -H 'accept-version:*'"
-if $sapi_ping; then
-    have_sapi="true"
-fi
-
-# case 1) is first time this agent is installed on the headnode. We just need
-# to save the instance uuid since headnode.sh takes care of adopting it into
-# SAPI
-if [[ $is_headnode == "true" ]] && [[ $have_sapi == "false" ]]; then
-    save_instance_uuid
-    exit 0
-fi
-
-# Before adopting instances into SAPI we need to check if SAPI is new enough so
-# it will understand a request for adding an agent instance to it
-
-MIN_VALID_SAPI_VERSION=20140703
-
-# SAPI versions can have the following two forms:
-#
-#   release-20140724-20140724T171248Z-gf4a5bed
-#   master-20140724T174534Z-gccfea7e
-#
-# We need at least a MIN_VALID_SAPI_VERSION image so type=agent suport is there.
-# When the SAPI version doesn't match the expected format we ignore this script
-#
-valid_sapi=$(curl ${IMGAPI_URL}/images/$(curl ${SAPI_URL}/services?name=sapi | json -Ha params.image_uuid) \
-    | json -e \
-    "var splitVersion = this.version.split('-');
-    if (splitVersion[0] === 'master') {
-        this.validSapi = splitVersion[1].substr(0, 8) >= '$MIN_VALID_SAPI_VERSION';
-    } else if (splitVersion[0] === 'release') {
-        this.validSapi = splitVersion[1] >= '$MIN_VALID_SAPI_VERSION';
-    } else {
-        this.validSapi = false;
-    }
-    " | json validSapi)
-
-if [[ ${valid_sapi} == "false" ]]; then
-    echo "Datacenter does not have the minimum SAPI version needed for adding
-        service agents. No need to adopt agent into SAPI"
-    exit 0
+if sapi_should_be_available; then
+    printf 'SAPI expected to be available.  Adopting agent instance.\n' >&2
+    adopt_instance "${INSTANCE_UUID}"
 else
-    adopt_instance_if_necessary
+    printf 'SAPI not yet available.  Skipping agent registration.\n' >&2
 fi
 
-# Ensure zero-exit value to not abort the apm install.
 exit 0
