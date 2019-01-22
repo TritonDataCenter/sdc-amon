@@ -5,7 +5,7 @@
 #
 
 #
-# Copyright (c) 2018, Joyent, Inc.
+# Copyright (c) 2019, Joyent, Inc.
 #
 
 #
@@ -27,7 +27,7 @@ JSSTYLE_FILES    = $(JS_FILES)
 CLEAN_FILES += agent/node_modules relay/node_modules \
 	master/node_modules common/node_modules plugins/node_modules \
 	./node_modules test/node_modules build/amon-*.tgz \
-	build/amon-*.tar.bz2 lib build/pkg
+	build/amon-*.tar.gz lib build/pkg
 
 # The prebuilt sdcnode version we want. See
 # "tools/mk/Makefile.node_prebuilt.targ" for details.
@@ -38,15 +38,31 @@ ifeq ($(shell uname -s),SunOS)
 endif
 
 #
+# Stuff used for buildimage
+#
+# our base image is sdc-smartos@1.6.3
+BASE_IMAGE_UUID		= fd2cc906-8938-11e3-beab-4359c665ac99
+BUILDIMAGE_NAME		= amon
+NAME			= amon
+BUILDIMAGE_DESC		= SDC AMON
+BUILDIMAGE_PKG		= $(TOP)/$(BUILD)/amon-pkg-$(STAMP).tar.gz
+AGENTS = registrar config
+
+#
 # Included definitions
 #
-include ./tools/mk/Makefile.defs
+ENGBLD_USE_BUILDIMAGE	= true
+ENGBLD_REQUIRE		:= $(shell git submodule update --init deps/eng)
+include deps/eng/tools/mk/Makefile.defs
+TOP ?= $(error Unable to access eng.git submodule Makefiles.)
+
 ifeq ($(shell uname -s),SunOS)
-       include ./tools/mk/Makefile.node_prebuilt.defs
+       include deps/eng/tools/mk/Makefile.node_prebuilt.defs
+       include deps/eng/tools/mk/Makefile.agent_prebuilt.defs
 else
-       include ./tools/mk/Makefile.node.defs
+       include deps/eng/tools/mk/Makefile.node.defs
 endif
-include ./tools/mk/Makefile.smf.defs
+include deps/eng/tools/mk/Makefile.smf.defs
 
 
 #
@@ -78,8 +94,11 @@ JSSTYLE_FLAGS := -f tools/jsstyle.conf
 #
 # Repo-specific targets
 #
-
-all: common plugins agent testbuild relay master dev sdc-scripts
+# We include validate-buildenv here rather than getting
+# that dependency added by Makefile.targ so that it explicitly
+# gets built first.
+#
+all: validate-buildenv common plugins agent testbuild relay master dev sdc-scripts
 
 
 #
@@ -149,8 +168,8 @@ pkg_relay:
 	# tools/amon-relay.exclude contains a list of files and patterns of some
 	#  unnecessary, duplicated, or dev-only pieces we don't want in the build.
 	uuid -v4 > $(BUILD)/pkg/amon-relay/image_uuid
-	(cd $(BUILD)/pkg && $(TAR) --exclude-from=$(TOP)/tools/amon-relay.exclude \
-		-zcf ../amon-relay-$(STAMP).tgz amon-relay)
+	(cd $(BUILD)/pkg && $(TAR) -I pigz --exclude-from=$(TOP)/tools/amon-relay.exclude \
+		-cf ../amon-relay-$(STAMP).tgz amon-relay)
 	cat $(TOP)/relay/manifest.tmpl | sed \
 		-e "s/UUID/$$(cat $(BUILD)/pkg/amon-relay/image_uuid)/" \
 		-e "s/NAME/$$(json name < $(TOP)/relay/package.json)/" \
@@ -183,7 +202,7 @@ pkg_agent:
 	#  unnecessary, duplicated, or dev-only pieces we don't want in the build.
 	uuid -v4 > $(BUILD)/pkg/amon-agent/image_uuid
 	(cd $(BUILD)/pkg && $(TAR) --exclude-from=$(TOP)/tools/amon-agent.exclude \
-	  -zcf ../amon-agent-$(STAMP).tgz amon-agent)
+	  -I pigz -cf ../amon-agent-$(STAMP).tgz amon-agent)
 	cat $(TOP)/agent/manifest.tmpl | sed \
 		-e "s/UUID/$$(cat $(BUILD)/pkg/amon-agent/image_uuid)/" \
 		-e "s/NAME/$$(json name < $(TOP)/agent/package.json)/" \
@@ -224,26 +243,28 @@ pkg_master:
 	# tools/amon-pkg.exclude contains a list of files and patterns of some
 	#  unnecessary, duplicated, or dev-only pieces we don't want in the build.
 	(cd $(BUILD)/pkg/master \
-		&& $(TAR) --exclude-from=$(TOP)/tools/amon-pkg.exclude -cjf \
-		$(shell unset CDPATH; cd $(BUILD); pwd)/amon-pkg-$(STAMP).tar.bz2 *)
-	@echo "Created '$(BUILD)/amon-pkg-$(STAMP).tar.bz2'."
+		&& $(TAR) -I pigz --exclude-from=$(TOP)/tools/amon-pkg.exclude -cf \
+		$(shell unset CDPATH; cd $(BUILD); pwd)/amon-pkg-$(STAMP).tar.gz *)
+	@echo "Created '$(BUILD)/amon-pkg-$(STAMP).tar.gz'."
 
+# buildimage requires a release target, this is effectively a no-op here.
+.PHONY: release
+release: pkg_master
 
-# The "publish" target requires that "BITS_DIR" be defined.
-# Used by Mountain Gorilla.
+# The "publish" target requires that "ENGBLD_BITS_DIR" be defined.
 .PHONY: publish
-publish: $(BITS_DIR)
-	@if [[ -z "$(BITS_DIR)" ]]; then \
-		echo "error: 'BITS_DIR' must be set for 'publish' target"; \
+publish: pkg
+	@if [[ -z "$(ENGBLD_BITS_DIR)" ]]; then \
+		echo "error: 'ENGBLD_BITS_DIR' must be set for 'publish' target"; \
 		exit 1; \
 	fi
-	mkdir -p $(BITS_DIR)/amon
-	cp $(BUILD)/amon-pkg-$(STAMP).tar.bz2 \
+	mkdir -p $(ENGBLD_BITS_DIR)/amon
+	cp $(BUILD)/amon-pkg-$(STAMP).tar.gz \
 		$(BUILD)/amon-relay-$(STAMP).tgz \
 		$(BUILD)/amon-relay-$(STAMP).manifest \
 		$(BUILD)/amon-agent-$(STAMP).tgz \
 		$(BUILD)/amon-agent-$(STAMP).manifest \
-		$(BITS_DIR)/amon/
+		$(ENGBLD_BITS_DIR)/amon/
 
 
 #
@@ -295,13 +316,14 @@ install_relay_pkg:
 # Includes
 #
 
-include ./tools/mk/Makefile.deps
+include deps/eng/tools/mk/Makefile.deps
+include deps/eng/tools/mk/Makefile.targ
 ifeq ($(shell uname -s),SunOS)
-       include ./tools/mk/Makefile.node_prebuilt.targ
+       include deps/eng/tools/mk/Makefile.node_prebuilt.targ
+       include deps/eng/tools/mk/Makefile.agent_prebuilt.targ
 else
-       include ./tools/mk/Makefile.node.targ
+       include deps/eng/tools/mk/Makefile.node.targ
 endif
-include ./tools/mk/Makefile.smf.targ
-include ./tools/mk/Makefile.targ
+include deps/eng/tools/mk/Makefile.smf.targ
 
 sdc-scripts: deps/sdc-scripts/.git

@@ -5,8 +5,10 @@ node_modules
 /amon.sublime*
 .DS_Store
 
+/bits
 /build
 /config*.json
+/make_stamps
 /test/config.json
 /master/config.json
 /screencasts
