@@ -179,7 +179,7 @@ if [[ -n "$opt_test_pattern" ]]; then
 fi
 # maintenances.test.js needs longer timeout
 if [[ -n "$test_files" ]]; then
-    PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP --timeout 180 $test_files \
+    PATH=$NODE_INSTALL/bin:$PATH TAP=1 $TAP --timeout 3600 $test_files \
         | tee $OUTPUT_DIR/amon-relay.tap
 fi
 
