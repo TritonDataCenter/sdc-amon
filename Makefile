@@ -56,6 +56,22 @@ ENGBLD_REQUIRE		:= $(shell git submodule update --init deps/eng)
 include deps/eng/tools/mk/Makefile.defs
 TOP ?= $(error Unable to access eng.git submodule Makefiles.)
 
+
+#
+# amon currently builds against 32-bit 0.8.x nodejs and depends on old versions
+# of the node-dtrace-provider with a bug that prevents compiling for 32-bit if
+# the *host* is x86_64 (as components do when they include the amon agent).  All
+# fixed versions of node-trace-provider require nodejs >= 0.10.  However,
+# multiple libraries used by amon (zutil, zsock) require nodejs <= 0.8.  This
+# gcc wrapper forces the 32-bit target, effectively inlining the
+# node-trace-provider fix.  This hack should be removed if amon is every updated
+# past nodejs 0.8.  See also TRITON-1658
+#
+# NOTE: This PATH definition must appear before node_prebuilt, which also mucks
+# with PATH.
+#
+export PATH:=$(TOP)/tools/m32-gcc-wrapper:$(PATH)
+
 ifeq ($(shell uname -s),SunOS)
        include deps/eng/tools/mk/Makefile.node_prebuilt.defs
        include deps/eng/tools/mk/Makefile.agent_prebuilt.defs
