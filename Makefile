@@ -5,7 +5,7 @@
 #
 
 #
-# Copyright (c) 2019, Joyent, Inc.
+# Copyright 2019 Joyent, Inc.
 #
 
 #
@@ -85,7 +85,7 @@ endif
 # an agent installation or uninstallation, so we provide a magic environment
 # varible to disable them here.
 #
-NPM_ENV = SDC_AGENT_SKIP_LIFECYCLE=yes MAKE=$(MAKE)
+NPM_ENV = npm_config_cache=$(TOP)/$(BUILD)/.npm SDC_AGENT_SKIP_LIFECYCLE=yes MAKE=$(MAKE)
 
 NODE_DEV := ./node_modules/.bin/node-dev
 TAP := ./node_modules/.bin/tap
