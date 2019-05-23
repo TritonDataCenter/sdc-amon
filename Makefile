@@ -29,6 +29,16 @@ CLEAN_FILES += agent/node_modules relay/node_modules \
 	./node_modules test/node_modules build/amon-*.tgz \
 	build/amon-*.tar.gz lib build/pkg
 
+# These files are transformed during setup/configure. We're
+# listing them here just so that check-manifests can be run
+# on the pre-converted versions, which are still valid xml.
+SMF_MANIFESTS	= \
+	agent/smf/manifests/amon-agent.xml.in \
+	relay/smf/manifests/amon-relay.xml.in \
+	relay/smf/manifests/amon-zoneevents.xml.in \
+	master/smf/amon-master.smf.in
+
+
 # The prebuilt sdcnode version we want. See
 # "tools/mk/Makefile.node_prebuilt.targ" for details.
 NODE_PREBUILT_VERSION=v0.8.28
@@ -67,10 +77,16 @@ TOP ?= $(error Unable to access eng.git submodule Makefiles.)
 # node-trace-provider fix.  This hack should be removed if amon is every updated
 # past nodejs 0.8.  See also TRITON-1658
 #
-# NOTE: This PATH definition must appear before node_prebuilt, which also mucks
-# with PATH.
+# Notes:
+# - We cannot add a "PATH=..." change to NPM_ENV because
+#   Makefile.node_prebuilt.* is already doing so.
+# - Only make this PATH addition on SunOS where we know we have
+#   /opt/local/bin/gcc, otherwise other parts of the build using gcc on
+#   non-SunOS (e.g. 'make check' builds of jsl) break.
 #
-export PATH:=$(TOP)/tools/m32-gcc-wrapper:$(PATH)
+ifeq ($(shell uname -s),SunOS)
+	export PATH:=$(TOP)/tools/m32-gcc-wrapper:$(PATH)
+endif
 
 ifeq ($(shell uname -s),SunOS)
        include deps/eng/tools/mk/Makefile.node_prebuilt.defs
