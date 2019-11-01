@@ -12,7 +12,7 @@
     "bunyan": "0.21.3",
     "restify": "git+https://github.com/mcavage/node-restify.git#198dcbb",
     "libuuid": "0.1.2",
-    "http-signature": "0.9.9",
+    "http-signature": "1.2.0",
     "tap": "0.3.3",
     "ldapjs": "git+https://github.com/mcavage/node-ldapjs.git#aed6d2b043715e1a37c45a6293935c25c023ebce"
   },
