@@ -83,9 +83,13 @@ TOP ?= $(error Unable to access eng.git submodule Makefiles.)
 # - Only make this PATH addition on SunOS where we know we have
 #   /opt/local/bin/gcc, otherwise other parts of the build using gcc on
 #   non-SunOS (e.g. 'make check' builds of jsl) break.
+# - ENGBLD_PATH is another route for us to add path components. In this
+#   case, allowing us to drop in a path containing a python2 -> python
+#   symlink, needed on systems where /opt/local/bin/python is python3,
+#   which would otherwise break node-gyp builds.
 #
 ifeq ($(shell uname -s),SunOS)
-	export PATH:=$(TOP)/tools/m32-gcc-wrapper:$(PATH)
+	export PATH:=$(TOP)/tools/m32-gcc-wrapper:$(ENGBLD_PATH):$(PATH)
 endif
 
 ifeq ($(shell uname -s),SunOS)
