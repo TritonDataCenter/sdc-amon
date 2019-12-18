@@ -349,6 +349,8 @@ install_relay_pkg:
 # Since modern pkgsrc installations have the default as python3, this
 # will break the build, so work around that. In cases where the default
 # is already python2, this is harmless.
+# This all occurs because amon uses an old node, which has an old version
+# of gyp. If we move to more modern node, we can probably drop this hack.
 #
 .PHONY: python2-symlink
 python2-symlink:
