@@ -27,7 +27,7 @@ JSSTYLE_FILES    = $(JS_FILES)
 CLEAN_FILES += agent/node_modules relay/node_modules \
 	master/node_modules common/node_modules plugins/node_modules \
 	./node_modules test/node_modules build/amon-*.tgz \
-	build/amon-*.tar.gz lib build/pkg
+	build/amon-*.tar.gz lib build/pkg build/agent-python
 
 # These files are transformed during setup/configure. We're
 # listing them here just so that check-manifests can be run
@@ -85,7 +85,7 @@ TOP ?= $(error Unable to access eng.git submodule Makefiles.)
 #   non-SunOS (e.g. 'make check' builds of jsl) break.
 #
 ifeq ($(shell uname -s),SunOS)
-	export PATH:=$(TOP)/tools/m32-gcc-wrapper:$(PATH)
+	export PATH:=$(TOP)/tools/m32-gcc-wrapper:$(TOP)/build/agent-python:$(PATH)
 endif
 
 ifeq ($(shell uname -s),SunOS)
@@ -138,7 +138,7 @@ all: validate-buildenv common plugins agent testbuild relay master dev sdc-scrip
 #
 
 .PHONY: common
-common: | $(NPM_EXEC)
+common: | $(NPM_EXEC) python2-symlink
 	(cd common && $(NPM_ENV) $(NPM) install && $(NPM) link)
 
 .PHONY: plugins
@@ -343,6 +343,22 @@ install_agent_pkg:
 install_relay_pkg:
 	/opt/smartdc/agents/bin/apm --no-registry install ./`ls -1 amon-relay*.tgz | tail -1`
 
+#
+# Amon needs to build with python2, but has "#!/bin/env python" scripts
+# that will otherwise find the default python on the build machine.
+# Since modern pkgsrc installations have the default as python3, this
+# will break the build, so work around that. In cases where the default
+# is already python2, this is harmless.
+# This all occurs because amon uses an old node, which has an old version
+# of gyp. If we move to more modern node, we can probably drop this hack.
+#
+.PHONY: python2-symlink
+python2-symlink:
+	mkdir -p $(TOP)/build/agent-python
+	if [ -f /opt/local/bin/python2 ]; then \
+	    rm -f $(TOP)/build/agent-python/python; \
+	    ln -s /opt/local/bin/python2 $(TOP)/build/agent-python/python; \
+	fi
 
 #
 # Includes
