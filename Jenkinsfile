@@ -31,6 +31,15 @@ pipeline {
                 'agents from the same branch name as the ' +
                 'component, before falling back to "master".'
         )
+        booleanParam(
+            name: 'TRIGGER_AGENTS_INSTALLER_BUILD',
+            defaultValue: true,
+            description:
+                'After a build of this agent, by default we trigger a build ' +
+                'of the master branch of sdc-agents-installer, so that this ' +
+                'agent can be tested in a Triton instance. Uncheck this to ' +
+                'prevent that build from being triggered.'
+            )
     }
 
     stages {
@@ -56,12 +65,17 @@ pipeline {
             // Otherwise if we were to trigger a release-* branch build at this
             // point, we can't guarantee all agent builds have completed.
             // Eventually it would be good to have a pipeline that builds all
-            // agents in parallel, and then the agents-installer.
+            // agents in parallel, and then the agents-installer. In that case,
+            // callers should explicitly set the TRIGGER_AGENTS_INSTALLER build
+            // to 'false'
             // For normal development, it's fine to always trigger the master
             // sdc-agents-installer build.
             when {
                 not {
-                    branch 'release-*'
+                    anyOf {
+                        branch 'release-*'
+                        environment name: 'TRIGGER_AGENTS_INSTALLER_BUILD', value: 'false'
+                    }
                 }
             }
             steps {
