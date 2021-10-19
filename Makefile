@@ -55,6 +55,7 @@ BASE_IMAGE_UUID		= 04a48d7d-6bb5-4e83-8c3b-e60a99e0f48f
 BUILDIMAGE_NAME		= amon
 NAME			= amon
 BUILDIMAGE_DESC		= SDC AMON
+BUILDIMAGE_PKGSRC	= postfix-3.0.2nb3
 BUILDIMAGE_PKG		= $(TOP)/$(BUILD)/amon-pkg-$(STAMP).tar.gz
 AGENTS = registrar config
 
