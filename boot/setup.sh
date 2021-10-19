@@ -49,6 +49,7 @@ smtp_destination_concurrency_failed_cohort_limit = 10
 
 EOM
 
+/usr/sbin/svccfg import /opt/local/lib/svc/manifest/postfix.xml || fatal "unable to import postfix SMF manifest"
 /usr/sbin/svcadm enable postfix || fatal "unable to enable postfix"
 
 
