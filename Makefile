@@ -5,7 +5,7 @@
 #
 
 #
-# Copyright 2019 Joyent, Inc.
+# Copyright 2021 Joyent, Inc.
 #
 
 #
@@ -41,17 +41,17 @@ SMF_MANIFESTS	= \
 
 # The prebuilt sdcnode version we want. See
 # "tools/mk/Makefile.node_prebuilt.targ" for details.
-NODE_PREBUILT_VERSION=v0.8.28
+NODE_PREBUILT_VERSION=v0.10.48
 NODE_PREBUILT_TAG=gz
 ifeq ($(shell uname -s),SunOS)
-    NODE_PREBUILT_IMAGE=fd2cc906-8938-11e3-beab-4359c665ac99
+    NODE_PREBUILT_IMAGE=18b094b0-eb01-11e5-80c1-175dac7ddf02
 endif
 
 #
 # Stuff used for buildimage
 #
-# our base image is sdc-smartos@1.6.3
-BASE_IMAGE_UUID		= fd2cc906-8938-11e3-beab-4359c665ac99
+# our base image is sdc-minimal-multiarch-lts 15.4.1
+BASE_IMAGE_UUID		= 04a48d7d-6bb5-4e83-8c3b-e60a99e0f48f
 BUILDIMAGE_NAME		= amon
 NAME			= amon
 BUILDIMAGE_DESC		= SDC AMON
