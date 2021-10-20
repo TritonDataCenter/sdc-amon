@@ -5,7 +5,7 @@
  */
 
 /*
- * Copyright (c) 2014, Joyent, Inc.
+ * Copyright 2021 Joyent, Inc.
  */
 
 var fs = require('fs');
@@ -283,15 +283,20 @@ App.prototype.start = function (callback) {
         if (self.owner || self.agent === self.computeNodeUuid) {
             return next();
         }
-        zutil.getZoneAttribute(zonename, 'owner-uuid', function (err, attr) {
-            if (err) {
-                return next(err);
+        var zonecfgArgs = [
+            '-z',
+            zonename,
+            'attr',
+            'name=owner-uuid'
+        ];
+
+        execFile('zonecfg', zonecfgArgs, function (zcErr, stdout, stderr) {
+            if (zcErr || stderr) {
+                return next(new Error(format(
+                    'Error getting onwer_uuid: %s stdout="%s" stderr="%s"',
+                    zcErr, stdout, stderr)));
             }
-            if (!attr) {
-                return next('no "owner-uuid" attribute found on zone '
-                    + zonename);
-            }
-            self.owner = attr.value;
+            self.owner = stdout.trim();
             next();
         });
     }
