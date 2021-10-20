@@ -5,7 +5,7 @@
 #
 
 #
-# Copyright 2019 Joyent, Inc.
+# Copyright 2021 Joyent, Inc.
 #
 
 #
@@ -41,20 +41,21 @@ SMF_MANIFESTS	= \
 
 # The prebuilt sdcnode version we want. See
 # "tools/mk/Makefile.node_prebuilt.targ" for details.
-NODE_PREBUILT_VERSION=v0.8.28
+NODE_PREBUILT_VERSION=v0.10.48
 NODE_PREBUILT_TAG=gz
 ifeq ($(shell uname -s),SunOS)
-    NODE_PREBUILT_IMAGE=fd2cc906-8938-11e3-beab-4359c665ac99
+    NODE_PREBUILT_IMAGE=18b094b0-eb01-11e5-80c1-175dac7ddf02
 endif
 
 #
 # Stuff used for buildimage
 #
-# our base image is sdc-smartos@1.6.3
-BASE_IMAGE_UUID		= fd2cc906-8938-11e3-beab-4359c665ac99
+# our base image is sdc-minimal-multiarch-lts 15.4.1
+BASE_IMAGE_UUID		= 04a48d7d-6bb5-4e83-8c3b-e60a99e0f48f
 BUILDIMAGE_NAME		= amon
 NAME			= amon
 BUILDIMAGE_DESC		= SDC AMON
+BUILDIMAGE_PKGSRC	= postfix-3.0.2nb3
 BUILDIMAGE_PKG		= $(TOP)/$(BUILD)/amon-pkg-$(STAMP).tar.gz
 AGENTS = registrar config
 
@@ -66,27 +67,6 @@ ENGBLD_REQUIRE		:= $(shell git submodule update --init deps/eng)
 include deps/eng/tools/mk/Makefile.defs
 TOP ?= $(error Unable to access eng.git submodule Makefiles.)
 
-
-#
-# amon currently builds against 32-bit 0.8.x nodejs and depends on old versions
-# of the node-dtrace-provider with a bug that prevents compiling for 32-bit if
-# the *host* is x86_64 (as components do when they include the amon agent).  All
-# fixed versions of node-trace-provider require nodejs >= 0.10.  However,
-# multiple libraries used by amon (zutil, zsock) require nodejs <= 0.8.  This
-# gcc wrapper forces the 32-bit target, effectively inlining the
-# node-trace-provider fix.  This hack should be removed if amon is every updated
-# past nodejs 0.8.  See also TRITON-1658
-#
-# Notes:
-# - We cannot add a "PATH=..." change to NPM_ENV because
-#   Makefile.node_prebuilt.* is already doing so.
-# - Only make this PATH addition on SunOS where we know we have
-#   /opt/local/bin/gcc, otherwise other parts of the build using gcc on
-#   non-SunOS (e.g. 'make check' builds of jsl) break.
-#
-ifeq ($(shell uname -s),SunOS)
-	export PATH:=$(TOP)/tools/m32-gcc-wrapper:$(TOP)/build/agent-python:$(PATH)
-endif
 
 ifeq ($(shell uname -s),SunOS)
        include deps/eng/tools/mk/Makefile.node_prebuilt.defs

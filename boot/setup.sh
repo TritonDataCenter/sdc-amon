@@ -7,7 +7,7 @@
 #
 
 #
-# Copyright (c) 2014, Joyent, Inc.
+# Copyright 2021 Joyent, Inc.
 #
 
 export PS4='[\D{%FT%TZ}] ${BASH_SOURCE}:${LINENO}: ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
@@ -49,19 +49,21 @@ smtp_destination_concurrency_failed_cohort_limit = 10
 
 EOM
 
-/usr/sbin/svccfg import /opt/local/share/smf/postfix/manifest.xml || fatal "unable to import postfix SMF manifest"
+/usr/sbin/svccfg import /opt/local/lib/svc/manifest/postfix.xml || fatal "unable to import postfix SMF manifest"
 /usr/sbin/svcadm enable postfix || fatal "unable to enable postfix"
 
 
 # Setup crontab
-crontab=/tmp/$role-$$.cron
-crontab -l > $crontab
-[[ $? -eq 0 ]] || fatal "Unable to write to $crontab"
-echo '' >>$crontab
-echo '0,10,20,30,40,50 * * * * /opt/smartdc/amon/bin/alert-if-amon-master-down.sh 2>&1' >>$crontab
-crontab $crontab
-[[ $? -eq 0 ]] || fatal "Unable import crontab"
-rm -f $crontab
+crontab=$(mktemp /tmp/$role-XXXXXX.cron)
+if ! crontab -l > "$crontab" ; then
+    fatal "Unable to write to $crontab"
+fi
+echo '' >>"$crontab"
+echo '0,10,20,30,40,50 * * * * /opt/smartdc/amon/bin/alert-if-amon-master-down.sh 2>&1' >>"$crontab"
+if ! crontab "$crontab" ; then
+    fatal "Unable import crontab"
+fi
+rm -f "${crontab:?}"
 
 # Log rotation.
 sdc_log_rotation_add config-agent /var/svc/log/*config-agent*.log 1g

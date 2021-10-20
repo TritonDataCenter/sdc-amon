@@ -1,7 +1,7 @@
 {
   "name": "amon-agent",
   "description": "Smart DataCenter Monitoring Agent",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "private": true,
   "author": "Joyent (joyent.com)",
   "dependencies": {
@@ -13,7 +13,7 @@
     "bunyan": "0.22.1",
     "once": "1.3.2",
     "nopt": "2.1.1",
-    "zutil": "0.2.1"
+    "zutil": "1.0.0"
   },
   "scripts": {
     "start": "./bin/amon-agent",
@@ -21,7 +21,7 @@
     "preuninstall": "pkg/preuninstall.sh"
   },
   "engines": {
-    "node": ">=0.8"
+    "node": ">=0.10"
   },
   "license": "MPL-2.0"
 }
