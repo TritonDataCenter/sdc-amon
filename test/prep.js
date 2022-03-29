@@ -5,7 +5,7 @@
  */
 
 /*
- * Copyright (c) 2017, Joyent, Inc.
+ * Copyright 2022 Joyent, Inc.
  */
 
 /**
@@ -77,6 +77,9 @@ function ldapClientBind(next) {
     log('# Setup LDAP client.');
     ldapClient = ldap.createClient({
         url: process.env.UFDS_URL,
+        tlsOptions: {
+            rejectUnauthorized: false
+        },
         connectTimeout: 2 * 1000  // 2 seconds (fail fast)
     });
 
@@ -244,7 +247,7 @@ function ufdsClientUnbind(next) {
 
 function ldapClientUnbind(next) {
     if (ldapClient) {
-        ldapClient.socket.destroy();
+        ldapClient.destroy();
         next();
     } else {
         next();
