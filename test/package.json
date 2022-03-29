@@ -13,7 +13,7 @@
     "libuuid": "0.1.2",
     "http-signature": "0.9.9",
     "tap": "0.3.3",
-    "ldapjs": "git+https://github.com/joyent/node-ldapjs.git#332de11211571844b80bf99ba53b405ea458d4a8"
+    "ldapjs": "git+https://github.com/joyent/node-ldapjs.git#b13e50a"
   },
   "engines": {
     "node": ">=0.6"

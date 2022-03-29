@@ -10,7 +10,7 @@
     "ufds": "^1.7.0",
     "restify": "git+https://github.com/joyent/node-restify.git#d675012",
     "bunyan": "0.21.3",
-    "ldapjs": "git+https://github.com/joyent/node-ldapjs.git#332de11",
+    "ldapjs": "git+https://github.com/joyent/node-ldapjs.git#b13e50a",
     "async": "0.1.22",
     "http-signature": "0.9.11",
     "node-dev": "2.0.1",
