@@ -5,7 +5,7 @@
  */
 
 /*
- * Copyright 2021 Joyent, Inc.
+ * Copyright 2022 Joyent, Inc.
  */
 
 var fs = require('fs');
@@ -283,20 +283,19 @@ App.prototype.start = function (callback) {
         if (self.owner || self.agent === self.computeNodeUuid) {
             return next();
         }
-        var zonecfgArgs = [
-            '-z',
-            zonename,
-            'attr',
-            'name=owner-uuid'
+        var vmadmArgs = [
+            'get',
+            zonename
         ];
 
-        execFile('zonecfg', zonecfgArgs, function (zcErr, stdout, stderr) {
-            if (zcErr || stderr) {
+        execFile('vmadm', vmadmArgs, function (vErr, stdout, stderr) {
+            if (vErr || stderr) {
                 return next(new Error(format(
                     'Error getting onwer_uuid: %s stdout="%s" stderr="%s"',
-                    zcErr, stdout, stderr)));
+                    vErr, stdout, stderr)));
             }
-            self.owner = stdout.trim();
+            var vmObj = JSON.parse(stdout);
+            self.owner = vmObj.owner_uuid;
             next();
         });
     }
