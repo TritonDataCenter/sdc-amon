@@ -6,6 +6,7 @@
 
 #
 # Copyright 2021 Joyent, Inc.
+# Copyright 2022 MNX Cloud, Inc.
 #
 
 #
@@ -171,13 +172,14 @@ pkg_relay:
 	ls -d relay/node_modules/* | xargs -n1 -I{} cp -HR {} $(BUILD)/pkg/amon-relay/node_modules/
 	cp -PR relay/lib \
 		relay/main.js \
-		relay/package.json \
 		relay/smf \
 		relay/pkg \
 		relay/bin \
 		relay/.npmignore \
 		test \
 		$(BUILD)/pkg/amon-relay/
+	json -f relay/package.json -e 'this.version += "-$(STAMP)"' \
+	    > $(BUILD)/pkg/amon-relay/package.json
 	# tools/amon-relay.exclude contains a list of files and patterns of some
 	#  unnecessary, duplicated, or dev-only pieces we don't want in the build.
 	uuid -v4 > $(BUILD)/pkg/amon-relay/image_uuid
@@ -205,12 +207,13 @@ pkg_agent:
 	ls -d agent/node_modules/* | xargs -n1 -I{} cp -HR {} $(BUILD)/pkg/amon-agent/node_modules/
 	cp -PR agent/lib \
 		agent/main.js \
-		agent/package.json \
 		agent/smf \
 		agent/pkg \
 		agent/bin \
 		agent/.npmignore \
 		$(BUILD)/pkg/amon-agent/
+	json -f agent/package.json -e 'this.version += "-$(STAMP)"' \
+	    > $(BUILD)/pkg/amon-agent/package.json
 	# tools/amon-agent.exclude contains a list of files and patterns of some
 	#  unnecessary, duplicated, or dev-only pieces we don't want in the build.
 	uuid -v4 > $(BUILD)/pkg/amon-agent/image_uuid
