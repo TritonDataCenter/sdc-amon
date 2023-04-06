@@ -6,7 +6,7 @@
   "private": true,
   "dependencies": {
     "sdc-clients": "^13.0.5",
-    "ufds": "git+https://github.com/joyent/node-ufds#1ace075d7c89579c1ee547e50812c4d73890efab",
+    "ufds": "^1.7.0",
     "async": "0.1.22",
     "bunyan": "0.21.3",
     "restify": "git+https://github.com/joyent/node-restify.git#d675012",
