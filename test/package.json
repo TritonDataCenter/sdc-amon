@@ -2,18 +2,18 @@
   "name": "amon-test",
   "description": "Amon testing package",
   "version": "1.0.0",
-  "author": "Joyent (joyent.com)",
+  "author": "MNX Cloud (mnx.io)",
   "private": true,
   "dependencies": {
     "sdc-clients": "^13.0.5",
-    "ufds": "^1.7.0",
+    "ufds": "~1.7.1",
     "async": "0.1.22",
     "bunyan": "0.21.3",
-    "restify": "git+https://github.com/joyent/node-restify.git#d675012",
+    "restify": "git+https://github.com/TritonDataCenter/node-restify.git#d675012",
     "libuuid": "0.1.2",
     "http-signature": "0.9.9",
     "tap": "0.3.3",
-    "ldapjs": "git+https://github.com/joyent/node-ldapjs.git#b13e50a"
+    "ldapjs": "git+https://github.com/TritonDataCenter/node-ldapjs.git#b13e50a"
   },
   "engines": {
     "node": ">=0.6"

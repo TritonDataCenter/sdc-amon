@@ -6,15 +6,16 @@
 
 <!--
     Copyright (c) 2014, Joyent, Inc.
+    Copyright 2023 MNX Cloud, Inc.
 -->
 
 # sdc-amon
 
-This repository is part of the Joyent SmartDataCenter project (SDC).  For
+This repository is part of the Triton DataCenter project.  For
 contribution guidelines, issues, and general documentation, visit the main
-[SDC](http://github.com/joyent/sdc) project page.
+[Triton](http://github.com/TritonDataCenter/triton) project page.
 
-Amon is a monitoring and alarming system for SmartDataCenter (SDC). It has
+Amon is a monitoring and alarming system for Tirton DataCenter. It has
 three components: a central master, a tree of relays, and agents.
 Probes (things to check and alarm on) and ProbeGroups (optional grouping
 of probes) are configured on the master (i.e. on the "Amon Master API" or "Amon
@@ -39,12 +40,12 @@ Redis runs in a separate "amonredis" core zone.
 There is an "Amon Relay" running on each compute node global zone to ferry
 (1) probe configuration down to Amon Agents where probes are run; and
 (2) events up from agents to the master for handling. This is installed with
-the agents shar (which includes all SDC agents) as "amon-relay" on each
+the agents shar (which includes all Triton agents) as "amon-relay" on each
 compute node.
 
 There is an "Amon Agent" running at each location where the supported probes
 need to run. Currently that is each compute node global zone in the DC
-plus in each core SDC (and Manta) zone.
+plus in each core Triton (and Manta) zone.
 
 
 # Code Layout
@@ -70,7 +71,7 @@ Typically Amon development is done by:
 - making edits to a clone of sdc-amon.git on a Mac (likely Linux too, but that's
   untested) or a SmartOS development zone,
 
-        git clone git@github.com:joyent/sdc-amon.git
+        git clone git@github.com:TritonDataCenter/sdc-amon.git
         cd sdc-amon
         git submodule update --init   # not necessary first time
         vi

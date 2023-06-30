@@ -1,14 +1,14 @@
 {
   "name": "amon-relay",
-  "description": "Smart DataCenter Monitoring Relay component",
+  "description": "Triton DataCenter Monitoring Relay component",
   "version": "2.0.1",
-  "author": "Joyent (joyent.com)",
+  "author": "MNX Cloud (mnx.io)",
   "private": true,
   "dependencies": {
     "amon-common": "*",
     "amon-plugins": "*",
     "sdc-clients": "^13.0.5",
-    "restify": "git+https://github.com/joyent/node-restify.git#d675012",
+    "restify": "git+https://github.com/TritonDataCenter/node-restify.git#d675012",
     "assert-plus": "0.1.2",
     "backoff": "2.4.0",
     "bunyan": "0.21.3",
