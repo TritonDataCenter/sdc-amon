@@ -16,7 +16,7 @@
     "libuuid": "0.1.2",
     "lru-cache": "2.5.0",
     "ltx": "0.4.1",
-    "nodemailer": "0.3.44",
+    "nodemailer": "6.9.8",
       "mailcomposer": "0.2.12",
     "node-xmpp-client": "0.4.0",
     "nopt": "2.1.1",
