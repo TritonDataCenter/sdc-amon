@@ -13,7 +13,7 @@
     "libuuid": "0.1.2",
     "http-signature": "0.9.9",
     "tap": "0.3.3",
-    "ldapjs": "git+https://github.com/TritonDataCenter/node-ldapjs.git#b13e50a"
+    "ldapjs": "git+https://github.com/ldapjs/node-ldapjs.git#b13e50a"
   },
   "engines": {
     "node": ">=0.6"
