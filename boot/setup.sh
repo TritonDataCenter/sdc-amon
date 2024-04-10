@@ -8,6 +8,7 @@
 
 #
 # Copyright 2021 Joyent, Inc.
+# Copyright 2024 MNX Cloud, Inc.
 #
 
 export PS4='[\D{%FT%TZ}] ${BASH_SOURCE}:${LINENO}: ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
@@ -34,8 +35,8 @@ echo "export PATH=\$PATH:/opt/smartdc/$role/build/node/bin:/opt/smartdc/$role/no
 
 # Amon master needs postfix to send email notifications.
 # - rate limit out going emails to something reasonably high
-# - discard bounce email attempts to (hardcoded) no-reply@joyent.com
-echo "no-reply@joyent.com discard" >>/opt/local/etc/postfix/transport
+# - discard bounce email attempts to (hardcoded) no-reply@tritondatacenter.com
+echo "no-reply@tritondatacenter.com discard" >>/opt/local/etc/postfix/transport
 /opt/local/sbin/postmap /opt/local/etc/postfix/transport
 
 cat <<EOM >>/opt/local/etc/postfix/main.cf

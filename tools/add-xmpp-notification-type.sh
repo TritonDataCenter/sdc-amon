@@ -7,6 +7,7 @@
 
 #
 # Copyright (c) 2014, Joyent, Inc.
+# Copyright 2024 MNX Cloud, Inc.
 #
 
 #
@@ -41,7 +42,7 @@ function sapi() {
 
 
 # Gather data
-default=amon.coal@joyent.com
+default=amon.coal@tritondatacenter.com
 echo -n "jid [$default]: "
 read jid
 [[ -z "$jid" ]] && jid=$default
@@ -51,7 +52,7 @@ read -s password
 echo ""
 [[ -n "$password" ]] || fatal "no <password> given"
 
-default=jabber.joyent.com
+default=jabber.tritondatacenter.com
 echo -n "jabber host [$default]: "
 read host
 [[ -z "$host" ]] && host=$default

@@ -17,7 +17,7 @@
   },
   "notificationPlugins": [
     {
-      "type": "email"
+      "type": "email",
       "path": "./notifications/email",
       "config": {
         "smtp": {
@@ -26,7 +26,7 @@
           "ssl": false,
           "use_authentication": false
         },
-        "from": "\"Monitoring\" <no-reply@joyent.com>"
+        "from": "\"Monitoring\" <no-reply@tritondatacenter.com>"
       }
     }
   ]
