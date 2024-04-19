@@ -6,6 +6,7 @@
 
 /*
  * Copyright (c) 2014, Joyent, Inc.
+ * Copyright 2024 MNX Cloud, Inc.
  */
 
 /*
@@ -68,7 +69,7 @@ var CONFIG = {
                     'ssl': false,
                     'use_authentication': false
                 },
-                'from': '\"Monitoring\" <no-reply@joyent.com>'
+                'from': '\"Monitoring\" <no-reply@tritondatacenter.com>'
             }
         },
         {
@@ -83,11 +84,11 @@ var CONFIG = {
             // Need to fill in jid and password to use the notify test
             // below
             'config': {
-                'jid': 'NAME@joyent.com',
+                'jid': 'NAME@tritondatacenter.com',
                 'password': 'XXXXXX',
-                'host': 'jabber.joyent.com',
+                'host': 'jabber.tritondatacenter.com',
                 'port': 5223,
-                'room': 'test@conference.joyent.com',
+                'room': 'test@conference.tritondatacenter.com',
                 'legacySSL': true,
                 'preferredSaslMechanism': 'PLAIN'
             }
@@ -169,7 +170,7 @@ test('email: sanitize empty', function (t) {
  *     };
  *     var user = {
  *         'login': 'otto',
- *         'email': 'trent.mick+amontestemail@joyent.com',
+ *         'email': 'trent.mick+amontestemail@tritondatacenter.com',
  *         'id': 'a3040770-c93b-6b41-90e9-48d3142263cf',
  *         'firstName': 'Trent',
  *         'lastName': 'the Test Case'
@@ -242,7 +243,7 @@ test('xmpp: sanitize empty', function (t) {
  *     };
  *     var user = {
  *         'login': 'otto',
- *         'email': 'trent.mick+amontestemail@joyent.com',
+ *         'email': 'trent.mick+amontestemail@tritondatacenter.com',
  *         'id': 'a3040770-c93b-6b41-90e9-48d3142263cf',
  *         'firstName': 'Trent',
  *         'lastName': 'the Test Case'

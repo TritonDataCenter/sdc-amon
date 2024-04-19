@@ -33,7 +33,7 @@
           "ssl": false,
           "use_authentication": false
         },
-        "from": "\"{{{datacenter_name}}} Monitoring\" <no-reply@joyent.com>"
+        "from": "\"{{{datacenter_name}}} Monitoring\" <no-reply@tritondatacenter.com>"
       }
     },
     {

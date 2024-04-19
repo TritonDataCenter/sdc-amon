@@ -1,8 +1,8 @@
 {
   "name": "amon-plugins",
-  "description": "Smart DataCenter Monitoring Probes package",
-  "version": "1.1.0",
-  "author": "Joyent (joyent.com)",
+  "description": "Triton DataCenter Monitoring Probes package",
+  "version": "1.1.1",
+  "author": "MNX Cloud, Inc.",
   "private": true,
   "main": "lib/index.js",
   "dependencies": {
