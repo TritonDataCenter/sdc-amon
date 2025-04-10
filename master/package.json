@@ -4,7 +4,6 @@
   "version": "1.1.1",
   "author": "MNX Cloud, Inc.",
   "private": true,
-  "// dependencies": "mailcomposer is a hack for MON-347",
   "dependencies": {
     "amon-common": "*",
     "amon-plugins": "*",
@@ -16,8 +15,7 @@
     "libuuid": "0.1.2",
     "lru-cache": "2.5.0",
     "ltx": "0.4.1",
-    "nodemailer": "0.3.44",
-    "mailcomposer": "0.2.12",
+    "nodemailer": "git+https://github.com/nodemailer/nodemailer.git#2f1cd04",
     "node-xmpp-client": "0.4.0",
     "nopt": "2.1.1",
     "once": "1.1.1",
