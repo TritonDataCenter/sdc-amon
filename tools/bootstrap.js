@@ -280,21 +280,6 @@ function getSmartosDatasetUuid(next) {
 }
 
 
-function getExternalNetworkUuid(next) {
-    log('# Get "external" network UUID.');
-    exec(format('ssh %s /opt/smartdc/bin/sdc-napi /networks | %s -H -c \'name === "external"\' 0.uuid',
-                            headnodeAlias, JSONTOOL),
-             function (err, stdout, stderr) {
-        if (err) {
-            return next(err);
-        }
-        externalNetworkUuid = stdout.trim();
-        log('# "external" network UUID is "%s".', externalNetworkUuid);
-        next();
-    });
-}
-
-
 function createAmondevzone(next) {
     // First check if there is a zone for bob.
     vmapiClient.listVms({owner_uuid: bob.uuid, alias: 'amondevzone'},
@@ -318,7 +303,7 @@ function createAmondevzone(next) {
                 brand: 'joyent',
                 ram: '128',
                 alias: 'amondevzone',
-                networks: [{uuid: externalNetworkUuid}],
+                networks: [{name: 'external'}],
                 server_uuid: headnodeUuid,
                 customer_metadata: {
                     'user-script': fs.readFileSync(userScriptPath, 'utf8')
@@ -689,7 +674,6 @@ async.series([
         getCnapiClient,
         getHeadnodeUuid,
         getSmartosDatasetUuid,
-        getExternalNetworkUuid,
         createAmondevzone,
         getAmonClient,
         loadAmonObjects
